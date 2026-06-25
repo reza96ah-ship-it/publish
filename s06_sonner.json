@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.youtube.com/watch?v=8JTrY1dlXCw",
+    "name": "They Finally Released This Toast Library - YouTube",
+    "snippet": "Toast notifications are little messages that pop up for any success, error, or loading events. Their only purpose is to let users know what ...",
+    "host_name": "www.youtube.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dragorossi.com/sonner-react-toast-notifications-guide-setup-examples",
+    "name": "Sonner: React Toast Notifications — Guide, Setup & Examples",
+    "snippet": "Practical, example-driven guide to install, configure and customize Sonner in React apps — with promise toasts, hooks and accessibility tips.\nPractical, example-driven guide to install, configure and customize Sonner in React apps — with promise toasts, hooks and accessibility tips. Search intent across the provided keywords is overwhelmingly informational and transactional with a technical tilt.",
+    "host_name": "dragorossi.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/Bubbleio/comments/1kmlujr/new_sonner_toast_notification_plugin_for_bubble",
+    "name": "New! Sonner Toast notification Plug-in for bubble [Open Source]",
+    "snippet": "Best toast notification libraries for React. Clear search. Ask. Best ... Best practices for designing apps in Bubble. How to optimize app ...",
+    "host_name": "www.reddit.com",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://medium.com/@subashnatrayan28/%EF%B8%8F-sonner-the-toast-library-that-made-my-ui-feel-alive-cf77452eb2c8",
+    "name": "️ Sonner — The Toast Library That Made My UI Feel Alive - Medium",
+    "snippet": "Step 1: Installing Sonner ‍ · Step 2: Drop a <Toaster /> — The Heart of It · Step 3: Your First Toast — and The Moment You Fall in Love ✨.",
+    "host_name": "medium.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/orgs/community/discussions/168789",
+    "name": "What's Your Go-To Notification Library for ReactJS? Or Which one is",
+    "snippet": "Other good options include Notistack (for Material UI) and Sonner, but for beginners, React Toastify is usually the best choice. Beta Was ...",
+    "host_name": "github.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://forum.bubble.io/t/new-plugin-sonner-fully-customizable-toast-notification-for-bubble/369234",
+    "name": "[New Plugin!] Sonner: Fully customizable toast notification for Bubble",
+    "snippet": "6 Positions – Choose where the toast should show (top, bottom, left, right, center…). :five: Dark Mode & Styling – Matches your app theme. You ...",
+    "host_name": "forum.bubble.io",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://knock.app/blog/the-top-notification-libraries-for-react",
+    "name": "Top 9 React notification libraries in 2026 - Knock",
+    "snippet": "For modern, lightweight toast notifications: Start with Sonner (especially for shadcn/ui projects) or React Hot Toast. For comprehensive ...",
+    "host_name": "knock.app",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.stackademic.com/shadcn-ui-react-series-part-19-sonner-modern-toast-notifications-done-right-903757c5681f",
+    "name": "[Shadcn/ui React Series — Part 19] Sonner - Stackademic",
+    "snippet": "Sonner is a toast notification library used to deliver short, non-blocking feedback to users. Think success messages, background errors, or ...",
+    "host_name": "blog.stackademic.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.creative-tim.com/ui/docs/components/sonner",
+    "name": "5+ Shadcn Sonner / Toast Components - Creative Tim UI",
+    "snippet": "Best Practices. Use appropriate toast types (info, success, warning, error) to match the message context; Keep toast messages concise and actionable; Use ...",
+    "host_name": "www.creative-tim.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://malfroid.com/en/sonner-react-toasts-setup-hooks-advanced-customization",
+    "name": "Sonner React Toasts: Setup, Hooks & Advanced Customization",
+    "snippet": "Short summary: Practical, production-ready guide to using Sonner as your React toast notifications library — from installation and hooks to promise-based toasts, customization, and accessibility best practices.",
+    "host_name": "malfroid.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

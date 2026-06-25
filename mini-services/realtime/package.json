@@ -1,0 +1,18 @@
+{
+  "name": "nashrino-realtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nashrino SocialOps Studio — realtime WebSocket relay for publish-job status broadcasts.",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "test": "bun run e2e_test.ts"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}

@@ -1,0 +1,87 @@
+/**
+ * Channel Adapter Contract — TypeScript implementation of the architecture spec.
+ * Every adapter (Instagram, Rubika, Telegram, LinkedIn, Eitaa) implements this.
+ */
+
+export type PlatformType = 'instagram' | 'rubika' | 'telegram' | 'linkedin' | 'eitaa'
+
+export type JobStatus = 'pending' | 'processing' | 'success' | 'failed' | 'action' | 'scheduled'
+
+export interface AdapterAccount {
+  id: string
+  type: PlatformType
+  username: string
+  status: string
+  circuitState: 'closed' | 'open' | 'half_open'
+}
+
+export interface AdapterContent {
+  id: string
+  title: string
+  body: string | null
+  hashtags: string | null
+  thumbnailUrl: string | null
+}
+
+export interface AdapterJob {
+  id: string
+  idempotencyKey: string
+  retryCount: number
+  content: AdapterContent
+  account: AdapterAccount
+  platformCaption?: string // per-platform override
+}
+
+export interface HealthResult {
+  healthy: boolean
+  status: 'active' | 'expired' | 'error' | 'disconnected'
+  lastError: string | null
+}
+
+export interface ReadinessIssue {
+  code: string // caption_too_long | media_missing | token_expired | ...
+  message: string // Persian, actionable
+  platform: string
+}
+
+export interface ReadinessResult {
+  ready: boolean
+  issues: ReadinessIssue[]
+}
+
+export type PublishOutcome = 'success' | 'failed' | 'action'
+
+export interface PublishResult {
+  externalId: string | null
+  rawResponse: Record<string, unknown>
+  status: PublishOutcome
+  error: string | null
+  /** whether the error is transient (5xx, 429, network) and should be retried */
+  retryable: boolean
+  /** simulated step labels for UI progression (mock mode) */
+  steps?: { label: string; at: number }[]
+}
+
+export interface ChannelAdapter {
+  readonly platform: PlatformType
+
+  healthCheck(account: AdapterAccount): Promise<HealthResult>
+  validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult>
+  publish(job: AdapterJob): Promise<PublishResult>
+}
+
+/**
+ * Base error class for adapter failures.
+ * `retryable` drives the worker's retry/backoff decision.
+ */
+export class AdapterError extends Error {
+  constructor(
+    message: string,
+    public readonly retryable: boolean,
+    public readonly statusCode?: number,
+    public readonly externalId?: string,
+  ) {
+    super(message)
+    this.name = 'AdapterError'
+  }
+}

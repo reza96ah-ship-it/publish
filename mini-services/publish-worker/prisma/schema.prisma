@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/* ─── Workspace & Team ─── */
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  category  String   @default("")
+  phone     String   @default("")
+  description String @default("")
+  timezone  String   @default("Asia/Tehran")
+  plan      String   @default("free")
+  brandPrimaryColor String @default("#0F766E")
+  brandAccentColor  String @default("#2563EB")
+  brandVoice        String @default("")
+  defaultCta        String @default("")
+  contentGuidelines String @default("")
+  defaultHashtags   String @default("")
+  captionFooter     String @default("")
+  persianDigits     Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members       WorkspaceMember[]
+  platforms     Platform[]
+  campaigns     Campaign[]
+  contents      Content[]
+  media         Media[]
+  publishJobs   PublishJob[]
+  inboxMessages InboxMessage[]
+  analytics     AnalyticsSnapshot[]
+  notifications Notification[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String
+  name        String   @default("کاربر")
+  email       String   @default("")
+  role        String   @default("member") // admin, editor, approver, viewer
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  assigneeJobs  PublishJob[]
+
+  @@unique([workspaceId, userId])
+}
+
+/* ─── Platform Connections ─── */
+
+model Platform {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        String   // instagram, telegram, linkedin, rubika, eitaa
+  name        String
+  username    String   @default("")
+  avatarUrl   String?
+  accountKind String   @default("professional") // professional, personal (ig); channel, group (tg)
+  status      String   @default("active") // active, expired, error, disconnected
+  lastSuccessAt DateTime?
+  lastError   String?
+  circuitState String  @default("closed") // closed, open, half_open
+  primaryIssue String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentLinks  ContentPlatform[]
+  publishJobs   PublishJob[]
+  inboxMessages InboxMessage[]
+}
+
+/* ─── Campaigns ─── */
+
+model Campaign {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  status      String   @default("active") // active, paused, completed, archived
+  startDate   DateTime?
+  endDate     DateTime?
+  goalType    String?
+  goalValue   Int      @default(0)
+  healthLabel String   @default("در مسیر برنامه")
+  healthColor String   @default("text-emerald-700 bg-emerald-50 border-emerald-200")
+  ownerName   String?
+  topBlocker  String?
+  pubProgress Int      @default(0)
+  goalCompletion String @default("")
+  daysRemaining  String @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contents  Content[]
+  jobs      PublishJob[]
+}
+
+/* ─── Content ─── */
+
+model Content {
+  id          String   @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+  title       String
+  body        String?
+  hashtags    String?
+  internalNote String?
+  status      String   @default("draft") // draft, review, approved, scheduled, published, failed
+  thumbnailUrl String?
+  authorName  String?
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign    Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  platforms   ContentPlatform[]
+  jobs        PublishJob[]
+}
+
+model ContentPlatform {
+  id        String   @id @default(cuid())
+  contentId String
+  platformId String
+
+  content  Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, platformId])
+}
+
+/* ─── Publishing Queue ─── */
+
+model PublishJob {
+  id          String   @id @default(cuid())
+  workspaceId String
+  contentId   String
+  platformId  String
+  campaignId  String?
+  assigneeId  String?
+  status      String   @default("pending") // pending, processing, live, success, failed, action, scheduled
+  progress    Int      @default(0)
+  processLabel String  @default("در انتظار")
+  idempotencyKey String @default("")
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+  retryCount  Int      @default(0)
+  externalId  String?
+  thumbnailUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  content    Content          @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  platform   Platform         @relation(fields: [platformId], references: [id])
+  campaign   Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  assignee   WorkspaceMember? @relation(fields: [assigneeId], references: [id])
+}
+
+/* ─── Media Library ─── */
+
+model Media {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  fileType    String   // image/jpeg, video/mp4, etc.
+  fileSize    Int      @default(0)
+  url         String
+  thumbnailUrl String?
+  folder      String   @default("عمومی")
+  width       Int?
+  height      Int?
+  tags        String   @default("")
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+/* ─── Inbox ─── */
+
+model InboxMessage {
+  id          String   @id @default(cuid())
+  workspaceId String
+  platformId  String
+  senderName  String
+  senderAvatar String?
+  message     String
+  isRead      Boolean  @default(false)
+  isReplied   Boolean  @default(false)
+  reply       String?
+  platformType String
+  externalId  String?
+  messageType String   @default("comment") // comment, dm, mention
+  assigneeId  String?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform  Platform  @relation(fields: [platformId], references: [id])
+}
+
+/* ─── Analytics Snapshots ─── */
+
+model AnalyticsSnapshot {
+  id          String   @id @default(cuid())
+  workspaceId String
+  date        String   // YYYY-MM-DD
+  platform    String?
+  metricType  String   // reach, impressions, engagement, followers, clicks, conversions
+  value       Int
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, date, platform, metricType])
+}
+
+/* ─── Notifications ─── */
+
+model Notification {
+  id          String   @id @default(cuid())
+  workspaceId String
+  type        String   // publish_success, publish_failed, approval_requested, inbox_new, token_expiring, channel_disconnected
+  title       String
+  body        String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+/* ─── Settings ─── */
+
+model AppSetting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  type  String @default("string")
+}

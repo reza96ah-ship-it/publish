@@ -1,0 +1,765 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================================
+   NASHRINO DESIGN SYSTEM v2 — Production Grade
+   Based on deep research of Linear, Vercel/Geist, Stripe, Apple HIG.
+   Core principle: GLASS IS FOR NAVIGATION ONLY. Content = solid surfaces.
+   ============================================================================ */
+
+@theme inline {
+  --font-sans: "Vazirmatn", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* ---- Surfaces (solid — for CONTENT) ---- */
+  --color-canvas: var(--n-canvas);
+  --color-canvas-elevated: var(--n-canvas-elevated);
+  --color-surface: var(--n-surface);
+  --color-surface-hover: var(--n-surface-hover);
+  --color-surface-subtle: var(--n-surface-subtle);
+  --color-surface-raised: var(--n-surface-raised);
+
+  /* ---- Ink (text — always full opacity) ---- */
+  --color-ink-primary: var(--n-text-primary);
+  --color-ink-secondary: var(--n-text-secondary);
+  --color-ink-tertiary: var(--n-text-tertiary);
+  --color-ink-disabled: var(--n-text-disabled);
+
+  /* ---- Accent (single restrained violet) ---- */
+  --color-accent: var(--n-accent);
+  --color-accent-hover: var(--n-accent-hover);
+  --color-accent-soft: var(--n-accent-soft);
+  --color-accent-tint: var(--n-accent-tint);
+  --color-accent-foreground: #ffffff;
+
+  /* ---- Semantic ---- */
+  --color-success: var(--n-success);
+  --color-success-soft: var(--n-success-soft);
+  --color-success-tint: var(--n-success-tint);
+  --color-warning: var(--n-warning);
+  --color-warning-soft: var(--n-warning-soft);
+  --color-warning-tint: var(--n-warning-tint);
+  --color-danger: var(--n-danger);
+  --color-danger-soft: var(--n-danger-soft);
+  --color-danger-tint: var(--n-danger-tint);
+  --color-info: var(--n-info);
+  --color-info-soft: var(--n-info-soft);
+  --color-info-tint: var(--n-info-tint);
+
+  /* ---- shadcn mapping ---- */
+  --color-background: var(--n-canvas);
+  --color-foreground: var(--n-text-primary);
+  --color-card: var(--n-surface);
+  --color-card-foreground: var(--n-text-primary);
+  --color-popover: var(--n-glass-popover-bg);
+  --color-popover-foreground: var(--n-text-primary);
+  --color-primary: var(--n-accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--n-surface-hover);
+  --color-secondary-foreground: var(--n-text-primary);
+  --color-muted: var(--n-surface-hover);
+  --color-muted-foreground: var(--n-text-secondary);
+  --color-border: var(--n-border);
+  --color-border-strong: var(--n-border-strong);
+  --color-input: var(--n-border);
+  --color-ring: var(--n-accent);
+  --color-destructive: var(--n-danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-sidebar: var(--n-glass-nav-bg);
+  --color-sidebar-foreground: var(--n-text-primary);
+  --color-sidebar-primary: var(--n-accent);
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: var(--n-surface-hover);
+  --color-sidebar-accent-foreground: var(--n-text-primary);
+  --color-sidebar-border: var(--n-glass-border);
+  --color-sidebar-ring: var(--n-accent);
+
+  /* ---- Chart colors (refined, muted) ---- */
+  --color-chart-1: oklch(0.58 0.18 295);
+  --color-chart-2: oklch(0.62 0.14 160);
+  --color-chart-3: oklch(0.70 0.15 65);
+  --color-chart-4: oklch(0.60 0.20 25);
+  --color-chart-5: oklch(0.58 0.13 240);
+
+  /* ---- Radii (refined scale) ---- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 9999px;
+
+  --radius-panel: 16px;
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-rail: 8px;
+  --radius-small: 6px;
+
+  --radius: 0.5rem;
+
+  /* ---- Shadows (Linear-tight — 6% total opacity) ---- */
+  --shadow-xs: 0 1px 2px oklch(0.20 0.02 280 / 0.04);
+  --shadow-sm: 0 1px 2px oklch(0.20 0.02 280 / 0.04), 0 2px 4px oklch(0.20 0.02 280 / 0.03);
+  --shadow-md: 0 1px 2px oklch(0.20 0.02 280 / 0.04), 0 4px 8px oklch(0.20 0.02 280 / 0.04), 0 8px 16px oklch(0.20 0.02 280 / 0.03);
+  --shadow-lg: 0 2px 4px oklch(0.20 0.02 280 / 0.05), 0 8px 16px oklch(0.20 0.02 280 / 0.05), 0 16px 32px oklch(0.20 0.02 280 / 0.04);
+  --shadow-xl: 0 4px 8px oklch(0.20 0.02 280 / 0.06), 0 12px 24px oklch(0.20 0.02 280 / 0.06), 0 24px 48px oklch(0.20 0.02 280 / 0.05);
+  --shadow-2xl: 0 8px 16px oklch(0.20 0.02 280 / 0.08), 0 24px 48px oklch(0.20 0.02 280 / 0.08), 0 48px 96px oklch(0.20 0.02 280 / 0.06);
+
+  --shadow-panel: var(--n-shadow-card);
+  --shadow-floating: var(--n-shadow-popover);
+  --shadow-control: var(--n-shadow-control);
+
+  /* ---- Motion (asymmetric: ease-out enter, ease-in exit) ---- */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-snap: cubic-bezier(0.12, 0, 0.08, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --motion-instant: 0ms;
+  --motion-quick: 100ms;
+  --motion-fast: 150ms;
+  --motion-normal: 200ms;
+  --motion-slow: 300ms;
+  --motion-deliberate: 400ms;
+}
+
+/* ============================================================================
+   PRODUCTION LIGHT THEME
+   Principles: monochrome canvas, single violet accent, Linear-tight shadows,
+   glass ONLY for navigation, full-opacity text for WCAG-AA.
+   ============================================================================ */
+:root {
+  color-scheme: light;
+
+  --radius: 0.5rem;
+  --shell-gutter: clamp(16px, 1.6vw, 28px);
+  --shell-gap: clamp(14px, 1.1vw, 20px);
+  --sidebar-expanded: 260px;
+  --command-bar-height: 56px;
+  --stage-max-width: 1600px;
+
+  /* Canvas — near-neutral with subtle cool undertone (Stripe-inspired).
+     Slightly more visible than pure white so glass nav and solid cards
+     have visual contrast against it. */
+  --n-canvas: oklch(0.975 0.004 280);
+  --n-canvas-elevated: oklch(0.995 0.002 280);
+
+  /* Solid surfaces — for CONTENT (cards, tables, lists).
+     Pure white with hairline borders + Linear-tight shadows.
+     This MUST be clearly distinct from the glass nav tint. */
+  --n-surface: #ffffff;
+  --n-surface-hover: oklch(0.968 0.004 280);
+  --n-surface-subtle: oklch(0.972 0.003 280);
+  --n-surface-raised: #ffffff;
+
+  /* Glass — for NAVIGATION ONLY (sidebar, command bar, popovers, sheets).
+     4-ingredient recipe: blur + saturate(1.8) + luminance border + inset highlight.
+     NOTE: Slightly LOWER opacity than before so the cool canvas shows through,
+     creating clear visual distinction from pure-white content cards. */
+  --n-glass-nav-bg: rgb(252 252 254 / 0.68);
+  --n-glass-popover-bg: rgb(255 255 255 / 0.90);
+  --n-glass-sheet-bg: rgb(255 255 255 / 0.86);
+  --n-glass-border: rgb(255 255 255 / 0.65);
+  --n-glass-border-outer: rgb(15 23 42 / 0.06);
+  --n-glass-highlight: rgb(255 255 255 / 0.90);
+
+  /* Borders — crisp 1px hairlines */
+  --n-border: oklch(0.915 0.004 280);
+  --n-border-strong: oklch(0.875 0.006 280);
+  --n-border-subtle: oklch(0.94 0.003 280);
+
+  /* Text — high contrast, professional scale (full opacity for WCAG-AA) */
+  --n-text-primary: oklch(0.18 0.014 280);
+  --n-text-secondary: oklch(0.44 0.011 280);
+  --n-text-tertiary: oklch(0.56 0.009 280);
+  --n-text-disabled: oklch(0.68 0.007 280);
+
+  /* Accent — single restrained violet (Linear + Stripe synthesis).
+     Lower chroma = more professional. Used sparingly. */
+  --n-accent: oklch(0.52 0.20 295);
+  --n-accent-hover: oklch(0.47 0.21 295);
+  --n-accent-soft: oklch(0.96 0.022 295);
+  --n-accent-tint: oklch(0.94 0.028 295);
+
+  /* Semantic — refined, slightly muted */
+  --n-success: oklch(0.55 0.13 155);
+  --n-success-soft: oklch(0.96 0.022 155);
+  --n-success-tint: oklch(0.93 0.04 155);
+  --n-warning: oklch(0.68 0.14 65);
+  --n-warning-soft: oklch(0.97 0.028 65);
+  --n-warning-tint: oklch(0.95 0.04 65);
+  --n-danger: oklch(0.56 0.19 25);
+  --n-danger-soft: oklch(0.97 0.028 25);
+  --n-danger-tint: oklch(0.95 0.045 25);
+  --n-info: oklch(0.58 0.12 240);
+  --n-info-soft: oklch(0.97 0.022 240);
+  --n-info-tint: oklch(0.95 0.035 240);
+
+  --n-selected-bg: var(--n-accent-soft);
+  --n-focus-ring: oklch(0.52 0.20 295 / 0.24);
+
+  /* ---- Linear-tight shadow scale (6% total opacity) ----
+     Key: smaller blur, lower opacity. Depth without heaviness.
+     inset 0 1px 0 = top highlight (subtle). */
+  --n-shadow-card:
+    inset 0 1px 0 rgb(255 255 255 / 0.80),
+    0 1px 2px oklch(0.20 0.02 280 / 0.04),
+    0 2px 4px oklch(0.20 0.02 280 / 0.03);
+
+  --n-shadow-card-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.90),
+    0 2px 4px oklch(0.20 0.02 280 / 0.05),
+    0 4px 8px oklch(0.20 0.02 280 / 0.04),
+    0 8px 16px oklch(0.20 0.02 280 / 0.03);
+
+  --n-shadow-control:
+    inset 0 1px 0 rgb(255 255 255 / 0.70),
+    0 1px 1px oklch(0.20 0.02 280 / 0.03);
+
+  --n-shadow-popover:
+    inset 0 1px 0 rgb(255 255 255 / 0.90),
+    0 4px 8px oklch(0.20 0.02 280 / 0.06),
+    0 12px 24px oklch(0.20 0.02 280 / 0.06),
+    0 24px 48px oklch(0.20 0.02 280 / 0.04);
+
+  --n-shadow-glass-nav:
+    inset 0 1px 0 var(--n-glass-highlight),
+    inset 0 0 0 0.5px var(--n-glass-border),
+    0 1px 2px oklch(0.20 0.02 280 / 0.03);
+}
+
+.dark {
+  color-scheme: dark;
+  --n-canvas: oklch(0.145 0.008 280);
+  --n-canvas-elevated: oklch(0.185 0.010 280);
+  --n-surface: oklch(0.19 0.011 280);
+  --n-surface-hover: oklch(0.23 0.013 280);
+  --n-surface-subtle: oklch(0.21 0.011 280);
+  --n-surface-raised: oklch(0.22 0.012 280);
+
+  --n-glass-nav-bg: rgb(22 26 36 / 0.72);
+  --n-glass-popover-bg: rgb(26 30 42 / 0.88);
+  --n-glass-sheet-bg: rgb(24 28 38 / 0.84);
+  --n-glass-border: rgb(255 255 255 / 0.08);
+  --n-glass-border-outer: rgb(0 0 0 / 0.24);
+  --n-glass-highlight: rgb(255 255 255 / 0.06);
+
+  --n-border: oklch(0.27 0.011 280);
+  --n-border-strong: oklch(0.33 0.013 280);
+  --n-border-subtle: oklch(0.24 0.010 280);
+
+  --n-text-primary: oklch(0.96 0.004 280);
+  --n-text-secondary: oklch(0.76 0.010 280);
+  --n-text-tertiary: oklch(0.62 0.010 280);
+  --n-text-disabled: oklch(0.48 0.010 280);
+
+  --n-accent: oklch(0.68 0.18 295);
+  --n-accent-hover: oklch(0.73 0.18 295);
+  --n-accent-soft: oklch(0.28 0.08 295);
+  --n-accent-tint: oklch(0.24 0.06 295);
+
+  --n-success: oklch(0.70 0.14 155);
+  --n-success-soft: oklch(0.26 0.05 155);
+  --n-success-tint: oklch(0.22 0.06 155);
+  --n-warning: oklch(0.76 0.14 65);
+  --n-warning-soft: oklch(0.28 0.06 65);
+  --n-warning-tint: oklch(0.24 0.07 65);
+  --n-danger: oklch(0.68 0.18 25);
+  --n-danger-soft: oklch(0.28 0.07 25);
+  --n-danger-tint: oklch(0.24 0.08 25);
+  --n-info: oklch(0.70 0.12 240);
+  --n-info-soft: oklch(0.26 0.05 240);
+  --n-info-tint: oklch(0.22 0.06 240);
+
+  --n-shadow-card:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 1px 2px oklch(0 0 0 / 0.20),
+    0 2px 4px oklch(0 0 0 / 0.16);
+
+  --n-shadow-card-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 2px 4px oklch(0 0 0 / 0.24),
+    0 4px 8px oklch(0 0 0 / 0.20),
+    0 8px 16px oklch(0 0 0 / 0.16);
+
+  --n-shadow-control:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 1px 1px oklch(0 0 0 / 0.20);
+
+  --n-shadow-popover:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 4px 8px oklch(0 0 0 / 0.32),
+    0 12px 24px oklch(0 0 0 / 0.28),
+    0 24px 48px oklch(0 0 0 / 0.20);
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  .thin-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: oklch(0.78 0.008 280 / 0.45);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.68 0.010 280 / 0.65);
+    background-clip: padding-box;
+  }
+  .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+  /* Numeric tabular alignment — Stripe-standard for all data */
+  .num-tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---- Hover state hierarchy (4 levels, Linear-style) ---- */
+  /* Level 1: Subtle — list items, table rows (background only) */
+  .hover-level-1 {
+    transition: background-color var(--motion-quick) var(--ease-standard);
+  }
+  .hover-level-1:hover {
+    background-color: var(--n-surface-hover);
+  }
+
+  /* Level 2: Standard — buttons, chips (background + border) */
+  .hover-level-2 {
+    transition:
+      background-color var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard);
+  }
+  .hover-level-2:hover {
+    background-color: var(--n-surface-hover);
+    border-color: var(--n-border-strong);
+  }
+
+  /* Level 3: Elevated — cards (shadow lift + border) */
+  .hover-level-3 {
+    transition:
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+  .hover-level-3:hover {
+    border-color: var(--n-border-strong);
+    box-shadow: var(--n-shadow-card-hover);
+  }
+
+  /* Level 4: Interactive — primary CTAs (scale + shadow) */
+  .hover-level-4 {
+    transition:
+      background-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-quick) var(--ease-snap);
+  }
+  .hover-level-4:hover {
+    box-shadow: var(--n-shadow-card-hover);
+  }
+  .hover-level-4:active {
+    transform: scale(0.98);
+  }
+
+  /* Refined hover for interactive content cards — subtle lift, Linear-style */
+  .card-hover {
+    transition:
+      background-color var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+  }
+  .card-hover:hover {
+    box-shadow: var(--n-shadow-card-hover);
+    border-color: var(--n-border-strong);
+  }
+
+  /* Glass hover — for glass navigation controls only */
+  .glass-hover {
+    transition:
+      background var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+  .glass-hover:hover {
+    background: var(--n-glass-popover-bg);
+  }
+
+  /* ---- Skeleton shimmer (NN/G-compliant: size-matched, no decoration) ----
+     Uses composite transform + opacity only (GPU-friendly).
+     Direction-aware: shimmer sweeps LTR for Latin, RTL-aware for Persian. */
+  .n-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: var(--n-surface-hover);
+    border-radius: var(--radius-sm);
+  }
+  .n-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(255 255 255 / 0.55) 50%,
+      transparent 100%
+    );
+    animation: n-shimmer 1.6s var(--ease-standard) infinite;
+  }
+  @keyframes n-shimmer {
+    100% { transform: translateX(100%); }
+  }
+  /* Dark mode shimmer */
+  .dark .n-skeleton::after {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(255 255 255 / 0.06) 50%,
+      transparent 100%
+    );
+  }
+
+  /* ---- Gradient border on hover (ibelick @property --angle technique) ----
+     Premium feel for primary cards. Animated conic gradient border. */
+  .n-gradient-border {
+    position: relative;
+    background: var(--n-surface);
+    border-radius: var(--radius-card);
+  }
+  .n-gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--gradient-angle, 0deg),
+      var(--n-accent) 0%,
+      transparent 25%,
+      transparent 50%,
+      var(--n-accent) 75%,
+      transparent 100%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity var(--motion-normal) var(--ease-standard);
+    pointer-events: none;
+  }
+  .n-gradient-border:hover::before {
+    opacity: 0.6;
+    animation: n-rotate-gradient 3s linear infinite;
+  }
+  @property --gradient-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+  @keyframes n-rotate-gradient {
+    to { --gradient-angle: 360deg; }
+  }
+
+  /* ---- Focus ring utility — consistent keyboard focus visibility ---- */
+  .n-focus-ring {
+    outline: none;
+    transition: box-shadow var(--motion-quick) var(--ease-standard);
+  }
+  .n-focus-ring:focus-visible {
+    box-shadow: 0 0 0 2px var(--n-surface), 0 0 0 4px var(--n-accent);
+  }
+
+  /* ---- Tab active underline glow (subtle accent halo) ---- */
+  .n-tab-active-glow {
+    box-shadow: 0 1px 8px oklch(0.52 0.20 295 / 0.25);
+  }
+}
+
+@layer components {
+  /* ===== CONTENT SURFACES (solid — NOT glass) =====
+     These are for cards, tables, lists, metrics, analytics.
+     White background + hairline border + Linear-tight shadow. */
+
+  /* Primary content card — the workhorse */
+  .n-card {
+    position: relative;
+    background: var(--n-surface);
+    border: 1px solid var(--n-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--n-shadow-card);
+  }
+
+  /* Interactive content card — hoverable */
+  .n-card-interactive {
+    position: relative;
+    background: var(--n-surface);
+    border: 1px solid var(--n-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--n-shadow-card);
+    transition:
+      background-color var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      transform var(--motion-fast) var(--ease-standard);
+  }
+  .n-card-interactive:hover {
+    border-color: var(--n-border-strong);
+    box-shadow: var(--n-shadow-card-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Compact nested card — for items inside a panel */
+  .n-card-compact {
+    position: relative;
+    background: var(--n-surface-subtle);
+    border: 1px solid var(--n-border-subtle);
+    border-radius: var(--radius-md);
+    transition:
+      background-color var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-quick) var(--ease-standard);
+  }
+  .n-card-compact:hover {
+    background: var(--n-surface-hover);
+    border-color: var(--n-border);
+    box-shadow: 0 1px 2px oklch(0.20 0.02 280 / 0.05);
+  }
+
+  /* Raised card — for emphasized content (KPI hero) */
+  .n-card-raised {
+    position: relative;
+    background: var(--n-surface-raised);
+    border: 1px solid var(--n-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--n-shadow-card-hover);
+  }
+
+  /* ===== GLASS — NAVIGATION ONLY =====
+     Apple HIG: "Liquid Glass is exclusively for the navigation layer."
+     4-ingredient recipe: blur(20-32px) + saturate(1.8) + luminance border + inset highlight. */
+
+  /* Glass navigation — sidebar, command bar (sticky toolbar) */
+  .n-glass-nav {
+    position: relative;
+    isolation: isolate;
+    background: var(--n-glass-nav-bg);
+    border: 0.5px solid var(--n-glass-border);
+    box-shadow: var(--n-shadow-glass-nav);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    backdrop-filter: blur(24px) saturate(1.8);
+  }
+  /* Specular sheen — top-edge highlight */
+  .n-glass-nav::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 0.5px;
+    background: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.45) 0%,
+      rgb(255 255 255 / 0.10) 25%,
+      transparent 60%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Glass popover — dropdowns, menus, command palette */
+  .n-glass-popover {
+    position: relative;
+    isolation: isolate;
+    background: var(--n-glass-popover-bg);
+    border: 0.5px solid var(--n-glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--n-shadow-popover);
+    -webkit-backdrop-filter: blur(32px) saturate(1.8);
+    backdrop-filter: blur(32px) saturate(1.8);
+  }
+  .n-glass-popover::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 0.5px;
+    background: linear-gradient(
+      180deg,
+      rgb(255 255 255 / 0.55) 0%,
+      rgb(255 255 255 / 0.12) 30%,
+      transparent 65%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Glass control — inputs, buttons that float (in command bar) */
+  .n-glass-control {
+    position: relative;
+    background: rgb(255 255 255 / 0.55);
+    border: 0.5px solid var(--n-glass-border);
+    border-radius: var(--radius-control);
+    box-shadow: inset 0 1px 0 var(--n-glass-highlight), 0 1px 1px oklch(0.20 0.02 280 / 0.03);
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    backdrop-filter: blur(16px) saturate(1.6);
+    transition:
+      background var(--motion-quick) var(--ease-standard),
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+  .n-glass-control:hover { background: rgb(255 255 255 / 0.72); }
+  .n-glass-control:focus-within {
+    border-color: var(--n-accent);
+    box-shadow: 0 0 0 3px var(--n-focus-ring), inset 0 1px 0 var(--n-glass-highlight);
+  }
+
+  /* ===== Solid control — for content forms (inputs in views) ===== */
+  .n-control {
+    position: relative;
+    background: var(--n-surface);
+    border: 1px solid var(--n-border);
+    border-radius: var(--radius-control);
+    box-shadow: var(--n-shadow-control);
+    transition:
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard),
+      background var(--motion-quick) var(--ease-standard);
+  }
+  .n-control:hover { border-color: var(--n-border-strong); }
+  .n-control:focus-within {
+    border-color: var(--n-accent);
+    box-shadow: 0 0 0 3px var(--n-focus-ring), var(--n-shadow-control);
+  }
+
+  /* ===== Ambient — subtle neutral tint =====
+     Two soft blooms at low chroma. Visible enough that glass nav
+     has something to refract, but calm enough for professional use. */
+  .ambient-mesh {
+    background:
+      radial-gradient(90rem 60rem at 92% -6%, oklch(0.93 0.025 295 / 0.45), transparent 55%),
+      radial-gradient(80rem 54rem at 2% 106%, oklch(0.94 0.020 60 / 0.30), transparent 58%),
+      var(--n-canvas);
+  }
+
+  /* ===== Trend indicator — up/down with semantic color ===== */
+  .trend-up { color: var(--n-success); }
+  .trend-down { color: var(--n-danger); }
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not ((backdrop-filter: blur(1px))) {
+  .n-glass-nav { background: rgb(255 255 255 / 0.98); }
+  .n-glass-popover { background: rgb(255 255 255 / 0.99); }
+  .n-glass-control { background: rgb(255 255 255 / 0.98); }
+}
+
+/* Respect reduced transparency preference (Apple HIG accessibility) */
+@media (prefers-reduced-transparency: reduce) {
+  .n-glass-nav,
+  .n-glass-popover,
+  .n-glass-control {
+    background: var(--n-surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+
+  [lang="fa"], [lang="ar"] {
+    letter-spacing: 0; /* Never letter-space Persian — breaks connected glyphs */
+  }
+
+  /* ---- RTL micro-typography ----
+     Persian text needs specific font-feature-settings for correct rendering.
+     Vazirmatn supports: ss01 (alt 6/9), ss02 (alt digits), cv01-cv05 (glyph variants).
+     We enable ss02 for tabular contexts (via .num-tabular) and keep default for prose. */
+  [lang="fa"], [lang="ar"], [dir="rtl"] {
+    /* Ensure ZWNJ (نیم‌فاصله, U+200C) renders correctly — no special CSS needed,
+       but we set font-variant-eastern-asian for proper spacing. */
+    font-feature-settings: "liga" 1, "calt" 1, "ss02" 1;
+    /* Persian numbers should never break to a new line alone */
+    word-break: normal;
+    overflow-wrap: break-word;
+    /* Hyphenation: Persian doesn't use hyphens; disable to prevent broken glyphs */
+    hyphens: manual;
+  }
+
+  /* Persian digit kerning — slightly tighter for headers/KPIs */
+  .num-tabular {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1;
+  }
+
+  /* Persian large display numbers (KPI hero) — even tighter */
+  .num-display {
+    font-variant-numeric: tabular-nums lining-nums slashed-zero;
+    font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1, "ss02" 1;
+    letter-spacing: -0.015em;
+  }
+
+  .latin-number {
+    letter-spacing: -0.012em;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    line-height: 1.6; /* Persian-friendly (Vazirmatn needs more breathing room) */
+    font-feature-settings: "liga" 1, "calt" 1, "ss02" 1;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  ::selection {
+    background: var(--n-accent-soft);
+    color: var(--n-text-primary);
+  }
+
+  /* Focus visibility — WCAG 2.4.7 */
+  :focus-visible {
+    outline: 2px solid var(--n-accent);
+    outline-offset: 2px;
+  }
+
+  /* Screen-reader-only utility (for ARIA live regions, labels) */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

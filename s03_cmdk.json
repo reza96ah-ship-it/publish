@@ -1,0 +1,92 @@
+[
+  {
+    "url": "https://www.lmctogetherwebuild.com/cmdk-in-react-build-a-fast-command-palette-setup-examples",
+    "name": "cmdk in React: Build a Fast Command Palette (Setup & Examples)",
+    "snippet": "A compact, practical guide to cmdk installation, React ⌘K menu setup, keyboard navigation, examples, and advanced usage.",
+    "host_name": "www.lmctogetherwebuild.com",
+    "rank": 0,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://react-cmdk.com",
+    "name": "react-cmdk | Build your dream command palette",
+    "snippet": "A command palette for React. A package with components making it easier for you to build your user's dream command palette.",
+    "host_name": "react-cmdk.com",
+    "rank": 1,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://uxpatterns.dev/patterns/advanced/command-palette",
+    "name": "Command Palette - UX Patterns",
+    "snippet": "Learn how to implement command palettes. Discover best practices for keyboard shortcuts, fuzzy search, and command discovery.",
+    "host_name": "uxpatterns.dev",
+    "rank": 2,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://blog.logrocket.com/react-command-palette-tailwind-css-headless-ui",
+    "name": "React command palette with Tailwind CSS and Headless UI",
+    "snippet": "In this tutorial, we'll explore how to build a fully functional command palette from scratch using the Headless UI Combobox component and Tailwind CSS.",
+    "host_name": "blog.logrocket.com",
+    "rank": 3,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.youtube.com/watch?v=FN8noNclyoU",
+    "name": "How To Add a Command Palette to Your React App - YouTube",
+    "snippet": "In this video, I show you how you can easily add an advanced command palette to your React App using react-cmdk. Resources: - react-cmdk ...",
+    "host_name": "www.youtube.com",
+    "rank": 4,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.reddit.com/r/reactjs/comments/visvhv/reactcmdk_a_fast_accessible_and_pretty_command",
+    "name": "React-cmdk: A fast, accessible, and pretty command palette for React",
+    "snippet": "A terminal like experience on a website to allow people to interact with the api in terminal like experience without jumping through multiple pages.",
+    "host_name": "www.reddit.com",
+    "rank": 5,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://dreamcars.co.il/cmdk-react-command-menu-installation-examples-advanced-usage",
+    "name": "React Command Menu: installation, examples & advanced usage",
+    "snippet": "Learn how to install and use cmdk — a fast React command palette. Examples, keyboard navigation, accessibility, advanced patterns and FAQ.",
+    "host_name": "dreamcars.co.il",
+    "rank": 6,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://github.com/albingroen/react-cmdk",
+    "name": "albingroen/react-cmdk: A fast, accessible, and pretty command",
+    "snippet": "A package with components for building your dream command palette for your web application. Watch the YouTube demo or try it out here to get started.",
+    "host_name": "github.com",
+    "rank": 7,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.producthunt.com/products/react-cmdk",
+    "name": "react-cmdk: Build your dream command palette - Product Hunt",
+    "snippet": "A React package with components making it easier for you to build your user's dream command palette.",
+    "host_name": "www.producthunt.com",
+    "rank": 8,
+    "date": "",
+    "favicon": ""
+  },
+  {
+    "url": "https://www.npmjs.com/package/@command-palette/react",
+    "name": "@command-palette/react - npm",
+    "snippet": "@command-palette/react. Unstyled React primitives for building command menus. Built on top of @unvalley/cmdk-core .",
+    "host_name": "www.npmjs.com",
+    "rank": 9,
+    "date": "",
+    "favicon": ""
+  }
+]

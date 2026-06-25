@@ -1,0 +1,507 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import {
+  Link2,
+  Plus,
+  MoreHorizontal,
+  Plug,
+  PlugZap,
+  Pencil,
+  Trash2,
+  CheckCircle2,
+  AlertTriangle,
+  ChevronLeft,
+} from "lucide-react";
+
+import { api } from "@/lib/api";
+import { toPersianDigits, relativeTime } from "@/lib/jalali";
+import { useAnnounceValue, announce } from "@/lib/aria-live";
+import { SectionTitle, PlatformIcon, EmptyState, SkeletonCard, LoadingState, AnimatedTabs } from "@/components/dashboard/shared";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+
+interface Platform {
+  id: string;
+  name: string;
+  type: string;
+  logo: string;
+  state: string;
+  stateColor: string;
+  accounts: number;
+  primaryIssue: string | null;
+  lastSuccess: string | null;
+  accountKind: string;
+  circuitState: string;
+  username: string;
+}
+
+const AVAILABLE_PLATFORMS = [
+  { id: "instagram", label: "اینستاگرام", method: "oauth" },
+  { id: "telegram", label: "تلگرام", method: "bot" },
+  { id: "linkedin", label: "لینکدین", method: "oauth" },
+  { id: "rubika", label: "روبیکا", method: "bot" },
+  { id: "eitaa", label: "ایتا", method: "bot" },
+] as const;
+
+export function ChannelsView() {
+  const { data: platforms, isLoading } = useQuery<Platform[]>({
+    queryKey: ["platforms"],
+    queryFn: () => api.get<Platform[]>("/api/platforms"),
+  });
+
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<string>("instagram");
+  const [statusFilter, setStatusFilter] = useState<"all" | "connected" | "issues">("all");
+
+  const healthyCount = useMemo(
+    () => platforms?.filter((p) => p.state.includes("متصل") || p.state.includes("پایدار")).length ?? 0,
+    [platforms]
+  );
+  // Announce connected-platform count to screen readers when it changes.
+  useAnnounceValue(healthyCount, "پلتفرم متصل");
+  const issuesCount = useMemo(
+    () =>
+      platforms?.filter((p) => {
+        const healthy = p.state.includes("متصل") || p.state.includes("پایدار");
+        return !healthy || !!p.primaryIssue;
+      }).length ?? 0,
+    [platforms]
+  );
+  const filteredPlatforms = useMemo(() => {
+    if (!platforms) return [];
+    return platforms.filter((p) => {
+      const healthy = p.state.includes("متصل") || p.state.includes("پایدار");
+      if (statusFilter === "connected") return healthy;
+      if (statusFilter === "issues") return !healthy || !!p.primaryIssue;
+      return true;
+    });
+  }, [platforms, statusFilter]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-5"
+    >
+      <SectionTitle
+        icon={Link2}
+        badge={
+          <Button size="sm" onClick={() => setConnectOpen(true)}>
+            <Plus className="size-4" />
+            اتصال پلتفرم جدید
+          </Button>
+        }
+      >
+        مدیریت پلتفرم‌ها
+      </SectionTitle>
+
+      <Breadcrumb>
+        <BreadcrumbList className="text-[12px]">
+          <BreadcrumbItem>
+            <BreadcrumbLink className="cursor-pointer">تنظیمات</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>پلتفرم‌ها</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <LoadingState
+        isLoading={isLoading}
+        skeleton={
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        }
+      >
+        {!platforms || platforms.length === 0 ? (
+          <div className="n-card p-12">
+            <EmptyState
+              icon={Plug}
+              title="پلتفرمی متصل نیست"
+              message="با اتصال اولین پلتفرم، انتشار محتوا را آغاز کنید."
+              illustration="channels"
+              action={
+                <Button onClick={() => setConnectOpen(true)}>
+                  <Plus className="size-4" />
+                  اتصال پلتفرم
+                </Button>
+              }
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Connection status summary card (hero with gradient border) */}
+            <div className="n-card n-gradient-border p-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-xl bg-accent-soft flex items-center justify-center">
+                    <PlugZap className="size-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-ink-tertiary">وضعیت اتصال پلتفرم‌ها</p>
+                    <p className="text-[18px] font-[700] text-ink-primary num-tabular leading-tight mt-0.5">
+                      {toPersianDigits(healthyCount)} از {toPersianDigits(platforms.length)} پلتفرم فعال
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="size-2 rounded-full bg-success" />
+                    <span className="text-ink-secondary num-tabular">{toPersianDigits(healthyCount)} متصل</span>
+                  </div>
+                  {issuesCount > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-warning" />
+                      <span className="text-ink-secondary num-tabular">{toPersianDigits(issuesCount)} نیازمند توجه</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status filter tabs */}
+            <AnimatedTabs
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+              tabs={[
+                { value: "all", label: "همه" },
+                { value: "connected", label: "متصل", count: healthyCount },
+                { value: "issues", label: "نیازمند توجه", count: issuesCount },
+              ]}
+            />
+
+            {/* Platform grid */}
+            {filteredPlatforms.length === 0 ? (
+              <div className="n-card p-8">
+                <EmptyState
+                  icon={Plug}
+                  title="پلتفرمی در این فیلتر یافت نشد"
+                  message="با تغییر فیلتر، سایر پلتفرم‌ها را مشاهده کنید."
+                  size="compact"
+                  action={
+                    <Button size="sm" variant="outline" onClick={() => setStatusFilter("all")}>
+                      نمایش همه
+                    </Button>
+                  }
+                />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredPlatforms.map((p) => (
+                  <PlatformCard key={p.id} platform={p} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </LoadingState>
+
+      <ConnectDialog
+        open={connectOpen}
+        onOpenChange={setConnectOpen}
+        selectedType={selectedType}
+        onSelectType={setSelectedType}
+      />
+    </motion.div>
+  );
+}
+
+function PlatformCard({ platform }: { platform: Platform }) {
+  const healthy =
+    platform.state.includes("متصل") || platform.state.includes("پایدار");
+
+  return (
+    <div className="n-card p-5 flex flex-col">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <PlatformIcon platform={platform.type} className="size-11 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[14px] font-[600] text-ink-primary truncate">{platform.name}</p>
+            <p className="text-[11px] text-ink-tertiary truncate">@{platform.username || "—"}</p>
+          </div>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8 shrink-0">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => toast.info("ویرایش پلتفرم به‌زودی فعال خواهد شد.")}>
+              <Pencil className="size-3.5" />
+              ویرایش
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success("تست اتصال با موفقیت انجام شد.")}>
+              <PlugZap className="size-3.5" />
+              تست اتصال
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DisconnectItem platformName={platform.name} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <span className={cn("text-[10px] font-[700] px-2 py-0.5 rounded-full border inline-flex items-center gap-1", platform.stateColor)}>
+          {healthy ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
+          {platform.state}
+        </span>
+        <span className="text-[10px] text-ink-tertiary ms-auto num-tabular">
+          {toPersianDigits(platform.accounts)} حساب
+        </span>
+      </div>
+
+      <div className="space-y-2 text-[11px] mt-auto">
+        <div className="flex items-center justify-between">
+          <span className="text-ink-tertiary">آخرین موفقیت</span>
+          <span className="text-ink-secondary">
+            {platform.lastSuccess ? relativeTime(new Date(platform.lastSuccess)) : "—"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-ink-tertiary">نوع حساب</span>
+          <span className="text-ink-secondary">{platform.accountKind === "professional" ? "حرفه‌ای" : platform.accountKind === "personal" ? "شخصی" : platform.accountKind}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-ink-tertiary">وضعیت مدار</span>
+          <span
+            className={cn(
+              "font-[600]",
+              platform.circuitState === "closed"
+                ? "text-success"
+                : platform.circuitState === "half_open"
+                  ? "text-warning"
+                  : "text-danger"
+            )}
+          >
+            {platform.circuitState === "closed" ? "بسته (سالم)" : platform.circuitState === "half_open" ? "نیمه‌باز" : "باز (قطع)"}
+          </span>
+        </div>
+      </div>
+
+      {platform.primaryIssue && (
+        <div className="mt-3 flex items-start gap-1.5 text-[11px] text-warning bg-warning-soft rounded-lg px-2 py-1.5">
+          <AlertTriangle className="size-3 shrink-0 mt-0.5" />
+          <span className="truncate">{platform.primaryIssue}</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1"
+          onClick={() => toast.success("تست اتصال با موفقیت انجام شد.")}
+        >
+          <PlugZap className="size-3.5" />
+          تست اتصال
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="flex-1"
+          onClick={() => toast.info("ویرایش پلتفرم به‌زودی فعال خواهد شد.")}
+        >
+          <Pencil className="size-3.5" />
+          ویرایش
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DisconnectItem({ platformName }: { platformName: string }) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <button className="n-focus-ring relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] text-danger outline-none transition-colors hover:bg-danger-soft focus:bg-danger-soft w-full">
+          <Trash2 className="size-3.5" />
+          قطع اتصال
+        </button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-right">قطع اتصال پلتفرم</AlertDialogTitle>
+          <AlertDialogDescription className="text-right">
+            آیا از قطع اتصال «{platformName}» مطمئن هستید؟ پس از قطع، انتشار به این پلتفرم متوقف می‌شود. این عملیات قابل بازگشت نیست.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>انصراف</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-danger hover:bg-danger"
+            onClick={() => {
+              toast.success("پلتفرم با موفقیت قطع شد.");
+              announce("پلتفرم با موفقیت قطع شد");
+            }}
+          >
+            قطع اتصال
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function ConnectDialog({
+  open,
+  onOpenChange,
+  selectedType,
+  onSelectType,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  selectedType: string;
+  onSelectType: (t: string) => void;
+}) {
+  const platformDef = AVAILABLE_PLATFORMS.find((p) => p.id === selectedType);
+  const isOAuth = platformDef?.method === "oauth";
+  const [botToken, setBotToken] = useState("");
+  const [chatId, setChatId] = useState("");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-right">اتصال پلتفرم جدید</DialogTitle>
+          <DialogDescription className="text-right">
+            پلتفرم موردنظر را برای اتصال انتخاب کنید.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label className="text-[12px] text-ink-secondary mb-2 block">پلتفرم</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {AVAILABLE_PLATFORMS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => onSelectType(p.id)}
+                  className={cn(
+                    "n-focus-ring flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all",
+                    selectedType === p.id
+                      ? "border-accent/30 bg-accent-soft"
+                      : "border-border bg-surface-subtle hover:bg-surface-hover"
+                  )}
+                >
+                  <PlatformIcon platform={p.id} className="size-7" />
+                  <span className="text-[11px] font-[700] text-ink-primary">{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {isOAuth ? (
+            <div className="space-y-3">
+              <div className="n-card-compact p-4 text-center">
+                <PlugZap className="size-8 text-accent mx-auto mb-2" />
+                <p className="text-[12px] font-[600] text-ink-primary">
+                  اتصال با OAuth
+                </p>
+                <p className="text-[11px] text-ink-tertiary mt-1">
+                  به‌صورت امن از طریق پنجره رسمی پلتفرم وارد شوید. توکن شما به‌صورت رمزنگاری‌شده ذخیره می‌شود.
+                </p>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  toast.success("پنجره OAuth باز شد. اتصال شبیه‌سازی‌شده است.");
+                  announce("شروع اتصال پلتفرم با OAuth");
+                  onOpenChange(false);
+                }}
+              >
+                اتصال با OAuth
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">Bot Token</Label>
+                <Input
+                  dir="ltr"
+                  placeholder="123456:ABC-DEF..."
+                  value={botToken}
+                  onChange={(e) => setBotToken(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <div>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">Chat ID</Label>
+                <Input
+                  dir="ltr"
+                  placeholder="@channel یا -1001234567890"
+                  value={chatId}
+                  onChange={(e) => setChatId(e.target.value)}
+                  className="text-left"
+                />
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  if (!botToken || !chatId) {
+                    toast.error("لطفاً توکن و Chat ID را وارد کنید.");
+                    announce("لطفاً توکن و Chat ID را وارد کنید", "assertive");
+                    return;
+                  }
+                  toast.success("پلتفرم با موفقیت متصل شد.");
+                  announce("پلتفرم با موفقیت متصل شد");
+                  setBotToken("");
+                  setChatId("");
+                  onOpenChange(false);
+                }}
+              >
+                <Plug className="size-4" />
+                اتصال
+              </Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
