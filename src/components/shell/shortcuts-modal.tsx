@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Keyboard, X } from "lucide-react";
 import { useAppStore } from "@/lib/store";
@@ -54,22 +53,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 export function ShortcutsModal() {
   const { isShortcutsOpen, setShortcutsOpen } = useAppStore();
 
-  // ? key to open, Esc to close
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      // Only trigger on `?` (Shift + /) when not typing in an input
-      if (e.key === "?" && !isTypingTarget(e.target)) {
-        e.preventDefault();
-        setShortcutsOpen(!isShortcutsOpen);
-        return;
-      }
-      if (e.key === "Escape" && isShortcutsOpen) {
-        setShortcutsOpen(false);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isShortcutsOpen, setShortcutsOpen]);
+  // Note: `?` to open and `Esc` to close are handled globally by
+  // useKeyboardShortcuts() in AppShell. This component only renders the UI.
 
   return (
     <AnimatePresence>
@@ -158,10 +143,4 @@ export function ShortcutsModal() {
       )}
     </AnimatePresence>
   );
-}
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName.toLowerCase();
-  return tag === "input" || tag === "textarea" || target.isContentEditable;
 }

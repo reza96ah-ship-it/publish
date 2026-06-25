@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { type LucideIcon } from "lucide-react";
+import { type LucideIcon, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toPersianDigits, formatCompact } from "@/lib/jalali";
 import { cn } from "@/lib/utils";
@@ -706,14 +706,29 @@ export function LoadingState({
   isLoading,
   skeleton,
   children,
+  isError,
+  onRetry,
+  errorLabel = "خطا در بارگذاری اطلاعات",
 }: {
   isLoading: boolean;
   skeleton: React.ReactNode;
   children: React.ReactNode;
+  isError?: boolean;
+  onRetry?: () => void;
+  errorLabel?: string;
 }) {
   return (
     <AnimatePresence mode="wait">
-      {isLoading ? (
+      {isError ? (
+        <motion.div
+          key="error"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: [0, 0, 0.2, 1] } }}
+          exit={{ opacity: 0, transition: { duration: 0.15 } }}
+        >
+          <ErrorState label={errorLabel} onRetry={onRetry} />
+        </motion.div>
+      ) : isLoading ? (
         <motion.div
           key="skeleton"
           initial={{ opacity: 1 }}
@@ -731,6 +746,44 @@ export function LoadingState({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * ErrorState — recoverable error display with retry CTA.
+ * Per AUDIT-1B recommendation: the app had NO error-state pattern.
+ * Use inside any view when a query fails (isError from TanStack Query).
+ */
+export function ErrorState({
+  label = "خطا در بارگذاری اطلاعات",
+  description,
+  onRetry,
+}: {
+  label?: string;
+  description?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="n-card flex flex-col items-center justify-center gap-3 p-10 text-center">
+      <div className="flex size-12 items-center justify-center rounded-full bg-danger-soft">
+        <AlertCircle className="size-6 text-danger" strokeWidth={2} />
+      </div>
+      <div>
+        <p className="text-[14px] font-[600] text-ink-primary">{label}</p>
+        {description && (
+          <p className="text-[12px] text-ink-tertiary mt-1">{description}</p>
+        )}
+      </div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="n-focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-[12.5px] font-[600] text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary"
+        >
+          <RefreshCw className="size-3.5" strokeWidth={2.5} />
+          تلاش مجدد
+        </button>
+      )}
+    </div>
   );
 }
 

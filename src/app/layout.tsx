@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/query-provider";
+import { MotionProvider } from "@/lib/motion";
 
 const vazir = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -38,13 +38,14 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          forcedTheme="light"
+          enableSystem
           disableTransitionOnChange
         >
           <QueryProvider>
-            {children}
+            <MotionProvider>
+              {children}
+            </MotionProvider>
           </QueryProvider>
-          <Toaster />
           <Sonner position="top-center" dir="rtl" />
         </ThemeProvider>
         <div id="portal-root" />

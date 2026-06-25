@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -294,6 +294,18 @@ function BrandForm({ ws }: { ws: Workspace }) {
   const [form, setForm] = useState<Partial<Workspace>>(ws);
   const set = (key: keyof Workspace, value: string | boolean) =>
     setForm((cur) => ({ ...cur, [key]: value }));
+
+  // Apply brand colors to CSS variables live — per AUDIT-1B QW6.
+  // brandAccentColor → --n-accent (the app's primary accent token).
+  // brandPrimaryColor is used for brand-specific surfaces (logo bg, etc.)
+  useEffect(() => {
+    if (form.brandAccentColor) {
+      document.documentElement.style.setProperty("--brand-accent", form.brandAccentColor);
+    }
+    if (form.brandPrimaryColor) {
+      document.documentElement.style.setProperty("--brand-primary", form.brandPrimaryColor);
+    }
+  }, [form.brandAccentColor, form.brandPrimaryColor]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

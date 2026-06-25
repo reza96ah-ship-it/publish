@@ -9,6 +9,7 @@ import { CommandBar } from "./command-bar";
 import { Menu, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { usePublishStream } from "@/hooks/use-publish-stream";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { CommandPalette } from "./command-palette";
 import { ShortcutsModal } from "./shortcuts-modal";
 import { LiveRegionProvider } from "@/lib/aria-live";
@@ -29,6 +30,7 @@ function RealtimeProvider() {
 export function AppShell({ children }: { children: ReactNode }) {
   const isMobileMenuOpen = useAppStore((s) => s.isMobileMenuOpen);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
+  useKeyboardShortcuts();
 
   return (
     <div className="relative flex h-dvh w-full overflow-hidden">
@@ -37,6 +39,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CommandPalette />
       <ShortcutsModal />
       <LiveRegionProvider />
+
+      {/* Skip link — WCAG 2.4.1 Level A bypass block */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2.5 focus:text-[13px] focus:font-[600] focus:text-white focus:shadow-lg focus:outline-none"
+      >
+        پرش به محتوای اصلی
+      </a>
 
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
@@ -48,13 +58,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* Sidebar — glass navigation (fixed drawer on mobile, static on desktop) */}
-      <div
-        className={`fixed inset-y-0 right-0 z-40 w-[260px] transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${
-          isMobileMenuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-        }`}
-      >
-        <Sidebar />
-      </div>
+      <nav aria-label="ناوبری اصلی">
+        <div
+          className={`fixed inset-y-0 right-0 z-40 w-[260px] transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${
+            isMobileMenuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+          }`}
+        >
+          <Sidebar />
+        </div>
+      </nav>
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
@@ -82,7 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Scrollable content stage — solid surfaces */}
-        <main className="flex-1 overflow-y-auto thin-scrollbar px-[var(--shell-gutter)] py-[var(--shell-gap)]">
+        <main id="main-content" className="flex-1 overflow-y-auto thin-scrollbar px-[var(--shell-gutter)] py-[var(--shell-gap)]" tabIndex={-1}>
           <div className="mx-auto w-full max-w-[1600px] pb-10">{children}</div>
         </main>
       </div>

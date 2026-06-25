@@ -54,6 +54,8 @@ model WorkspaceMember {
   assigneeJobs  PublishJob[]
 
   @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
 }
 
 /* ─── Platform Connections ─── */
@@ -78,6 +80,10 @@ model Platform {
   contentLinks  ContentPlatform[]
   publishJobs   PublishJob[]
   inboxMessages InboxMessage[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, type])
+  @@index([status])
 }
 
 /* ─── Campaigns ─── */
@@ -105,6 +111,9 @@ model Campaign {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contents  Content[]
   jobs      PublishJob[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
 }
 
 /* ─── Content ─── */
@@ -129,6 +138,11 @@ model Content {
   campaign    Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   platforms   ContentPlatform[]
   jobs        PublishJob[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([campaignId])
+  @@index([scheduledAt])
 }
 
 model ContentPlatform {
@@ -140,6 +154,8 @@ model ContentPlatform {
   platform Platform @relation(fields: [platformId], references: [id], onDelete: Cascade)
 
   @@unique([contentId, platformId])
+  @@index([contentId])
+  @@index([platformId])
 }
 
 /* ─── Publishing Queue ─── */
@@ -170,6 +186,13 @@ model PublishJob {
   platform   Platform         @relation(fields: [platformId], references: [id])
   campaign   Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   assignee   WorkspaceMember? @relation(fields: [assigneeId], references: [id])
+
+  @@index([workspaceId])
+  @@index([workspaceId, status])
+  @@index([status, scheduledAt])
+  @@index([platformId])
+  @@index([assigneeId])
+  @@index([idempotencyKey])
 }
 
 /* ─── Media Library ─── */
@@ -189,6 +212,9 @@ model Media {
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([workspaceId, folder])
 }
 
 /* ─── Inbox ─── */
@@ -211,6 +237,11 @@ model InboxMessage {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   platform  Platform  @relation(fields: [platformId], references: [id])
+
+  @@index([workspaceId])
+  @@index([workspaceId, isRead])
+  @@index([platformId])
+  @@index([assigneeId])
 }
 
 /* ─── Analytics Snapshots ─── */
@@ -227,6 +258,8 @@ model AnalyticsSnapshot {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, date, platform, metricType])
+  @@index([workspaceId, date])
+  @@index([workspaceId, metricType])
 }
 
 /* ─── Notifications ─── */
@@ -241,6 +274,9 @@ model Notification {
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, isRead])
+  @@index([workspaceId, createdAt])
 }
 
 /* ─── Settings ─── */

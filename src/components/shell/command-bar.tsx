@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { toPersianDigits } from "@/lib/jalali";
 import { NotificationPopover } from "./notification-popover";
+import { ThemeToggle } from "./theme-toggle";
 
 interface Summary {
   unreadInbox: number;
@@ -74,6 +75,9 @@ export function CommandBar() {
 
       {/* Notifications — popover */}
       <NotificationPopover />
+
+      {/* Theme toggle — light/dark */}
+      <ThemeToggle />
     </div>
   );
 }

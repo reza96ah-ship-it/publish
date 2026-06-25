@@ -1,28 +1,37 @@
+"use client";
+
 import { type Variants, type Transition } from "framer-motion";
+import { useReducedMotion, MotionConfig } from "framer-motion";
+import { type ReactNode } from "react";
 
 /* ============================================================================
    MOTION SYSTEM — Linear/Vercel-grade animation primitives
    Based on RESEARCH-3: asymmetric timing, composite properties only,
    sub-100ms for micro, 200ms standard, spring for interactive.
+   Aligned with CSS tokens in globals.css (--motion-* / --ease-*) so JS
+   animations and CSS transitions share the same timing vocabulary.
    ============================================================================ */
 
 // Easing curves — asymmetric: ease-out for enter, ease-in for exit
+// These mirror the CSS custom properties: --ease-enter, --ease-exit, etc.
 export const ease = {
-  enter: [0, 0, 0.2, 1] as const,        // ease-out — elements appearing
-  exit: [0.4, 0, 1, 1] as const,          // ease-in — elements leaving
-  standard: [0.4, 0, 0.2, 1] as const,    // ease-in-out — moving
-  snap: [0.12, 0, 0.08, 1] as const,      // snappy — toggles, instant
-  announce: [0.34, 1.56, 0.64, 1] as const, // spring — entrances, popovers
-  emphasized: [0.2, 0, 0, 1] as const,    // emphasized — page transitions
+  enter: [0, 0, 0.2, 1] as const,        // ease-out — elements appearing (CSS: --ease-enter)
+  exit: [0.4, 0, 1, 1] as const,          // ease-in — elements leaving (CSS: --ease-exit)
+  standard: [0.4, 0, 0.2, 1] as const,    // ease-in-out — moving (CSS: --ease-standard)
+  snap: [0.12, 0, 0.08, 1] as const,      // snappy — toggles, instant (CSS: --ease-snap)
+  announce: [0.34, 1.56, 0.64, 1] as const, // spring — entrances, popovers (CSS: --ease-spring)
+  emphasized: [0.2, 0, 0, 1] as const,    // emphasized — page transitions (CSS: --ease-emphasized)
 } as const;
 
 // Duration tokens (Linear-style: quick → regular → slow)
+// These mirror the CSS custom properties: --motion-quick, --motion-fast, etc.
 export const duration = {
-  micro: 0.1,      // hover, focus
-  quick: 0.15,     // popover open, toggle
-  standard: 0.2,   // page transition, list item
-  slow: 0.3,       // modal, sheet
-  deliberate: 0.4, // dramatic
+  instant: 0,       // reduced-motion fallback (CSS: --motion-instant)
+  micro: 0.1,      // hover, focus (CSS: --motion-quick)
+  quick: 0.15,     // popover open, toggle (CSS: --motion-fast)
+  standard: 0.2,   // page transition, list item (CSS: --motion-normal)
+  slow: 0.3,       // modal, sheet (CSS: --motion-slow)
+  deliberate: 0.4, // dramatic (CSS: --motion-deliberate)
 } as const;
 
 // Spring presets
@@ -104,9 +113,56 @@ export const contentFadeIn: Variants = {
   animate: { opacity: 1, y: 0, transition: { duration: duration.standard, ease: ease.announce } },
 };
 
+/**
+ * useReducedMotionTransition — returns a Transition that respects
+ * prefers-reduced-motion. When reduced motion is preferred, returns
+ * an instant (0-duration) transition so animations are effectively disabled.
+ *
+ * Usage:
+ *   const t = useReducedMotionTransition();
+ *   <motion.div transition={t("standard")} />
+ *
+ * Or for the global MotionConfig:
+ *   import { MotionConfig } from "framer-motion";
+ *   <MotionConfig reducedMotion="user">...</MotionConfig>
+ */
+export function useReducedMotionTransition() {
+  const prefersReduced = useReducedMotion();
+  return (key: keyof typeof duration = "standard"): Transition => {
+    if (prefersReduced) {
+      return { duration: 0, ease: "linear" };
+    }
+    return { duration: duration[key], ease: ease.enter };
+  };
+}
+
+/**
+ * useShouldAnimate — boolean flag for conditional animation.
+ * Returns false when prefers-reduced-motion is active.
+ * Use to skip mounting heavy animation trees (e.g. ambient mesh, count-up).
+ */
+export function useShouldAnimate() {
+  return !useReducedMotion();
+}
+
+/**
+ * MotionProvider — wraps the app in a MotionConfig that automatically
+ * respects the user's OS-level `prefers-reduced-motion` setting.
+ * When reduced motion is preferred, framer-motion transforms (x/y/scale)
+ * are instantly applied without animation.
+ *
+ * This is the global gate recommended by WCAG 2.3.3 (Animation from Interactions).
+ */
+export function MotionProvider({ children }: { children: ReactNode }) {
+  return (
+    <MotionConfig reducedMotion="user" transition={{ ease: ease.enter, duration: duration.standard }}>
+      {children}
+    </MotionConfig>
+  );
+}
+
 /* ---- KPI count-up animation hook ---- */
 import { useState, useEffect } from "react";
-import { useReducedMotion } from "framer-motion";
 import { toPersianDigits } from "@/lib/jalali";
 
 export function useCountUp(target: number, durationMs = 800, enabled = true) {
