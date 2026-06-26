@@ -1,13 +1,16 @@
 /**
- * Persian AI Assistant — Google Gemini (free tier) with z-ai fallback.
+ * Persian AI Assistant — GapGPT (OpenAI-compatible) primary + Gemini/z-ai fallback.
  *
- * Gemini 1.5 Flash free tier: 15 RPM, 1,500 requests/day, 1M tokens/min.
- * Get a free API key: https://aistudio.google.com/app/apikey
- * Set GEMINI_API_KEY in .env
+ * GapGPT is an OpenAI-compatible gateway supporting GPT-4o, GPT-5, Claude,
+ * Gemini, Grok, and Qwen — all through one endpoint. Works globally (no geo-blocks).
+ *
+ * Base URL: https://api.gapgpt.app/v1
+ * Docs: https://gapgpt.app/platform-v2/docs/quickstart
  *
  * Fallback chain:
- *   1. Google Gemini (if GEMINI_API_KEY is set) — free, excellent Persian
- *   2. z-ai-web-dev-sdk (sandbox default) — free, shared quota
+ *   1. GapGPT (if GAPGPT_API_KEY is set) — OpenAI-compatible, works everywhere
+ *   2. Google Gemini (if GEMINI_API_KEY is set) — free tier, region-limited
+ *   3. z-ai-web-dev-sdk (sandbox default) — free, shared quota
  *
  * IMPORTANT: Must be used in backend code only.
  */
@@ -26,6 +29,12 @@ export interface WorkspaceContext {
   persianDigits?: boolean;
 }
 
+const GAPGPT_BASE_URL = "https://api.gapgpt.app/v1";
+// gpt-4o-mini: fast, excellent Persian, works reliably on GapGPT.
+// Alternatives (tested): gapgpt-qwen-3.5-thinking (needs max_tokens:2000+ for reasoning).
+// gemma-3-27b-it: listed but upstream returns errors (as of 2026-06).
+const GAPGPT_MODEL = "gpt-4o-mini";
+
 // ── Gemini singleton ───────────────────────────────────────────────────────
 let _gemini: GoogleGenerativeAI | null = null;
 
@@ -38,7 +47,7 @@ function getGemini(): GoogleGenerativeAI | null {
   return _gemini;
 }
 
-// ── z-ai singleton (fallback) ──────────────────────────────────────────────
+// ── z-ai singleton (last resort fallback) ──────────────────────────────────
 let _zai: ZAI | null = null;
 
 async function getZAI(): Promise<ZAI> {
@@ -46,6 +55,10 @@ async function getZAI(): Promise<ZAI> {
     _zai = await ZAI.create();
   }
   return _zai;
+}
+
+function hasGapGPT(): boolean {
+  return !!process.env.GAPGPT_API_KEY;
 }
 
 function hasGemini(): boolean {
@@ -56,7 +69,7 @@ function hasGemini(): boolean {
 
 /**
  * Generate a Persian caption (non-streaming).
- * Tries Gemini first, falls back to z-ai.
+ * Tries GapGPT → Gemini → z-ai in order.
  */
 export async function generateCaption(
   topic: string,
@@ -65,13 +78,23 @@ export async function generateCaption(
   tone?: "formal" | "friendly" | "playful" | "professional",
 ): Promise<string> {
   const system = buildCaptionSystem(platform, workspace, tone);
-  const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`;
 
-  // Try Gemini first
+  // Try GapGPT first (OpenAI-compatible)
+  if (hasGapGPT()) {
+    try {
+      const text = await gapgptComplete(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, 0.75);
+      if (text && text.trim().length > 10) return text;
+    } catch (err) {
+      console.error("[ai] GapGPT error, trying Gemini:", err);
+    }
+  }
+
+  // Try Gemini
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
       const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`;
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       if (text && text.trim().length > 10) return text;
@@ -96,7 +119,7 @@ export async function generateCaption(
 
 /**
  * Stream a Persian caption (async generator yielding text chunks).
- * Tries Gemini streaming first, falls back to z-ai streaming.
+ * Tries GapGPT streaming → Gemini streaming → z-ai streaming.
  */
 export async function* streamCaption(
   topic: string,
@@ -105,13 +128,27 @@ export async function* streamCaption(
   tone?: "formal" | "friendly" | "playful" | "professional",
 ): AsyncGenerator<string, void, unknown> {
   const system = buildCaptionSystem(platform, workspace, tone);
-  const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`;
 
-  // Try Gemini streaming first
+  // Try GapGPT streaming first
+  if (hasGapGPT()) {
+    try {
+      let yielded = false;
+      for await (const chunk of gapgptStream(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, 0.75)) {
+        yielded = true;
+        yield chunk;
+      }
+      if (yielded) return; // Success — don't fall through
+    } catch (err) {
+      console.error("[ai] GapGPT stream error, trying Gemini:", err);
+    }
+  }
+
+  // Try Gemini streaming
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
       const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`;
       const stream = await model.generateContentStream(prompt);
       let yielded = false;
       for await (const chunk of stream) {
@@ -121,7 +158,7 @@ export async function* streamCaption(
           yield text;
         }
       }
-      if (yielded) return; // Success — don't fall through to z-ai
+      if (yielded) return;
     } catch (err) {
       console.error("[ai] Gemini stream error, falling back to z-ai:", err);
     }
@@ -140,7 +177,6 @@ export async function* streamCaption(
     stream: true,
   });
 
-  // Parse SSE frames from z-ai
   const reader = (completion as any).getReader?.();
   if (reader) {
     const decoder = new TextDecoder();
@@ -166,7 +202,6 @@ export async function* streamCaption(
       }
     }
   } else {
-    // If stream isn't supported, return the full response
     const text = await generateCaption(topic, platform, workspace, tone);
     yield text;
   }
@@ -176,7 +211,7 @@ export async function* streamCaption(
 
 /**
  * Suggest 10 Persian + English hashtags for a topic.
- * Tries Gemini first, falls back to z-ai.
+ * Tries GapGPT → Gemini → z-ai.
  */
 export async function suggestHashtags(
   topic: string,
@@ -189,16 +224,24 @@ export async function suggestHashtags(
 فقط هشتگ‌ها را با کاما جدا کن، بدون شماره یا توضیح اضافه.
 مثال: #اینستاگرام, #بازاریابی, #دیجیتال_مارکتینگ, #برندینگ`;
 
-  const prompt = `${system}\n\nموضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی:`;
-
+  const userMsg = `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی:`;
   let text = "";
 
-  // Try Gemini first
-  if (hasGemini()) {
+  // Try GapGPT
+  if (hasGapGPT()) {
+    try {
+      text = await gapgptComplete(system, userMsg, 0.8);
+    } catch (err) {
+      console.error("[ai] GapGPT hashtag error, trying Gemini:", err);
+    }
+  }
+
+  // Try Gemini
+  if (!text && hasGemini()) {
     try {
       const gemini = getGemini()!;
       const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(`${system}\n\n${userMsg}`);
       text = result.response.text();
     } catch (err) {
       console.error("[ai] Gemini hashtag error, falling back to z-ai:", err);
@@ -212,7 +255,7 @@ export async function suggestHashtags(
       model: "glm-4-plus",
       messages: [
         { role: "assistant", content: system },
-        { role: "user", content: `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی:` },
+        { role: "user", content: userMsg },
       ],
       thinking: { type: "disabled" },
       temperature: 0.8,
@@ -220,12 +263,142 @@ export async function suggestHashtags(
     text = completion.choices?.[0]?.message?.content ?? "";
   }
 
-  // Parse hashtags from comma/newline separated list
   return text
     .split(/[,\n]/)
     .map((s) => s.trim().replace(/^["'\d.\-\s]+/, ""))
     .filter((s) => s.startsWith("#") && s.length > 1)
     .slice(0, 10);
+}
+
+// ── Smart reply (for inbox) ─────────────────────────────────────────────────
+
+/**
+ * Generate a smart reply for an inbox message (comment/DM).
+ * Tries GapGPT → Gemini → z-ai.
+ */
+export async function suggestReply(
+  message: string,
+  platform: Platform,
+  brandVoice?: string,
+): Promise<string> {
+  const system = `تو یک دستیار پاسخگویی فارسی برای شبکه‌های اجتماعی هستی.
+به پیام کاربر یک پاسخ کوتاه، مودبانه و مرتبط به فارسی بنویس.
+${brandVoice ? `لحن برند: ${brandVoice}` : ""}
+پاسخ باید کوتاه (۱-۳ جمله) و دوستانه باشد.`;
+
+  const userMsg = `پیام کاربر: ${message}\nپلتفرم: ${platform}\n\nپاسخ:`;
+  let text = "";
+
+  if (hasGapGPT()) {
+    try {
+      text = await gapgptComplete(system, userMsg, 0.7);
+    } catch {
+      // fall through
+    }
+  }
+
+  if (!text && hasGemini()) {
+    try {
+      const gemini = getGemini()!;
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const result = await model.generateContent(`${system}\n\n${userMsg}`);
+      text = result.response.text();
+    } catch {
+      // fall through
+    }
+  }
+
+  if (!text) {
+    const zai = await getZAI();
+    const completion = await zai.chat.completions.create({
+      model: "glm-4-plus",
+      messages: [
+        { role: "assistant", content: system },
+        { role: "user", content: userMsg },
+      ],
+      thinking: { type: "disabled" },
+      temperature: 0.7,
+    });
+    text = completion.choices?.[0]?.message?.content ?? "";
+  }
+
+  return text;
+}
+
+// ── GapGPT helpers (OpenAI-compatible fetch) ───────────────────────────────
+
+async function gapgptComplete(system: string, user: string, temperature: number): Promise<string> {
+  const res = await fetch(`${GAPGPT_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GAPGPT_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GAPGPT_MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GapGPT ${res.status}: ${err}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+async function* gapgptStream(system: string, user: string, temperature: number): AsyncGenerator<string, void, unknown> {
+  const res = await fetch(`${GAPGPT_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GAPGPT_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GAPGPT_MODEL,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature,
+      stream: true,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`GapGPT ${res.status}: ${err}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      if (line.startsWith("data: ")) {
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") return;
+        try {
+          const json = JSON.parse(jsonStr);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) yield delta as string;
+        } catch {
+          // Skip malformed JSON
+        }
+      }
+    }
+  }
 }
 
 // ── Persian prompt builder ─────────────────────────────────────────────────
@@ -286,49 +459,4 @@ ${ws?.captionFooter ? `امضای پایانی: ${ws.captionFooter}` : ""}
 ۵. هشتگ‌ها
 
 فقط کپشن را برگرد — بدون توضیح اضافه، بدون عبارت «این کپشن...».`;
-}
-
-// ── Smart reply (for inbox — bonus) ────────────────────────────────────────
-
-/**
- * Generate a smart reply for an inbox message (comment/DM).
- * Tries Gemini first, falls back to z-ai.
- */
-export async function suggestReply(
-  message: string,
-  platform: Platform,
-  brandVoice?: string,
-): Promise<string> {
-  const system = `تو یک دستیار پاسخگویی فارسی برای شبکه‌های اجتماعی هستی.
-به پیام کاربر یک پاسخ کوتاه، مودبانه و مرتبط به فارسی بنویس.
-${brandVoice ? `لحن برند: ${brandVoice}` : ""}
-پاسخ باید کوتاه (۱-۳ جمله) و دوستانه باشد.`;
-
-  const prompt = `${system}\n\nپیام کاربر: ${message}\nپلتفرم: ${platform}\n\nپاسخ:`;
-
-  // Try Gemini first
-  if (hasGemini()) {
-    try {
-      const gemini = getGemini()!;
-      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(prompt);
-      const text = result.response.text();
-      if (text && text.trim().length > 5) return text;
-    } catch (err) {
-      console.error("[ai] Gemini reply error, falling back to z-ai:", err);
-    }
-  }
-
-  // Fallback: z-ai
-  const zai = await getZAI();
-  const completion = await zai.chat.completions.create({
-    model: "glm-4-plus",
-    messages: [
-      { role: "assistant", content: system },
-      { role: "user", content: `پیام کاربر: ${message}\nپلتفرم: ${platform}\n\nپاسخ:` },
-    ],
-    thinking: { type: "disabled" },
-    temperature: 0.7,
-  });
-  return completion.choices?.[0]?.message?.content ?? "";
 }

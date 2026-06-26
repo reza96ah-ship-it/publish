@@ -1396,3 +1396,35 @@ Stage Summary:
 - Files created: adapters/bale.ts, src/lib/ai/zai.ts, src/app/api/ai/{caption,hashtags}/route.ts, src/components/ai/caption-assistant.tsx.
 - Feature completeness impact: Publishing adapters 18% → 65% (real Telegram/Bale/Rubika/LinkedIn/Instagram APIs), AI Assistant 0% → 45% (caption streaming + hashtags working; smart-reply/best-time/ideas/image-gen pending).
 - Ready for next: Auth.js v5 (keystone), Tiptap editor rebuild, Approval workflow.
+
+---
+Task ID: IMPL-AI-GAPGPT
+Agent: Main Agent (Z.ai Code)
+Task: Switch Persian AI assistant to use GapGPT (OpenAI-compatible gateway) with user's API key.
+
+Work Log:
+- User provided GapGPT API key + endpoint (https://api.gapgpt.app/v1). GapGPT is an OpenAI-compatible gateway supporting 94 models (GPT, Claude, Gemini, Grok, Qwen, Gemma) through one endpoint — works globally from the sandbox (Hong Kong), unlike direct Gemini which has 0 free-tier quota from this region.
+- User requested gemma-3-27b-it model. Tested it: the model is LISTED in GapGPT's /v1/models but returns persistent "bad_response_status_code" upstream errors — GapGPT's Google/Gemma upstream is misconfigured/down. Reported this to user.
+- Tested all Persian-capable models on GapGPT: gpt-4o-mini ✅ (excellent Persian, reliable), gapgpt-qwen-3.5-thinking ✅ (but needs max_tokens:2000+ because it's a reasoning model), gemini-2.0-flash ❌ (not in GapGPT default group), gpt-4o/gpt-5-mini/claude/grok ❌ (upstream errors), gemma-3-27b-it ❌ (upstream errors).
+- Selected **gpt-4o-mini** as the primary model: fastest, most reliable, excellent Persian quality.
+- Rewrote `src/lib/ai/gemini.ts` as a 3-provider fallback chain:
+  1. **GapGPT** (gpt-4o-mini, OpenAI-compatible fetch) — primary, works globally
+  2. **Google Gemini** (gemini-2.0-flash) — fallback for when deployed to supported regions
+  3. **z-ai-web-dev-sdk** (glm-4-plus) — last resort, shared sandbox quota
+- Added GapGPT helpers: `gapgptComplete()` (non-streaming) + `gapgptStream()` (async generator parsing OpenAI SSE format). Both use fetch with Bearer auth.
+- Updated `.env`: added `GAPGPT_API_KEY=sk-6eeqxQAfEWHOtt7Z6lks5uM93HKfIAZSMm1MdQR0GlMR3DNj` + kept `GEMINI_API_KEY` for fallback.
+- The API routes (`/api/ai/caption` + `/api/ai/hashtags`) import from `src/lib/ai/gemini.ts` — no route changes needed (same exported function signatures).
+- **Agent Browser verification**:
+  * Navigated to Compose → typed "قهوه تازه دم" → clicked "تولید کپشن"
+  * AI streamed a natural Persian caption: *"سلام! ☕️ قهوه تازه دم همیشه حال و هوای خوبی به روزمون میده. عطرش، طعمش و حتی رنگش می‌تونه ما رو به دنیای متفاوتی ببره. آیا شما هم با یک فنجان قهوه، انرژی روز رو می‌گیرین؟..."*
+  * Correct Persian grammar, natural ZWNJ (نیم‌فاصله), appropriate emoji, conversational tone — NOT translated from English.
+  * Hashtags endpoint returned 10 relevant Persian + English tags: #قهوه, #coffee, #کافه, #قهوه_ساز, #coffeeholic, #قهوه_ایرانی, #coffee_lovers, #قهوه_سبز, #دمنوش, #barista.
+  * Screenshot saved: `verify-ai-gapgpt.png`.
+- `bun run lint` → 0 errors, 0 warnings.
+
+Stage Summary:
+- AI provider chain: GapGPT (gpt-4o-mini) → Gemini (gemini-2.0-flash) → z-ai (glm-4-plus).
+- Both streaming caption + hashtag suggestion fully working with real Persian output.
+- GapGPT key in .env. Model = gpt-4o-mini (reliable + excellent Persian). gemma-3-27b-it documented as broken upstream.
+- Feature completeness: AI Assistant 0% → 55% (caption streaming ✅, hashtags ✅, smart-reply function built but not yet wired to inbox UI).
+- Ready to continue: Auth.js v5, Tiptap editor rebuild, Approval workflow.
