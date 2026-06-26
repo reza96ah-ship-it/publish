@@ -2265,3 +2265,72 @@ Stage Summary:
 - Key principles: stable versions (no experimental), modular monolith with 11 domain modules, BFF pattern (thin routes → services), BullMQ for all background work, Instagram official API only, S3 presigned uploads, token-driven UI, observability before launch.
 - Total decision log: 15 decisions (D-001 through D-015).
 - Ready for Phase 1 execution.
+
+---
+Task ID: PHASE-1-BOOTSTRAP
+Agent: Main Agent (Z.ai Code)
+Task: Set up GitHub project management + add README/.env.example/CI + create Phase 1 branch.
+
+Work Log:
+- **Created 10 GitHub milestones** (Phase 1-10) via GitHub API:
+  * #1 Phase 1 — P0 Safety Blockers
+  * #2 Phase 2 — Observability + Health
+  * #3 Phase 3 — Docker + CI/CD
+  * #4 Phase 4 — PostgreSQL Migration
+  * #5 Phase 5 — Token Encryption + RBAC + AI Safety
+  * #6 Phase 6 — Worker Hardening
+  * #7 Phase 7 — Realtime Auth + Redis Adapter
+  * #8 Phase 8 — API Quality
+  * #9 Phase 9 — Media: S3 + Validation + Quotas
+  * #10 Phase 10 — Testing + Performance Budgets
+
+- **Created 10 Phase 1 issues** (#2-#11) via GitHub API, all assigned to milestone #1:
+  * #2 P0-1: Re-enable auth middleware
+  * #3 P0-2: Remove demo-mode workspace fallback
+  * #4 P0-3: Set ignoreBuildErrors: false + fix type errors
+  * #5 P0-4: Tighten CSP + security headers
+  * #6 P0-5: Make PublishJob.idempotencyKey @@unique
+  * #7 P0-6: Fix hardcoded authorName in publish route
+  * #8 P0-7: Sanitize AI error messages
+  * #9 P0-8: Create .env.example
+  * #10 P0-9: Fix corrupted Persian string in instagram adapter
+  * #11 P0-10: Re-enable ESLint rules
+  Each issue has: problem statement (with file:line evidence), fix steps, acceptance criteria, effort estimate, severity, and labels.
+
+- **Created root README.md** (~150 lines):
+  * Quick start (prerequisites, install, run, test)
+  * Tech stack table (Node 24, Next 16, PG 18, Prisma, NextAuth, socket.io, BullMQ, Tiptap, Recharts, Framer Motion, Jalali)
+  * Project structure tree
+  * Production readiness section with links to all docs + 10-phase roadmap table with milestone links
+  * Environment variables table
+  * Supported platforms table (5 real adapters, no scraping policy)
+  * Contributing guide (branch naming, CI gates, PR workflow)
+
+- **Created .env.example** (~75 lines):
+  * Database (SQLite dev / PostgreSQL prod)
+  * Auth (NEXTAUTH_SECRET, NEXTAUTH_URL)
+  * AI providers (GAPGPT, GEMINI)
+  * Realtime (port, emit URL, shared secret)
+  * Worker (health port)
+  * Redis (for BullMQ, rate limit, socket.io adapter)
+  * Observability (Sentry DSN, log level, LOG_QUERIES)
+  * Media storage (S3 endpoint, bucket, keys, CDN)
+  * Rate limiting (Upstash Redis REST)
+  * Demo/seed note (gated by NODE_ENV)
+
+- **Created .github/workflows/ci.yml** (~120 lines):
+  * `quality` job: postgres + redis services, bun install, prisma generate, db push, lint, typecheck, test, build, prisma migrate diff, coverage upload
+  * `security` job: bun audit (high/critical), gitleaks secret scan
+  * `docker` job: Docker build (no push, main branch only, GHA cache)
+  * `e2e` job: Playwright (disabled — `if: false` — enable in Phase 10)
+  * Concurrency cancel, timeout-minutes, frozen-lockfile
+
+- **Created branch `fix/phase-1-safety-blockers`** from main.
+- Committed README.md, .env.example, .github/workflows/ci.yml on the branch.
+- Pushed branch to GitHub (will open PR after this worklog).
+
+Stage Summary:
+- GitHub project management fully set up: 10 milestones + 10 Phase 1 issues with acceptance criteria.
+- Root README.md, .env.example, CI workflow created.
+- Branch `fix/phase-1-safety-blockers` created and pushed.
+- Next: open PR for this branch, then start executing P0-1 through P0-10.
