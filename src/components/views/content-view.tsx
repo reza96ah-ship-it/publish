@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { FileText, Plus, Search, MoreHorizontal, Pencil, Copy, Trash2, Filter } from "lucide-react";
+import { FileText, Plus, Search, MoreHorizontal, Pencil, Copy, Trash2, Filter, Send, Check, X } from "lucide-react";
 
 import { api } from "@/lib/api";
 import { relativeTime, toPersianDigits } from "@/lib/jalali";
@@ -53,6 +53,7 @@ const STATUS_VARIANT_LABEL: Record<string, string> = {
   draft: "پیش‌نویس",
   review: "در حال بررسی",
   approved: "تأییدشده",
+  rejected: "ردشده",
   scheduled: "برنامه‌ریزی‌شده",
   published: "منتشرشده",
   failed: "ناموفق",
@@ -170,6 +171,7 @@ export function ContentView() {
               <SelectItem value="draft">پیش‌نویس</SelectItem>
               <SelectItem value="review">در حال بررسی</SelectItem>
               <SelectItem value="approved">تأییدشده</SelectItem>
+              <SelectItem value="rejected">ردشده</SelectItem>
               <SelectItem value="scheduled">برنامه‌ریزی‌شده</SelectItem>
               <SelectItem value="published">منتشرشده</SelectItem>
               <SelectItem value="failed">ناموفق</SelectItem>
@@ -289,6 +291,44 @@ export function ContentView() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            {/* Approval actions */}
+                            {(c.status === "draft" || c.status === "rejected") && (
+                              <DropdownMenuItem onClick={async () => {
+                                try {
+                                  await api.post(`/api/content/${c.id}/submit-review`, {});
+                                  toast.success("برای بررسی ارسال شد");
+                                  queryClient.invalidateQueries({ queryKey: ["content"] });
+                                } catch { toast.error("خطا در ارسال"); }
+                              }}>
+                                <Send className="size-3.5" />
+                                ارسال برای بررسی
+                              </DropdownMenuItem>
+                            )}
+                            {c.status === "review" && (
+                              <>
+                                <DropdownMenuItem onClick={async () => {
+                                  try {
+                                    await api.post(`/api/content/${c.id}/approve`, {});
+                                    toast.success("تأیید شد ✓");
+                                    queryClient.invalidateQueries({ queryKey: ["content"] });
+                                  } catch { toast.error("خطا در تأیید"); }
+                                }}>
+                                  <Check className="size-3.5" />
+                                  تأیید محتوا
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-danger focus:text-danger" onClick={async () => {
+                                  try {
+                                    await api.post(`/api/content/${c.id}/reject`, { reason: "نیاز به بازبینی" });
+                                    toast.success("رد شد");
+                                    queryClient.invalidateQueries({ queryKey: ["content"] });
+                                  } catch { toast.error("خطا در رد"); }
+                                }}>
+                                  <X className="size-3.5" />
+                                  رد محتوا
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
                             <DropdownMenuItem onClick={() => toast.info("ویرایش محتوا به‌زودی فعال خواهد شد.")}>
                               <Pencil className="size-3.5" />
                               ویرایش

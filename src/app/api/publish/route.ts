@@ -34,7 +34,12 @@ export async function POST(req: Request) {
   if (!body.title?.trim()) {
     return NextResponse.json({ error: 'عنوان محتوا الزامی است' }, { status: 400 })
   }
-  if (!body.platformTypes || body.platformTypes.length === 0) {
+
+  // mode: "publish" (default) creates content + publish jobs.
+  // mode: "review" creates content with status="review" (no jobs — for approval workflow).
+  const mode = (body as any).mode ?? 'publish'
+
+  if (mode === 'publish' && (!body.platformTypes || body.platformTypes.length === 0)) {
     return NextResponse.json({ error: 'حداقل یک پلتفرم باید انتخاب شود' }, { status: 400 })
   }
 
@@ -60,14 +65,14 @@ export async function POST(req: Request) {
     : []
   const thumbnailUrl = media[0]?.thumbnailUrl ?? media[0]?.url ?? null
 
-  // Compute scheduled time
-  const scheduledAt = computeScheduledAt(body)
+  // Compute scheduled time (only for publish mode)
+  const scheduledAt = mode === 'publish' ? computeScheduledAt(body) : null
 
   // Create content + platform links + publish jobs in a transaction
   const contentId = randomUUID()
 
   const result = await db.$transaction(async (tx) => {
-    // 1. Create content
+    // 1. Create content — status depends on mode
     const content = await tx.content.create({
       data: {
         id: contentId,
@@ -77,7 +82,7 @@ export async function POST(req: Request) {
         body: body.caption || null,
         hashtags: body.hashtags || null,
         internalNote: body.note || null,
-        status: 'scheduled',
+        status: mode === 'review' ? 'review' : 'scheduled',
         thumbnailUrl,
         authorName: 'علی احمدی', // TODO: from session
         scheduledAt,
@@ -94,53 +99,70 @@ export async function POST(req: Request) {
       })
     }
 
-    // 3. Create a publish job per platform with unique idempotency keys
+    // 3. Create a publish job per platform (only in publish mode — skip for review)
     const jobs = []
-    for (const p of platforms) {
-      const jobId = randomUUID()
-      const idempotencyKey = randomUUID()
-      const job = await tx.publishJob.create({
-        data: {
-          id: jobId,
-          workspaceId,
-          contentId: content.id,
-          platformId: p.id,
-          campaignId: body.campaignId || null,
-          status: 'pending',
-          progress: 0,
-          processLabel: 'در انتظار',
-          idempotencyKey,
-          scheduledAt,
-          thumbnailUrl,
-        },
-      })
-      jobs.push({ id: job.id, platform: p.type, idempotencyKey: job.idempotencyKey })
+    if (mode === 'publish') {
+      for (const p of platforms) {
+        const jobId = randomUUID()
+        const idempotencyKey = randomUUID()
+        const job = await tx.publishJob.create({
+          data: {
+            id: jobId,
+            workspaceId,
+            contentId: content.id,
+            platformId: p.id,
+            campaignId: body.campaignId || null,
+            status: 'pending',
+            progress: 0,
+            processLabel: 'در انتظار',
+            idempotencyKey,
+            scheduledAt,
+            thumbnailUrl,
+          },
+        })
+        jobs.push({ id: job.id, platform: p.type, idempotencyKey: job.idempotencyKey })
+      }
     }
 
     return { content, jobs }
   })
 
-  // 4. Create a notification for the publish action
-  await db.notification.create({
-    data: {
-      workspaceId,
-      type: 'publish_success',
-      title: `محتوای «${body.title.trim()}» برای انتشار در ${String(platforms.length)} پلتفرم زمان‌بندی شد`,
-      body: `پلتفرم‌ها: ${platforms.map((p) => p.name).join('، ')}`,
-      isRead: false,
-    },
-  })
+  // 4. Create a notification
+  if (mode === 'review') {
+    // Notify approvers that content needs review
+    await db.notification.create({
+      data: {
+        workspaceId,
+        type: 'approval_requested',
+        title: 'محتوای جدید برای تأیید',
+        body: `«${body.title.trim()}» برای بررسی ارسال شد`,
+        isRead: false,
+      },
+    })
+  } else {
+    await db.notification.create({
+      data: {
+        workspaceId,
+        type: 'publish_success',
+        title: `محتوای «${body.title.trim()}» برای انتشار در ${String(platforms.length)} پلتفرم زمان‌بندی شد`,
+        body: `پلتفرم‌ها: ${platforms.map((p) => p.name).join('، ')}`,
+        isRead: false,
+      },
+    })
+  }
 
   return NextResponse.json({
     contentId: result.content.id,
     jobs: result.jobs,
     scheduledAt: scheduledAt?.toISOString() ?? null,
     message:
-      body.scheduleMode === 'now'
-        ? 'محتوا برای انتشار ارسال شد'
-        : body.scheduleMode === 'schedule'
-          ? 'زمان‌بندی انتشار ثبت شد'
-          : 'محتوا به صف انتشار افزوده شد',
+      mode === 'review'
+        ? 'محتوا برای تأیید ارسال شد'
+        : body.scheduleMode === 'now'
+          ? 'محتوا برای انتشار ارسال شد'
+          : body.scheduleMode === 'schedule'
+            ? 'زمان‌بندی انتشار ثبت شد'
+            : 'محتوا به صف انتشار افزوده شد',
   }, { status: 201 })
 }
 

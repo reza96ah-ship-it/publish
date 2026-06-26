@@ -1562,3 +1562,31 @@ Stage Summary:
 - Files modified: `src/app/globals.css` (Tiptap styles), `src/components/views/compose-view.tsx` (Textarea → NashrinoEditor).
 - Feature completeness: Compose/Editor 28% → 45% (rich text + toolbar + char count + AI assistant + tones; still missing: multi-platform preview, media upload, scheduling integration, autosave).
 - Next steps (per R4 roadmap): E2 multi-platform preview tabs, E3 media upload, E4 AI floating toolbar, E5 autosave.
+
+---
+Task ID: IMPL-APPROVALS-V1
+Agent: Main Agent (Z.ai Code)
+Task: Build approval workflow MVP per R5 research (Phase A1: state machine + API + UI).
+
+Work Log:
+- Added Prisma schema: ContentComment model (inline comments with text selection + threaded replies), ContentVersion model (snapshot history), Content extension (approvedById, approvedAt, rejectedReason, reviewDeadline fields). Ran `bun run db:push` + `bun run db:generate`.
+- Created 4 API routes:
+  * POST /api/content/[id]/submit-review — draft/rejected → review (saves version snapshot, notifies approvers)
+  * POST /api/content/[id]/approve — review → approved (sets approvedAt, notifies team)
+  * POST /api/content/[id]/reject — review → rejected (stores reason, notifies team)
+  * GET/POST /api/content/[id]/comments — list/add comments
+- Fixed Next.js 16 async params: all 4 routes use `params: Promise<{ id: string }>` + `const { id } = await params` (Next.js 16 makes params a Promise).
+- Updated publish API to support `mode: "review"` — creates content with status="review" (no publish jobs, notifies approvers). mode="publish" is the default (current behavior).
+- Wired compose view's "ارسال برای تأیید" button to actually call the API (was just a toast before). Creates content with mode="review" + resets form on success.
+- Created `src/components/approval/approval-bar.tsx` — ApprovalStatusBadge (7 states with colored pills) + ApprovalBar (submit/approve/reject buttons with reject reason modal). Uses TanStack Query mutations with cache invalidation.
+- Updated content-view.tsx: added "rejected" status label + filter option, added approval actions (submit-review, approve, reject) to the dropdown menu for each content row.
+- **Verified via API tests**: submit-review creates content with status="review" ✅, approve transitions to "approved" with approvedAt ✅, reject transitions to "rejected" with reason ✅.
+- **Verified via Agent Browser**: content library shows all 7 status badges (ردشده, تأییدشده, در حال بررسی, منتشرشده, etc.), "ردشده" filter option exists, test content displays correctly.
+- `bun run lint` → 0 errors, 0 warnings.
+
+Stage Summary:
+- Approval workflow MVP is live: draft → review → approved/rejected state machine with API enforcement + UI.
+- Files created: src/components/approval/approval-bar.tsx, src/app/api/content/[id]/{submit-review,approve,reject,comments}/route.ts.
+- Files modified: prisma/schema.prisma (ContentComment, ContentVersion, Content approval fields), src/app/api/publish/route.ts (mode="review"), src/components/views/compose-view.tsx (wired "ارسال برای تأیید"), src/components/views/content-view.tsx (status badges + dropdown actions + filter).
+- Feature completeness: Approvals 5% → 35% (state machine + API + UI + compose integration; still missing: inline comments UI, version history, real-time presence, client portal).
+- Next: multi-platform preview tabs (editor E2), or continue with other Phase 0 items.

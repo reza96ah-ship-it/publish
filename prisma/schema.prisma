@@ -209,7 +209,7 @@ model Content {
   body        String?
   hashtags    String?
   internalNote String?
-  status      String   @default("draft") // draft, review, approved, scheduled, published, failed
+  status      String   @default("draft") // draft, review, approved, scheduled, published, failed, rejected
   thumbnailUrl String?
   authorName  String?
   scheduledAt DateTime?
@@ -217,15 +217,57 @@ model Content {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Approval workflow fields
+  approvedById  String?
+  approvedAt    DateTime?
+  rejectedReason String?
+  reviewDeadline DateTime?
+
   workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaign    Campaign?         @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   platforms   ContentPlatform[]
   jobs        PublishJob[]
+  comments    ContentComment[]
+  versions    ContentVersion[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
   @@index([campaignId])
   @@index([scheduledAt])
+  @@index([status])
+}
+
+model ContentComment {
+  id            String   @id @default(cuid())
+  contentId     String
+  userId        String
+  userName      String   @default("کاربر")
+  body          String
+  selectionStart Int?
+  selectionEnd   Int?
+  resolved      Boolean  @default(false)
+  parentId      String?
+  createdAt     DateTime @default(now())
+
+  content   Content         @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  parent    ContentComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   ContentComment[] @relation("CommentReplies")
+
+  @@index([contentId, resolved])
+  @@index([parentId])
+}
+
+model ContentVersion {
+  id          String   @id @default(cuid())
+  contentId   String
+  body        String
+  editedBy    String   @default("system")
+  editSummary String?
+  createdAt   DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@index([contentId, createdAt])
 }
 
 model ContentPlatform {

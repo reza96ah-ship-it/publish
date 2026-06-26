@@ -213,7 +213,38 @@ export function ComposeView() {
       return;
     }
     if (action === "review") {
-      toast.success("محتوا برای تأیید ارسال شد.");
+      // Submit for review — creates content with status="review" (no publish jobs)
+      const campaignName =
+        campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین";
+      const payload: PublishPayload = {
+        title,
+        caption,
+        hashtags,
+        note,
+        campaignId: campaignId || undefined,
+        campaignName,
+        mediaIds: selectedMedia.map((m) => m.id),
+        platformTypes: selectedPlatforms,
+        platformCaptions,
+        scheduleMode,
+        scheduleDate: scheduleMode === "schedule" ? scheduleDate : undefined,
+        scheduleTime: scheduleMode === "schedule" ? scheduleTime : undefined,
+        thumbnail: selectedMedia[0]?.thumbnail ?? null,
+      } as PublishPayload & { mode: string };
+      (payload as any).mode = "review";
+
+      const toastId = toast.loading("در حال ارسال برای بررسی…");
+      publishMutation.mutate(payload, {
+        onSuccess: (res) => {
+          toast.success("محتوا برای تأیید ارسال شد", { id: toastId });
+          setTitle(""); setCaption(""); setHashtags(""); setNote("");
+          setCampaignId(""); setSelectedMedia([]); setSelectedPlatforms([]);
+          setPlatformCaptions({}); setScheduleMode("now"); setActiveStep(0);
+        },
+        onError: (err) => {
+          toast.error(err.message || "خطا در ارسال", { id: toastId });
+        },
+      });
       return;
     }
 
