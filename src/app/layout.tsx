@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryProvider } from "@/lib/query-provider";
 import { MotionProvider } from "@/lib/motion";
+import { NextAuthSessionProvider } from "@/components/providers/session-provider";
 
 const vazir = Vazirmatn({
   subsets: ["arabic", "latin"],
@@ -43,7 +44,9 @@ export default function RootLayout({
         >
           <QueryProvider>
             <MotionProvider>
-              {children}
+              <NextAuthSessionProvider>
+                {children}
+              </NextAuthSessionProvider>
             </MotionProvider>
           </QueryProvider>
           <Sonner position="top-center" dir="rtl" />

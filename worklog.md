@@ -1487,3 +1487,40 @@ Stage Summary:
 - Verified via API: same topic produces visibly different output per tone (colloquial vs formal vs slang vs literary).
 - Files modified: src/lib/ai/gemini.ts (buildCaptionSystem rewrite + Tone type), src/components/ai/caption-assistant.tsx (8 tones UI), src/app/api/ai/caption/route.ts (8 valid tones).
 - AI Assistant completeness: 55% → 70% (genuinely differentiated tones + expanded from 4 to 8).
+
+---
+Task ID: IMPL-AUTH-V1
+Agent: Main Agent (Z.ai Code)
+Task: Implement Auth.js (NextAuth v4) + multi-tenant workspace isolation per R2 research.
+
+Work Log:
+- Added Prisma models: User, Account, Session, VerificationToken, AuditLog. Updated WorkspaceMember to link to User (real FK relation). Ran `bun run db:push` — schema in sync.
+- Created `src/lib/password.ts` — scrypt-based password hashing (Node built-in crypto, no native deps). OWASP params: N=16384, r=8, p=1, keyLen=64. Constant-time comparison via timingSafeEqual.
+- Created `src/lib/auth.ts` — NextAuth v4 config with Credentials provider (email+password). JWT session strategy (required for Credentials in v4). JWT callback injects {id, role, activeWorkspaceId}. Session callback exposes them to client. Account lockout (5 failed → 15min lock). Auto-resets on success.
+- Created `src/app/api/auth/[...nextauth]/route.ts` — NextAuth route handler.
+- Created `src/lib/auth-guards.ts` — requireAuth(), requireWorkspace(), requireRole(), requireWorkspaceApi(), can(role, permission). Full RBAC matrix (admin/editor/approver/viewer × 11 permissions). Drop-in replacement for old `getWorkspaceId()` hack.
+- Created `src/types/next-auth.d.ts` — type augmentation for session.user.id, .role, activeWorkspaceId.
+- Created `src/middleware.ts` — protects all routes except /api/auth/*, /auth/*, /api/ai/*, static assets. Unauthenticated → redirect to /auth/signin.
+- Created `src/components/providers/session-provider.tsx` — NextAuth SessionProvider wrapper. Mounted in layout.tsx.
+- Updated `src/lib/server.ts` — getWorkspace() now checks auth session first (activeWorkspaceId), falls back to demo mode (first workspace) if no session. Backward-compatible with all 17 existing API routes.
+- Created `src/app/auth/signin/page.tsx` — RTL Persian login page with email/password fields, loading state, error display, demo credentials hint. framer-motion entrance animation.
+- Created `prisma/seed-auth.ts` — seeds demo user (demo@nashrino.ir / demo1234) + links to first workspace as admin. Run: `bun run seed:auth`.
+- Added NEXTAUTH_SECRET + NEXTAUTH_URL to .env.
+
+- **Verification**:
+  * `bun run lint` → 0 errors, 0 warnings.
+  * GET / without session → 307 redirect to /api/auth/signin (middleware working).
+  * GET /auth/signin → 200 (login page renders).
+  * POST /api/auth/callback/credentials with correct credentials → 200, session created with {user.id, user.role="admin", activeWorkspaceId}.
+  * POST with wrong credentials → redirect back to signin (authorize returns null).
+  * Agent Browser: typed demo@nashrino.ir + demo1234 → clicked "ورود" → redirected to / → dashboard rendered ("خلاصه عملیات"). Full login flow working end-to-end.
+  * Session cookie (next-auth.session-token) set correctly (HttpOnly, 30-day expiry).
+  * All 3 services running: Next.js :3000, realtime :3003, publish-worker :3001.
+
+Stage Summary:
+- **Auth is live.** NextAuth v4 + Credentials provider + JWT sessions + multi-tenant workspace isolation.
+- Demo credentials: demo@nashrino.ir / demo1234
+- Files created: src/lib/{password,auth,auth-guards}.ts, src/types/next-auth.d.ts, src/middleware.ts, src/app/api/auth/[...nextauth]/route.ts, src/app/auth/signin/page.tsx, src/components/providers/session-provider.tsx, prisma/seed-auth.ts.
+- Files modified: prisma/schema.prisma (5 new models + WorkspaceMember→User FK), src/lib/server.ts (auth-aware), src/app/layout.tsx (SessionProvider), .env (NEXTAUTH_SECRET), package.json (seed:auth script).
+- Feature completeness: Auth 0% → 55% (login works, sessions work, RBAC guards built; API route migration to requireWorkspace() pending, workspace switcher UI pending, OAuth providers pending).
+- Next: Tiptap editor rebuild, or Approval workflow, or migrate API routes to use auth guards.
