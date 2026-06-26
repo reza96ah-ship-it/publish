@@ -1722,3 +1722,38 @@ Work Log:
 Stage Summary:
 - Inbox is now functional: real reply (stores in DB), assign to team member, auto mark-read, AI smart-reply (streaming).
 - Files: src/app/api/inbox/[id]/{reply,assign,read}/route.ts, src/app/api/inbox/route.ts, src/components/views/inbox-view.tsx, prisma/schema.prisma.
+
+---
+Task ID: CHART-FIX + AI-V2
+Agent: Main Agent (Z.ai Code)
+Task: Fix KPI chart issues + upgrade AI to full system per 08_CHANGES_AND_FIXES.md.
+
+Work Log:
+- **Chart fixes (V7-MINICHART-FIXES)**: Fixed 4 issues in MiniChart:
+  1. Incomplete line near endpoint dot: removed surface halo that was erasing the stroke
+  2. Inconsistent gridline spacing: replaced data-dependent quartile gridlines with single consistent bottom axis line
+  3. Stroke thinner in middle: added ResizeObserver for 1:1 pixel rendering (removed viewBox=100 + preserveAspectRatio=none distortion)
+  4. Pulse ring not centered: wrapped pulse in centering container div that holds translate(-50%, -50%)
+  Also converted all positioning from percentage-based to pixel-based.
+
+- **AI system upgrade**: Upgraded from simple 7-tone caption assistant to full system:
+  * Added CreatorRole (7 roles: influencer, store, reviewer, educator, brand, news, community)
+  * Added ContentGoal (6 goals: sell, educate, review, announce, engage, inspire)
+  * Added CaptionLength (3 options: short/standard/long) with char ranges + maxTokens
+  * Added variation param for caption regeneration (بازنویسی) — bumps temperature +0.05 per variation
+  * Added enriched hashtags {tag, reason}[] with role/goal-aware hashtag intent maps
+  * Added SSE heartbeat (immediate + every 2s) to prevent 502 gateway timeouts
+  * Added thinking status indicator ("در حال تفکر…")
+  * Added hallucination prevention in system prompt (no fabricated specs, no "سلام" greeting, no yes/no hooks, no template labels)
+  * Added save draft functionality (POST /api/ai/drafts)
+  * Added drafts browser (GET /api/ai/drafts, DELETE /api/ai/drafts/[id])
+  * Added multi-platform generation route (/api/ai/caption-multi)
+  * Split types into src/lib/ai/types.ts (no SDK imports, safe for client)
+  * Updated caption-assistant.tsx with all selectors + regenerate + save + copy + hashtag tooltips
+
+- **Verified**: All features rendering in Agent Browser — roles, goals, lengths, tones, generate button, hashtag button. Zero console errors. Lint clean.
+
+Stage Summary:
+- Chart: 4 fixes applied (pulse center, incomplete line, stroke uniformity, gridline consistency)
+- AI: upgraded from 7-tone simple → full system (roles + goals + lengths + regeneration + drafts + multi-platform + SSE heartbeat + enriched hashtags + hallucination prevention)
+- Files: shared.tsx (chart), gemini.ts (AI backend), types.ts (new), caption-assistant.tsx (full rewrite), caption route.ts (SSE heartbeat), hashtags route.ts (enriched), drafts route.ts + [id] (new), caption-multi route.ts (new)

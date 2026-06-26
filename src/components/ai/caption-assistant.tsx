@@ -1,22 +1,18 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Send, Loader2, Check, X, Hash } from "lucide-react";
+import { Sparkles, Send, Loader2, Check, X, Hash, RefreshCw, Save, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { toPersianDigits } from "@/lib/jalali";
+import { api } from "@/lib/api";
+import {
+  CREATOR_ROLES, CONTENT_GOALS, CAPTION_LENGTHS,
+  type Tone, type CreatorRole, type ContentGoal, type CaptionLength, type HashtagSuggestion,
+} from "@/lib/ai/types";
 
 type Platform = "instagram" | "telegram" | "linkedin" | "rubika" | "bale" | "eitaa";
-type Tone = "friendly" | "formal" | "professional" | "storytelling" | "sales" | "educational" | "poetic";
-
-const TONES: { id: Tone; label: string; emoji: string }[] = [
-  { id: "friendly", label: "صمیمی", emoji: "😊" },
-  { id: "formal", label: "رسمی", emoji: "🎩" },
-  { id: "professional", label: "حرفه‌ای", emoji: "💼" },
-  { id: "storytelling", label: "داستانی", emoji: "📖" },
-  { id: "sales", label: "فروش", emoji: "🛒" },
-  { id: "educational", label: "آموزشی", emoji: "💡" },
-  { id: "poetic", label: "احساسی", emoji: "🌙" },
-];
 
 interface CaptionAssistantProps {
   platform: Platform;
@@ -25,33 +21,58 @@ interface CaptionAssistantProps {
   onHashtags?: (hashtags: string[]) => void;
 }
 
-/**
- * CaptionAssistant — Persian AI caption generator with streaming UI.
- *
- * Per R3 research: streaming text display (ChatGPT-style), accept/edit/reject
- * pattern, and hashtag suggestion button.
- *
- * Usage: mount inside the Compose editor. When the user types a topic and
- * clicks "تولید با هوش مصنوعی", the AI streams a Persian caption that the
- * user can accept (insert into editor), reject, or regenerate.
- */
+const TONES: { id: Tone; label: string; emoji: string; sample: string }[] = [
+  { id: "friendly", label: "صمیمی", emoji: "😊", sample: "امروز یه چیز جالب پیدا کردم، باهات در میون می‌ذارم…" },
+  { id: "formal", label: "رسمی", emoji: "🎩", sample: "بدیهی است دستاوردهای اخیر در حوزهٔ فناوری…" },
+  { id: "professional", label: "حرفه‌ای", emoji: "💼", sample: "در ادامه گزارشی کوتاه از مهم‌ترین نکات ارائه می‌شود…" },
+  { id: "storytelling", label: "داستانی", emoji: "📖", sample: "پنج سال پیش وقتی اولین گوشی هوشمندمو خریدم…" },
+  { id: "sales", label: "فروش", emoji: "🛒", sample: "فقط تا پایان هفته فرصت داری…" },
+  { id: "educational", label: "آموزشی", emoji: "💡", sample: "آیا می‌دونستی چرا صفحهٔ AMOLED انرژی کمتری مصرف می‌کنه؟" },
+  { id: "poetic", label: "احساسی", emoji: "🌙", sample: "چون هنگام شب، صفحهٔ گوشی‌ام روشن شد…" },
+];
+
 export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: CaptionAssistantProps) {
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [streamedText, setStreamedText] = useState("");
   const [hasResult, setHasResult] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
   const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false);
-  const [selectedTone, setSelectedTone] = useState<Tone>("friendly");
-  const abortRef = useRef<AbortController | null>(null);
+  const [hashtags, setHashtags] = useState<HashtagSuggestion[]>([]);
+  const [appendedHashtags, setAppendedHashtags] = useState<Set<string>>(new Set());
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
 
-  const generateCaption = useCallback(async () => {
+  // Controls
+  const [selectedTone, setSelectedTone] = useState<Tone>("friendly");
+  const [selectedRole, setSelectedRole] = useState<CreatorRole>("store");
+  const [selectedGoal, setSelectedGoal] = useState<ContentGoal>("sell");
+  const [selectedLength, setSelectedLength] = useState<CaptionLength>("standard");
+  const [variation, setVariation] = useState(0);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
+
+  // Reset variation when config changes
+  const configSig = `${topic}::${selectedRole}::${selectedGoal}::${selectedLength}::${selectedTone}::${platform}`;
+  const prevSigRef = useRef(configSig);
+  useEffect(() => {
+    if (prevSigRef.current !== configSig) {
+      prevSigRef.current = configSig;
+      setVariation(0);
+    }
+  }, [configSig]);
+
+  const streamCaptionFn = useCallback(async (variationOverride: number) => {
     if (!topic.trim() || topic.trim().length < 3) {
       toast.error("ابتدا موضوع را بنویسید (حداقل ۳ کاراکتر)");
       return;
     }
 
     setIsStreaming(true);
+    setIsThinking(true);
     setStreamedText("");
     setHasResult(false);
+    setStreamError(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -60,7 +81,14 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       const res = await fetch("/api/ai/caption", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, platform, tone: selectedTone }),
+        body: JSON.stringify({
+          topic, platform,
+          tone: selectedTone,
+          role: selectedRole,
+          goal: selectedGoal,
+          length: selectedLength,
+          variation: variationOverride,
+        }),
         signal: controller.signal,
       });
 
@@ -68,6 +96,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
         const err = await res.json().catch(() => ({ error: "خطای ناشناخته" }));
         toast.error(err.error || "خطا در تولید کپشن");
         setIsStreaming(false);
+        setIsThinking(false);
         return;
       }
 
@@ -84,27 +113,35 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
           for (const line of lines) {
+            // Skip SSE comment lines (heartbeat)
+            if (line.startsWith(":")) continue;
             if (line.startsWith("data: ")) {
               const jsonStr = line.slice(6).trim();
               if (jsonStr === "[DONE]") {
                 setIsStreaming(false);
+                setIsThinking(false);
                 setHasResult(true);
                 break;
               }
               try {
                 const json = JSON.parse(jsonStr);
-                if (json.content) {
+                if (json.status === "thinking") {
+                  setIsThinking(true);
+                } else if (json.status === "streaming") {
+                  setIsThinking(false);
+                } else if (json.content) {
                   fullText += json.content;
                   setStreamedText(fullText);
+                  setIsThinking(false);
                 }
                 if (json.error) {
                   toast.error(json.error);
+                  setStreamError(json.error);
                   setIsStreaming(false);
+                  setIsThinking(false);
                   return;
                 }
-              } catch {
-                // Skip malformed JSON
-              }
+              } catch { /* skip */ }
             }
           }
         }
@@ -113,92 +150,139 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       if (!fullText) {
         toast.error("کپشن خالی تولید شد. دوباره تلاش کنید.");
         setIsStreaming(false);
+        setIsThinking(false);
       }
     } catch (err: any) {
       if (err.name === "AbortError") {
-        // User cancelled — keep partial text
+        // keep partial
       } else {
         toast.error("خطا در ارتباط با سرور هوش مصنوعی");
       }
       setIsStreaming(false);
+      setIsThinking(false);
       setHasResult(!!streamedText);
     }
-  }, [topic, platform, selectedTone, streamedText]);
+  }, [topic, platform, selectedTone, selectedRole, selectedGoal, selectedLength, streamedText]);
 
-  const cancelStream = useCallback(() => {
-    abortRef.current?.abort();
-    setIsStreaming(false);
-    setHasResult(!!streamedText);
-  }, [streamedText]);
+  const handleGenerate = () => { setVariation(0); streamCaptionFn(0); };
+  const handleRegenerate = () => { const v = variation + 1; setVariation(v); streamCaptionFn(v); };
+  const cancelStream = () => { abortRef.current?.abort(); setIsStreaming(false); setIsThinking(false); setHasResult(!!streamedText); };
+  const acceptCaption = () => { onInsert(streamedText); toast.success("کپشن در ادیتور قرار گرفت"); setStreamedText(""); setHasResult(false); };
+  const rejectCaption = () => { setStreamedText(""); setHasResult(false); };
+  const copyCaption = () => { navigator.clipboard.writeText(streamedText); toast.success("کپی شد"); };
 
-  const acceptCaption = useCallback(() => {
-    onInsert(streamedText);
-    toast.success("کپشن در ادیتور قرار گرفت");
-    setStreamedText("");
-    setHasResult(false);
-  }, [streamedText, onInsert]);
-
-  const rejectCaption = useCallback(() => {
-    setStreamedText("");
-    setHasResult(false);
-  }, []);
-
-  const generateHashtags = useCallback(async () => {
-    if (!topic.trim()) {
-      toast.error("ابتدا موضوع را بنویسید");
-      return;
-    }
+  const fetchHashtags = useCallback(async () => {
+    if (!topic.trim()) { toast.error("ابتدا موضوع را بنویسید"); return; }
     setIsGeneratingHashtags(true);
     try {
-      const res = await fetch("/api/ai/hashtags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, platform }),
+      const res = await api.post<{ hashtags: HashtagSuggestion[] }>("/api/ai/hashtags", {
+        topic, platform,
+        role: selectedRole, goal: selectedGoal,
       });
-      const data = await res.json();
-      if (data.error) {
-        toast.error(data.error);
-      } else if (data.hashtags?.length) {
-        onHashtags?.(data.hashtags);
-        toast.success(`${data.hashtags.length} هشتگ پیشنهادی آماده شد`);
+      if (res.hashtags?.length) {
+        setHashtags(res.hashtags);
+        onHashtags?.(res.hashtags.map((h) => h.tag));
+        toast.success(`${toPersianDigits(res.hashtags.length)} هشتگ پیشنهادی آماده شد`);
       }
-    } catch {
-      toast.error("خطا در تولید هشتگ");
-    } finally {
-      setIsGeneratingHashtags(false);
-    }
-  }, [topic, platform, onHashtags]);
+    } catch { toast.error("خطا در تولید هشتگ"); }
+    finally { setIsGeneratingHashtags(false); }
+  }, [topic, platform, selectedRole, selectedGoal, onHashtags]);
+
+  const appendHashtag = (tag: string) => {
+    if (appendedHashtags.has(tag)) return;
+    setAppendedHashtags((prev) => new Set(prev).add(tag));
+    onHashtags?.([...appendedHashtags, tag]);
+    toast.success(` ${tag} اضافه شد`);
+  };
+
+  const insertAllHashtags = () => {
+    const tags = hashtags.map((h) => h.tag);
+    onHashtags?.(tags);
+    setAppendedHashtags(new Set(tags));
+    toast.success("همه هشتگ‌ها اضافه شدند");
+  };
+
+  const saveDraft = async () => {
+    if (!streamedText.trim()) return;
+    setIsSavingDraft(true);
+    try {
+      await api.post("/api/ai/drafts", {
+        title: topic.trim().slice(0, 60),
+        body: streamedText,
+        hashtags: hashtags.map((h) => h.tag).join(" "),
+        platform, tone: selectedTone, role: selectedRole, goal: selectedGoal, length: selectedLength,
+      });
+      toast.success("پیش‌نویس ذخیره شد", { description: "در کتابخانه محتوا قابل مشاهده است." });
+      queryClient.invalidateQueries({ queryKey: ["content"] });
+    } catch { toast.error("خطا در ذخیره پیش‌نویس"); }
+    finally { setIsSavingDraft(false); }
+  };
 
   const canGenerate = topic.trim().length >= 3 && !isStreaming;
 
   return (
-    <div className="n-card-compact p-3">
-      <div className="flex items-center gap-2 mb-2">
+    <div className="n-card-compact p-3 space-y-3">
+      <div className="flex items-center gap-2">
         <Sparkles className="size-4 text-accent" strokeWidth={2} />
         <span className="text-[12px] font-[600] text-ink-primary">دستیار هوش مصنوعی</span>
+        {variation > 0 && (
+          <span className="text-[10px] text-accent font-[600]">(نسخهٔ {toPersianDigits(variation + 1)})</span>
+        )}
+      </div>
+
+      {/* Role selector */}
+      <div>
+        <div className="text-[10px] font-[600] text-ink-tertiary mb-1">نقش خالق محتوا:</div>
+        <div className="grid grid-cols-4 gap-1">
+          {CREATOR_ROLES.map((r) => (
+            <button key={r.id} onClick={() => setSelectedRole(r.id)} disabled={isStreaming}
+              className={`n-focus-ring flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[9.5px] font-[600] transition-colors disabled:opacity-50 ${selectedRole === r.id ? "bg-accent text-white" : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover"}`}
+              aria-pressed={selectedRole === r.id}>
+              <span className="text-sm">{r.emoji}</span>
+              <span>{r.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Goal selector */}
+      <div>
+        <div className="text-[10px] font-[600] text-ink-tertiary mb-1">هدف محتوا:</div>
+        <div className="grid grid-cols-3 gap-1">
+          {CONTENT_GOALS.map((g) => (
+            <button key={g.id} onClick={() => setSelectedGoal(g.id)} disabled={isStreaming}
+              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedGoal === g.id ? "bg-accent text-white" : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover"}`}
+              aria-pressed={selectedGoal === g.id}>
+              <span>{g.emoji}</span><span>{g.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tone selector */}
-      <div className="mb-2.5">
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="text-[10.5px] font-[600] text-ink-tertiary">لحن کپشن:</span>
-        </div>
+      <div>
+        <div className="text-[10px] font-[600] text-ink-tertiary mb-1">لحن کپشن:</div>
         <div className="flex items-center gap-1 flex-wrap">
           {TONES.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedTone(t.id)}
-              disabled={isStreaming}
-              className={
-                "n-focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-[600] transition-colors disabled:opacity-50 disabled:cursor-not-allowed " +
-                (selectedTone === t.id
-                  ? "bg-accent text-white"
-                  : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover hover:text-ink-primary")
-              }
-              aria-pressed={selectedTone === t.id}
-            >
-              <span>{t.emoji}</span>
-              <span>{t.label}</span>
+            <button key={t.id} onClick={() => setSelectedTone(t.id)} disabled={isStreaming}
+              title={t.sample}
+              className={`n-focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-[600] transition-colors disabled:opacity-50 ${selectedTone === t.id ? "bg-accent text-white" : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover"}`}
+              aria-pressed={selectedTone === t.id}>
+              <span>{t.emoji}</span><span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Length selector */}
+      <div>
+        <div className="text-[10px] font-[600] text-ink-tertiary mb-1">طول کپشن:</div>
+        <div className="grid grid-cols-3 gap-1">
+          {CAPTION_LENGTHS.map((l) => (
+            <button key={l.id} onClick={() => setSelectedLength(l.id)} disabled={isStreaming}
+              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedLength === l.id ? "bg-accent text-white" : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover"}`}
+              aria-pressed={selectedLength === l.id}>
+              <span>{l.emoji}</span><span>{l.label}</span>
             </button>
           ))}
         </div>
@@ -206,106 +290,94 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
 
       {/* Action buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        <button
-          onClick={generateCaption}
-          disabled={!canGenerate}
-          className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-[600] text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isStreaming ? (
-            <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
-          ) : (
-            <Sparkles className="size-3.5" strokeWidth={2.5} />
-          )}
+        <button onClick={handleGenerate} disabled={!canGenerate}
+          className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-[11.5px] font-[600] text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed">
+          {isStreaming ? <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} /> : <Sparkles className="size-3.5" strokeWidth={2.5} />}
           {isStreaming ? "در حال نوشتن..." : "تولید کپشن"}
         </button>
-
-        <button
-          onClick={generateHashtags}
-          disabled={!canGenerate || isGeneratingHashtags}
-          className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isGeneratingHashtags ? (
-            <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
-          ) : (
-            <Hash className="size-3.5" strokeWidth={2.5} />
-          )}
+        <button onClick={fetchHashtags} disabled={!canGenerate || isGeneratingHashtags}
+          className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary disabled:opacity-50">
+          {isGeneratingHashtags ? <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} /> : <Hash className="size-3.5" strokeWidth={2.5} />}
           هشتگ‌های پیشنهادی
         </button>
-
         {isStreaming && (
-          <button
-            onClick={cancelStream}
-            className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-tertiary transition-colors hover:bg-surface-hover"
-          >
-            <X className="size-3.5" strokeWidth={2.5} />
-            توقف
+          <button onClick={cancelStream} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-tertiary hover:bg-surface-hover">
+            <X className="size-3.5" strokeWidth={2.5} />توقف
           </button>
         )}
       </div>
 
+      {/* Thinking indicator */}
+      <AnimatePresence>
+        {isThinking && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="flex items-center gap-2 text-[11px] text-accent">
+            <Loader2 className="size-3.5 animate-spin" />
+            <span>در حال تفکر…</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Streaming / result display */}
       <AnimatePresence mode="wait">
-        {(streamedText || isStreaming) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
-            className="mt-3 overflow-hidden"
-          >
+        {(streamedText || isStreaming) && !isThinking && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }} className="overflow-hidden">
             <div className="n-card-compact p-3 bg-surface-subtle">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-[600] text-ink-tertiary uppercase tracking-wider">
-                  {isStreaming ? "در حال تولید..." : "کپشن پیشنهادی"}
+                  {isStreaming ? "در حال تولید..." : `کپشن پیشنهادی (${toPersianDigits(streamedText.length)} کاراکتر)`}
                 </span>
-                {isStreaming && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-accent">
-                    <span className="size-1.5 rounded-full bg-accent animate-pulse" />
-                    زنده
-                  </span>
-                )}
+                {isStreaming && <span className="inline-flex items-center gap-1 text-[10px] text-accent"><span className="size-1.5 rounded-full bg-accent animate-pulse" />زنده</span>}
               </div>
               <p className="text-[12.5px] text-ink-primary leading-relaxed whitespace-pre-wrap">
                 {streamedText}
-                {isStreaming && (
-                  <span className="inline-block w-0.5 h-4 bg-accent ms-0.5 animate-pulse align-middle" />
-                )}
+                {isStreaming && <span className="inline-block w-0.5 h-4 bg-accent ms-0.5 animate-pulse align-middle" />}
               </p>
             </div>
 
-            {/* Accept / Reject actions */}
             {hasResult && !isStreaming && (
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 mt-2"
-              >
-                <button
-                  onClick={acceptCaption}
-                  className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-success px-3 text-[11.5px] font-[600] text-white transition-colors hover:bg-success/90"
-                >
-                  <Check className="size-3.5" strokeWidth={2.5} />
-                  قبول و درج
+              <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2 mt-2 flex-wrap">
+                <button onClick={acceptCaption} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-success px-3 text-[11.5px] font-[600] text-white hover:bg-success/90">
+                  <Check className="size-3.5" strokeWidth={2.5} />قبول و درج
                 </button>
-                <button
-                  onClick={rejectCaption}
-                  className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-tertiary transition-colors hover:bg-surface-hover"
-                >
-                  <X className="size-3.5" strokeWidth={2.5} />
-                  رد
+                <button onClick={handleRegenerate} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary hover:bg-surface-hover">
+                  <RefreshCw className="size-3.5" strokeWidth={2.5} />بازنویسی
                 </button>
-                <button
-                  onClick={generateCaption}
-                  className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary transition-colors hover:bg-surface-hover"
-                >
-                  <Send className="size-3.5" strokeWidth={2.5} />
-                  دوباره
+                <button onClick={copyCaption} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary hover:bg-surface-hover">
+                  <Copy className="size-3.5" strokeWidth={2.5} />کپی
+                </button>
+                <button onClick={saveDraft} disabled={isSavingDraft} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary hover:bg-surface-hover disabled:opacity-50">
+                  {isSavingDraft ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" strokeWidth={2.5} />}ذخیره پیش‌نویس
+                </button>
+                <button onClick={rejectCaption} className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-tertiary hover:bg-surface-hover">
+                  <X className="size-3.5" strokeWidth={2.5} />رد
                 </button>
               </motion.div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hashtags display */}
+      {hashtags.length > 0 && (
+        <div className="n-card-compact p-3 bg-surface-subtle">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-[600] text-ink-tertiary uppercase tracking-wider">هشتگ‌های پیشنهادی</span>
+            <button onClick={insertAllHashtags} className="text-[10px] text-accent font-[600] hover:underline">درج همه</button>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {hashtags.map((h, i) => (
+              <button key={i} onClick={() => appendHashtag(h.tag)}
+                title={h.reason || undefined}
+                className={`inline-flex items-center text-[10px] font-[600] px-2 py-1 rounded-md border transition-colors ${appendedHashtags.has(h.tag) ? "bg-accent text-white border-accent" : "bg-surface border-border text-ink-secondary hover:bg-surface-hover hover:text-ink-primary"}`}>
+                {h.tag}
+                {appendedHashtags.has(h.tag) && <Check className="size-2.5 ms-1" strokeWidth={3} />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

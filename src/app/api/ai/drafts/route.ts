@@ -1,0 +1,89 @@
+/**
+ * GET /api/ai/drafts — list AI-saved caption drafts.
+ * POST /api/ai/drafts — save a new draft.
+ *
+ * Reuses the Content model with status='draft' and internalNote='[ai-draft]{...metadata}'.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { getWorkspaceId } from "@/lib/server";
+
+// GET — list drafts
+export async function GET() {
+  const workspaceId = await getWorkspaceId();
+  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+
+  const items = await db.content.findMany({
+    where: {
+      workspaceId,
+      status: "draft",
+      internalNote: { startsWith: "[ai-draft]" },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+
+  return NextResponse.json(items.map((c) => {
+    let meta: any = {};
+    try {
+      const metaStr = (c.internalNote ?? "").replace("[ai-draft]", "");
+      meta = JSON.parse(metaStr);
+    } catch {}
+
+    return {
+      id: c.id,
+      title: c.title,
+      body: c.body ?? "",
+      hashtags: c.hashtags ?? "",
+      platform: meta.platform ?? null,
+      tone: meta.tone ?? null,
+      role: meta.role ?? null,
+      goal: meta.goal ?? null,
+      length: meta.length ?? null,
+      authorName: c.authorName ?? "دستیار هوش مصنوعی",
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    };
+  }));
+}
+
+// POST — save a new draft
+export async function POST(req: NextRequest) {
+  const workspaceId = await getWorkspaceId();
+  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+
+  const body = await req.json();
+  const { title, body: captionBody, hashtags, platform, tone, role, goal, length } = body;
+
+  if (!captionBody || typeof captionBody !== "string" || captionBody.trim().length === 0) {
+    return NextResponse.json({ error: "متن کپشن خالی است" }, { status: 400 });
+  }
+
+  // Derive title from first non-empty line if not provided
+  const derivedTitle = title?.trim() || captionBody.split("\n").find((l: string) => l.trim())?.slice(0, 60) || "پیش‌نویس کپشن";
+
+  const meta = JSON.stringify({ platform, tone, role, goal, length });
+
+  const content = await db.content.create({
+    data: {
+      workspaceId,
+      title: derivedTitle,
+      body: captionBody,
+      hashtags: hashtags || null,
+      status: "draft",
+      authorName: "دستیار هوش مصنوعی",
+      internalNote: `[ai-draft]${meta}`,
+    },
+  });
+
+  return NextResponse.json({
+    id: content.id,
+    title: content.title,
+    body: content.body,
+    hashtags: content.hashtags,
+    platform, tone, role, goal, length,
+    authorName: content.authorName,
+    createdAt: content.createdAt,
+    updatedAt: content.updatedAt,
+  }, { status: 201 });
+}

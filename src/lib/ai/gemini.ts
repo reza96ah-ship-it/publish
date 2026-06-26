@@ -29,6 +29,84 @@ export type Tone =
   | "educational"
   | "poetic";
 
+/** Creator role — determines the perspective and hashtag intent */
+export type CreatorRole =
+  | "influencer"
+  | "store"
+  | "reviewer"
+  | "educator"
+  | "brand"
+  | "news"
+  | "community";
+
+/** Content goal — determines the structure and CTA */
+export type ContentGoal =
+  | "sell"
+  | "educate"
+  | "review"
+  | "announce"
+  | "engage"
+  | "inspire";
+
+/** Caption length — controls char range and token budget */
+export type CaptionLength = "short" | "standard" | "long";
+
+/** Hashtag suggestion with explanation */
+export interface HashtagSuggestion {
+  tag: string;
+  reason: string;
+}
+
+export const CREATOR_ROLES: { id: CreatorRole; label: string; emoji: string }[] = [
+  { id: "influencer", label: "اینفلوئنسر", emoji: "✨" },
+  { id: "store", label: "فروشگاه", emoji: "🛍️" },
+  { id: "reviewer", label: "نقدکننده", emoji: "📝" },
+  { id: "educator", label: "آموزشگر", emoji: "🎓" },
+  { id: "brand", label: "برند", emoji: "🏢" },
+  { id: "news", label: "خبری", emoji: "📰" },
+  { id: "community", label: "تسهیل‌گر بحث", emoji: "💬" },
+];
+
+export const CONTENT_GOALS: { id: ContentGoal; label: string; emoji: string }[] = [
+  { id: "engage", label: "تعامل", emoji: "💭" },
+  { id: "sell", label: "فروش", emoji: "💰" },
+  { id: "educate", label: "آموزش", emoji: "📚" },
+  { id: "review", label: "نقد", emoji: "🔍" },
+  { id: "announce", label: "اعلام", emoji: "📢" },
+  { id: "inspire", label: "الهام", emoji: "🌟" },
+];
+
+export const CAPTION_LENGTHS: { id: CaptionLength; label: string; emoji: string }[] = [
+  { id: "short", label: "کوتاه", emoji: "✂️" },
+  { id: "standard", label: "استاندارد", emoji: "⚖️" },
+  { id: "long", label: "طولانی", emoji: "📚" },
+];
+
+const CAPTION_LENGTH_MAP: Record<CaptionLength, { charRange: string; guidance: string; maxTokens: number }> = {
+  short: { charRange: "۱۵۰–۳۵۰", guidance: "کوتاه و ضربتی. hook + یک پاراگراف + CTA.", maxTokens: 800 },
+  standard: { charRange: "۴۰۰–۸۰۰", guidance: "طول استاندارد. hook + ۲-۳ پاراگراف + CTA + هشتگ.", maxTokens: 2048 },
+  long: { charRange: "۸۰۰–۲۰۰۰", guidance: "طولانی و جامع. hook + ۳-۵ پاراگراف + جزئیات + CTA + هشتگ.", maxTokens: 3072 },
+};
+
+const ROLE_HASHTAG_INTENT: Record<CreatorRole, string> = {
+  influencer: "هشتگ‌های سبک زندگی، ترند و سرگرمی",
+  store: "هشتگ‌های خرید، فروش، قیمت، تخفیف",
+  reviewer: "هشتگ‌های نقد، بررسی، مقایسه، تجربه کاربری",
+  educator: "هشتگ‌های آموزش، نکته، راهنما، یادگیری",
+  brand: "هشتگ‌های برندینگ، معرفی محصول، هویت سازمانی",
+  news: "هشتگ‌های خبری، تازه‌ها، رویداد",
+  community: "هشتگ‌های گفتگو، نظر سنجی، بحث",
+};
+
+const GOAL_HASHTAG_INTENT: Record<ContentGoal, string> = {
+  sell: "هشتگ‌های خرید، سفارش، تخفیف، موجودی",
+  educate: "هشتگ‌های آموزش، نکته، راهنما، ترفند",
+  review: "هشتگ‌های نقد، بررسی، مقایسه، تجربه",
+  announce: "هشتگ‌های اعلام، تازه، جدید، رویداد",
+  engage: "هشتگ‌های تعامل، نظر، سوال، گفتگو",
+  inspire: "هشتگ‌های الهام‌بخش، انگیزشی، زیبا",
+};
+
 export interface WorkspaceContext {
   name?: string;
   brandVoice?: string;
@@ -85,13 +163,19 @@ export async function generateCaption(
   platform: Platform,
   workspace?: WorkspaceContext,
   tone?: Tone,
+  role?: CreatorRole,
+  goal?: ContentGoal,
+  length?: CaptionLength,
+  variation: number = 0,
 ): Promise<string> {
-  const system = buildCaptionSystem(platform, workspace, tone);
+  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length);
+  const temp = Math.min(0.8 + variation * 0.05, 1.2);
+  const maxTokens = length ? CAPTION_LENGTH_MAP[length].maxTokens : 2048;
 
   // Try GapGPT first (OpenAI-compatible)
   if (hasGapGPT()) {
     try {
-      const text = await gapgptComplete(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, 0.75);
+      const text = await gapgptComplete(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, temp, maxTokens);
       if (text && text.trim().length > 10) return text;
     } catch (err) {
       console.error("[ai] GapGPT error, trying Gemini:", err);
@@ -135,14 +219,20 @@ export async function* streamCaption(
   platform: Platform,
   workspace?: WorkspaceContext,
   tone?: Tone,
+  role?: CreatorRole,
+  goal?: ContentGoal,
+  length?: CaptionLength,
+  variation: number = 0,
 ): AsyncGenerator<string, void, unknown> {
-  const system = buildCaptionSystem(platform, workspace, tone);
+  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length);
+  const temp = Math.min(0.8 + variation * 0.05, 1.2);
+  const maxTokens = length ? CAPTION_LENGTH_MAP[length].maxTokens : 2048;
 
   // Try GapGPT streaming first
   if (hasGapGPT()) {
     try {
       let yielded = false;
-      for await (const chunk of gapgptStream(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, 0.75)) {
+      for await (const chunk of gapgptStream(system, `موضوع: ${topic}\n\nکپشن را بنویس.`, temp, maxTokens)) {
         yielded = true;
         yield chunk;
       }
@@ -226,14 +316,24 @@ export async function suggestHashtags(
   topic: string,
   platform: Platform,
   existingHashtags?: string,
-): Promise<string[]> {
+  role?: CreatorRole,
+  goal?: ContentGoal,
+): Promise<HashtagSuggestion[]> {
+  const roleIntent = role ? ROLE_HASHTAG_INTENT[role] : "";
+  const goalIntent = goal ? GOAL_HASHTAG_INTENT[goal] : "";
+
   const system = `تو یک متخصص هشتگ‌های شبکه‌های اجتماعی برای مخاطبان ایرانی هستی.
 برای موضوع داده شده، ۱۰ هشتگ مرتبط پیشنهاد بده — ترکیبی از فارسی و انگلیسی.
+${roleIntent ? `تمرکز: ${roleIntent}.` : ""}
+${goalIntent ? `هدف: ${goalIntent}.` : ""}
 هشتگ‌های ترند ایرانی و مرتبط با موضوع را انتخاب کن.
-فقط هشتگ‌ها را با کاما جدا کن، بدون شماره یا توضیح اضافه.
-مثال: #اینستاگرام, #بازاریابی, #دیجیتال_مارکتینگ, #برندینگ`;
+هر هشتگ را در یک خط جداگانه بنویس، به این شکل: #هشتگ — دلیل انتخاب
+مثال:
+#قهوه — هشتگ اصلی و پرجستجو
+#کافه — هشتگ مرتبط با محیط مصرف
+#coffee_lovers — هشتگ انگلیسی پرطرفدار`;
 
-  const userMsg = `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی:`;
+  const userMsg = `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی با دلیل:`;
   let text = "";
 
   // Try GapGPT
@@ -272,11 +372,32 @@ export async function suggestHashtags(
     text = completion.choices?.[0]?.message?.content ?? "";
   }
 
-  return text
-    .split(/[,\n]/)
-    .map((s) => s.trim().replace(/^["'\d.\-\s]+/, ""))
-    .filter((s) => s.startsWith("#") && s.length > 1)
-    .slice(0, 10);
+  return parseEnrichedHashtags(text);
+}
+
+/** Parse "#tag — reason" line format into HashtagSuggestion[] */
+export function parseEnrichedHashtags(text: string): HashtagSuggestion[] {
+  const lines = text.split("\n");
+  const results: HashtagSuggestion[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim().replace(/^["'\d.\-\s]+/, "");
+    if (!trimmed.startsWith("#")) continue;
+
+    // Try to split on — (em dash) or - (dash) or ،
+    const dashMatch = trimmed.match(/^(#\S+)\s*[—–-]\s*(.+)/);
+    if (dashMatch) {
+      results.push({ tag: dashMatch[1], reason: dashMatch[2].trim() });
+    } else {
+      // Fallback: just the tag, no reason
+      const tag = trimmed.split(/[\s,،]/)[0];
+      if (tag && tag.length > 1) {
+        results.push({ tag, reason: "" });
+      }
+    }
+  }
+
+  return results.slice(0, 10);
 }
 
 // ── Smart reply (for inbox) ─────────────────────────────────────────────────
@@ -336,7 +457,7 @@ ${brandVoice ? `لحن برند: ${brandVoice}` : ""}
 
 // ── GapGPT helpers (OpenAI-compatible fetch) ───────────────────────────────
 
-async function gapgptComplete(system: string, user: string, temperature: number): Promise<string> {
+async function gapgptComplete(system: string, user: string, temperature: number, maxTokens: number = 2048): Promise<string> {
   const res = await fetch(`${GAPGPT_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -350,6 +471,7 @@ async function gapgptComplete(system: string, user: string, temperature: number)
         { role: "user", content: user },
       ],
       temperature,
+      max_tokens: maxTokens,
     }),
   });
   if (!res.ok) {
@@ -360,7 +482,7 @@ async function gapgptComplete(system: string, user: string, temperature: number)
   return data.choices?.[0]?.message?.content ?? "";
 }
 
-async function* gapgptStream(system: string, user: string, temperature: number): AsyncGenerator<string, void, unknown> {
+async function* gapgptStream(system: string, user: string, temperature: number, maxTokens: number = 2048): AsyncGenerator<string, void, unknown> {
   const res = await fetch(`${GAPGPT_BASE_URL}/chat/completions`, {
     method: "POST",
     headers: {
@@ -374,6 +496,7 @@ async function* gapgptStream(system: string, user: string, temperature: number):
         { role: "user", content: user },
       ],
       temperature,
+      max_tokens: maxTokens,
       stream: true,
     }),
   });
@@ -416,6 +539,9 @@ function buildCaptionSystem(
   platform: Platform,
   ws?: WorkspaceContext,
   tone?: Tone,
+  role?: CreatorRole,
+  goal?: ContentGoal,
+  length?: CaptionLength,
 ): string {
   const platformLabels: Record<Platform, string> = {
     instagram: "اینستاگرام (پست فید)",
@@ -542,6 +668,16 @@ ${ws?.captionFooter ? `امضای پایانی: ${ws.captionFooter}` : ""}
 ۵. هشتگ‌ها
 
 مهم: لحن باید کاملاً در افعال، ضمایر، واژگان و ساختار جمله مشهود باشد. خواننده با خواندن چند کلمه باید بتواند لحن را تشخیص دهد.
+
+${role ? `نقش خالق محتوا: ${CREATOR_ROLES.find(r => r.id === role)?.label ?? role}\nبا دیدگاه این نقش بنویس — مثلاً فروشگاه از زبان فروشنده می‌نویسد، نقدکننده از زبان آزمایش‌گر واقعی.` : ""}
+${goal ? `هدف محتوا: ${CONTENT_GOALS.find(g => g.id === goal)?.label ?? goal}\nساختار کپشن باید این هدف را دنبال کند — مثلاً فروش = hook + مزایا + CTA خرید، آموزش = hook + مراحل + CTA ذخیره.` : ""}
+${length ? `طول کپشن: ${CAPTION_LENGTH_MAP[length].charRange} کاراکتر. ${CAPTION_LENGTH_MAP[length].guidance}` : ""}
+
+قوانین محتوایی:
+۱. فقط ویژگی‌هایی که در موضوع ورودی ذکر شده را ذکر کن. اگر مشخصاتی در موضوع نیست، به جای اعداد، از زبان مزیت‌محور استفاده کن (مثلاً «عکس‌های حرفه‌ای» به جای «دوربین ۲۰۰ مگاپیکسل»).
+۲. از ساختار «سلام» به‌عنوان شروع خودداری کن. از hook جذاب استفاده کن.
+۳. از سوالات بله/خیر به‌عنوان hook خودداری کن.
+۴. برچسب‌های قالب (مثل «مشکل»، «راه‌حل»، «مزایا») را در خروجی ننویس — ساختار باید طبیعی باشد.
 
 فقط کپشن را برگرد — بدون توضیح اضافه، بدون عبارت «این کپشن...».`;
 }

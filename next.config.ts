@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
     "http://*.space-z.ai",
     "https://preview-chat-*.space-z.ai",
   ],
+  serverExternalPackages: ["z-ai-web-dev-sdk", "@google/generative-ai"],
+
   // Note: The recompile/reload loop was fixed by moving ALL log files to
   // /tmp (outside the project root). The dev script writes to
   // /tmp/nashrino-dev.log and mini-services write to /tmp/nashrino-logs/.

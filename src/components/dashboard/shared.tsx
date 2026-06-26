@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { type LucideIcon, AlertCircle, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toPersianDigits, formatCompact } from "@/lib/jalali";
@@ -248,15 +248,27 @@ export function MiniChart({
 }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // FIX 3: Measure actual pixel width via ResizeObserver → render SVG at 1:1 scale
+  // (replaces viewBox=100 + preserveAspectRatio=none which caused non-uniform scaling)
+  const [pixelW, setPixelW] = useState(280);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setPixelW(w);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   const handleMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       if (rect.width === 0) return;
-      // Map pointer X to data index, accounting for horizontal padding
-      const padXPct = 0.06; // 6% padding each side (matches padX below)
-      const usableStart = rect.width * padXPct;
-      const usableEnd = rect.width * (1 - padXPct);
+      const padXpx = 8; // 8px horizontal padding (matches padX below)
+      const usableStart = padXpx;
+      const usableEnd = rect.width - padXpx;
       const usable = usableEnd - usableStart;
       const ratio = (e.clientX - rect.left - usableStart) / usable;
       const last = (data?.length ?? 0) - 1;
@@ -277,8 +289,8 @@ export function MiniChart({
         <div className="absolute inset-x-0 border-t border-dashed border-ink-tertiary/45" style={{ top: midY }} aria-hidden />
         {data?.length === 1 && (
           <>
-            <div className="absolute h-px" style={{ left: "6%", right: "6%", top: midY, background: color, opacity: 0.5 }} aria-hidden />
-            <div className="absolute size-1.5 rounded-full" style={{ right: "6%", top: midY, transform: "translateY(-50%)", background: color, boxShadow: "0 0 0 2px var(--n-surface)" }} aria-hidden />
+            <div className="absolute h-px" style={{ left: "8px", right: "8px", top: midY, background: color, opacity: 0.5 }} aria-hidden />
+            <div className="absolute size-1.5 rounded-full" style={{ right: "8px", top: midY, transform: "translateY(-50%)", background: color }} aria-hidden />
           </>
         )}
       </div>
@@ -289,27 +301,23 @@ export function MiniChart({
   const min = Math.min(...data);
   const range = max - min || 1;
   const avg = data.reduce((s, v) => s + v, 0) / data.length;
-  const w = 100;
+  // FIX 3: Use actual measured pixel width (1:1 rendering, no distortion)
+  const w = pixelW;
   const h = height;
   // Padding: vertical (keep peaks from clipping) + horizontal (curve breathes, dots visible)
   const padY = 10;
-  const padX = 6; // 6% horizontal inset — the key fix for "middle has no boundaries"
+  const padX = 8; // 8px horizontal inset (pixel-based, not percentage)
   const innerW = w - padX * 2;
   const xFor = (i: number) => padX + (i / (data.length - 1)) * innerW;
   const yFor = (v: number) => h - ((v - min) / range) * (h - padY * 2) - padY;
 
   const pts = data.map((v, i) => ({ x: xFor(i), y: yFor(v) }));
   const linePath = smoothPath(pts, 1);
-  // Area path: smooth line + line to bottom-right + line to bottom-left + close
   const areaPath = `${linePath} L ${pts[pts.length - 1].x.toFixed(2)},${h} L ${pts[0].x.toFixed(2)},${h} Z`;
   const gradId = `mc-${color.replace(/[^a-z0-9]/gi, "")}`;
   const lastIdx = data.length - 1;
   const avgY = yFor(avg);
   const lastY = yFor(data[lastIdx]);
-
-  // Subtle gridlines at 25% and 75% — bounded context across the full width
-  const gridY75 = yFor(min + range * 0.75);
-  const gridY25 = yFor(min + range * 0.25);
 
   const hovered = hoverIdx != null ? data[hoverIdx] : null;
   const hoveredY = hoverIdx != null ? yFor(data[hoverIdx]) : 0;
@@ -326,22 +334,21 @@ export function MiniChart({
       aria-label={`نمودار ${data.length} نقطه‌ای، آخرین مقدار ${fmt(data[lastIdx])}`}
     >
       <svg
-        width="100%"
+        width={w}
         height={h}
         viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
         className="absolute inset-0 overflow-visible"
         aria-hidden
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.24" />
+            <stop offset="50%" stopColor={color} stopOpacity="0.06" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
-        {/* Subtle quartile gridlines — give the middle of the chart bounded context */}
-        <line x1={padX} y1={gridY75} x2={w - padX} y2={gridY75} stroke="currentColor" strokeWidth="0.5" className="text-ink-tertiary" opacity="0.18" vectorEffect="non-scaling-stroke" />
-        <line x1={padX} y1={gridY25} x2={w - padX} y2={gridY25} stroke="currentColor" strokeWidth="0.5" className="text-ink-tertiary" opacity="0.18" vectorEffect="non-scaling-stroke" />
+        {/* FIX 2: Single consistent bottom axis line (replaces data-dependent quartile gridlines) */}
+        <line x1={padX} y1={h - 0.5} x2={w - padX} y2={h - 0.5} stroke="currentColor" strokeWidth="0.5" className="text-ink-tertiary" opacity="0.15" />
         {/* Gradient area fill under the smooth curve */}
         <motion.path
           d={areaPath}
@@ -350,7 +357,7 @@ export function MiniChart({
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.15 }}
         />
-        {/* Average baseline — dashed reference in the chart's own color (modern standard) */}
+        {/* Average baseline — dashed reference in the chart's own color */}
         {showBaseline && (
           <line
             x1={padX}
@@ -361,10 +368,9 @@ export function MiniChart({
             strokeWidth="1"
             strokeDasharray="4 3"
             opacity="0.4"
-            vectorEffect="non-scaling-stroke"
           />
         )}
-        {/* Smooth curve — Catmull-Rom Bézier, crisp via non-scaling-stroke */}
+        {/* FIX 3: Smooth curve at 1:1 pixel scale — no non-scaling-stroke needed */}
         <motion.path
           d={linePath}
           fill="none"
@@ -372,40 +378,46 @@ export function MiniChart({
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
           transition={{ duration: 1, ease: [0, 0, 0.2, 1] }}
         />
       </svg>
 
-      {/* Current (last) point — solid dot + pulsing ring */}
+      {/* FIX 1: Endpoint dot — NO surface halo (halo was erasing the line near the dot) */}
       <div
         className="absolute size-2 rounded-full"
-        style={{ left: `${xFor(lastIdx)}%`, top: lastY, transform: "translate(-50%, -50%)", background: color, boxShadow: `0 0 0 2.5px var(--n-surface)` }}
+        style={{ left: xFor(lastIdx), top: lastY, transform: "translate(-50%, -50%)", background: color }}
         aria-hidden
       />
-      <motion.div
-        className="absolute size-2 rounded-full"
-        style={{ left: `${xFor(lastIdx)}%`, top: lastY, borderColor: color, borderWidth: 1.5, borderStyle: "solid" }}
-        initial={{ scale: 1, opacity: 0.5 }}
-        animate={{ scale: 3.5, opacity: 0 }}
-        transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+      {/* FIX 4: Pulse ring — wrapped in a centering container div that holds translate(-50%, -50%),
+          letting the inner motion.div freely animate scale from its own center */}
+      <div
+        className="absolute size-2"
+        style={{ left: xFor(lastIdx), top: lastY, transform: "translate(-50%, -50%)" }}
         aria-hidden
-      />
+      >
+        <motion.div
+          className="size-2 rounded-full"
+          style={{ borderColor: color, borderWidth: 1.5, borderStyle: "solid" }}
+          initial={{ scale: 1, opacity: 0.5 }}
+          animate={{ scale: 3.5, opacity: 0 }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+        />
+      </div>
 
       {/* Hover layer — guide line + dot + tooltip */}
       {hoverIdx != null && hovered != null && (
         <>
           <div
             className="absolute top-0 bottom-0 w-px"
-            style={{ left: `${xFor(hoverIdx)}%`, background: color, opacity: 0.4 }}
+            style={{ left: xFor(hoverIdx), background: color, opacity: 0.4 }}
             aria-hidden
           />
           <div
             className="absolute size-2.5 rounded-full"
             style={{
-              left: `${xFor(hoverIdx)}%`,
+              left: xFor(hoverIdx),
               top: hoveredY,
               transform: "translate(-50%, -50%)",
               background: "var(--n-surface)",
@@ -416,7 +428,7 @@ export function MiniChart({
           <div
             className="absolute pointer-events-none n-glass-popover px-2 py-1 text-[10px] whitespace-nowrap z-20"
             style={{
-              left: `${xFor(hoverIdx)}%`,
+              left: xFor(hoverIdx),
               top: tooltipBelow ? hoveredY + 12 : undefined,
               bottom: tooltipBelow ? undefined : h - hoveredY + 12,
               transform: "translateX(-50%)",
