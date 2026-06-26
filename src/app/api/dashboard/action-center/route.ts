@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 
 export async function GET() {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const notifications = await db.notification.findMany({
     where: { workspaceId },

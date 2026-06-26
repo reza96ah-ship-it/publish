@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateParams, mediaUploadQuerySchema } from "@/lib/validations";
 import sharp from "sharp";
 import { randomUUID } from "crypto";
@@ -26,10 +26,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(req: NextRequest) {
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) {
-    return NextResponse.json({ error: "workspace not found" }, { status: 404 });
-  }
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   // Validate ?fileName= query string (max 200 chars, optional)
   const query = Object.fromEntries(req.nextUrl.searchParams.entries());

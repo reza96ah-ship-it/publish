@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateParams, contentListQuerySchema } from '@/lib/validations'
 
 export async function GET(req: NextRequest) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   // Validate ?status= and ?campaignId= query params (both optional)
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())

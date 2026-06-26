@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateBody, memberInviteSchema } from '@/lib/validations'
 import { randomUUID } from 'crypto'
 
 export async function GET() {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const members = await db.workspaceMember.findMany({
     where: { workspaceId },
@@ -25,8 +26,9 @@ export async function GET() {
 
 // POST — add a team member directly (similar to /api/members/invite but without invite token)
 export async function POST(req: NextRequest) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
