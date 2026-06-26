@@ -6,13 +6,17 @@ import { Sparkles, Send, Loader2, Check, X, Hash } from "lucide-react";
 import { toast } from "sonner";
 
 type Platform = "instagram" | "telegram" | "linkedin" | "rubika" | "bale" | "eitaa";
-type Tone = "formal" | "friendly" | "playful" | "professional";
+type Tone = "friendly" | "formal" | "playful" | "professional" | "storytelling" | "sales" | "educational" | "poetic";
 
 const TONES: { id: Tone; label: string; emoji: string }[] = [
-  { id: "friendly", label: "دوستانه", emoji: "😊" },
+  { id: "friendly", label: "صمیمی", emoji: "😊" },
   { id: "formal", label: "رسمی", emoji: "🎩" },
   { id: "playful", label: "شاد", emoji: "🎉" },
   { id: "professional", label: "حرفه‌ای", emoji: "💼" },
+  { id: "storytelling", label: "داستانی", emoji: "📖" },
+  { id: "sales", label: "فروش", emoji: "🛒" },
+  { id: "educational", label: "آموزشی", emoji: "💡" },
+  { id: "poetic", label: "احساسی", emoji: "🌙" },
 ];
 
 interface CaptionAssistantProps {

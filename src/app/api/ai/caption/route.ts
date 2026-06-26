@@ -28,7 +28,16 @@ const VALID_PLATFORMS: Platform[] = [
   "eitaa",
 ];
 
-const VALID_TONES = ["formal", "friendly", "playful", "professional"] as const;
+const VALID_TONES = [
+  "formal",
+  "friendly",
+  "playful",
+  "professional",
+  "storytelling",
+  "sales",
+  "educational",
+  "poetic",
+] as const;
 
 export async function POST(req: NextRequest) {
   try {
