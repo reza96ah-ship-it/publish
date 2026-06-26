@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -252,8 +252,29 @@ export function ChannelsView() {
 }
 
 function PlatformCard({ platform }: { platform: Platform }) {
+  const queryClient = useQueryClient();
+  const [isValidating, setIsValidating] = useState(false);
   const healthy =
     platform.state.includes("متصل") || platform.state.includes("پایدار");
+
+  const handleValidate = async () => {
+    setIsValidating(true);
+    try {
+      const res = await api.post<{ valid: boolean; botInfo?: any }>(`/api/platforms/${platform.id}/validate`, {});
+      if (res.valid) {
+        toast.success("اتصال تأیید شد ✓", {
+          description: res.botInfo ? `ربات: @${res.botInfo.username}` : undefined,
+        });
+      } else {
+        toast.error("اتصال نامعتبر است");
+      }
+      queryClient.invalidateQueries({ queryKey: ["platforms"] });
+    } catch (err: any) {
+      toast.error(err.message || "خطا در تست اتصال");
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   return (
     <div className="n-card p-5 flex flex-col">
@@ -276,7 +297,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
               <Pencil className="size-3.5" />
               ویرایش
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.success("تست اتصال با موفقیت انجام شد.")}>
+            <DropdownMenuItem onClick={handleValidate}>
               <PlugZap className="size-3.5" />
               تست اتصال
             </DropdownMenuItem>
@@ -336,10 +357,11 @@ function PlatformCard({ platform }: { platform: Platform }) {
           variant="outline"
           size="sm"
           className="flex-1"
-          onClick={() => toast.success("تست اتصال با موفقیت انجام شد.")}
+          onClick={handleValidate}
+          disabled={isValidating}
         >
           <PlugZap className="size-3.5" />
-          تست اتصال
+          {isValidating ? "در حال تست..." : "تست اتصال"}
         </Button>
         <Button
           variant="ghost"
@@ -399,18 +421,58 @@ function ConnectDialog({
   selectedType: string;
   onSelectType: (t: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const platformDef = AVAILABLE_PLATFORMS.find((p) => p.id === selectedType);
   const isOAuth = platformDef?.method === "oauth";
   const [botToken, setBotToken] = useState("");
   const [chatId, setChatId] = useState("");
+  const [connecting, setConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    if (!botToken) {
+      toast.error("توکن را وارد کنید");
+      return;
+    }
+    setConnecting(true);
+    try {
+      // Find existing platform of this type or create new
+      const platforms = await api.get<Platform[]>("/api/platforms");
+      const existing = platforms.find((p) => p.type === selectedType);
+
+      if (existing) {
+        // Update existing platform with token
+        const res = await api.post<{ ok: boolean; botInfo?: any }>(`/api/platforms/${existing.id}/connect`, {
+          token: botToken,
+          targetId: chatId || undefined,
+        });
+        if (res.ok) {
+          toast.success("پلتفرم متصل شد ✓", {
+            description: res.botInfo ? `ربات: @${res.botInfo.username}` : undefined,
+          });
+        }
+      } else {
+        toast.info("ابتدا پلتفرم را در تنظیمات اضافه کنید");
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["platforms"] });
+      setBotToken("");
+      setChatId("");
+      onOpenChange(false);
+    } catch (err: any) {
+      const msg = err.message || "خطا در اتصال";
+      toast.error(msg);
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-right">اتصال پلتفرم جدید</DialogTitle>
+          <DialogTitle className="text-right">اتصال پلتفرم</DialogTitle>
           <DialogDescription className="text-right">
-            پلتفرم موردنظر را برای اتصال انتخاب کنید.
+            توکن ربات را وارد کنید — اتصال به‌صورت خودکار بررسی می‌شود.
           </DialogDescription>
         </DialogHeader>
 
@@ -440,28 +502,19 @@ function ConnectDialog({
             <div className="space-y-3">
               <div className="n-card-compact p-4 text-center">
                 <PlugZap className="size-8 text-accent mx-auto mb-2" />
-                <p className="text-[12px] font-[600] text-ink-primary">
-                  اتصال با OAuth
-                </p>
+                <p className="text-[12px] font-[600] text-ink-primary">اتصال با OAuth</p>
                 <p className="text-[11px] text-ink-tertiary mt-1">
-                  به‌صورت امن از طریق پنجره رسمی پلتفرم وارد شوید. توکن شما به‌صورت رمزنگاری‌شده ذخیره می‌شود.
+                  برای اینستاگرام و لینکدین، اتصال از طریق OAuth انجام می‌شود.
                 </p>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  toast.success("پنجره OAuth باز شد. اتصال شبیه‌سازی‌شده است.");
-                  announce("شروع اتصال پلتفرم با OAuth");
-                  onOpenChange(false);
-                }}
-              >
+              <Button className="w-full" onClick={() => toast.info("OAuth به‌زودی فعال خواهد شد")}>
                 اتصال با OAuth
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">Bot Token</Label>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">توکن ربات (Bot Token)</Label>
                 <Input
                   dir="ltr"
                   placeholder="123456:ABC-DEF..."
@@ -469,34 +522,29 @@ function ConnectDialog({
                   onChange={(e) => setBotToken(e.target.value)}
                   className="text-left"
                 />
+                <p className="text-[10px] text-ink-tertiary mt-1">
+                  {selectedType === "telegram" && "از @BotFather در تلگرام دریافت کنید"}
+                  {selectedType === "bale" && "از @botfather در بله دریافت کنید"}
+                  {selectedType === "rubika" && "از @BotFather در روبیکا دریافت کنید"}
+                  {selectedType === "eitaa" && "از پنل ایتا دریافت کنید"}
+                </p>
               </div>
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">Chat ID</Label>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">شناسه چت / کانال (اختیاری)</Label>
                 <Input
                   dir="ltr"
-                  placeholder="@channel یا -1001234567890"
+                  placeholder="@channel_username یا -1001234567890"
                   value={chatId}
                   onChange={(e) => setChatId(e.target.value)}
                   className="text-left"
                 />
+                <p className="text-[10px] text-ink-tertiary mt-1">
+                  ربات را به‌عنوان ادمین به کانال اضافه کنید، سپس شناسه کانال را وارد کنید.
+                </p>
               </div>
-              <Button
-                className="w-full"
-                onClick={() => {
-                  if (!botToken || !chatId) {
-                    toast.error("لطفاً توکن و Chat ID را وارد کنید.");
-                    announce("لطفاً توکن و Chat ID را وارد کنید", "assertive");
-                    return;
-                  }
-                  toast.success("پلتفرم با موفقیت متصل شد.");
-                  announce("پلتفرم با موفقیت متصل شد");
-                  setBotToken("");
-                  setChatId("");
-                  onOpenChange(false);
-                }}
-              >
+              <Button className="w-full" onClick={handleConnect} disabled={connecting || !botToken}>
                 <Plug className="size-4" />
-                اتصال
+                {connecting ? "در حال اتصال..." : "اتصال و بررسی"}
               </Button>
             </div>
           )}
