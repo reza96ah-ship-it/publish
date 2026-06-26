@@ -63,7 +63,7 @@ model WorkspaceMember {
 model Platform {
   id          String   @id @default(cuid())
   workspaceId String
-  type        String   // instagram, telegram, linkedin, rubika, eitaa
+  type        String   // instagram, telegram, linkedin, rubika, eitaa, bale
   name        String
   username    String   @default("")
   avatarUrl   String?
@@ -73,6 +73,11 @@ model Platform {
   lastError   String?
   circuitState String  @default("closed") // closed, open, half_open
   primaryIssue String?
+  /** Bot token (Telegram/Bale/Rubika) or OAuth access token (Instagram/LinkedIn).
+      NOTE: In production, encrypt at rest with AUTH_SECRET. */
+  tokenSecret String?
+  /** Platform-specific target: chat_id (TG/Bale/Rubika), ig-user-id (IG), author URN (LinkedIn) */
+  targetId    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

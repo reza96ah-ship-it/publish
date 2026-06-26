@@ -3,7 +3,7 @@
  * Every adapter (Instagram, Rubika, Telegram, LinkedIn, Eitaa) implements this.
  */
 
-export type PlatformType = 'instagram' | 'rubika' | 'telegram' | 'linkedin' | 'eitaa'
+export type PlatformType = 'instagram' | 'rubika' | 'telegram' | 'linkedin' | 'eitaa' | 'bale'
 
 export type JobStatus = 'pending' | 'processing' | 'success' | 'failed' | 'action' | 'scheduled'
 
@@ -13,6 +13,16 @@ export interface AdapterAccount {
   username: string
   status: string
   circuitState: 'closed' | 'open' | 'half_open'
+  /** Bot token (Telegram/Bale/Rubika) or OAuth access token (Instagram/LinkedIn) */
+  token?: string
+  /** Platform-specific: chat_id for Telegram/Bale, ig-user-id for Instagram, author-urn for LinkedIn */
+  targetId?: string
+}
+
+export interface AdapterMediaItem {
+  type: 'photo' | 'video' | 'document'
+  url: string
+  altText?: string
 }
 
 export interface AdapterContent {
@@ -21,6 +31,8 @@ export interface AdapterContent {
   body: string | null
   hashtags: string | null
   thumbnailUrl: string | null
+  /** Media items to attach (if any) */
+  mediaItems?: AdapterMediaItem[]
 }
 
 export interface AdapterJob {

@@ -1,15 +1,18 @@
 /**
- * Telegram Bot API adapter — REAL implementation.
+ * Bale Bot API adapter — REAL implementation.
  * 
- * Official docs: https://core.telegram.org/bots/api
- * URL pattern: https://api.telegram.org/bot<TOKEN>/<METHOD>
+ * Official docs: https://docs.bale.ai/
+ * URL pattern: https://tapi.bale.ai/bot<TOKEN>/<METHOD_NAME>
+ * File download: https://tapi.bale.ai/file/bot<TOKEN>/<file_path>
  * 
- * Auth: Bot token from @BotFather.
- * Rate limits: 30 msg/sec global, 1 msg/sec per chat, 20 msg/min per group.
- * Formatting: MarkdownV2, HTML.
+ * Bale is Telegram-Bot-API-COMPATIBLE — same method names, same response format.
+ * The only differences:
+ *   1. Base URL: tapi.bale.ai (not api.telegram.org)
+ *   2. No parse_mode MarkdownV2 — Bale uses MessageEntity objects for formatting
+ *   3. chat_id can be @channelusername for channels (same as Telegram)
  * 
- * To post to a channel: add bot as admin with "Post Messages" permission,
- * then use @channelusername or channel chat_id as the target.
+ * Auth: Bot token from @botfather in Bale app.
+ * To post to a channel: promoteChatMember with can_post_messages=true, then use @channelusername.
  */
 
 import type {
@@ -23,59 +26,51 @@ import type {
   AdapterAccount,
 } from './types'
 
-const TG_TEXT_LIMIT = 4096
-const TG_API_BASE = 'https://api.telegram.org/bot'
+const BALE_TEXT_LIMIT = 4096
+const BALE_API_BASE = 'https://tapi.bale.ai/bot'
 
-/**
- * Escape text for Telegram MarkdownV2.
- * Telegram MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
- */
-function escapeMarkdownV2(text: string): string {
-  return text.replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&')
-}
-
-export class TelegramAdapter implements ChannelAdapter {
-  readonly platform: PlatformType = 'telegram'
+export class BaleAdapter implements ChannelAdapter {
+  readonly platform: PlatformType = 'bale'
 
   async healthCheck(account: AdapterAccount): Promise<HealthResult> {
     const token = account.token
     if (!token) {
-      return { healthy: false, status: 'disconnected', lastError: 'توکن ربات تنظیم نشده است' }
+      return { healthy: false, status: 'disconnected', lastError: 'توکن ربات بله تنظیم نشده است' }
     }
     try {
-      const res = await fetch(`${TG_API_BASE}${token}/getMe`)
+      const res = await fetch(`${BALE_API_BASE}${token}/getMe`)
       const data = await res.json()
       if (!data.ok) {
         return { healthy: false, status: 'error', lastError: data.description || 'توکن نامعتبر است' }
       }
       return { healthy: true, status: 'active', lastError: null }
     } catch (err) {
-      return { healthy: false, status: 'error', lastError: 'خطای شبکه در بررسی وضعیت ربات' }
+      return { healthy: false, status: 'error', lastError: 'خطای شبکه در بررسی وضعیت ربات بله' }
     }
   }
 
   async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
-    if (text.length > TG_TEXT_LIMIT) {
+    if (text.length > BALE_TEXT_LIMIT) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پیام تلگرام نباید از ${TG_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
-        platform: 'telegram',
+        message: `متن پیام بله نباید از ${BALE_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
+        platform: 'bale',
       })
     }
     if (!account.token) {
       issues.push({
         code: 'token_missing',
-        message: 'توکن ربات تلگرام تنظیم نشده است.',
-        platform: 'telegram',
+        message: 'توکن ربات بله تنظیم نشده است.',
+        platform: 'bale',
       })
     }
     if (!account.targetId && !account.username) {
       issues.push({
         code: 'target_missing',
         message: 'شناسه چت یا نام کاربری کانال تنظیم نشده است.',
-        platform: 'telegram',
+        platform: 'bale',
       })
     }
     return { ready: issues.length === 0, issues }
@@ -92,7 +87,7 @@ export class TelegramAdapter implements ChannelAdapter {
         externalId: null,
         rawResponse: {},
         status: 'action',
-        error: 'توکن ربات تلگرام تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.',
+        error: 'توکن ربات بله تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.',
         retryable: false,
         steps: [{ label: 'بررسی توکن', at: now }],
       }
@@ -103,13 +98,12 @@ export class TelegramAdapter implements ChannelAdapter {
         externalId: null,
         rawResponse: {},
         status: 'action',
-        error: 'شناسه چت یا نام کاربری کانال تنظیم نشده است.',
+        error: 'شناسه چت یا نام کاربری کانال بله تنظیم نشده است.',
         retryable: false,
         steps: [{ label: 'بررسی مقصد', at: now }],
       }
     }
 
-    // Build caption: title + body + hashtags
     const caption = platformCaption || this.buildCaption(content)
     const mediaItems = content.mediaItems || []
 
@@ -117,10 +111,9 @@ export class TelegramAdapter implements ChannelAdapter {
       let result: { messageId: string; raw: any }
 
       if (mediaItems.length === 0) {
-        // Text-only message
+        // Text-only message (Bale does NOT support parse_mode — uses plain text)
         result = await this.sendMessage(token, chatId, caption)
       } else if (mediaItems.length === 1) {
-        // Single media
         const m = mediaItems[0]
         if (m.type === 'photo') {
           result = await this.sendPhoto(token, chatId, m.url, caption)
@@ -141,7 +134,7 @@ export class TelegramAdapter implements ChannelAdapter {
         error: null,
         retryable: false,
         steps: [
-          { label: 'ارسال به تلگرام', at: now },
+          { label: 'ارسال به بله', at: now },
           { label: 'منتشر شد', at: Date.now() },
         ],
       }
@@ -154,7 +147,7 @@ export class TelegramAdapter implements ChannelAdapter {
         error: err.message,
         retryable,
         steps: [
-          { label: 'ارسال به تلگرام', at: now },
+          { label: 'ارسال به بله', at: now },
           { label: 'خطا', at: Date.now() },
         ],
       }
@@ -167,15 +160,10 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendMessage(token: string, chatId: string, text: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendMessage`, {
+    const res = await fetch(`${BALE_API_BASE}${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: 'HTML',
-        link_preview_options: { is_disabled: false },
-      }),
+      body: JSON.stringify({ chat_id: chatId, text }),
     })
     const data = await res.json()
     if (!data.ok) throw this.makeError(data)
@@ -183,15 +171,10 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendPhoto(token: string, chatId: string, photoUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendPhoto`, {
+    const res = await fetch(`${BALE_API_BASE}${token}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        photo: photoUrl,
-        caption,
-        parse_mode: 'HTML',
-      }),
+      body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption }),
     })
     const data = await res.json()
     if (!data.ok) throw this.makeError(data)
@@ -199,15 +182,10 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendVideo(token: string, chatId: string, videoUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendVideo`, {
+    const res = await fetch(`${BALE_API_BASE}${token}/sendVideo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        video: videoUrl,
-        caption,
-        parse_mode: 'HTML',
-      }),
+      body: JSON.stringify({ chat_id: chatId, video: videoUrl, caption }),
     })
     const data = await res.json()
     if (!data.ok) throw this.makeError(data)
@@ -215,15 +193,10 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendDocument(token: string, chatId: string, documentUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendDocument`, {
+    const res = await fetch(`${BALE_API_BASE}${token}/sendDocument`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        document: documentUrl,
-        caption,
-        parse_mode: 'HTML',
-      }),
+      body: JSON.stringify({ chat_id: chatId, document: documentUrl, caption }),
     })
     const data = await res.json()
     if (!data.ok) throw this.makeError(data)
@@ -235,21 +208,19 @@ export class TelegramAdapter implements ChannelAdapter {
       type: m.type === 'video' ? 'video' : 'photo',
       media: m.url,
       caption: i === 0 ? caption : undefined,
-      parse_mode: 'HTML',
     }))
-    const res = await fetch(`${TG_API_BASE}${token}/sendMediaGroup`, {
+    const res = await fetch(`${BALE_API_BASE}${token}/sendMediaGroup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, media: mediaJson }),
     })
     const data = await res.json()
     if (!data.ok) throw this.makeError(data)
-    // MediaGroup returns array of messages; use first message_id
     return { messageId: String(data.result[0].message_id), raw: data.result }
   }
 
   private makeError(data: any): Error {
-    const err = new Error(`تلگرام: ${data.description || 'خطای ناشناخته'}`) as any
+    const err = new Error(`بله: ${data.description || 'خطای ناشناخته'}`) as any
     err.code = data.error_code
     err.retryAfter = data.parameters?.retry_after
     return err

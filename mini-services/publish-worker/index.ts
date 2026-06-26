@@ -130,6 +130,10 @@ async function processJob(job: any): Promise<void> {
       body: job.content.body,
       hashtags: job.content.hashtags,
       thumbnailUrl: job.content.thumbnailUrl,
+      // If content has a thumbnail, pass it as a media item so adapters can publish it
+      mediaItems: job.content.thumbnailUrl
+        ? [{ type: 'photo' as const, url: job.content.thumbnailUrl }]
+        : undefined,
     },
     account: {
       id: job.platform.id,
@@ -137,6 +141,10 @@ async function processJob(job: any): Promise<void> {
       username: job.platform.username,
       status: job.platform.status,
       circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
+      // Pass the real bot token / OAuth token from the platform record
+      token: (job.platform as any).tokenSecret ?? undefined,
+      // Pass the platform-specific target (chat_id, ig-user-id, author URN)
+      targetId: (job.platform as any).targetId ?? undefined,
     },
   }
 

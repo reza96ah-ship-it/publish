@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { CaptionAssistant } from "@/components/ai/caption-assistant";
 import {
   PenLine,
   Image as ImageIcon,
@@ -501,6 +502,16 @@ function StepContent(props: {
           className="h-10"
         />
       </div>
+
+      {/* AI Caption Assistant — Persian streaming caption generation */}
+      {props.title.trim().length >= 3 && (
+        <CaptionAssistant
+          platform="instagram"
+          topic={props.title}
+          onInsert={(text) => props.setCaption(text)}
+          onHashtags={(tags) => props.setHashtags(tags.join(" "))}
+        />
+      )}
 
       <div>
         <div className="flex items-center justify-between mb-1.5">
