@@ -8,6 +8,8 @@
 import { NextRequest } from "next/server";
 import { streamCaption, type Platform, type Tone, type CreatorRole, type ContentGoal, type CaptionLength } from "@/lib/ai/gemini";
 import { getWorkspace } from "@/lib/server";
+import { validateBody, aiCaptionSchema } from "@/lib/validations";
+import { aiRateLimit } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -20,24 +22,27 @@ const VALID_LENGTHS = ["short", "standard", "long"] as const;
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { topic, platform, tone, role, goal, length, variation } = body;
+    // Rate limit: 15 AI requests per minute per IP
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
+    const { success: rateOk } = await aiRateLimit(ip);
+    if (!rateOk) {
+      return Response.json({ error: "تعداد درخواست‌ها زیاد است — یک دقیقه صبر کنید" }, { status: 429 });
+    }
 
-    // Validate
-    if (!topic || typeof topic !== "string" || topic.trim().length < 3) {
-      return Response.json({ error: "موضوع حداقل ۳ کاراکتر باید باشد" }, { status: 400 });
+    const raw = await req.json().catch(() => null);
+    if (!raw) return Response.json({ error: "بدنه درخواست نامعتبر" }, { status: 400 });
+
+    const validation = validateBody(aiCaptionSchema, raw);
+    if (!validation.success) {
+      return Response.json({ error: validation.error }, { status: 400 });
     }
-    if (topic.length > 280) {
-      return Response.json({ error: "موضوع نباید از ۲۸۰ کاراکتر بیشتر باشد" }, { status: 400 });
-    }
-    if (!VALID_PLATFORMS.includes(platform)) {
-      return Response.json({ error: "پلتفرم نامعتبر" }, { status: 400 });
-    }
-    const validTone = tone && VALID_TONES.includes(tone) ? tone : undefined;
-    const validRole = role && VALID_ROLES.includes(role as any) ? role : undefined;
-    const validGoal = goal && VALID_GOALS.includes(goal as any) ? goal : undefined;
-    const validLength = length && VALID_LENGTHS.includes(length as any) ? length : undefined;
-    const variationNum = typeof variation === "number" ? Math.max(0, Math.floor(variation)) : 0;
+    const { topic, platform, tone, role, goal, length, variation, voiceExamples } = validation.data;
+
+    const validTone = tone as Tone | undefined;
+    const validRole = role as CreatorRole | undefined;
+    const validGoal = goal as ContentGoal | undefined;
+    const validLength = length as CaptionLength | undefined;
+    const variationNum = variation ?? 0;
 
     // Get workspace context
     let workspace: Awaited<ReturnType<typeof getWorkspace>> = null;

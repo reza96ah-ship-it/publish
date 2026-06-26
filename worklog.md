@@ -2018,3 +2018,42 @@ Stage Summary:
 - Files created: src/app/api/platforms/[id]/{connect,validate}/route.ts, src/app/api/members/invite/route.ts, src/app/api/analytics/real/route.ts.
 - Files modified: src/components/views/channels-view.tsx (real API calls instead of fake toasts).
 - The publish pipeline is now fully testable: Channels → enter Telegram bot token → validate → Compose → publish → message appears on channel.
+
+---
+Task ID: PHASE2-MODERN-ENG
+Agent: Main Agent (Z.ai Code)
+Task: Phase 2 — Zod validation + security hardening + rate limiting.
+
+Work Log:
+- **P2.1 Zod validation**: Created `src/lib/validations.ts` with 10 schemas + `validateBody()` helper. Applied to 7 key API routes:
+  * `/api/publish` — publishSchema (title required, platform types validated, mode enum)
+  * `/api/ai/caption` — aiCaptionSchema (topic min 3 chars, platform/tone/role/goal/length enums)
+  * `/api/ai/hashtags` — aiHashtagsSchema
+  * `/api/inbox/[id]/reply` — inboxReplySchema (reply min 1, max 2000)
+  * `/api/content/[id]/reject` — contentRejectSchema (reason required)
+  * `/api/members/invite` — memberInviteSchema (email format, role enum)
+  * `/api/platforms/[id]/connect` — platformConnectSchema (token min 10)
+  All routes now reject invalid input with Persian error messages before hitting the DB.
+
+- **P2.2 Security hardening**:
+  * Created `src/lib/ratelimit.ts` — in-memory sliding window rate limiter (no Redis needed for SQLite). Pre-configured: AI 15/min, auth 5/5min, API 60/min.
+  * Applied `aiRateLimit` to `/api/ai/caption` — 15 requests/minute per IP. Returns 429 with Persian message.
+  * Added CSP + security headers in `next.config.ts`:
+    - Content-Security-Policy (script/style/font/img/connect-src whitelisted per domain)
+    - X-Content-Type-Options: nosniff
+    - X-Frame-Options: SAMEORIGIN
+    - Referrer-Policy: strict-origin-when-cross-origin
+    - X-XSS-Protection: 1; mode=block
+  * connect-src allows: gapgpt.app, telegram.org, bale.ai, rubika.ir, graph.facebook.com, linkedin.com, wss
+
+- **Verified**:
+  * Zod validation: `{"topic":"ab"}` → `{"error":"موضوع حداقل ۳ کاراکتر باید باشد"}` ✅
+  * Valid input: `{"topic":"قهوه","platform":"instagram"}` → SSE stream starts ✅
+  * Rate limit: works (15/min threshold)
+  * Lint: 0 errors
+  * GET / → HTTP 200
+
+Stage Summary:
+- Phase 2 (P2.1 + P2.2) complete: Zod validation on 7 routes + CSP headers + rate limiting.
+- Files: src/lib/validations.ts (new), src/lib/ratelimit.ts (new), next.config.ts (security headers), 7 API routes updated with Zod.
+- Remaining P2 items: testing (Vitest + Playwright), calendar drag-drop, RSC migration — lower priority.

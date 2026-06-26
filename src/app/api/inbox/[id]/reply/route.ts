@@ -5,18 +5,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
+import { validateBody, inboxReplySchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
-  const body = await req.json().catch(() => ({}));
-  const { reply } = body;
+  const raw = await req.json().catch(() => null);
+  if (!raw) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });
 
-  if (!reply || typeof reply !== "string" || reply.trim().length === 0) {
-    return NextResponse.json({ error: "متن پاسخ خالی است" }, { status: 400 });
+  const validation = validateBody(inboxReplySchema, raw);
+  if (!validation.success) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
+  const { reply } = validation.data;
 
   const message = await db.inboxMessage.findFirst({
     where: { id, workspaceId },

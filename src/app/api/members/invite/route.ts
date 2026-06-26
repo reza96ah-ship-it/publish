@@ -6,20 +6,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
 import { randomUUID } from "crypto";
+import { validateBody, memberInviteSchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest) {
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
-  const body = await req.json();
-  const { email, name, role } = body;
+  const raw = await req.json().catch(() => null);
+  if (!raw) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });
 
-  if (!email || !email.includes("@")) {
-    return NextResponse.json({ error: "ایمیل معتبر وارد کنید" }, { status: 400 });
+  const validation = validateBody(memberInviteSchema, raw);
+  if (!validation.success) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
-  if (!["admin", "editor", "approver", "viewer"].includes(role)) {
-    return NextResponse.json({ error: "نقش نامعتبر" }, { status: 400 });
-  }
+  const { email, name, role } = validation.data;
 
   // Check if member already exists
   const existing = await db.workspaceMember.findFirst({

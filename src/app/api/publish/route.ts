@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getWorkspaceId } from '@/lib/server'
 import { randomUUID } from 'crypto'
+import { validateBody, publishSchema } from '@/lib/validations'
 
 interface PublishRequest {
   title: string
@@ -23,21 +24,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
   }
 
-  let body: PublishRequest
-  try {
-    body = (await req.json()) as PublishRequest
-  } catch {
-    return NextResponse.json({ error: 'بدنه درخواست نامعتبر است' }, { status: 400 })
-  }
+  let body
+  const raw = await req.json().catch(() => null)
+  if (!raw) return NextResponse.json({ error: 'بدنه درخواست نامعتبر است' }, { status: 400 })
 
-  // Validate
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: 'عنوان محتوا الزامی است' }, { status: 400 })
+  const validation = validateBody(publishSchema, raw)
+  if (!validation.success) {
+    return NextResponse.json({ error: validation.error }, { status: 400 })
   }
+  body = validation.data as PublishRequest
 
-  // mode: "publish" (default) creates content + publish jobs.
-  // mode: "review" creates content with status="review" (no jobs — for approval workflow).
-  const mode = (body as any).mode ?? 'publish'
+  const mode = body.mode ?? 'publish'
 
   if (mode === 'publish' && (!body.platformTypes || body.platformTypes.length === 0)) {
     return NextResponse.json({ error: 'حداقل یک پلتفرم باید انتخاب شود' }, { status: 400 })
