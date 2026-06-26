@@ -13,7 +13,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { streamCaption, type Platform } from "@/lib/ai/zai";
+import { streamCaption, type Platform } from "@/lib/ai/gemini";
 import { getWorkspace } from "@/lib/server";
 
 export const runtime = "nodejs";

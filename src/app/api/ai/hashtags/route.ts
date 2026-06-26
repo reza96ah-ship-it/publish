@@ -8,7 +8,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { suggestHashtags, type Platform } from "@/lib/ai/zai";
+import { suggestHashtags, type Platform } from "@/lib/ai/gemini";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
