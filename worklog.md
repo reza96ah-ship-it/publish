@@ -1842,3 +1842,22 @@ Stage Summary:
 - AI assistant UI upgraded from inline card → tabbed right-side panel (Buffer/Later/Notion pattern).
 - No more layout shift when AI opens. Editor stays full-height. Side-by-side editing possible.
 - Files: src/components/views/compose-view.tsx (right panel rewrite + AI button + ⌘J shortcut).
+
+---
+Task ID: AI-UI-MOTION
+Agent: Main Agent (Z.ai Code)
+Task: Fix AI button not visibly working + add motion animations.
+
+Work Log:
+- Root cause: button WAS working (tab switched) but there was no visible feedback — no animation, no scroll. On mobile the right panel is below the fold so clicking did nothing visible.
+- Added `rightPanelRef` + `openAITab()` callback that switches tab + scrolls panel into view (smooth scroll for mobile/tablet).
+- Added framer-motion animations:
+  * AI button: `whileHover={{ scale: 1.02 }}` + `whileTap={{ scale: 0.98 }}` (tactile feedback)
+  * Sparkles icon: gentle rotation animation (`rotate: [0, 10, -10, 0]`, 2s loop with 3s delay) — draws attention
+  * Tab content: `AnimatePresence mode="wait"` with slide+fade transitions (`opacity: 0, x: 10 → opacity: 1, x: 0`, 200ms ease-out) — smooth tab switching
+  * Empty state: floating Sparkles icon (`y: [0, -6, 0]`, 2s infinite loop) + scale-in entrance
+- Verified: Agent Browser confirms AI tab activates, empty state shows, zero console errors.
+
+Stage Summary:
+- AI button now has visible feedback: hover scale, tap scale, icon rotation, tab slide transition, smooth scroll on mobile.
+- Files: src/components/views/compose-view.tsx.

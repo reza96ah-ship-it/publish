@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { CaptionAssistant } from "@/components/ai/caption-assistant";
 import { NashrinoEditor } from "@/components/editor/nashrino-editor";
@@ -112,18 +112,28 @@ export function ComposeView() {
 
   // Right panel tab state: "preview" | "ai" | "comments"
   const [rightTab, setRightTab] = useState<"preview" | "ai" | "comments">("preview");
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+
+  // Switch to AI tab + scroll right panel into view (for mobile)
+  const openAITab = useCallback(() => {
+    setRightTab("ai");
+    // Scroll right panel into view after a brief delay (for mobile/tablet)
+    setTimeout(() => {
+      rightPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+  }, []);
 
   // ⌘J shortcut to switch to AI tab
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "j") {
         e.preventDefault();
-        setRightTab("ai");
+        openAITab();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [openAITab]);
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ["campaigns"],
@@ -366,14 +376,22 @@ export function ComposeView() {
 
             {/* AI trigger button — opens AI in right panel */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => setRightTab("ai")}
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
+                onClick={openAITab}
                 className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
               >
-                <Sparkles className="size-3.5" strokeWidth={2.5} />
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
+                >
+                  <Sparkles className="size-3.5" strokeWidth={2.5} />
+                </motion.span>
                 دستیار هوش مصنوعی
                 <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">⌘J</kbd>
-              </button>
+              </motion.button>
               {title.trim().length < 3 && (
                 <span className="text-[10px] text-ink-tertiary">ابتدا موضوع را بنویسید</span>
               )}
@@ -497,7 +515,7 @@ export function ComposeView() {
         </div>
 
         {/* Right panel: tabbed (Preview | AI | Comments) */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" ref={rightPanelRef}>
           <div className="sticky top-4 space-y-3">
             {/* Tab strip */}
             <div className="n-card-compact flex items-center gap-1 p-1">
@@ -522,43 +540,77 @@ export function ComposeView() {
               ))}
             </div>
 
-            {/* Tab content */}
-            {rightTab === "preview" && (
-              <PlatformPreviewTabs
-                caption={caption}
-                title={title}
-                hashtags={hashtags}
-                media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
-                selectedPlatforms={selectedPlatforms}
-              />
-            )}
-
-            {rightTab === "ai" && (
-              <div className="n-card p-3 max-h-[70vh] overflow-y-auto thin-scrollbar">
-                {title.trim().length >= 3 ? (
-                  <CaptionAssistant
-                    platform={(selectedPlatforms[0] as any) || "instagram"}
-                    topic={title}
-                    onInsert={(text) => { setCaption(text); setRightTab("preview"); }}
-                    onHashtags={(tags) => setHashtags(tags.join(" "))}
+            {/* Tab content with motion transitions */}
+            <AnimatePresence mode="wait">
+              {rightTab === "preview" && (
+                <motion.div
+                  key="preview"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
+                >
+                  <PlatformPreviewTabs
+                    caption={caption}
+                    title={title}
+                    hashtags={hashtags}
+                    media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
+                    selectedPlatforms={selectedPlatforms}
                   />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <Sparkles className="size-8 text-ink-tertiary opacity-40 mb-2" />
-                    <p className="text-[12px] text-ink-tertiary">ابتدا موضوع محتوا را بنویسید</p>
-                    <p className="text-[10px] text-ink-tertiary mt-1">سپس دستیار هوش مصنوعی آماده کمک است</p>
-                  </div>
-                )}
-              </div>
-            )}
+                </motion.div>
+              )}
 
-            {rightTab === "comments" && (
-              <div className="n-card p-4 flex flex-col items-center justify-center py-10 text-center">
-                <MessageSquare className="size-8 text-ink-tertiary opacity-40 mb-2" />
-                <p className="text-[12px] text-ink-tertiary">بخش نظرات</p>
-                <p className="text-[10px] text-ink-tertiary mt-1">برای محتوای ارسال‌شده فعال می‌شود</p>
-              </div>
-            )}
+              {rightTab === "ai" && (
+                <motion.div
+                  key="ai"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
+                  className="n-card p-3 max-h-[70vh] overflow-y-auto thin-scrollbar"
+                >
+                  {title.trim().length >= 3 ? (
+                    <CaptionAssistant
+                      platform={(selectedPlatforms[0] as any) || "instagram"}
+                      topic={title}
+                      onInsert={(text) => { setCaption(text); setRightTab("preview"); }}
+                      onHashtags={(tags) => setHashtags(tags.join(" "))}
+                    />
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+                      className="flex flex-col items-center justify-center py-10 text-center"
+                    >
+                      <motion.div
+                        animate={{ y: [0, -6, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <Sparkles className="size-10 text-accent opacity-50" strokeWidth={1.5} />
+                      </motion.div>
+                      <p className="text-[12px] text-ink-secondary font-[600] mt-3">ابتدا موضوع محتوا را بنویسید</p>
+                      <p className="text-[10px] text-ink-tertiary mt-1">سپس دستیار هوش مصنوعی آماده کمک است</p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              {rightTab === "comments" && (
+                <motion.div
+                  key="comments"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
+                  className="n-card p-4 flex flex-col items-center justify-center py-10 text-center"
+                >
+                  <MessageSquare className="size-8 text-ink-tertiary opacity-40 mb-2" />
+                  <p className="text-[12px] text-ink-tertiary">بخش نظرات</p>
+                  <p className="text-[10px] text-ink-tertiary mt-1">برای محتوای ارسال‌شده فعال می‌شود</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Schedule info (always visible below tabs) */}
             <div className="n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
