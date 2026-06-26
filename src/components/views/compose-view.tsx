@@ -13,8 +13,6 @@ import {
   Send,
   CalendarClock,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Hash,
   FileText,
   Layers,
@@ -94,17 +92,9 @@ interface PublishPayload {
   thumbnail: string | null;
 }
 
-const STEPS = [
-  { id: 0, label: "محتوا", icon: PenLine },
-  { id: 1, label: "رسانه", icon: ImageIcon },
-  { id: 2, label: "پلتفرم", icon: Layers },
-  { id: 3, label: "زمان‌بندی", icon: CalendarClock },
-] as const;
-
 const IG_LIMIT = 2200;
 
 export function ComposeView() {
-  const [activeStep, setActiveStep] = useState(0);
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
@@ -295,175 +285,256 @@ export function ComposeView() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-5"
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-4"
     >
       <SectionTitle icon={PenLine} badge={<span className="text-[11px] text-ink-tertiary">پیش‌نویس خودکار ذخیره می‌شود</span>}>
         ساخت محتوای جدید
       </SectionTitle>
 
-      {/* Step rail */}
-      <div className="n-card p-4">
-        <div className="flex items-center gap-2 overflow-x-auto thin-scrollbar no-scrollbar">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon;
-            const done = i < activeStep;
-            const active = i === activeStep;
+      {/* ── Platform selector (FIRST — determines preview + limits) ── */}
+      <div className="n-card p-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers className="size-4 text-ink-tertiary" />
+          <span className="text-[12px] font-[600] text-ink-secondary">انتخاب پلتفرم‌ها</span>
+          <span className="text-[10px] text-ink-tertiary ms-auto">
+            {selectedPlatforms.length > 0
+              ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم انتخاب شده`
+              : "حداقل یک پلتفرم انتخاب کنید"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {["instagram", "telegram", "linkedin", "rubika"].map((type) => {
+            const isSelected = selectedPlatforms.includes(type);
             return (
               <button
-                key={s.id}
-                onClick={() => setActiveStep(i)}
+                key={type}
+                onClick={() => togglePlatform(type)}
                 className={cn(
-                  "n-focus-ring flex items-center gap-2 px-3 py-2 rounded-xl border transition-all shrink-0",
-                  active
-                    ? "bg-accent-soft border-accent/30 text-accent"
-                    : done
-                      ? "bg-success-soft/60 border-success/20 text-success"
-                      : "bg-surface-subtle border-border text-ink-secondary"
+                  "n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all",
+                  isSelected
+                    ? "border-accent/30 bg-accent-soft text-accent"
+                    : "border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover",
                 )}
+                aria-pressed={isSelected}
               >
-                <span
-                  className={cn(
-                    "flex size-6 items-center justify-center rounded-full text-[11px] font-[700]",
-                    active ? "bg-accent text-white" : done ? "bg-success text-white" : "bg-border"
-                  )}
-                >
-                  {done ? <Check className="size-3.5" /> : toPersianDigits(i + 1)}
-                </span>
-                <Icon className="size-4" />
-                <span className="text-[12px] font-[700]">{s.label}</span>
-                {i < STEPS.length - 1 && <ChevronLeft className="size-3 text-ink-tertiary ms-1" />}
+                <PlatformIcon platform={type} className="size-4" />
+                <span>{type === "instagram" ? "اینستاگرام" : type === "telegram" ? "تلگرام" : type === "linkedin" ? "لینکدین" : "روبیکا"}</span>
+                {isSelected && <Check className="size-3.5" strokeWidth={2.5} />}
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Main step panel */}
-        <div className="lg:col-span-2 n-card p-5 min-h-[420px]">
-          {activeStep === 0 && (
-            <StepContent
-              title={title}
-              setTitle={setTitle}
-              caption={caption}
-              setCaption={setCaption}
-              hashtags={hashtags}
-              setHashtags={setHashtags}
-              note={note}
-              setNote={setNote}
-              campaignId={campaignId}
-              setCampaignId={setCampaignId}
-              campaigns={campaigns ?? []}
-            />
-          )}
-          {activeStep === 1 && (
-            <StepMedia
-              media={media ?? []}
-              isLoading={mediaIsLoading}
-              selected={selectedMedia}
-              toggle={toggleMedia}
-            />
-          )}
-          {activeStep === 2 && (
-            <StepPlatform
-              platforms={platforms ?? []}
-              selected={selectedPlatforms}
-              toggle={togglePlatform}
-              captions={platformCaptions}
-              setCaptions={setPlatformCaptions}
-            />
-          )}
-          {activeStep === 3 && (
-            <StepSchedule
-              mode={scheduleMode}
-              setMode={setScheduleMode}
-              date={scheduleDate}
-              setDate={setScheduleDate}
-              time={scheduleTime}
-              setTime={setScheduleTime}
-            />
-          )}
+      {/* ── Main: Editor (left) + Preview (right) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Editor panel */}
+        <div className="lg:col-span-3 space-y-4">
+          <div className="n-card p-5 space-y-4">
+            {/* Title */}
+            <div>
+              <Label className="text-[12px] text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
+              <Input
+                dir="rtl"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="مثال: معرفی محصول جدید"
+                className="h-10"
+              />
+            </div>
 
-          {/* Step navigation */}
-          <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="n-focus-ring"
-              onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
-              disabled={activeStep === 0}
-            >
-              <ChevronRight className="size-4" />
-              مرحله قبل
-            </Button>
-            <span className="text-[11px] text-ink-tertiary num-tabular">
-              مرحله {toPersianDigits(activeStep + 1)} از {toPersianDigits(STEPS.length)}
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="n-focus-ring"
-              onClick={() => setActiveStep((s) => Math.min(STEPS.length - 1, s + 1))}
-              disabled={activeStep === STEPS.length - 1}
-            >
-              مرحله بعد
-              <ChevronLeft className="size-4" />
-            </Button>
+            {/* AI Caption Assistant */}
+            {title.trim().length >= 3 && (
+              <CaptionAssistant
+                platform={(selectedPlatforms[0] as any) || "instagram"}
+                topic={title}
+                onInsert={(text) => setCaption(text)}
+                onHashtags={(tags) => setHashtags(tags.join(" "))}
+              />
+            )}
+
+            {/* Rich-text editor */}
+            <div>
+              <Label className="text-[12px] text-ink-secondary mb-1.5 block">کپشن</Label>
+              <NashrinoEditor
+                content={caption}
+                onChange={(_html, text) => setCaption(text)}
+                placeholder="متن کامل کپشن… (پشتیبانی از متن غنی)"
+                maxLength={IG_LIMIT}
+              />
+            </div>
+
+            {/* Hashtags */}
+            <div>
+              <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                <span className="inline-flex items-center gap-1">
+                  <Hash className="size-3.5" /> هشتگ‌ها
+                </span>
+              </Label>
+              <Input
+                dir="rtl"
+                value={hashtags}
+                onChange={(e) => setHashtags(e.target.value)}
+                placeholder="#برند_من #محصول_جدید"
+              />
+            </div>
+
+            {/* Media selector (inline, not a separate step) */}
+            <div>
+              <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                <span className="inline-flex items-center gap-1">
+                  <ImageIcon className="size-3.5" /> رسانه‌ها
+                </span>
+                <span className="text-[10px] text-ink-tertiary ms-2">
+                  {toPersianDigits(selectedMedia.length)} انتخاب شده
+                </span>
+              </Label>
+              {mediaIsLoading ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="aspect-square rounded-lg bg-surface-hover animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[200px] overflow-y-auto thin-scrollbar p-1">
+                  {(media ?? []).map((m) => {
+                    const isSelected = selectedMedia.some((s) => s.id === m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleMedia(m)}
+                        className={cn(
+                          "relative aspect-square rounded-lg overflow-hidden border-2 transition-all",
+                          isSelected ? "border-accent ring-2 ring-accent/20" : "border-transparent hover:border-border",
+                        )}
+                      >
+                        <img src={m.thumbnail} alt={m.name} className="w-full h-full object-cover" />
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
+                            <Check className="size-4 text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Campaign + Internal note */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">کمپین</Label>
+                <Select value={campaignId} onValueChange={setCampaignId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="بدون کمپین" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(campaigns ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
+                <Input
+                  dir="rtl"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="یادداشت خصوصی تیم…"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule options (inline, not a separate step) */}
+          <div className="n-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarClock className="size-4 text-ink-tertiary" />
+              <span className="text-[12px] font-[600] text-ink-secondary">زمان‌بندی انتشار</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {[
+                { id: "now" as const, label: "اکنون" },
+                { id: "schedule" as const, label: "زمان‌بندی" },
+                { id: "queue" as const, label: "صف انتشار" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => setScheduleMode(opt.id)}
+                  className={cn(
+                    "n-focus-ring rounded-lg border px-3 py-1.5 text-[11.5px] font-[600] transition-colors",
+                    scheduleMode === opt.id
+                      ? "border-accent/30 bg-accent-soft text-accent"
+                      : "border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+              {scheduleMode === "schedule" && (
+                <div className="flex items-center gap-2 ms-2">
+                  <Input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    className="h-8 w-auto text-[11px]"
+                  />
+                  <Input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="h-8 w-auto text-[11px]"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Multi-platform live preview */}
-        <div className="h-fit sticky top-4">
-          <div className="flex items-center gap-2 mb-3 px-1">
-            <Sparkles className="size-4 text-accent" />
-            <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
-            <span className="text-[10px] text-ink-tertiary ms-auto">
-              {selectedPlatforms.length > 0
-                ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
-                : "پلتفرمی انتخاب نشده"}
-            </span>
-          </div>
-          <PlatformPreviewTabs
-            caption={caption}
-            title={title}
-            hashtags={hashtags}
-            media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
-            selectedPlatforms={selectedPlatforms}
-          />
-          {/* Schedule info */}
-          <div className="mt-3 n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
-            <span>
-              {campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین"}
-            </span>
-            <span>
-              {scheduleMode === "now"
-                ? "اکنون"
-                : scheduleMode === "schedule"
-                  ? scheduleDate
-                    ? `${scheduleDate} - ${scheduleTime}`
-                    : "زمان‌بندی نشده"
-                  : "در صف انتشار"}
-            </span>
+        {/* Preview panel (right) */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-4 space-y-3">
+            <div className="flex items-center gap-2 px-1">
+              <Sparkles className="size-4 text-accent" />
+              <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
+              <span className="text-[10px] text-ink-tertiary ms-auto">
+                {selectedPlatforms.length > 0
+                  ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
+                  : "پلتفرمی انتخاب نشده"}
+              </span>
+            </div>
+            <PlatformPreviewTabs
+              caption={caption}
+              title={title}
+              hashtags={hashtags}
+              media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
+              selectedPlatforms={selectedPlatforms}
+            />
           </div>
         </div>
       </div>
 
-      {/* Bottom action bar */}
+      {/* ── Bottom action bar ── */}
       <div className="n-card p-4 sticky bottom-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[11px] text-ink-tertiary num-tabular">
+          <div className="text-[11px] text-ink-tertiary num-tabular flex items-center gap-2">
             {selectedPlatforms.length > 0 && (
-              <span className="inline-flex items-center gap-1.5">
-                {toPersianDigits(selectedPlatforms.length)} پلتفرم
-                <span className="mx-1">•</span>
-              </span>
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  {toPersianDigits(selectedPlatforms.length)} پلتفرم
+                </span>
+                <span>•</span>
+              </>
             )}
-            {toPersianDigits(selectedMedia.length)} رسانه
-            <span className="mx-1">•</span>
-            {toPersianDigits(caption.length)} / {toPersianDigits(IG_LIMIT)} کاراکتر
+            <span>{toPersianDigits(selectedMedia.length)} رسانه</span>
+            <span>•</span>
+            <span>{toPersianDigits(caption.length)} کاراکتر</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" size="sm" className="n-focus-ring" onClick={() => submit("draft")}>
@@ -476,7 +547,7 @@ export function ComposeView() {
             </Button>
             <Button
               size="sm"
-              className="n-focus-ring bg-gradient-to-l from-violet-500 to-fuchsia-500 text-white hover:opacity-90"
+              className="n-focus-ring bg-accent text-white hover:bg-accent-hover"
               onClick={() => submit("publish")}
               disabled={publishMutation.isPending || !canPublish}
             >

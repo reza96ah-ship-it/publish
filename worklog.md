@@ -1618,3 +1618,38 @@ Stage Summary:
 - Files modified: `src/components/views/compose-view.tsx` (replaced old preview with PlatformPreviewTabs).
 - Feature completeness: Compose/Editor 45% → 55% (rich text + toolbar + char count + AI + tones + multi-platform preview; still missing: media upload, scheduling integration, autosave).
 - Next: media upload (E3), or continue with other features.
+
+---
+Task ID: IMPL-COMPOSE-FLOW-V2
+Agent: Main Agent (Z.ai Code)
+Task: Redesign compose flow from multi-step wizard to single-view layout (Buffer/Planable style).
+
+Work Log:
+- User feedback: "preview first then platform is in third step — need better flow and UX"
+- Root cause: old flow was Step 1 (content+preview) → Step 2 (media) → Step 3 (platform) → Step 4 (schedule). Preview showed in step 1 but platforms weren't selected until step 3, so the preview was irrelevant.
+- Research: Buffer, Planable, Later, Hootsuite all use a **single-view composer** with platform selection at top, editor on left, live preview on right, schedule at bottom. No multi-step wizard.
+- Rebuilt compose-view.tsx return from multi-step wizard to single-view layout:
+  1. **Top**: Platform selector (toggle chips with platform logos + checkmark) — choose platforms FIRST, determines preview + char limits
+  2. **Left (3/5 width)**: Editor panel with title, AI Caption Assistant, NashrinoEditor (Tiptap rich text), hashtags, media grid (inline, not separate step), campaign selector, internal note
+  3. **Left bottom**: Schedule options (اکنون/زمان‌بندی/صف انتشار inline — not a separate step)
+  4. **Right (2/5 width)**: PlatformPreviewTabs (live preview, sticky) — always shows the correct platform since selection is at top
+  5. **Bottom**: Action bar (ذخیره پیش‌نویس / ارسال برای تأیید / انتشار) with summary stats
+- Removed: STEPS constant, activeStep state, step navigation buttons (مرحله قبل/بعد), ChevronLeft/ChevronRight imports, old StepContent/StepMedia/StepPlatform/StepSchedule components (dead code, no longer called).
+- Also fixed: publish button changed from gradient violet/fuchsia to solid accent color (design system consistency).
+
+- **Agent Browser verification**:
+  * Heading: "ساخت محتوای جدید"
+  * Platform selector at top: "انتخاب پلتفرم‌ها" with 4 toggle buttons (اینستاگرام, تلگرام, لینکدین, روبیکا)
+  * Tiptap editor present
+  * Live preview present (right side)
+  * Schedule section inline: "زمان‌بندی انتشار"
+  * Step wizard GONE: no "مرحله قبل/بعد" buttons
+  * Screenshot: `verify-single-view-compose.png`
+- `bun run lint` → 0 errors, 0 warnings.
+
+Stage Summary:
+- Compose flow completely redesigned: multi-step wizard → single-view (Buffer/Planable style).
+- Platform selection is now FIRST (at top), so the preview is always relevant.
+- Media + scheduling are inline (not separate steps), reducing friction.
+- All elements visible on one screen: platform selector → editor → preview → schedule → actions.
+- Feature completeness: Compose/Editor 55% → 60% (better flow + UX + all-in-one layout).
