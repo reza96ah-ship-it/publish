@@ -93,7 +93,13 @@ export async function POST(req: NextRequest) {
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         } catch (err: any) {
-          const errorData = JSON.stringify({ error: err.message });
+          // Log the full error server-side for debugging, but send a generic
+          // Persian message to the client to avoid leaking internal details
+          // (e.g., "GapGPT 401: Invalid API key").
+          console.error("[ai/caption] stream error:", err);
+          const errorData = JSON.stringify({
+            error: "خطا در تولید کپشن. لطفاً دوباره تلاش کنید.",
+          });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
         } finally {
           clearInterval(heartbeatInterval);
@@ -111,6 +117,11 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+    // Log the full error server-side, return generic Persian message to client
+    console.error("[ai/caption] route error:", err);
+    return Response.json(
+      { error: "خطا در پردازش درخواست. لطفاً دوباره تلاش کنید." },
+      { status: 500 },
+    );
   }
 }

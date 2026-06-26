@@ -58,7 +58,8 @@ export async function POST(req: NextRequest) {
             }
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, platform: p })}\n\n`));
           } catch (err: any) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: err.message, platform: p })}\n\n`));
+            console.error(`[ai/caption-multi] stream error for ${p}:`, err);
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "خطا در تولید کپشن. لطفاً دوباره تلاش کنید.", platform: p })}\n\n`));
           }
         });
 
@@ -73,6 +74,10 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
     });
   } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error("[ai/caption-multi] route error:", err);
+    return Response.json(
+      { error: "خطا در پردازش درخواست. لطفاً دوباره تلاش کنید." },
+      { status: 500 },
+    );
   }
 }
