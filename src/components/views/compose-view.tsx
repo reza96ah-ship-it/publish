@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CaptionAssistant } from "@/components/ai/caption-assistant";
 import { NashrinoEditor } from "@/components/editor/nashrino-editor";
+import { PlatformPreviewTabs } from "@/components/editor/platform-preview-tabs";
 import {
   PenLine,
   Image as ImageIcon,
@@ -414,57 +415,38 @@ export function ComposeView() {
           </div>
         </div>
 
-        {/* Live preview */}
-        <div className="n-card n-gradient-border p-5 h-fit sticky top-4">
-          <div className="flex items-center gap-2 mb-3">
+        {/* Multi-platform live preview */}
+        <div className="h-fit sticky top-4">
+          <div className="flex items-center gap-2 mb-3 px-1">
             <Sparkles className="size-4 text-accent" />
             <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
+            <span className="text-[10px] text-ink-tertiary ms-auto">
+              {selectedPlatforms.length > 0
+                ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
+                : "پلتفرمی انتخاب نشده"}
+            </span>
           </div>
-          <div className="n-card-compact p-4">
-            <div className="flex items-center gap-2 mb-3">
-              {selectedPlatforms.length === 0 ? (
-                <span className="text-[11px] text-ink-tertiary">پلتفرمی انتخاب نشده</span>
-              ) : (
-                selectedPlatforms.map((p, i) => <PlatformBadge key={`${p}-${i}`} platform={p} />)
-              )}
-            </div>
-            {selectedMedia[0] ? (
-              <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-border">
-                <img src={selectedMedia[0].thumbnail} alt="" className="w-full h-full object-cover" />
-                {selectedMedia.length > 1 && (
-                  <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full num-tabular">
-                    +{toPersianDigits(selectedMedia.length - 1)}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div className="aspect-square w-full rounded-xl bg-border flex items-center justify-center mb-3">
-                <ImageIcon className="size-8 text-ink-tertiary opacity-40" />
-              </div>
-            )}
-            <p className="text-[13px] font-[600] text-ink-primary line-clamp-1">
-              {title || "عنوان محتوا اینجا نمایش داده می‌شود"}
-            </p>
-            <p className="text-[12px] text-ink-secondary mt-1 line-clamp-3 whitespace-pre-wrap">
-              {caption || "متن کپشن…"}
-            </p>
-            {hashtags && (
-              <p className="text-[11px] text-accent mt-2 line-clamp-1">{hashtags}</p>
-            )}
-            <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-[10px] text-ink-tertiary">
-              <span>
-                {campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین"}
-              </span>
-              <span>
-                {scheduleMode === "now"
-                  ? "اکنون"
-                  : scheduleMode === "schedule"
-                    ? scheduleDate
-                      ? `${scheduleDate} - ${scheduleTime}`
-                      : "زمان‌بندی نشده"
-                    : "در صف انتشار"}
-              </span>
-            </div>
+          <PlatformPreviewTabs
+            caption={caption}
+            title={title}
+            hashtags={hashtags}
+            media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
+            selectedPlatforms={selectedPlatforms}
+          />
+          {/* Schedule info */}
+          <div className="mt-3 n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
+            <span>
+              {campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین"}
+            </span>
+            <span>
+              {scheduleMode === "now"
+                ? "اکنون"
+                : scheduleMode === "schedule"
+                  ? scheduleDate
+                    ? `${scheduleDate} - ${scheduleTime}`
+                    : "زمان‌بندی نشده"
+                  : "در صف انتشار"}
+            </span>
           </div>
         </div>
       </div>

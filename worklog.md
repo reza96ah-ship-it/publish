@@ -1590,3 +1590,31 @@ Stage Summary:
 - Files modified: prisma/schema.prisma (ContentComment, ContentVersion, Content approval fields), src/app/api/publish/route.ts (mode="review"), src/components/views/compose-view.tsx (wired "ارسال برای تأیید"), src/components/views/content-view.tsx (status badges + dropdown actions + filter).
 - Feature completeness: Approvals 5% → 35% (state machine + API + UI + compose integration; still missing: inline comments UI, version history, real-time presence, client portal).
 - Next: multi-platform preview tabs (editor E2), or continue with other Phase 0 items.
+
+---
+Task ID: IMPL-PREVIEW-V1
+Agent: Main Agent (Z.ai Code)
+Task: Build multi-platform preview tabs per R4 research (Phase E2: preview).
+
+Work Log:
+- Created `src/components/editor/platform-preview-tabs.tsx` — Planable/Buffer-style multi-platform live preview:
+  * **PlatformPreviewTabs** — tab bar with platform logos + char count chips (green/yellow/red based on limit). AnimatePresence for smooth tab transitions.
+  * **InstagramPreview** — authentic IG layout: gradient avatar ring, square media (1:1), action bar (Heart/Comment/Share/Bookmark), likes count, caption with "… بیشتر" truncation at 125 chars.
+  * **TelegramPreview** — channel message bubble: channel avatar + name, rounded message bubble with media, title, caption, view count + time. Reused for Rubika/Bale/Eitaa (similar messaging UX).
+  * **LinkedInPreview** — article card: professional avatar, text-above-media layout, 16:9 media, reactions bar (ThumbsUp/Repeat), "…دیدن بیشتر" truncation at 700 chars.
+  * Per-platform character limits: IG 2200, TG 4096, LinkedIn 3000, Rubika/Bale/Eitaa 4096.
+  * Active tab state with useEffect to reset when platform selection changes.
+- Replaced the old simple preview in `compose-view.tsx` with `<PlatformPreviewTabs>`. The old preview was a generic card; the new one shows platform-specific renderings.
+- The preview updates live as the user types (caption, title, hashtags, media all flow into the preview).
+- When no platforms are selected, defaults to Instagram tab. When platforms are selected (step 3), tabs appear for each selected platform.
+
+- **Agent Browser verification**:
+  * Compose view → IG tab active by default → IG preview renders: avatar "ن", username "نشرینو", "الان" timestamp, "بدون رسانه" (no media), "۱۲۴ پسند" (124 likes), caption text.
+  * Lint: 0 errors, 0 warnings.
+
+Stage Summary:
+- Multi-platform preview tabs are live: IG (square photo + actions), Telegram (channel bubble), LinkedIn (article card), Rubika/Bale/Eitaa (TG-style).
+- Files created: `src/components/editor/platform-preview-tabs.tsx`.
+- Files modified: `src/components/views/compose-view.tsx` (replaced old preview with PlatformPreviewTabs).
+- Feature completeness: Compose/Editor 45% → 55% (rich text + toolbar + char count + AI + tones + multi-platform preview; still missing: media upload, scheduling integration, autosave).
+- Next: media upload (E3), or continue with other features.
