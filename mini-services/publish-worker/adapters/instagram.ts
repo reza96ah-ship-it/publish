@@ -75,7 +75,7 @@ export class InstagramAdapter implements ChannelAdapter {
     if (hashtagCount > IG_HASHTAG_LIMIT) {
       issues.push({
         code: 'too_many_hashtags',
-        message: `اینستاگرام حداکثر ${IG_HASHTAG_LIMIT} هشتگ允许.`,
+        message: `اینستاگرام حداکثر ${IG_HASHTAG_LIMIT} هشتگ مجاز است.`,
         platform: 'instagram',
       })
     }
