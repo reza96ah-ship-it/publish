@@ -2,6 +2,7 @@
 
 **Last updated:** 2025-06-26
 **Phase:** Pre-Phase 1 (production-readiness plan defined, execution pending)
+**Version baseline:** See `docs/VERSION_BASELINE_2026.md` (Node 24 LTS, Next 16.2.9, Prisma 7.8, Postgres 18.4)
 
 ## Scorecard
 
@@ -49,5 +50,7 @@ Start Phase 1 — P0 Safety Blockers (1 week). See `docs/PRODUCTION_READINESS_MA
 
 - Full audit: `audit/AUDIT-PRODUCTION-READINESS.md` (896 lines)
 - Master plan: `docs/PRODUCTION_READINESS_MASTER_PLAN.md`
+- Version baseline: `docs/VERSION_BASELINE_2026.md` (stable pins, no experimental)
+- Architecture: `docs/ARCHITECTURE_MODULAR_MONOLITH.md` (11 domain modules, BFF pattern)
 - Roadmap: `docs/IMPLEMENTATION_ROADMAP.md`
-- Decision log: `docs/DECISION_LOG.md`
+- Decision log: `docs/DECISION_LOG.md` (15 architecture decisions)

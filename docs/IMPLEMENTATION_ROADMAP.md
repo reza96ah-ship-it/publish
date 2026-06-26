@@ -2,6 +2,8 @@
 
 **Last updated:** 2025-06-26
 **Source:** `docs/PRODUCTION_READINESS_MASTER_PLAN.md`
+**Version baseline:** `docs/VERSION_BASELINE_2026.md` (stable pins)
+**Architecture:** `docs/ARCHITECTURE_MODULAR_MONOLITH.md` (modular monolith, 11 domain modules)
 
 ## 10-Phase Roadmap to 9/10 Production Readiness
 

@@ -2218,3 +2218,50 @@ Stage Summary:
 - Phase 1 (P0 safety blockers) is the immediate next action: re-enable middleware, remove demo-mode, fix type errors, tighten CSP, encrypt tokens.
 - All docs in `docs/` + `audit/AUDIT-PRODUCTION-READINESS.md`.
 - No code changes made (research + planning only). Ready for Phase 1 execution.
+
+---
+Task ID: ARCH-2026-BASELINE
+Agent: Main Agent (Z.ai Code) — senior backend architect
+Task: Integrate modern 2026 architecture baseline (stable versions + modular monolith + BFF + domain modules).
+
+Work Log:
+- Created `docs/VERSION_BASELINE_2026.md` (~180 lines):
+  * Stable version pins for all layers (Node 24.18 LTS, Next 16.2.9, React 19.2.7, TS 6.0.3, Tailwind 4.3.1, Zod 4.4.3, NextAuth 4.24.14, Prisma 7.8.0, Postgres 18.4)
+  * Python backend option (FastAPI 0.138.1, Celery 5.6.3, Ruff 0.15.20) — only if specific need arises
+  * 10 architecture principles (modular monolith, BFF layer, domain modules, workers for all bg work, realtime, S3 storage, security, quality gates, observability, token-driven UI)
+  * Version migration plan (current → target)
+  * Prisma 6 → 7 migration notes (do alongside Postgres migration in Phase 4)
+  * Rules for version management (pin, audit, don't chase latest)
+
+- Created `docs/ARCHITECTURE_MODULAR_MONOLITH.md` (~350 lines):
+  * Full architecture diagram (Browser → Caddy → Next.js BFF → Domain Modules → Postgres + Redis → Workers + S3 + Observability)
+  * BFF/API layer pattern (thin route handlers → service modules; what routes do NOT do)
+  * 11 domain modules inventory (accounts, channels, content, media, campaigns, calendar, analytics, automations, notifications, billing, team)
+  * Module structure (service.ts + repository.ts + types.ts + __tests__)
+  * Module communication rules (call via services, not repositories)
+  * Example: content module (types + repository + service)
+  * Worker architecture: 6 BullMQ queues (publish-jobs, media-processing, analytics-sync, webhook-process, notifications, automations)
+  * Why BullMQ over DB-polling (comparison table)
+  * Instagram professional account integration (OAuth, permissions, container-based publishing, comment-to-DM automation, manual fallback)
+  * UI design token system (spacing, radius, glass, shadows, typography, RTL, dark mode, high contrast, component states, WCAG 2.2)
+  * Performance budgets table (bundle, LCP, INP, CLS, API p95, worker queue delay, image sizes)
+  * Gradual migration path (extract modules in Phase 8-10, one PR per module)
+
+- Appended 7 new decisions to `docs/DECISION_LOG.md` (D-009 through D-015):
+  * D-009: Stable version baseline (not "newest experimental")
+  * D-010: Modular monolith (not microservices, not flat template)
+  * D-011: BullMQ for all background work (6 queues)
+  * D-012: Instagram official Meta API only (no scraping)
+  * D-013: S3-compatible object storage (reaffirms D-006)
+  * D-014: Token-driven UI system (design tokens)
+  * D-015: Observability before launch (not after)
+
+- Updated `docs/CURRENT_STATUS.md` with version baseline reference + new doc links.
+- Updated `docs/IMPLEMENTATION_ROADMAP.md` with version baseline + architecture references.
+
+Stage Summary:
+- 2026 architecture baseline fully integrated into the production-readiness plan.
+- 3 new docs created (~820 lines total), 2 docs updated, 7 new decisions logged.
+- Key principles: stable versions (no experimental), modular monolith with 11 domain modules, BFF pattern (thin routes → services), BullMQ for all background work, Instagram official API only, S3 presigned uploads, token-driven UI, observability before launch.
+- Total decision log: 15 decisions (D-001 through D-015).
+- Ready for Phase 1 execution.

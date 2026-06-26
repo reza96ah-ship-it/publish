@@ -140,3 +140,104 @@ A record of significant architecture and engineering decisions. Each entry shoul
 - {Alternative 2} — {why rejected}
 **Consequences:** {What changes? What must be done?}
 ```
+
+---
+
+## D-009: Stable version baseline (not "newest experimental")
+
+**Date:** 2025-06-26
+**Status:** Accepted
+**Context:** The codebase uses various versions, some outdated, some bleeding-edge. We need a pinned stable baseline for production reliability.
+**Decision:** Pin to stable production releases as documented in `docs/VERSION_BASELINE_2026.md`. Specifically: Node.js 24.18 LTS (not Node 26 current), Next.js 16.2.9, React 19.2.7, TypeScript 6.0.3, Tailwind 4.3.1, Zod 4.4.3, NextAuth 4.24.14 (not Auth.js v5 beta), Prisma 7.8.0, PostgreSQL 18.4 (not 19 beta).
+**Why:** Production systems run on stable LTS. "Newest" often means beta/unstable. Auth.js v5 is still beta-tagged in many flows — staying on NextAuth 4.24.14 is safer. PostgreSQL 19 is beta — 18.4 is the production stable.
+**Alternatives considered:**
+- Chase "latest" versions — rejected (beta bugs, breaking changes, no security backports).
+- Stay on current versions (Next 16.1, Prisma 6.11) — acceptable for Phase 1, but upgrade to the baseline before Phase 4 (Postgres migration).
+**Consequences:** Prisma 6 → 7 is a major upgrade with breaking changes — do it alongside the Postgres migration (Phase 4). TypeScript 5 → 6 may surface new type errors — audit before upgrading.
+
+---
+
+## D-010: Modular monolith (not microservices, not flat template)
+
+**Date:** 2025-06-26
+**Status:** Accepted
+**Context:** The current `src/app/api/` is a flat collection of 36 route handlers with business logic inline. This doesn't scale — routes become fat, logic is duplicated, tests are hard.
+**Decision:** Refactor to a **modular monolith** with 11 domain modules (`src/modules/{name}/`). Each module has `service.ts` (business logic), `repository.ts` (Prisma queries), `types.ts` (types + Zod). API routes become thin: validate → authorize → call service → return.
+**Why:** Modular monolith gives strong boundaries without the operational overhead of microservices. Single deploy unit, shared types, easy debugging. Can extract to microservices later if scale demands. The BFF pattern (thin routes → services) keeps route handlers under 20 lines.
+**Alternatives considered:**
+- Microservices (one service per domain) — rejected (premature; adds network latency, RPC schema drift, ops complexity).
+- Keep flat structure — rejected (routes are already fat; duplication is growing).
+- Next.js Server Actions only (no API routes) — considered (good for mutations), but we need API routes for webhooks, SSE, and external integrations.
+**Consequences:** Gradual migration (Phase 8-10). Extract modules one at a time, each in a separate PR. No big-bang rewrite. See `docs/ARCHITECTURE_MODULAR_MONOLITH.md` for the full plan.
+
+---
+
+## D-011: BullMQ for all background work
+
+**Date:** 2025-06-26
+**Status:** Accepted (supersedes D-004 details)
+**Context:** The current worker DB-polls every 2s. This adds 2s latency, no prioritization, no dead-letter queue, no per-worker concurrency control, no observability.
+**Decision:** Migrate all background work to BullMQ (Redis-backed). Six queues: `publish-jobs`, `media-processing`, `analytics-sync`, `webhook-process`, `notifications`, `automations`.
+**Why:** BullMQ provides sub-second dispatch, per-queue concurrency, dead-letter queue, rate limiting, delayed jobs, prioritization, and a dashboard (`bullboard`). It also gives graceful shutdown for free. Any work that shouldn't block a page request (publishing, retries, media processing, IG automation, analytics sync, webhook processing, notifications) runs in a worker.
+**Alternatives considered:**
+- Stay on DB-polling — rejected (can't achieve <1s "publish now" latency).
+- Use AWS SQS — rejected (vendor lock-in; BullMQ + Redis is self-hosted).
+- Use Celery (Python) — rejected (we're TypeScript-native; adds a Python service).
+**Consequences:** Redis becomes a hard dependency (shared with rate limiter + socket.io adapter — same instance). Worker code changes from `while(true) poll` to `new Worker('queue', processor)`. Transition: drain old DB-polling jobs before switching.
+
+---
+
+## D-012: Instagram official Meta API only (no scraping)
+
+**Date:** 2025-06-26
+**Status:** Accepted
+**Context:** Instagram publishing can be done via official Meta API (for Business/Creator accounts) or via unofficial scraping/automation (password login, unofficial DM). The latter violates Meta's terms and risks account bans.
+**Decision:** Use **only** the official Meta Graph API for Instagram. OAuth flow, proper permissions, webhook handling, container-based publishing. Personal accounts get manual/reminder mode (no API publish). No scraping, no password login automation, no unofficial DM, no fake auto-publish claims.
+**Why:** Official API is the only sustainable path. Scraping gets accounts banned. Official API supports: publishing (posts/reels), comment management, insights, comment-to-DM automation. Limitations (personal accounts, 24h window) are documented and handled with manual fallback.
+**Alternatives considered:**
+- Unofficial scraping — rejected (ToS violation, account bans, legal risk).
+- Only support Business/Creator accounts (drop personal) — considered, but rejected (many Iranian users have personal accounts; manual mode is a valid fallback).
+**Consequences:** Must implement proper OAuth flow (Meta App Dashboard setup). Must subscribe to webhooks for comment automation. Must handle rate limits and the 24h messaging window. Personal accounts get a "manual publish" reminder UI.
+
+---
+
+## D-013: S3-compatible object storage (not local disk)
+
+**Date:** 2025-06-26
+**Status:** Accepted (reaffirms D-006 with S3-compatible specificity)
+**Context:** Media currently uploads to `public/uploads/` (local disk). Doesn't scale, no CDN, no lifecycle policies, 10MB Next.js body limit.
+**Decision:** Use S3-compatible object storage (AWS S3, Cloudflare R2, or self-hosted MinIO). Client uploads directly via presigned URL (bypasses Next.js server). CDN serves images from edge. Lifecycle policies: originals → IA after 30 days → Glacier after 90 days.
+**Why:** Presigned URLs bypass the Next.js body limit and memory pressure. S3 provides CDN, versioning, server-side encryption, lifecycle policies. Per-workspace quota is easy to enforce (check before presign). R2 has zero egress fees (good for CDN).
+**Alternatives considered:**
+- Cloudinary/imgix — rejected (cost, vendor lock-in).
+- Vercel Blob — rejected (we're self-hosted).
+- Local disk + NFS — rejected (slow, fragile, no CDN).
+**Consequences:** Adds `@aws-sdk/client-s3` dependency. `Media.url` points to CDN. Need `POST /api/media/presign` + `POST /api/media/confirm` (replaces `POST /api/media/upload`). ClamAV scan happens on confirm.
+
+---
+
+## D-014: Token-driven UI system (design tokens)
+
+**Date:** 2025-06-26
+**Status:** Accepted
+**Context:** The current UI uses ad-hoc Tailwind classes. Dark mode works but is not token-driven. RTL uses physical properties in some places. No high-contrast mode.
+**Decision:** Implement a token-driven UI system via Tailwind 4 `@theme` directive. Tokens for: spacing (4px scale), radius, glass blur, shadows, buttons, tags, typography, RTL (logical properties), dark mode (CSS variables), high contrast (`prefers-contrast: high`).
+**Why:** Tokens ensure consistency. Logical properties (`ms-2` not `ml-2`) are RTL-native. CSS variables enable dark mode + high contrast without recompilation. WCAG 2.2 AA minimum, AAA where possible.
+**Alternatives considered:**
+- Keep ad-hoc classes — rejected (inconsistency grows).
+- Use a design-system library (Mantine, Chakra) — rejected (we're on shadcn/ui; adding another system creates conflict).
+**Consequences:** Refactor globals.css to use `@theme` with all tokens. Audit components for physical properties (`ml-`, `mr-`, `pl-`, `pr-`) → replace with logical (`ms-`, `me-`, `ps-`, `pe-`). Add `prefers-reduced-motion` and `prefers-contrast: high` media queries.
+
+---
+
+## D-015: Observability before launch (not after)
+
+**Date:** 2025-06-26
+**Status:** Accepted
+**Context:** The current app has no structured logs, no metrics, no tracing, no error tracking, no `/api/health`. If something breaks in production, we're flying blind.
+**Decision:** Add full observability in Phase 2 (before any production traffic): pino structured logs with request IDs, Sentry error tracking, Prometheus metrics endpoint, OpenTelemetry tracing, `/api/health` + `/api/readyz` endpoints, worker health endpoint, BullMQ dashboard.
+**Why:** Without observability, mean-time-to-detect (MTTD) is hours (user reports "it's broken"). With observability, MTTD is minutes (Sentry alert). Structured logs with request IDs let you trace a single request across services. Metrics let you spot trends (publish success rate dropping). Tracing lets you find the slow span.
+**Alternatives considered:**
+- Add observability "after launch when we have traffic" — rejected (you can't debug what you can't see; first users will hit bugs you can't diagnose).
+- Use only console.log + manual log review — rejected (doesn't scale, no search, no alerting).
+**Consequences:** Adds pino, @sentry/nextjs, prom-client, @opentelemetry/sdk-node dependencies. All `console.log` calls replaced with `logger.info` (pino). CI checks for structured log format.
