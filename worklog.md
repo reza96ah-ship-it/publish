@@ -1757,3 +1757,45 @@ Stage Summary:
 - Chart: 4 fixes applied (pulse center, incomplete line, stroke uniformity, gridline consistency)
 - AI: upgraded from 7-tone simple → full system (roles + goals + lengths + regeneration + drafts + multi-platform + SSE heartbeat + enriched hashtags + hallucination prevention)
 - Files: shared.tsx (chart), gemini.ts (AI backend), types.ts (new), caption-assistant.tsx (full rewrite), caption route.ts (SSE heartbeat), hashtags route.ts (enriched), drafts route.ts + [id] (new), caption-multi route.ts (new)
+
+---
+Task ID: AI-V2-FULL-PROMPT
+Agent: Main Agent (Z.ai Code)
+Task: Implement full 12-section prompt architecture per 09_AI_TUNING_AND_PROMPT_ENGINEERING.md.
+
+Work Log:
+- Replaced simple buildCaptionSystem with full 12-section architecture:
+  1. Creator role (most important — determines structure)
+  2. Content goal (determines CTA + hook style)
+  3. Content fidelity block (6-section anti-hallucination: no fabricated products, no productName construction, real specs for known products only, publisher name in signature only)
+  4. Anti-AI-smell block (12 anti-patterns with wrong-vs-right examples, including ban on section labels, generic greetings, mixed register, cliché benefits)
+  5. Hook formulas block (12 proven hooks + role→hook mapping)
+  6. Length control (char range + anti-bloat warning)
+  7. Voice examples (conditional few-shot style transfer — brand voice learning)
+  8. Persian language rules (6 sections: letter forms with Unicode code points, ZWNJ rules, Persian punctuation, Persian numerals, SOV grammar + pro-drop, natural writing anti-calque)
+  9. Tone guidance (7 tones with register field: معیار/شکسته‌نویسی/نیمه‌رسمی)
+  10. Platform guidance (6 platforms with per-platform rules: length, emoji, hashtags, CTA, tone, Iranian messenger specifics)
+  11. Publisher context (renamed to "نام ناشر فقط برای امضاست، نه نام محصول")
+  12. Output format (no preambles, no quotes, no meta-commentary)
+  13. Self-review block (4-category pre-flight checklist: anti-AI-smell, content fidelity, role/goal alignment, language/grammar)
+- Added `reasoning_effort: 'low'` to both gapgptComplete + gapgptStream — 10× speedup for reasoning models
+- Added `X-Accel-Buffering: no` header to SSE routes (disables nginx buffering)
+- Added `Cache-Control: no-cache, no-transform` + `charset=utf-8` to SSE headers
+- Added `voiceExamples` param to buildCaptionSystem + streamCaption + generateCaption
+- Verified: curl test with store/sell/sales role produces natural Persian caption with real product specs, no greeting, no section labels. Lint clean.
+
+Stage Summary:
+- AI system now matches 09_AI_TUNING_AND_PROMPT_ENGINEERING.md spec:
+  * 12-section prompt architecture with ═══ delimiters
+  * reasoning_effort: 'low' (10× speedup)
+  * Anti-hallucination (CONTENT_FIDELITY_BLOCK)
+  * Anti-AI-smell (12 patterns, ANTI_AI_SMELL_BLOCK)
+  * Hook formulas (12 patterns, HOOK_FORMULAS_BLOCK)
+  * Self-review checklist (SELF_REVIEW_BLOCK)
+  * Output format constraints (OUTPUT_FORMAT_BLOCK)
+  * Persian language rules (PERSIAN_LANGUAGE_RULES — 6 sections with Unicode code points)
+  * Register field per tone (معیار/شکسته‌نویسی/نیمه‌رسمی)
+  * Platform-specific guidance (6 platforms)
+  * Voice examples (few-shot brand voice transfer)
+  * X-Accel-Buffering: no header
+  * SSE heartbeat (immediate + every 2s)
