@@ -1,9 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import {
   CalendarDays,
   ChevronRight,
@@ -12,6 +23,7 @@ import {
   Clock3,
   ListChecks,
   Plus,
+  CalendarClock,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -32,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { JalaliDatePicker } from "@/components/ui/jalali-picker";
 import { cn } from "@/lib/utils";
 
 interface CalendarJob {
@@ -82,9 +95,40 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function CalendarView() {
-  const { calendarCursor, setCalendarCursor } = useAppStore();
+  const { calendarCursor, setCalendarCursor, setActiveView } = useAppStore();
   const [view, setView] = useState<"month" | "week" | "agenda">("month");
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<Date | null>(null);
+  const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null);
+  const queryClient = useQueryClient();
+
+  // DnD sensors — distance:6 lets pure clicks (open sheet) through while enabling drag
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    })
+  );
+
+  // Reschedule mutation — PATCH /api/publish-jobs/[id] { action: 'reschedule', scheduledAt }
+  const rescheduleMutation = useMutation({
+    mutationFn: async ({ jobId, scheduledAt }: { jobId: string; scheduledAt: Date }) => {
+      return api.patch(`/api/publish-jobs/${jobId}`, {
+        action: "reschedule",
+        scheduledAt: scheduledAt.toISOString(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("زمان‌بندی به‌روزرسانی شد");
+      queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      queryClient.invalidateQueries({ queryKey: ["publish-jobs"] });
+      setEditingSchedule(null);
+      setSelectedJob(null);
+      announce("زمان‌بندی به‌روزرسانی شد");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "خطا در به‌روزرسانی زمان‌بندی");
+    },
+  });
 
   const { data: jobs, isLoading } = useQuery<CalendarJob[]>({
     queryKey: ["calendar", calendarCursor.year, calendarCursor.month],
@@ -148,6 +192,28 @@ export function CalendarView() {
   };
 
   const monthName = JALALI_MONTHS[calendarCursor.month - 1];
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const jobId = event.active.id as string;
+    const job = (jobs ?? []).find((j) => j.id === jobId);
+    if (job) {
+      setActiveDrag({ id: jobId, title: job.title });
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDrag(null);
+    if (!over) return;
+    const jobId = active.id as string;
+    const dropId = String(over.id);
+    if (!dropId.startsWith("day-")) return;
+    const dropDateIso = dropId.replace("day-", "");
+    const dropDate = new Date(dropDateIso);
+    if (Number.isNaN(dropDate.getTime())) return;
+    dropDate.setHours(12, 0, 0, 0); // noon local time
+    rescheduleMutation.mutate({ jobId, scheduledAt: dropDate });
+  };
 
   return (
     <motion.div
@@ -215,16 +281,31 @@ export function CalendarView() {
             </div>
 
             {/* Day cells */}
-            <div className="grid grid-cols-7 gap-1">
-              {cells.map((cell, idx) => (
-                <DayCell
-                  key={idx}
-                  cell={cell}
-                  jobs={jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []}
-                  onSelectJob={setSelectedJob}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={() => setActiveDrag(null)}
+            >
+              <div className="grid grid-cols-7 gap-1">
+                {cells.map((cell, idx) => (
+                  <DayCell
+                    key={idx}
+                    cell={cell}
+                    jobs={jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []}
+                    onSelectJob={setSelectedJob}
+                    activeDragId={activeDrag?.id ?? null}
+                  />
+                ))}
+              </div>
+              <DragOverlay>
+                {activeDrag ? (
+                  <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-[10px] font-[700] shadow-xl max-w-56 truncate">
+                    {activeDrag.title}
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           </div>
         </TabsContent>
 
@@ -260,9 +341,9 @@ export function CalendarView() {
                 message="با ایجاد اولین رویداد، برنامه انتشار این ماه را آغاز کنید."
                 illustration="calendar"
                 action={
-                  <Button size="sm" onClick={() => toast.info("ایجاد رویداد به‌زودی فعال خواهد شد.")}>
+                  <Button size="sm" onClick={() => setActiveView("compose")}>
                     <Plus className="size-4" />
-                    ایجاد رویداد
+                    ایجاد محتوا
                   </Button>
                 }
               />
@@ -358,12 +439,48 @@ export function CalendarView() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => {
-                    toast.info("ویرایش زمان‌بندی به‌زودی فعال خواهد شد.");
-                  }}
+                  onClick={() => setActiveView("compose")}
                 >
-                  ویرایش زمان‌بندی
+                  ایجاد محتوای جدید
                 </Button>
+              </div>
+
+              {/* Reschedule section — uses JalaliDatePicker popover */}
+              <div className="rounded-xl border border-border bg-surface-subtle p-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="size-4 text-accent" />
+                  <p className="text-[12px] font-[600] text-ink-primary">تغییر زمان‌بندی</p>
+                </div>
+                <JalaliDatePicker
+                  value={editingSchedule ?? new Date(selectedJob.scheduledAt)}
+                  onChange={(d) => {
+                    if (d) setEditingSchedule(d);
+                  }}
+                  showTime
+                  inline
+                  placeholder="انتخاب تاریخ و ساعت جدید"
+                  className="w-full"
+                />
+                {editingSchedule && (
+                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                    <span className="text-ink-tertiary">
+                      جدید: {formatJalali(editingSchedule, true)} • {formatJalaliTime(editingSchedule)}
+                    </span>
+                    <Button
+                      size="sm"
+                      className="h-7 text-[11px]"
+                      disabled={rescheduleMutation.isPending}
+                      onClick={() =>
+                        rescheduleMutation.mutate({
+                          jobId: selectedJob.id,
+                          scheduledAt: editingSchedule,
+                        })
+                      }
+                    >
+                      {rescheduleMutation.isPending ? "در حال ذخیره..." : "ذخیره زمان جدید"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -377,19 +494,29 @@ function DayCell({
   cell,
   jobs,
   onSelectJob,
+  activeDragId,
   tall = false,
 }: {
   cell: CalendarCell;
   jobs: CalendarJob[];
   onSelectJob: (j: CalendarJob) => void;
+  activeDragId?: string | null;
   tall?: boolean;
 }) {
   const day = toPersianDigits(cell.jalali.day);
+  const dropId = `day-${cell.date.toISOString()}`;
+  const { setNodeRef, isOver } = useDroppable({
+    id: dropId,
+    data: { date: cell.date },
+  });
   return (
     <div
+      ref={setNodeRef}
+      aria-label={`انتقال به ${day} ${JALALI_MONTHS[cell.jalali.month - 1]}`}
       className={cn(
         "rounded-xl border p-1.5 transition-colors relative",
         tall ? "min-h-32" : "min-h-20 sm:min-h-24",
+        isOver && "ring-2 ring-accent ring-offset-1",
         cell.isToday
           ? "border-accent ring-1 ring-accent/30 bg-accent-soft"
           : cell.holiday
@@ -423,18 +550,12 @@ function DayCell({
       </div>
       <div className="space-y-0.5">
         {jobs.slice(0, tall ? 5 : 3).map((job) => (
-          <button
+          <JobChip
             key={job.id}
-            onClick={() => onSelectJob(job)}
-            className={cn(
-              "n-focus-ring w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform",
-              PLATFORM_CHIP[job.platform] ?? "bg-slate-100 text-slate-700 border-slate-200"
-            )}
-            title={job.title}
-          >
-            <Clock3 className="size-2.5 shrink-0" />
-            <span className="truncate">{job.title}</span>
-          </button>
+            job={job}
+            onSelectJob={onSelectJob}
+            isDimmed={activeDragId === job.id}
+          />
         ))}
         {jobs.length > (tall ? 5 : 3) && (
           <p className="text-[9px] text-ink-tertiary px-1.5">
@@ -443,6 +564,39 @@ function DayCell({
         )}
       </div>
     </div>
+  );
+}
+
+function JobChip({
+  job,
+  onSelectJob,
+  isDimmed,
+}: {
+  job: CalendarJob;
+  onSelectJob: (j: CalendarJob) => void;
+  isDimmed: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: job.id,
+    data: { jobId: job.id, scheduledAt: job.scheduledAt },
+  });
+  return (
+    <button
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      onClick={() => onSelectJob(job)}
+      aria-label="کشیدن برای جابجایی"
+      title={job.title}
+      className={cn(
+        "n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing",
+        PLATFORM_CHIP[job.platform] ?? "bg-slate-100 text-slate-700 border-slate-200",
+        (isDragging || isDimmed) && "opacity-30"
+      )}
+    >
+      <Clock3 className="size-2.5 shrink-0" />
+      <span className="truncate">{job.title}</span>
+    </button>
   );
 }
 

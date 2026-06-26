@@ -4,14 +4,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
+import { validateBody, inboxAssignSchema, validateId } from "@/lib/validations";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idCheck = validateId(rawId);
+  if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
+  const id = idCheck.data;
+
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
-  const { assigneeId } = body;
+  const validation = validateBody(inboxAssignSchema, body);
+  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 });
+  const { assigneeId } = validation.data;
 
   const message = await db.inboxMessage.findFirst({
     where: { id, workspaceId },

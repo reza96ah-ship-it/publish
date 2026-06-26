@@ -154,5 +154,22 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/auth/signin",
   },
-  secret: process.env.NEXTAUTH_SECRET || "nashrino-dev-secret-change-in-production",
+  secret: (() => {
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error(
+          "NEXTAUTH_SECRET environment variable is required in production. " +
+            "Generate one with: openssl rand -base64 32"
+        );
+      }
+      // Dev-only fallback (so local dev works without an .env entry).
+      console.warn(
+        "[auth] NEXTAUTH_SECRET missing — using insecure dev fallback. " +
+          "Set NEXTAUTH_SECRET in .env for production."
+      );
+      return "nashrino-dev-secret-change-in-production";
+    }
+    return secret;
+  })(),
 };

@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
+import { validateParams, mediaUploadQuerySchema } from "@/lib/validations";
 import sharp from "sharp";
 import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
@@ -28,6 +29,13 @@ export async function POST(req: NextRequest) {
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) {
     return NextResponse.json({ error: "workspace not found" }, { status: 404 });
+  }
+
+  // Validate ?fileName= query string (max 200 chars, optional)
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const queryCheck = validateParams(mediaUploadQuerySchema, query);
+  if (!queryCheck.success) {
+    return NextResponse.json({ error: queryCheck.error }, { status: 400 });
   }
 
   try {

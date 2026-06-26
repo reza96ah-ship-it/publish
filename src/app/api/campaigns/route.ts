@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getWorkspaceId } from '@/lib/server'
+import { validateBody, campaignCreateSchema } from '@/lib/validations'
 
 export async function GET() {
   const workspaceId = await getWorkspaceId()
@@ -29,4 +30,45 @@ export async function GET() {
     goalType: c.goalType,
     goalValue: c.goalValue,
   })))
+}
+
+// POST — create a new campaign
+export async function POST(req: NextRequest) {
+  const workspaceId = await getWorkspaceId()
+  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+
+  const body = await req.json().catch(() => null)
+  if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
+
+  const validation = validateBody(campaignCreateSchema, body)
+  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
+  const { name, description, color } = validation.data
+
+  const campaign = await db.campaign.create({
+    data: {
+      workspaceId,
+      name,
+      description: description ?? null,
+      healthColor: color ?? undefined,
+    },
+  })
+
+  return NextResponse.json({
+    id: campaign.id,
+    name: campaign.name,
+    description: campaign.description,
+    status: campaign.status,
+    healthLabel: campaign.healthLabel,
+    healthColor: campaign.healthColor,
+    owner: campaign.ownerName,
+    daysRemaining: campaign.daysRemaining,
+    pubProgress: campaign.pubProgress,
+    goalCompletion: campaign.goalCompletion,
+    platforms: [],
+    topBlocker: campaign.topBlocker,
+    startDate: campaign.startDate,
+    endDate: campaign.endDate,
+    goalType: campaign.goalType,
+    goalValue: campaign.goalValue,
+  }, { status: 201 })
 }

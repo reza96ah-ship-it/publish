@@ -1,13 +1,24 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getWorkspaceId } from '@/lib/server'
+import { validateParams, contentListQuerySchema } from '@/lib/validations'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const workspaceId = await getWorkspaceId()
   if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
 
+  // Validate ?status= and ?campaignId= query params (both optional)
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries())
+  const queryCheck = validateParams(contentListQuerySchema, query)
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
+  const { status, campaignId } = queryCheck.data
+
   const items = await db.content.findMany({
-    where: { workspaceId },
+    where: {
+      workspaceId,
+      ...(status ? { status } : {}),
+      ...(campaignId ? { campaignId } : {}),
+    },
     include: {
       platforms: { include: { platform: { select: { type: true } } } },
       campaign: { select: { name: true } },

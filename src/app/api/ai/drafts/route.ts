@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
+import { validateBody, aiDraftSchema } from "@/lib/validations";
 
 // GET — list drafts
 export async function GET() {
@@ -52,10 +53,15 @@ export async function POST(req: NextRequest) {
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
-  const body = await req.json();
-  const { title, body: captionBody, hashtags, platform, tone, role, goal, length } = body;
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });
 
-  if (!captionBody || typeof captionBody !== "string" || captionBody.trim().length === 0) {
+  const validation = validateBody(aiDraftSchema, body);
+  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 });
+  const { title, body: captionBody, hashtags, platform, tone, role, goal, length } = validation.data;
+
+  // Zod min(1) catches empty string; also reject whitespace-only to preserve old behavior.
+  if (!captionBody.trim()) {
     return NextResponse.json({ error: "متن کپشن خالی است" }, { status: 400 });
   }
 

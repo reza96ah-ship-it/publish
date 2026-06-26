@@ -2,15 +2,18 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getWorkspaceId } from '@/lib/server'
 import { randomUUID } from 'crypto'
+import { rescheduleSchema, validateBody } from '@/lib/validations'
 
-interface PatchBody {
-  action: 'retry' | 'discard'
-}
+type PatchBody =
+  | { action: 'retry' }
+  | { action: 'discard' }
+  | { action: 'reschedule'; scheduledAt: string }
 
 /**
  * PATCH /api/publish-jobs/[id]
  * - retry: re-arm idempotency key (new), reset retryCount, set status=pending
  * - discard: set status=failed permanently, clear scheduledAt
+ * - reschedule: change scheduledAt to a new future timestamp (used by calendar drag-drop)
  */
 export async function PATCH(
   req: Request,
@@ -22,12 +25,14 @@ export async function PATCH(
   }
 
   const { id } = await params
-  let body: PatchBody
+  let raw: unknown
   try {
-    body = (await req.json()) as PatchBody
+    raw = await req.json()
   } catch {
     return NextResponse.json({ error: 'بدنه درخواست نامعتبر است' }, { status: 400 })
   }
+
+  const body = raw as PatchBody
 
   const job = await db.publishJob.findFirst({
     where: { id, workspaceId },
@@ -36,6 +41,31 @@ export async function PATCH(
     return NextResponse.json({ error: 'کار یافت نشد' }, { status: 404 })
   }
 
+  // ── reschedule ── (validated)
+  if (body.action === 'reschedule') {
+    const parsed = validateBody(rescheduleSchema, body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
+    const updated = await db.publishJob.update({
+      where: { id },
+      data: {
+        scheduledAt: new Date(parsed.data.scheduledAt),
+        status: job.status === 'failed' ? 'scheduled' : job.status,
+        processLabel: 'زمان‌بندی مجدد شد',
+        error: null,
+      },
+    })
+    return NextResponse.json({
+      ok: true,
+      jobId: updated.id,
+      status: updated.status,
+      scheduledAt: updated.scheduledAt?.toISOString(),
+      message: 'زمان‌بندی با موفقیت به‌روزرسانی شد',
+    })
+  }
+
+  // ── retry ──
   if (body.action === 'retry') {
     const updated = await db.publishJob.update({
       where: { id },
@@ -45,8 +75,8 @@ export async function PATCH(
         progress: 0,
         processLabel: 'در انتظار تلاش مجدد',
         error: null,
-        idempotencyKey: randomUUID(), // new key for idempotent retry
-        scheduledAt: null, // process immediately
+        idempotencyKey: randomUUID(),
+        scheduledAt: null,
         startedAt: null,
         completedAt: null,
         externalId: null,
@@ -60,6 +90,7 @@ export async function PATCH(
     })
   }
 
+  // ── discard ──
   if (body.action === 'discard') {
     const updated = await db.publishJob.update({
       where: { id },
@@ -78,5 +109,8 @@ export async function PATCH(
     })
   }
 
-  return NextResponse.json({ error: 'action نامعتبر است (retry یا discard)' }, { status: 400 })
+  return NextResponse.json(
+    { error: 'action نامعتبر است (retry، discard یا reschedule)' },
+    { status: 400 },
+  )
 }

@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 import { api } from "@/lib/api";
-import { toPersianDigits, formatJalaliTime } from "@/lib/jalali";
+import { toPersianDigits, formatJalali, formatJalaliTime } from "@/lib/jalali";
 import { announce } from "@/lib/aria-live";
 import { SectionTitle, PlatformIcon, PlatformBadge, Skeleton, LoadingState, EmptyState } from "@/components/dashboard/shared";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { JalaliDatePicker } from "@/components/ui/jalali-picker";
 import {
   Select,
   SelectTrigger,
@@ -91,8 +92,9 @@ interface PublishPayload {
   platformTypes: string[];
   platformCaptions: Record<string, string>;
   scheduleMode: "now" | "schedule" | "queue";
-  scheduleDate?: string;
-  scheduleTime?: string;
+  scheduleDate?: string; // ISO yyyy-mm-dd (gregorian, for API contract)
+  scheduleTime?: string; // HH:mm
+  scheduledAt?: string | null; // full ISO
   thumbnail: string | null;
 }
 
@@ -108,8 +110,8 @@ export function ComposeView() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({});
   const [scheduleMode, setScheduleMode] = useState<"now" | "schedule" | "queue">("now");
-  const [scheduleDate, setScheduleDate] = useState("");
-  const [scheduleTime, setScheduleTime] = useState("12:00");
+  // Single source of truth — a real Date object from the Jalali picker
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
 
   // AI sheet state
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
@@ -187,8 +189,8 @@ export function ComposeView() {
         campaign: payload.campaignName,
         platforms: payload.platformTypes,
         scheduledAt:
-          payload.scheduleMode === "schedule" && payload.scheduleDate
-            ? new Date(`${payload.scheduleDate}T${payload.scheduleTime ?? "12:00"}:00`).toISOString()
+          payload.scheduleMode === "schedule" && payload.scheduledAt
+            ? payload.scheduledAt
             : null,
         publishedAt:
           payload.scheduleMode === "now" ? new Date().toISOString() : null,
@@ -237,8 +239,7 @@ export function ComposeView() {
         platformTypes: selectedPlatforms,
         platformCaptions,
         scheduleMode,
-        scheduleDate: scheduleMode === "schedule" ? scheduleDate : undefined,
-        scheduleTime: scheduleMode === "schedule" ? scheduleTime : undefined,
+        scheduledAt: scheduleMode === "schedule" ? scheduledAt?.toISOString() ?? null : null,
         thumbnail: selectedMedia[0]?.thumbnail ?? null,
       } as PublishPayload & { mode: string };
       (payload as any).mode = "review";
@@ -249,7 +250,7 @@ export function ComposeView() {
           toast.success("محتوا برای تأیید ارسال شد", { id: toastId });
           setTitle(""); setCaption(""); setHashtags(""); setNote("");
           setCampaignId(""); setSelectedMedia([]); setSelectedPlatforms([]);
-          setPlatformCaptions({}); setScheduleMode("now"); setActiveStep(0);
+          setPlatformCaptions({}); setScheduleMode("now"); setScheduledAt(null); setActiveStep(0);
         },
         onError: (err) => {
           toast.error(err.message || "خطا در ارسال", { id: toastId });
@@ -272,8 +273,7 @@ export function ComposeView() {
       platformTypes: selectedPlatforms,
       platformCaptions,
       scheduleMode,
-      scheduleDate: scheduleMode === "schedule" ? scheduleDate : undefined,
-      scheduleTime: scheduleMode === "schedule" ? scheduleTime : undefined,
+      scheduledAt: scheduleMode === "schedule" ? scheduledAt?.toISOString() ?? null : null,
       thumbnail: selectedMedia[0]?.thumbnail ?? null,
     };
 
@@ -292,7 +292,7 @@ export function ComposeView() {
         setSelectedMedia([]);
         setSelectedPlatforms([]);
         setPlatformCaptions({});
-        setScheduleMode("now");
+        setScheduleMode("now"); setScheduledAt(null);
         setActiveStep(0);
       },
       onError: (err) => {
@@ -483,18 +483,15 @@ export function ComposeView() {
                 </button>
               ))}
               {scheduleMode === "schedule" && (
-                <div className="flex items-center gap-2 ms-2">
-                  <Input
-                    type="date"
-                    value={scheduleDate}
-                    onChange={(e) => setScheduleDate(e.target.value)}
-                    className="h-8 w-auto text-[11px]"
-                  />
-                  <Input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="h-8 w-auto text-[11px]"
+                <div className="flex items-center gap-2 ms-2 min-w-[220px]">
+                  <JalaliDatePicker
+                    value={scheduledAt}
+                    onChange={setScheduledAt}
+                    showTime
+                    placeholder="انتخاب تاریخ و ساعت"
+                    size="sm"
+                    variant="soft"
+                    className="flex-1"
                   />
                 </div>
               )}
@@ -531,8 +528,8 @@ export function ComposeView() {
                 {scheduleMode === "now"
                   ? "اکنون"
                   : scheduleMode === "schedule"
-                    ? scheduleDate
-                      ? `${scheduleDate} - ${scheduleTime}`
+                    ? scheduledAt
+                      ? `${formatJalali(scheduledAt, true)} • ${formatJalaliTime(scheduledAt)}`
                       : "زمان‌بندی نشده"
                     : "در صف انتشار"}
               </span>
@@ -847,86 +844,4 @@ function StepPlatform({
   );
 }
 
-/* ── Step 4: Schedule ── */
-function StepSchedule({
-  mode,
-  setMode,
-  date,
-  setDate,
-  time,
-  setTime,
-}: {
-  mode: "now" | "schedule" | "queue";
-  setMode: (m: "now" | "schedule" | "queue") => void;
-  date: string;
-  setDate: (v: string) => void;
-  time: string;
-  setTime: (v: string) => void;
-}) {
-  const options = [
-    { id: "now" as const, label: "اکنون", desc: "بلافاصله پس از انتشار، ارسال شود", icon: Send },
-    { id: "schedule" as const, label: "زمان‌بندی", desc: "تاریخ و ساعت دقیق را مشخص کنید", icon: CalendarClock },
-    { id: "queue" as const, label: "افزودن به صف", desc: "طبق اولویت صف انتشار منتشر شود", icon: Layers },
-  ];
-  return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {options.map((opt) => {
-          const Icon = opt.icon;
-          const active = mode === opt.id;
-          return (
-            <button
-              key={opt.id}
-              onClick={() => setMode(opt.id)}
-              className={cn(
-                "n-focus-ring rounded-2xl border p-4 text-right transition-all",
-                active
-                  ? "border-accent/30 bg-accent-soft"
-                  : "border-border bg-surface-subtle hover:bg-surface-hover"
-              )}
-            >
-              <Icon className={cn("size-5 mb-2", active ? "text-accent" : "text-ink-tertiary")} />
-              <p className="text-[13px] font-[600] text-ink-primary">{opt.label}</p>
-              <p className="text-[11px] text-ink-tertiary mt-0.5">{opt.desc}</p>
-            </button>
-          );
-        })}
-      </div>
-
-      {mode === "schedule" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-          <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">تاریخ (شمسی)</Label>
-            <Input
-              dir="ltr"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              placeholder="1403/09/14"
-              className="text-left"
-            />
-            <p className="text-[10px] text-ink-tertiary mt-1">به‌فرمت سال/ماه/روز شمسی</p>
-          </div>
-          <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">ساعت</Label>
-            <Input
-              dir="ltr"
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className="text-left"
-            />
-            <p className="text-[10px] text-ink-tertiary mt-1">پیش‌نمایش: {time ? formatJalaliTime(new Date(`1970-01-01T${time}:00`)) : "—"}</p>
-          </div>
-        </div>
-      )}
-
-      {mode === "queue" && (
-        <div className="n-card-compact p-4 mt-2">
-          <p className="text-[12px] text-ink-secondary">
-            محتوا به انتهای صف انتشار افزوده می‌شود. اولویت طبق تنظیمات کمپین و ساعات اوج مخاطب تعیین می‌گردد.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
+/* (Legacy StepSchedule removed — replaced by inline JalaliDatePicker in schedule section) */

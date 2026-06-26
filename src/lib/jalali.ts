@@ -124,8 +124,35 @@ export function toJalali(date: Date): JalaliDate {
 }
 
 export function jalaliToDate(jy: number, jm: number, jd: number): Date {
-  const [gy, gm, gd] = jalaliToGregorianHelper(jy, jm, jd)
-  return new Date(gy, gm - 1, gd)
+  // Find the Gregorian date of Persian new year (1/1) of year jy.
+  // Persian new year falls on March 19, 20, 21, or 22 of Gregorian year (jy + 621).
+  // We rely on the (correct) toJalali implementation to anchor the year, then add
+  // (jm-1) months + (jd-1) days of Persian-calendar offsets. Persian months 1-6
+  // have 31 days, 7-11 have 30 days, 12 has 29 or 30 (we don't need to know Esfand's
+  // length unless jm === 13, which is invalid).
+  const date = new Date(jy + 621, 2, 20); // March 20 of (jy + 621) — around Persian new year
+
+  // Move forward until toJalali(date).year === jy (handles leap-year drift)
+  let guard = 0;
+  while (toJalali(date).year < jy && guard < 10) {
+    date.setDate(date.getDate() + 1);
+    guard++;
+  }
+  guard = 0;
+  while (toJalali(date).year > jy && guard < 10) {
+    date.setDate(date.getDate() - 1);
+    guard++;
+  }
+  // Now `date` is Persian 1/1 of year jy.
+
+  // Add (jm - 1) Persian months + (jd - 1) days.
+  // Months 1-6 = 31 days, 7-11 = 30 days. (We don't touch month 12's length here.)
+  const daysFromStart = jm <= 6
+    ? 31 * (jm - 1) + (jd - 1)
+    : 31 * 6 + 30 * (jm - 7) + (jd - 1);
+
+  date.setDate(date.getDate() + daysFromStart);
+  return date;
 }
 
 export function formatJalali(date: Date, withWeekday = false): string {

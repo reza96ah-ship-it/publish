@@ -102,6 +102,53 @@ export const platformConnectSchema = z.object({
   name: z.string().max(100).optional(),
 });
 
+// ── Publish Jobs (reschedule) ───────────────────────────────────────────────
+
+export const rescheduleSchema = z.object({
+  action: z.literal("reschedule"),
+  scheduledAt: z.string()
+    .refine((s) => !isNaN(Date.parse(s)), "تاریخ معتبر نیست")
+    .refine((s) => new Date(s).getTime() > Date.now() - 60_000, "تاریخ باید در آینده باشد"),
+});
+
+// ── Campaigns ───────────────────────────────────────────────────────────────
+
+export const campaignCreateSchema = z.object({
+  name: z.string({ error: "نام کمپین الزامی است" }).trim().min(1, "نام کمپین الزامی است").max(100, "نام کمپین نباید از ۱۰۰ کاراکتر بیشتر باشد"),
+  description: z.string().max(500, "توضیحات خیلی طولانی است").optional(),
+  color: z.string().max(20).optional(),
+  platformTypes: z.array(platformTypeSchema).optional(),
+});
+
+// ── Query-string schemas (GET params) ───────────────────────────────────────
+
+export const contentListQuerySchema = z.object({
+  status: z.enum(["draft", "scheduled", "published", "review", "rejected"], { error: "وضعیت نامعتبر است" }).optional(),
+  campaignId: z.string().max(100).optional(),
+});
+
+export const contentCommentsQuerySchema = z.object({
+  parentId: z.string().max(100).optional(),
+});
+
+export const mediaUploadQuerySchema = z.object({
+  fileName: z.string().max(200, "نام فایل خیلی طولانی است").optional(),
+});
+
+// ── Generic helpers ─────────────────────────────────────────────────────────
+
+export const idSchema = z.string().min(1, "شناسه الزامی است").max(100);
+
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+
+// Helper: validate a single [id] path param — returns Persian error on failure.
+export function validateId(id: unknown): { success: true; data: string } | { success: false; error: string } {
+  return validateBody(idSchema, id) as { success: true; data: string } | { success: false; error: string };
+}
+
 // ── Helper: safe parse ──────────────────────────────────────────────────────
 
 export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown): 
@@ -112,4 +159,15 @@ export function validateBody<T>(schema: z.ZodSchema<T>, body: unknown):
   }
   const firstError = result.error.issues[0];
   return { success: false, error: firstError?.message ?? "ورودی نامعتبر" };
+}
+
+// Helper: validate search params (GET query strings)
+export function validateParams<T>(schema: z.ZodSchema<T>, params: Record<string, string | string[] | undefined>):
+  { success: true; data: T } | { success: false; error: string } {
+  const result = schema.safeParse(params);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message ?? "پارامتر نامعتبر" };
 }

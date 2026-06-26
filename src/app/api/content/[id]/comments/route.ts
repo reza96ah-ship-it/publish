@@ -5,14 +5,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getWorkspaceId } from "@/lib/server";
+import { validateBody, validateParams, validateId, contentCommentSchema, contentCommentsQuerySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idCheck = validateId(rawId);
+  if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
+  const id = idCheck.data;
+
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
+  // Validate ?parentId= query (optional)
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries());
+  const queryCheck = validateParams(contentCommentsQuerySchema, query);
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 });
+
   const comments = await db.contentComment.findMany({
-    where: { contentId: id },
+    where: queryCheck.data.parentId ? { contentId: id, parentId: queryCheck.data.parentId } : { contentId: id },
     orderBy: { createdAt: "asc" },
   });
 
@@ -20,16 +30,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const idCheck = validateId(rawId);
+  if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
+  const id = idCheck.data;
+
   const workspaceId = await getWorkspaceId();
   if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
-  const { text, parentId } = body;
-
-  if (!text || typeof text !== "string" || text.trim().length === 0) {
-    return NextResponse.json({ error: "empty_comment" }, { status: 400 });
-  }
+  const validation = validateBody(contentCommentSchema, body);
+  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 });
+  const { text, parentId } = validation.data;
 
   // Verify content belongs to workspace
   const content = await db.content.findFirst({
