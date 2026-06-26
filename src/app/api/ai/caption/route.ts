@@ -31,7 +31,6 @@ const VALID_PLATFORMS: Platform[] = [
 const VALID_TONES = [
   "formal",
   "friendly",
-  "playful",
   "professional",
   "storytelling",
   "sales",
