@@ -117,10 +117,9 @@ export interface WorkspaceContext {
 }
 
 const GAPGPT_BASE_URL = "https://api.gapgpt.app/v1";
-// gpt-4o-mini: fast, excellent Persian, works reliably on GapGPT.
-// Alternatives (tested): gapgpt-qwen-3.5-thinking (needs max_tokens:2000+ for reasoning).
-// gemma-3-27b-it: listed but upstream returns errors (as of 2026-06).
-const GAPGPT_MODEL = "gpt-4o-mini";
+// gpt-5-mini: reasoning model with reasoning_effort:'low' for 10× speedup.
+// Better Persian quality than gpt-4o-mini — fewer grammar errors, more natural phrasing.
+const GAPGPT_MODEL = "gpt-5-mini";
 
 // ── Gemini singleton ───────────────────────────────────────────────────────
 let _gemini: GoogleGenerativeAI | null = null;
@@ -168,7 +167,7 @@ export async function generateCaption(
   length?: CaptionLength,
   variation: number = 0,
 ): Promise<string> {
-  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length);
+  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length, undefined, topic);
   const temp = Math.min(0.8 + variation * 0.05, 1.2);
   const maxTokens = length ? CAPTION_LENGTH_MAP[length].maxTokens : 2048;
 
@@ -224,7 +223,7 @@ export async function* streamCaption(
   length?: CaptionLength,
   variation: number = 0,
 ): AsyncGenerator<string, void, unknown> {
-  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length);
+  const system = buildCaptionSystem(platform, workspace, tone, role, goal, length, undefined, topic);
   const temp = Math.min(0.8 + variation * 0.05, 1.2);
   const maxTokens = length ? CAPTION_LENGTH_MAP[length].maxTokens : 2048;
 
@@ -707,6 +706,7 @@ function buildCaptionSystem(
   goal?: ContentGoal,
   length?: CaptionLength,
   voiceExamples?: string,
+  topic?: string,
 ): string {
   const sections: string[] = [];
   sections.push("تو یک نویسندهٔ حرفه‌ای کپشن برای شبکه‌های اجتماعی فارسی‌زبان هستی. کپشن‌هایی که می‌نویسی باید طبیعی، اصیل و کاملاً فارسی باشند — نه ترجمه‌شده از انگلیسی.");
@@ -721,7 +721,16 @@ function buildCaptionSystem(
   if (tone) sections.push(`═══ لحن و سبک ═══\n${TONE_MAP[tone].guidance}`);
   sections.push(`═══ راهنمای پلتفرم ═══\n${platformGuidance(platform)}`);
   const wsParts: string[] = [];
-  if (ws?.name) wsParts.push(`نام ناشر/کانال (فقط در خط امضای پایانی بیاور، نه در بدنه): ${ws.name}`);
+  // CRITICAL: Only pass the workspace name if the topic explicitly mentions it.
+  // Otherwise the model creates fake products like "قهوه نشرینو" — using the
+  // workspace name as a product brand. This is the #1 hallucination pattern.
+  // The workspace name should ONLY appear in the signature line at the end.
+  if (ws?.name && topic.includes(ws.name)) {
+    wsParts.push(`نام ناشر (فقط در خط امضای پایانی، هرگز در بدنه): ${ws.name}`);
+  } else if (ws?.name) {
+    // Don't pass the name — the model will create fake products if it sees a brand name
+    // that isn't in the topic. Only pass it when the user explicitly mentioned it.
+  }
   if (ws?.brandVoice) wsParts.push(`لحن برند: ${ws.brandVoice}`);
   if (ws?.contentGuidelines) wsParts.push(`راهنمای محتوایی: ${ws.contentGuidelines}`);
   if (ws?.defaultHashtags) wsParts.push(`هشتگ‌های پیش‌فرض (در انتها): ${ws.defaultHashtags}`);

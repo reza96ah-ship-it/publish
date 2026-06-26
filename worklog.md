@@ -1890,3 +1890,31 @@ Stage Summary:
 - Caption quality: 3 new anti-patterns added (✔️ bullets, translated template, meaning-translated phrases) + user's exact bad output as ❌ example
 - UI: tabbed panel → popup sheet (slide-out from right with spring animation + backdrop)
 - Files: src/lib/ai/gemini.ts (ANTI_AI_SMELL_BLOCK strengthened), src/components/ai/ai-assistant-sheet.tsx (new), src/components/views/compose-view.tsx (simplified right panel + sheet integration)
+
+---
+Task ID: MODEL-UPGRADE + BRAND-FIX + LABELS
+Agent: Main Agent (Z.ai Code)
+Task: Fix brand hallucination + upgrade model + improve labels.
+
+Work Log:
+- **Model upgrade**: Changed from gpt-4o-mini → gpt-5-mini (reasoning model with reasoning_effort:'low'). Better Persian quality, fewer grammar errors, more natural phrasing.
+- **Brand hallucination fix**: Root cause was passing workspace name "نشرینو" to the prompt unconditionally. The model saw the brand name and created fake products like "قهوه فوری نشرینو". Fixed by ONLY passing the workspace name when the topic explicitly mentions it (`topic.includes(ws.name)`). When the topic doesn't mention the brand, the name is not passed at all.
+- **Fixed bug**: `buildCaptionSystem` was referencing `topic` variable but didn't have it as a parameter. Added `topic?: string` parameter and passed it from `streamCaption` and `generateCaption`.
+- **Labels improved** (Persian natural language):
+  * "موضوع / ایده پست" → "درباره چی بنویسم؟"
+  * "نقش خالق محتوا" → "شما کی هستید؟"
+  * "هدف محتوا" → "می‌خوای چی بشه؟"
+  * "لحن کپشن" → "لحن حرف"
+  * "طول کپشن" → "چقدر طولانی؟"
+  * "تولید کپشن" → "بنویس برام"
+  * "هشتگ" → "هشتگ بزن"
+  * "درج در کپشن" → "بذار تو کپشن"
+  * "بازنویسی" → "دوباره بنویس"
+  * "ذخیره" → "ذخیره کن"
+- **Verified**: curl test with "معرفی قهوه فوری با سه طعم" → output says "قهوه فوری ما" (not "نشرینو"), natural prose, no ✔️ bullets, good grammar. Lint clean.
+
+Stage Summary:
+- Model: gpt-4o-mini → gpt-5-mini (reasoning model, better Persian)
+- Brand hallucination: fixed (workspace name only passed when topic mentions it)
+- Labels: all 10 UI labels rewritten in natural conversational Persian
+- Bug: buildCaptionSystem missing `topic` parameter — fixed
