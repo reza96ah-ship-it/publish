@@ -7,13 +7,17 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   // Security headers
+  // NOTE: frame-ancestors and X-Frame-Options are relaxed to allow the Z.ai
+  // preview panel (which embeds this app in a cross-origin iframe) to render.
+  // In production, tighten these to frame-ancestors 'self' and remove ALLOWALL.
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Allow the Z.ai preview iframe to embed this app
+          { key: "X-Frame-Options", value: "ALLOWALL" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           {
@@ -26,7 +30,8 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:",
               "media-src 'self' data:",
-              "frame-ancestors 'self'",
+              // Allow framing from any origin (Z.ai preview panel)
+              "frame-ancestors *",
             ].join("; "),
           },
         ],

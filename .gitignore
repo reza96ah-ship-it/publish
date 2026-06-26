@@ -57,3 +57,9 @@ server.log
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Database (SQLite — binary, changes frequently, contains seed/test data)
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
