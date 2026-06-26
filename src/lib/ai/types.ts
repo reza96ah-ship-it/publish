@@ -20,21 +20,32 @@ export const CREATOR_ROLES: { id: CreatorRole; label: string; emoji: string }[] 
   { id: "reviewer", label: "بلاگر", emoji: "📝" },
   { id: "educator", label: "آموزشگر", emoji: "🎓" },
   { id: "brand", label: "برند", emoji: "🏢" },
-  { id: "news", label: "خبری", emoji: "📰" },
-  { id: "community", label: "گپ و گفت", emoji: "💬" },
+  { id: "news", label: "رسانه", emoji: "📰" },
+  { id: "community", label: "انجمن", emoji: "💬" },
 ];
 
 export const CONTENT_GOALS: { id: ContentGoal; label: string; emoji: string }[] = [
-  { id: "engage", label: "تعامل گرفتن", emoji: "💭" },
-  { id: "sell", label: "فروش زدن", emoji: "💰" },
-  { id: "educate", label: "آموزش دادن", emoji: "📚" },
+  { id: "engage", label: "تعامل", emoji: "💭" },
+  { id: "sell", label: "فروش", emoji: "💰" },
+  { id: "educate", label: "آموزش", emoji: "📚" },
   { id: "review", label: "نقد و بررسی", emoji: "🔍" },
-  { id: "announce", label: "اعلام کردن", emoji: "📢" },
-  { id: "inspire", label: "انگیزه دادن", emoji: "🌟" },
+  { id: "announce", label: "اعلام", emoji: "📢" },
+  { id: "inspire", label: "انگیزه", emoji: "🌟" },
 ];
 
 export const CAPTION_LENGTHS: { id: CaptionLength; label: string; emoji: string }[] = [
   { id: "short", label: "خلاصه", emoji: "✂️" },
-  { id: "standard", label: "معمولی", emoji: "⚖️" },
-  { id: "long", label: "مفصل", emoji: "📚" },
+  { id: "standard", label: "استاندارد", emoji: "⚖️" },
+  { id: "long", label: "مفصل", emoji: "📖" },
+];
+
+// Tone labels — used in the UI
+export const TONE_LABELS: { id: Tone; label: string; emoji: string; sample: string }[] = [
+  { id: "friendly", label: "صمیمی", emoji: "😊", sample: "امروز یه چیز جالب پیدا کردم…" },
+  { id: "formal", label: "رسمی", emoji: "🎩", sample: "به این امر توجه فرمایید…" },
+  { id: "professional", label: "حرفه‌ای", emoji: "💼", sample: "بررسی تخصصی موضوع…" },
+  { id: "storytelling", label: "داستانی", emoji: "📖", sample: "یادم میاد یه روز…" },
+  { id: "sales", label: "فروش", emoji: "🛒", sample: "فقط تا امشب فرصت داری…" },
+  { id: "educational", label: "آموزشی", emoji: "💡", sample: "آیا می‌دونستی که…" },
+  { id: "poetic", label: "ادبی", emoji: "🌙", sample: "چون هنگام شب…" },
 ];

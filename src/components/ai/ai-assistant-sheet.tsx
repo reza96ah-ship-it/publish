@@ -91,7 +91,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
 
   const streamCaptionFn = useCallback(async (variationOverride: number) => {
     if (!topic.trim() || topic.trim().length < 3) {
-      toast.error("موضوع رو بنویس اول");
+      toast.error("موضوع را وارد کنید");
       return;
     }
 
@@ -190,7 +190,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
   const copyCaption = () => { navigator.clipboard.writeText(streamedText); toast.success("کپی شد"); };
 
   const fetchHashtags = useCallback(async () => {
-    if (!topic.trim()) { toast.error("موضوع رو بنویس اول"); return; }
+    if (!topic.trim()) { toast.error("موضوع را وارد کنید"); return; }
     setIsGeneratingHashtags(true);
     try {
       const res = await api.post<{ hashtags: HashtagSuggestion[] }>("/api/ai/hashtags", {
@@ -288,7 +288,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
             <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-4">
               {/* Topic input */}
               <div>
-                <label className="text-[11px] font-[600] text-ink-tertiary mb-1.5 block">درباره چی بنویسم؟</label>
+                <label className="text-[11px] font-[600] text-ink-tertiary mb-1.5 block">موضوع محتوا</label>
                 <textarea
                   dir="rtl"
                   rows={2}
@@ -302,7 +302,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
 
               {/* Role selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">شما کی هستید؟</div>
+                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">نقش شما</div>
                 <div className="grid grid-cols-4 gap-1">
                   {CREATOR_ROLES.map((r) => (
                     <button key={r.id} onClick={() => setSelectedRole(r.id)} disabled={isStreaming}
@@ -317,7 +317,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
 
               {/* Goal selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">می‌خوای چی بشه؟</div>
+                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">هدف محتوا</div>
                 <div className="grid grid-cols-3 gap-1">
                   {CONTENT_GOALS.map((g) => (
                     <button key={g.id} onClick={() => setSelectedGoal(g.id)} disabled={isStreaming}
@@ -331,7 +331,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
 
               {/* Tone selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">لحن حرف</div>
+                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">لحن نگارش</div>
                 <div className="flex items-center gap-1 flex-wrap">
                   {TONES.map((t) => (
                     <button key={t.id} onClick={() => setSelectedTone(t.id)} disabled={isStreaming}
@@ -346,7 +346,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
 
               {/* Length selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">چقدر طولانی؟</div>
+                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">طول متن</div>
                 <div className="grid grid-cols-3 gap-1">
                   {CAPTION_LENGTHS.map((l) => (
                     <button key={l.id} onClick={() => setSelectedLength(l.id)} disabled={isStreaming}
@@ -368,12 +368,12 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
                   className="n-focus-ring flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-accent text-[13px] font-[600] text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isStreaming ? <Loader2 className="size-4 animate-spin" strokeWidth={2.5} /> : <Sparkles className="size-4" strokeWidth={2.5} />}
-                  {isStreaming ? "در حال نوشتن..." : "بنویس برام"}
+                  {isStreaming ? "در حال نوشتن..." : "تولید کپشن"}
                 </motion.button>
                 <button onClick={fetchHashtags} disabled={!canGenerate || isGeneratingHashtags}
                   className="n-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-[600] text-ink-secondary hover:bg-surface-hover disabled:opacity-50">
                   {isGeneratingHashtags ? <Loader2 className="size-4 animate-spin" /> : <Hash className="size-4" />}
-                  هشتگ بزن
+                  هشتگ‌ها
                 </button>
                 {isStreaming && (
                   <button onClick={cancelStream} className="n-focus-ring inline-flex h-10 items-center justify-center rounded-lg border border-border bg-surface px-3 text-ink-tertiary hover:bg-surface-hover">
@@ -388,7 +388,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
                   <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                     className="flex items-center gap-2 text-[12px] text-accent bg-accent-soft rounded-lg px-3 py-2">
                     <Loader2 className="size-3.5 animate-spin" />
-                    <span>در حال تفکر و تدوین کپشن…</span>
+                    <span>در حال تولید…</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -469,7 +469,7 @@ export function AIAssistantSheet({ open, onClose, platform, topic: initialTopic,
             {/* Footer hint */}
             <div className="px-4 py-2 border-t border-border shrink-0">
               <p className="text-[10px] text-ink-tertiary text-center">
-                کپشن‌ها با هوش مصنوعی تولید می‌شوند — قبل از انتشار بررسی کنید
+                تولید‌شده با هوش مصنوعی — پیش از انتشار بازبینی کنید
               </p>
             </div>
           </motion.div>
