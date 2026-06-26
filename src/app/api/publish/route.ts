@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getWorkspaceId } from '@/lib/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { randomUUID } from 'crypto'
 import { validateBody, publishSchema } from '@/lib/validations'
 
@@ -23,6 +25,15 @@ export async function POST(req: Request) {
   if (!workspaceId) {
     return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
   }
+
+  // Fetch the authenticated user's name (fallback to workspace member or '—')
+  const session = await getServerSession(authOptions)
+  const authorName = (session?.user as any)?.name
+    || (await db.workspaceMember.findFirst({
+         where: { userId: (session?.user as any)?.id },
+         select: { name: true },
+       }))?.name
+    || '—'
 
   let body
   const raw = await req.json().catch(() => null)
@@ -81,7 +92,7 @@ export async function POST(req: Request) {
         internalNote: body.note || null,
         status: mode === 'review' ? 'review' : 'scheduled',
         thumbnailUrl,
-        authorName: 'علی احمدی', // TODO: from session
+        authorName,
         scheduledAt,
       },
     })
