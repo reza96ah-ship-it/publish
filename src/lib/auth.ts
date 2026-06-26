@@ -89,6 +89,23 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    // CRITICAL: Always return RELATIVE URLs for redirects so the app works
+    // behind the Z.ai preview gateway (iframe on *.space-z.ai). Without this,
+    // NextAuth redirects to http://localhost:3000/ which the user's browser
+    // can't reach (localhost = their machine, not the sandbox).
+    async redirect({ url, baseUrl }) {
+      // If it's already a relative URL, return as-is
+      if (url.startsWith("/")) return url;
+      // If it's an absolute URL, extract just the pathname (+ search)
+      try {
+        const parsed = new URL(url);
+        return parsed.pathname + parsed.search;
+      } catch {
+        // Not a valid URL — default to relative "/"
+      }
+      return "/";
+    },
+
     async jwt({ token, user, trigger }) {
       // Initial sign-in: inject user data into token
       if (user) {
