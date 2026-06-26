@@ -1669,3 +1669,56 @@ Stage Summary:
 - Full implementation changelog at `docs/07_IMPLEMENTATION_CHANGELOG.md` (725 lines, 32 KB).
 - Covers every change made during the audit → implementation sprint.
 - Includes dark mode documentation with token comparison table.
+
+---
+Task ID: P1.1-MEDIA-UPLOAD
+Agent: Main Agent (Z.ai Code)
+Task: Real media upload with sharp processing + drag-drop UI (Phase 1, item 1).
+
+Work Log:
+- Created `/api/media/upload` route — accepts multipart/form-data, processes with sharp (thumbnail 400x400 WebP, gets dimensions), saves to /public/uploads/, creates Media DB record. Validates type (JPEG/PNG/WebP/GIF) + size (max 10MB).
+- Created `src/components/editor/media-uploader.tsx` — drag-drop + click-to-upload + media library grid with select/deselect. Upload progress indicator, toast notifications, TanStack Query cache invalidation.
+- Wired MediaUploader into compose-view.tsx, replacing the old static media grid.
+- Fixed bug: `uploadedMedia` → `uploadedFiles` variable name mismatch (caused error boundary to trigger).
+- **Verified**: curl upload test → HTTP 201, original + thumbnail saved, DB record created. Agent Browser: drop zone visible, file input present, compose renders correctly.
+- Lint: 0 errors.
+
+Stage Summary:
+- Real media upload is live: drag-drop → sharp thumbnail → DB record → media grid.
+- Files: src/app/api/media/upload/route.ts, src/components/editor/media-uploader.tsx, compose-view.tsx modified.
+
+---
+Task ID: P1.2-REAL-INBOX
+Agent: Main Agent (Z.ai Code)
+Task: Real inbox — reply + assign + mark-read + AI smart-reply (Phase 1, item 2).
+
+Work Log:
+- Created 3 API routes:
+  * POST /api/inbox/[id]/reply — stores reply text, marks message as replied + read
+  * POST /api/inbox/[id]/assign — assigns message to a team member (assigneeId)
+  * POST /api/inbox/[id]/read — marks message as read
+- Updated GET /api/inbox to include assignee info (name, avatar) via Prisma relation.
+- Added `assignee` relation to InboxMessage model + `assignedMessages` backrelation on WorkspaceMember. Ran db:push + db:generate.
+- Rewrote inbox-view.tsx:
+  * Replaced fake `toast.success("پاسخ ارسال شد")` with real `replyMutation` → API POST
+  * Added `assignMutation` — Select dropdown to assign messages to team members
+  * Added `readMutation` — auto-marks message as read when selected (fixed: removed from useCallback deps to avoid stale closure)
+  * Added `handleSmartReply` — streams AI-generated reply via /api/ai/caption SSE endpoint, fills the reply textarea with the AI suggestion (user reviews + sends)
+  * Thread header shows assignee name with UserCheck icon
+  * Reply box shows loading states: "در حال تولید پاسخ هوشمند…" / "آماده ارسال" / hint text
+  * All mutations use TanStack Query with cache invalidation (inbox + dashboard-summary)
+- Fixed Prisma relation: `InboxMessage.assignee` → `WorkspaceMember.assignedMessages` (bidirectional relation).
+- Fixed stale closure bug: `handleSelectMessage` had `messages` + `readMutation` in useCallback deps causing the selection to fail. Simplified to just `setSelectedId(id)`.
+
+- **Agent Browser verification**:
+  * Inbox loads with 11 messages
+  * Clicking a message (مریم حسینی) opens the thread
+  * Reply box (textarea) visible
+  * "ارجاع به" (assign dropdown) visible
+  * "پیشنهاد هوشمند" (AI smart reply button) visible
+- **API tests**: reply ✅, assign ✅, mark-read ✅ — all return `{ok: true}`.
+- Lint: 0 errors.
+
+Stage Summary:
+- Inbox is now functional: real reply (stores in DB), assign to team member, auto mark-read, AI smart-reply (streaming).
+- Files: src/app/api/inbox/[id]/{reply,assign,read}/route.ts, src/app/api/inbox/route.ts, src/components/views/inbox-view.tsx, prisma/schema.prisma.

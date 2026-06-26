@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { CaptionAssistant } from "@/components/ai/caption-assistant";
 import { NashrinoEditor } from "@/components/editor/nashrino-editor";
 import { PlatformPreviewTabs } from "@/components/editor/platform-preview-tabs";
+import { MediaUploader } from "@/components/editor/media-uploader";
 import {
   PenLine,
   Image as ImageIcon,
@@ -382,7 +383,7 @@ export function ComposeView() {
               />
             </div>
 
-            {/* Media selector (inline, not a separate step) */}
+            {/* Media uploader (drag-drop + library grid) */}
             <div>
               <Label className="text-[12px] text-ink-secondary mb-1.5 block">
                 <span className="inline-flex items-center gap-1">
@@ -392,36 +393,12 @@ export function ComposeView() {
                   {toPersianDigits(selectedMedia.length)} انتخاب شده
                 </span>
               </Label>
-              {mediaIsLoading ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="aspect-square rounded-lg bg-surface-hover animate-pulse" />
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[200px] overflow-y-auto thin-scrollbar p-1">
-                  {(media ?? []).map((m) => {
-                    const isSelected = selectedMedia.some((s) => s.id === m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => toggleMedia(m)}
-                        className={cn(
-                          "relative aspect-square rounded-lg overflow-hidden border-2 transition-all",
-                          isSelected ? "border-accent ring-2 ring-accent/20" : "border-transparent hover:border-border",
-                        )}
-                      >
-                        <img src={m.thumbnail} alt={m.name} className="w-full h-full object-cover" />
-                        {isSelected && (
-                          <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
-                            <Check className="size-4 text-white" strokeWidth={3} />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              <MediaUploader
+                onUploaded={() => {}}
+                selectedMedia={selectedMedia.map((m) => ({ id: m.id, name: m.name, thumbnail: m.thumbnail }))}
+                onToggle={(m) => toggleMedia(m as any)}
+                existingMedia={(media ?? []).map((m) => ({ id: m.id, name: m.name, thumbnail: m.thumbnail }))}
+              />
             </div>
 
             {/* Campaign + Internal note */}

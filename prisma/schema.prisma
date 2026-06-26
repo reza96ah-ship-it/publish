@@ -130,6 +130,7 @@ model WorkspaceMember {
   workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   assigneeJobs  PublishJob[]
+  assignedMessages InboxMessage[]
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -362,6 +363,7 @@ model InboxMessage {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   platform  Platform  @relation(fields: [platformId], references: [id])
+  assignee  WorkspaceMember? @relation(fields: [assigneeId], references: [id])
 
   @@index([workspaceId])
   @@index([workspaceId, isRead])

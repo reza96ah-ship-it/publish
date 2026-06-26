@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -15,6 +15,9 @@ import {
   Bot,
   ChevronLeft,
   Plus,
+  UserCheck,
+  Loader2,
+  CheckCheck,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -25,6 +28,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface InboxMessage {
@@ -37,8 +47,18 @@ interface InboxMessage {
   reply: string | null;
   platform: string;
   platformName: string;
-  messageType: string; // comment | dm | mention
+  messageType: string;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  assigneeAvatar: string | null;
   createdAt: string;
+}
+
+interface Member {
+  id: string;
+  name: string;
+  avatar: string | null;
+  roleLabel: string;
 }
 
 const MESSAGE_TYPE_LABEL: Record<string, string> = {
@@ -65,10 +85,17 @@ export function InboxView() {
   const [filter, setFilter] = useState<"all" | "unread" | "comment" | "dm">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
+  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: messages, isLoading } = useQuery<InboxMessage[]>({
     queryKey: ["inbox"],
     queryFn: () => api.get<InboxMessage[]>("/api/inbox"),
+  });
+
+  const { data: members } = useQuery<Member[]>({
+    queryKey: ["members"],
+    queryFn: () => api.get<Member[]>("/api/members"),
   });
 
   const filtered = useMemo(() => {
@@ -82,19 +109,96 @@ export function InboxView() {
   }, [messages, filter]);
 
   const selected = messages?.find((m) => m.id === selectedId) ?? null;
-
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
-
-  // Announce unread count changes to screen readers
   useAnnounceValue(unreadCount, "پیام خوانده‌نشده");
+
+  // ── Mutations ──────────────────────────────────────────────────────
+  const replyMutation = useMutation({
+    mutationFn: ({ id, reply }: { id: string; reply: string }) =>
+      api.post(`/api/inbox/${id}/reply`, { reply }),
+    onSuccess: () => {
+      toast.success("پاسخ ارسال شد ✓");
+      setReplyText("");
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
+    onError: () => toast.error("خطا در ارسال پاسخ"),
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string | null }) =>
+      api.post(`/api/inbox/${id}/assign`, { assigneeId }),
+    onSuccess: () => {
+      toast.success("ارجاع شد");
+      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+    },
+    onError: () => toast.error("خطا در ارجاع"),
+  });
+
+  const readMutation = useMutation({
+    mutationFn: (id: string) => api.post(`/api/inbox/${id}/read`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox"] }),
+  });
+
+  // ── Handlers ───────────────────────────────────────────────────────
+  const handleSelectMessage = useCallback((id: string) => {
+    setSelectedId(id);
+  }, []);
 
   const handleReply = () => {
     if (!replyText.trim()) {
       toast.error("متن پاسخ خالی است.");
       return;
     }
-    toast.success("پاسخ با موفقیت ارسال شد.");
-    setReplyText("");
+    if (!selected) return;
+    replyMutation.mutate({ id: selected.id, reply: replyText });
+  };
+
+  const handleSmartReply = async () => {
+    if (!selected) return;
+    setIsGeneratingReply(true);
+    try {
+      const res = await fetch("/api/ai/caption", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: `پاسخ به این پیام: "${selected.message}"`,
+          platform: selected.platform,
+          tone: "friendly",
+        }),
+      });
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const jsonStr = line.slice(6).trim();
+              if (jsonStr === "[DONE]") break;
+              try {
+                const json = JSON.parse(jsonStr);
+                if (json.content) {
+                  fullText += json.content;
+                  setReplyText(fullText);
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+      toast.success("پاسخ هوشمند آماده شد — بررسی و ارسال کنید");
+    } catch {
+      toast.error("خطا در تولید پاسخ هوشمند");
+    } finally {
+      setIsGeneratingReply(false);
+    }
   };
 
   return (
@@ -152,7 +256,7 @@ export function InboxView() {
                     key={m.id}
                     message={m}
                     active={m.id === selectedId}
-                    onClick={() => setSelectedId(m.id)}
+                    onClick={() => handleSelectMessage(m.id)}
                   />
                 ))
               )}
@@ -187,10 +291,41 @@ export function InboxView() {
                       <span className="text-[11px] text-ink-tertiary">{selected.platformName}</span>
                       <span className="text-ink-tertiary">•</span>
                       <TypeBadge type={selected.messageType} />
+                      {selected.assigneeName && (
+                        <>
+                          <span className="text-ink-tertiary">•</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary">
+                            <UserCheck className="size-3" />
+                            {selected.assigneeName}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <span className="text-[11px] text-ink-tertiary">{relativeTime(new Date(selected.createdAt))}</span>
                 </div>
+                {/* Assign dropdown */}
+                {members && members.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[10px] text-ink-tertiary">ارجاع به:</span>
+                    <Select
+                      value={selected.assigneeId ?? "none"}
+                      onValueChange={(v) =>
+                        assignMutation.mutate({ id: selected.id, assigneeId: v === "none" ? null : v })
+                      }
+                    >
+                      <SelectTrigger className="h-7 w-40 text-[11px]">
+                        <SelectValue placeholder="بدون ارجاع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">بدون ارجاع</SelectItem>
+                        {members.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               {/* Thread body */}
@@ -222,20 +357,47 @@ export function InboxView() {
                 />
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-[11px] text-ink-tertiary">
-                    <Bot className="size-3.5" />
-                    <span>پاسخ هوشمند پیشنهاد داده شد</span>
+                    {isGeneratingReply ? (
+                      <>
+                        <Loader2 className="size-3.5 animate-spin" />
+                        <span>در حال تولید پاسخ هوشمند…</span>
+                      </>
+                    ) : replyText ? (
+                      <>
+                        <CheckCheck className="size-3.5 text-success" />
+                        <span>آماده ارسال</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bot className="size-3.5" />
+                        <span>از پاسخ هوشمند استفاده کنید</span>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toast.info("پاسخ هوشمند به‌زودی فعال خواهد شد.")}
+                      onClick={handleSmartReply}
+                      disabled={isGeneratingReply}
                     >
-                      <Sparkles className="size-3.5" />
+                      {isGeneratingReply ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )}
                       پیشنهاد هوشمند
                     </Button>
-                    <Button size="sm" onClick={handleReply}>
-                      <Send className="size-3.5" />
+                    <Button
+                      size="sm"
+                      onClick={handleReply}
+                      disabled={replyMutation.isPending || !replyText.trim()}
+                    >
+                      {replyMutation.isPending ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
                       ارسال پاسخ
                     </Button>
                   </div>

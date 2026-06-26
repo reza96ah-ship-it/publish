@@ -8,7 +8,10 @@ export async function GET() {
 
   const items = await db.inboxMessage.findMany({
     where: { workspaceId },
-    include: { platform: { select: { type: true, name: true } } },
+    include: {
+      platform: { select: { type: true, name: true } },
+      assignee: { select: { id: true, name: true, avatarUrl: true } },
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
   })
@@ -24,6 +27,9 @@ export async function GET() {
     platform: m.platform.type,
     platformName: m.platform.name,
     messageType: m.messageType,
+    assigneeId: m.assigneeId,
+    assigneeName: m.assignee?.name ?? null,
+    assigneeAvatar: m.assignee?.avatarUrl ?? null,
     createdAt: m.createdAt,
   })))
 }
