@@ -1653,3 +1653,19 @@ Stage Summary:
 - Media + scheduling are inline (not separate steps), reducing friction.
 - All elements visible on one screen: platform selector → editor → preview → schedule → actions.
 - Feature completeness: Compose/Editor 55% → 60% (better flow + UX + all-in-one layout).
+
+---
+Task ID: DOCS-07
+Agent: Main Agent (Z.ai Code)
+Task: Write full detailed changelog doc for all implementation changes + dark mode.
+
+Work Log:
+- Created `docs/07_IMPLEMENTATION_CHANGELOG.md` (725 lines, 32 KB) — comprehensive documentation of all Phase 0 + Quick Wins changes.
+- Document covers 11 sections: Executive Summary, Quick Wins (8 items), Real Channel Connectors (5 adapters with API details), Persian AI Assistant (3-provider fallback + 7 tones with linguistic specs), Auth.js + Multi-Tenant (models, guards, RBAC, signin), Tiptap Editor Rebuild (extensions, toolbar, CSS), Approval Workflow (state machine, API routes, UI), Compose Flow Redesign (old vs new, wireframe), Dark Mode (token table, design principles), Dev Server Stability Fix (root cause + fix), Feature Completeness Scorecard (before/after table).
+- Each section includes: problem description, solution details, files created/modified, verification results.
+- Appendix lists all 25 new files + 15 modified files with descriptions.
+
+Stage Summary:
+- Full implementation changelog at `docs/07_IMPLEMENTATION_CHANGELOG.md` (725 lines, 32 KB).
+- Covers every change made during the audit → implementation sprint.
+- Includes dark mode documentation with token comparison table.
