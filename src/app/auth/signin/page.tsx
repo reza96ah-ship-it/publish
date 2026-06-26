@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Coffee, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
@@ -14,23 +13,60 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    // Use server-side redirect (redirect: true) — NextAuth sets the session
-    // cookie AND handles the redirect in one response. More reliable than
-    // redirect: false + manual router.push (which can cause blank-page race
-    // conditions where the page loads before the session cookie propagates).
-    await signIn("credentials", {
-      email,
-      password,
-      callbackUrl,
-      redirect: true,
-    });
+    // Native form POST to NextAuth's credentials callback.
+    // We bypass next-auth/react's signIn() function because it reads the
+    // next-auth.callback-url cookie (set to http://localhost:3000 by the
+    // CSRF endpoint) and redirects to that absolute URL — which the user's
+    // browser can't reach when the app is behind the Z.ai preview gateway.
+    // With a native form POST, the browser follows the server's Location
+    // header (which our redirect callback returns as relative "/").
+    try {
+      const res = await fetch("/api/auth/callback/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          email,
+          password,
+          csrfToken: await getCsrfToken(),
+          callbackUrl: "/",
+          json: "true",
+        }),
+        redirect: "manual", // Don't follow redirects — we handle manually
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.url) {
+        // data.url is "/" (relative) from our redirect callback.
+        // Use window.location.assign for a full page navigation (not
+        // router.push) to ensure the session cookie is picked up.
+        const target = data.url.startsWith("http")
+          ? new URL(data.url).pathname // strip host, keep path only
+          : data.url;
+        window.location.assign(target);
+      } else {
+        // Login failed — NextAuth returns redirect to signin with error
+        setError("ایمیل یا رمز عبور نادرست است");
+        setLoading(false);
+      }
+    } catch (err) {
+      setError("خطا در ارتباط با سرور");
+      setLoading(false);
+    }
   };
+
+  async function getCsrfToken() {
+    const res = await fetch("/api/auth/csrf");
+    const data = await res.json();
+    return data.csrfToken;
+  }
 
   return (
     <div className="min-h-dvh flex items-center justify-center p-6 bg-canvas">
