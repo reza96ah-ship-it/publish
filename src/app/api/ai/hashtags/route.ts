@@ -31,6 +31,10 @@ export async function POST(req: NextRequest) {
 
     return Response.json({ hashtags });
   } catch (err: any) {
-    return Response.json({ error: err.message }, { status: 500 });
+    console.error("[ai/hashtags] error:", err);
+    return Response.json(
+      { error: "خطا در تولید هشتگ. لطفاً دوباره تلاش کنید." },
+      { status: 500 },
+    );
   }
 }
