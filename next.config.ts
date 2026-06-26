@@ -12,13 +12,11 @@ const nextConfig: NextConfig = {
     "http://*.space-z.ai",
     "https://preview-chat-*.space-z.ai",
   ],
-  // CRITICAL: Prevent the infinite recompile/reload loop.
-  // The dev script pipes output to `tee dev.log` inside the project root.
-  // Without this ignore, the file watcher sees dev.log change → recompile →
-  // writes more logs → recompile → infinite loop (40-60 GET/sec).
-  watchOptions: {
-    ignored: ["**/dev.log", "**/*.log", "**/.next/**", "**/node_modules/**"],
-  },
+  // Note: The recompile/reload loop was fixed by moving ALL log files to
+  // /tmp (outside the project root). The dev script writes to
+  // /tmp/nashrino-dev.log and mini-services write to /tmp/nashrino-logs/.
+  // Next.js 16's file watcher only watches the project directory, so
+  // external logs can't trigger recompiles.
 };
 
 export default nextConfig;
