@@ -2,12 +2,11 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Coffee, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 
 export default function SignInPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
@@ -21,19 +20,16 @@ export default function SignInPage() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
+    // Use server-side redirect (redirect: true) — NextAuth sets the session
+    // cookie AND handles the redirect in one response. More reliable than
+    // redirect: false + manual router.push (which can cause blank-page race
+    // conditions where the page loads before the session cookie propagates).
+    await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      callbackUrl,
+      redirect: true,
     });
-
-    if (result?.error) {
-      setError("ایمیل یا رمز عبور نادرست است");
-      setLoading(false);
-    } else if (result?.ok) {
-      router.push(callbackUrl);
-      router.refresh();
-    }
   };
 
   return (
