@@ -64,7 +64,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
 
   const streamCaptionFn = useCallback(async (variationOverride: number) => {
     if (!topic.trim() || topic.trim().length < 3) {
-      toast.error("ابتدا موضوع را بنویسید (حداقل ۳ کاراکتر)");
+      toast.error("موضوع رو بنویس اول");
       return;
     }
 
@@ -172,7 +172,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
   const copyCaption = () => { navigator.clipboard.writeText(streamedText); toast.success("کپی شد"); };
 
   const fetchHashtags = useCallback(async () => {
-    if (!topic.trim()) { toast.error("ابتدا موضوع را بنویسید"); return; }
+    if (!topic.trim()) { toast.error("موضوع رو بنویس اول"); return; }
     setIsGeneratingHashtags(true);
     try {
       const res = await api.post<{ hashtags: HashtagSuggestion[] }>("/api/ai/hashtags", {

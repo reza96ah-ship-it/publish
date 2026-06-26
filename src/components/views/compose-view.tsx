@@ -383,9 +383,6 @@ export function ComposeView() {
                 دستیار هوش مصنوعی
                 <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">⌘J</kbd>
               </motion.button>
-              {title.trim().length < 3 && (
-                <span className="text-[10px] text-ink-tertiary">ابتدا موضوع را بنویسید</span>
-              )}
             </div>
 
             {/* Rich-text editor */}
