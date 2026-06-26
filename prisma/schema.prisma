@@ -318,7 +318,7 @@ model PublishJob {
   @@index([status, scheduledAt])
   @@index([platformId])
   @@index([assigneeId])
-  @@index([idempotencyKey])
+  @@unique([idempotencyKey])
 }
 
 /* ─── Media Library ─── */
