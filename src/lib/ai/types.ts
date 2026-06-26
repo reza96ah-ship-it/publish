@@ -17,24 +17,24 @@ export interface HashtagSuggestion {
 export const CREATOR_ROLES: { id: CreatorRole; label: string; emoji: string }[] = [
   { id: "influencer", label: "اینفلوئنسر", emoji: "✨" },
   { id: "store", label: "فروشگاه", emoji: "🛍️" },
-  { id: "reviewer", label: "نقدکننده", emoji: "📝" },
+  { id: "reviewer", label: "بلاگر", emoji: "📝" },
   { id: "educator", label: "آموزشگر", emoji: "🎓" },
   { id: "brand", label: "برند", emoji: "🏢" },
   { id: "news", label: "خبری", emoji: "📰" },
-  { id: "community", label: "تسهیل‌گر بحث", emoji: "💬" },
+  { id: "community", label: "گپ و گفت", emoji: "💬" },
 ];
 
 export const CONTENT_GOALS: { id: ContentGoal; label: string; emoji: string }[] = [
-  { id: "engage", label: "تعامل", emoji: "💭" },
-  { id: "sell", label: "فروش", emoji: "💰" },
-  { id: "educate", label: "آموزش", emoji: "📚" },
-  { id: "review", label: "نقد", emoji: "🔍" },
-  { id: "announce", label: "اعلام", emoji: "📢" },
-  { id: "inspire", label: "الهام", emoji: "🌟" },
+  { id: "engage", label: "تعامل گرفتن", emoji: "💭" },
+  { id: "sell", label: "فروش زدن", emoji: "💰" },
+  { id: "educate", label: "آموزش دادن", emoji: "📚" },
+  { id: "review", label: "نقد و بررسی", emoji: "🔍" },
+  { id: "announce", label: "اعلام کردن", emoji: "📢" },
+  { id: "inspire", label: "انگیزه دادن", emoji: "🌟" },
 ];
 
 export const CAPTION_LENGTHS: { id: CaptionLength; label: string; emoji: string }[] = [
-  { id: "short", label: "کوتاه", emoji: "✂️" },
-  { id: "standard", label: "استاندارد", emoji: "⚖️" },
-  { id: "long", label: "طولانی", emoji: "📚" },
+  { id: "short", label: "خلاصه", emoji: "✂️" },
+  { id: "standard", label: "معمولی", emoji: "⚖️" },
+  { id: "long", label: "مفصل", emoji: "📚" },
 ];
