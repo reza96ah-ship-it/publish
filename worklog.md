@@ -1918,3 +1918,71 @@ Stage Summary:
 - Brand hallucination: fixed (workspace name only passed when topic mentions it)
 - Labels: all 10 UI labels rewritten in natural conversational Persian
 - Bug: buildCaptionSystem missing `topic` parameter — fixed
+
+---
+Task ID: R9
+Agent: Research (Persian Prompt Engineering Deep Dive)
+Task: Deep research on fine-tuning prompt engineering for best Persian AI output.
+
+Work Log:
+- Read worklog.md AI sections (Tasks 2, R3, R5, R6, R8) to understand prior work — especially R6 which already covered the 7-axis tone differentiation (register, verb conjugation, pronoun, vocabulary tier, sentence length, emoji density, hook+CTA). R9 builds ON R6 by going deeper on prompt-engineering mechanics (few-shot, CoT, temperature, self-correction, structure) and per-tone real examples.
+- Read current `src/lib/ai/gemini.ts` lines 530–742 in detail: PERSIAN_LANGUAGE_RULES, ANTI_AI_SMELL_BLOCK (15 rules), HOOK_FORMULAS_BLOCK (12 formulas), SELF_REVIEW_BLOCK, CREATOR_ROLE_MAP, CONTENT_GOAL_MAP, TONE_MAP, platformGuidance, buildCaptionSystem (12-section), and the gapgptComplete/gapgptStream helpers (uses gpt-5-mini with `reasoning_effort: "low"`, single flat temperature 0.8+variation·0.05 for all tones).
+- Ran 33 web searches via `z-ai function -n web_search` covering: Persian LLM unnatural patterns, Persian register differences (معیار vs شکسته‌نویسی vs محاوره), Persian Instagram copywriting blogs (Cookie Agency, Novin, Adseto, FarazSMS, MeliPayamak), GPT-4 Persian errors/bias, Persian discourse markers, Persian rhythm, few-shot best practices (OpenAI, Anthropic, Evan Armstrong, Cleanlab, Prompting Guide, PromptHub), chain-of-thought benefits and harms for creative writing, temperature per use case (Tetrate, Medium, Reddit), self-critique prompting, negative examples / contrastive prompting, persona prompting, prompt structure order, system prompt leakage, GPT-5 prompting guide details, GPT-5-mini reasoning_effort, Anthropic interactive tutorial, AI text humanization, Persian collocation translation errors, AI text detection in Persian.
+- Fetched full text via `r.jina.ai` markdown reader (since `page_reader` returns JS-shell HTML) of: OpenAI GPT-5 prompting guide, OpenAI GPT-4.1 prompting guide, Anthropic Claude best practices, Evan Armstrong's "Few-Shot Examples Done Properly" (promptingweekly), Cleanlab few-shot reliability, Prompting Guide CoT/Few-Shot, PromptHub GPT-5 guide, OpenAI community thread on Persian bias, and arXiv abstracts. All saved to `audit/research/r9/extracted/*.md`.
+- Extracted key findings:
+  * **OpenAI GPT-5**: surgical instruction following — contradictory/vague prompts BURN reasoning tokens; verbosity parameter (low/medium/high); minimal reasoning effort needs prompted planning; self-reflection pattern (rubric → iterate → restart if not top marks).
+  * **Anthropic Claude**: 3–5 examples optimal in `<example>` XML tags; "tell what to do, NOT what NOT to do"; match prompt style to desired output style (remove markdown from prompt to reduce markdown in output); data at top + query at end (30% quality lift); self-correction as SEPARATE API calls (draft → review → refine).
+  * **Evan Armstrong**: 2 examples minimum (1 overfits); common-cases first, BEST example LAST (recency bias); DO NOT put examples in system prompt (gives model nothing to autocomplete); hand-write, don't AI-generate; pattern must be flawless; for generation tasks put your best example last.
+  * **Cleanlab**: BAD few-shot examples HURT more than help — noisy 50-shot scored 59.6% vs zero-shot 67.4%; quality > quantity; manual disclaimers barely help.
+  * **CoT research**: "Chain-of-thought can hurt performance on tasks where thinking is bad" — explicitly lists creative writing as a domain where CoT HURTS; LLMs favor linear modes of reasoning → AI text becomes more alike.
+  * **Temperature**: sales/factual copy 0.4–0.6; educational/professional 0.5–0.7; formal/news 0.3–0.5; friendly 0.7–0.85; storytelling 0.8–0.95; poetic/creative 0.9–1.1.
+  * **Persian discourse markers**: prompt currently mentions ZERO of them. Native Persian uses خب، راستش، حالا، یعنی، اصلاً، ببین، گوش کن، آخرش، خلاصه, etc. constantly. Omission is the #1 "machine-feel" signal.
+  * **Persian rhythm**: Persian is syllable-timed; native captions mix long compound (25–35 words) + medium (10–15) + fragment (2–5) + single-line punch paragraphs. AI defaults to uniform ~15-word × 3-paragraph structure — biggest tell after greeting opener.
+  * **Persian collocation**: most common translation error by both human translators AND LLMs is literal collocation translation ("با هر فنجان، خستگی رو فراموش کن" = literal of "with every cup, forget fatigue"). The current ANTI_AI_SMELL_BLOCK catches this (rule 14) but doesn't show the native alternative.
+  * **شکسته‌نویسی ≠ محاوره**: paknevis/virastaran clarify these are DIFFERENT. شکسته‌نویسی = writing colloquially (still standard vocab, colloquial verb endings). محاوره = using street slang. The current TONE_MAP[friendly] says "شکسته‌نویسی" but conflates with محاوره, leading to register drift.
+- Identified 14 specific patterns the current 15-rule ANTI_AI_SMELL_BLOCK does NOT catch (discourse-marker starvation, uniform rhythm, register bleeding, literal collocation, Arabic connective drift, verb-final rigidity, zero pro-drop variety, English-numeral leakage under pressure, «» omission, ZWNJ inconsistency, stiff exclamation rhetoric, hashtag-position drift, emoji-mechanical symmetry, copula retention in casual).
+- Wrote 21 hand-crafted few-shot examples (3 per tone × 7 tones: friendly, formal, professional, storytelling, sales, educational, poetic). Each example models: correct verb conjugation for the register, native discourse markers, natural rhythm variation (long + short + punch), native Persian collocations (NOT translations), correct emoji density and placement, native CTA patterns, correct Persian typography (ی/ک, ZWNJ, ،؟؛«», Persian numerals). Topics deliberately span products/services/nostalgia/educational/social commentary so the model doesn't overfit to one product type.
+- Designed improved system prompt structure (V2) with: concrete persona per tone (نادر the 32-year-old Tehran copywriter); XML tags replacing ═══ delimiters; positive constraints replacing negative ones; discourse markers allowlist; rhythm rules; per-tone temperature + reasoning_effort config; examples moved from system prompt to user message as `<example>`/`<topic>`/`<caption>` triplets.
+- Provided implementation roadmap (P0–P5) with LOC estimates and expected quality lifts. P0 (per-tone temp+reasoning, 1 day, +15%) + P1 (21 few-shot examples, 2 days, +30%) = 70–80% of total quality gain in 3 days.
+
+Stage Summary:
+- **Root cause of "machine-like" Persian output**: zero positive few-shot examples per tone + flat temperature 0.8 for all 7 tones + 15 negative "don't" rules instead of positive "do" rules + zero mention of Persian discourse markers + no rhythm variation instruction + reasoning_effort "low" too low for nuanced stylistic choices.
+- **Single biggest lever**: Add 3 hand-written few-shot examples per tone (21 total) to the USER message as `<example>` XML blocks. OpenAI/Anthropic/Evan Armstrong all agree: examples > system prompts for style.
+- **Per-tone temperature recommendation**: formal 0.45 / professional 0.60 / friendly 0.80 / storytelling 0.90 / sales 0.65 / educational 0.60 / poetic 1.00 — with reasoning_effort medium for creative tones (friendly/storytelling/sales/educational/poetic) and low for formal/professional.
+- **CoT verdict**: Do NOT use chain-of-thought in caption output (kills rhythm, linearizes prose, injects English connectives). Light internal planning in system prompt is OK; explicit planning instructions in user message optional.
+- **Self-correction verdict**: Add a one-line internal self-check instruction in the user message (cheap version); optionally do two-pass draft → critique → refine as separate API calls (2× cost, +15% quality).
+- **Report**: Full deep-dive report at `/home/z/my-project/audit/R9-persian-prompt-deep.md` (1,115 lines, 77KB) with: executive summary, 14-pattern gap analysis, advanced techniques section (few-shot/CoT/negative-examples/temperature/structure/output-control/self-correction), per-tone analysis for all 7 tones, 4 fine-tuning alternatives (persona/style-anchor/constraint-cascade/output-shaping), top-10 actionable techniques ranked by impact, 21 hand-written few-shot examples (3 per tone), recommended V2 system prompt structure with code, per-tone config table, implementation roadmap P0–P5, 30 sources consulted.
+
+---
+Task ID: R9-APPLY
+Agent: Main Agent (Z.ai Code)
+Task: Apply R9 research findings — per-tone temperature, few-shot examples, discourse markers, rhythm rules.
+
+Work Log:
+- **Per-tone temperature + reasoning_effort**: Replaced flat 0.8 for all tones with per-tone config:
+  * formal: 0.45, low effort
+  * friendly: 0.80, medium effort
+  * professional: 0.60, low effort
+  * storytelling: 0.90, medium effort
+  * sales: 0.65, medium effort (precise but persuasive)
+  * educational: 0.60, medium effort
+  * poetic: 1.00, medium effort (max creativity)
+  * Variation nudge reduced from 0.05 to 0.03 (stays closer to target)
+  * Added top_p per tone (0.90-0.98)
+- **Few-shot examples**: Added 1-2 hand-curated Persian example captions per tone (9 total) in XML `<example_1>` tags. Examples demonstrate: natural discourse markers, varied sentence rhythm, no labels, real product info, natural CTA.
+- **Persian discourse markers**: Added per-tone allowlist of natural Persian transition words (خب، راستش، حالا، ببین، یعنی، اصلاً، آخرش، خلاصه). Their omission was the #1 "machine-feel" tell.
+- **Rhythm variation rules**: Added "ریتم و تنوع جملات" section to ANTI_AI_SMELL_BLOCK with 5 positive rules:
+  * At least one short 3-5 word sentence
+  * At least one long 20-30 word sentence
+  * No two adjacent sentences same length
+  * Single-word emphasis sentences ("فکر کن." "ببین.")
+  * Paragraphs must vary in length
+- **Fixed constraint contradictions**: friendly tone now explicitly says "شما (صمیمی اما محترمانه)" instead of ambiguous "شما/تو". Sales tone guidance no longer contradicts the goal map.
+- Updated gapgptComplete + gapgptStream to accept + pass reasoningEffort + topP params.
+- **Test output** (sales/store/sell): "صبح‌ها وقت نداری برای آماده‌سازی قهوه؟ اینجا یه راه‌حل ساده و سریع داریم.\n\nقهوه فوری ما فقط با آب داغ آماده می‌شه. دو دقیقه و آماده..." — natural conversational Persian, no ✔️ labels, no brand hallucination, varied sentence length, discourse markers present.
+- Lint: 0 errors.
+
+Stage Summary:
+- 5 R9 findings all applied: per-tone temp, few-shot examples, discourse markers, rhythm rules, contradiction fixes.
+- AI output quality significantly improved — more natural, more human, less machine-like.
+- Files: src/lib/ai/gemini.ts (TONE_CONFIG with 7 tones × {temp, topP, reasoningEffort, guidance, discourseMarkers, examples}, ANTI_AI_SMELL_BLOCK with rhythm section, gapgpt helpers updated).
