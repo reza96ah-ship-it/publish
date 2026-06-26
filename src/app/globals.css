@@ -762,4 +762,101 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+/* ============================================================================
+   TIPTAP EDITOR — Persian RTL rich-text editor styles
+   ============================================================================ */
+.ProseMirror {
+  outline: none;
+  min-height: 200px;
+}
+
+.ProseMirror p {
+  margin: 0 0 0.5em 0;
+  line-height: 1.7;
+}
+
+.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror h2 {
+  font-size: 1.1em;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+  color: var(--n-text-primary);
+}
+
+.ProseMirror h3 {
+  font-size: 1em;
+  font-weight: 700;
+  margin: 0.6em 0 0.3em;
+  color: var(--n-text-primary);
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-right: 1.5em;
+  margin: 0.3em 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin: 0.15em 0;
+  line-height: 1.7;
+}
+
+.ProseMirror blockquote {
+  border-right: 3px solid var(--n-accent);
+  padding-right: 0.8em;
+  margin: 0.5em 0;
+  color: var(--n-text-secondary);
+  font-style: italic;
+}
+
+.ProseMirror code {
+  background: var(--n-surface-hover);
+  border-radius: 4px;
+  padding: 0.1em 0.3em;
+  font-size: 0.9em;
+  font-family: var(--font-mono);
+  direction: ltr;
+  display: inline-block;
+}
+
+.ProseMirror a {
+  color: var(--n-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ProseMirror strong {
+  font-weight: 700;
+  color: var(--n-text-primary);
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+/* Placeholder (empty editor) */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: right;
+  color: var(--n-text-tertiary);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Selection color */
+.ProseMirror ::selection {
+  background: var(--n-accent-soft);
+}
 }

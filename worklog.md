@@ -1524,3 +1524,41 @@ Stage Summary:
 - Files modified: prisma/schema.prisma (5 new models + WorkspaceMember→User FK), src/lib/server.ts (auth-aware), src/app/layout.tsx (SessionProvider), .env (NEXTAUTH_SECRET), package.json (seed:auth script).
 - Feature completeness: Auth 0% → 55% (login works, sessions work, RBAC guards built; API route migration to requireWorkspace() pending, workspace switcher UI pending, OAuth providers pending).
 - Next: Tiptap editor rebuild, or Approval workflow, or migrate API routes to use auth guards.
+
+---
+Task ID: IMPL-EDITOR-V1
+Agent: Main Agent (Z.ai Code)
+Task: Rebuild the Compose/Editor with Tiptap per R4 research (Phase E1: foundation).
+
+Work Log:
+- Installed Tiptap v2 packages: @tiptap/react, @tiptap/pm, @tiptap/starter-kit, @tiptap/extension-link, @tiptap/extension-placeholder, @tiptap/extension-character-count (47 packages, 72s).
+- Created `src/components/editor/nashrino-editor.tsx` — full Tiptap editor component with:
+  * RTL Persian support (dir="rtl", lang="fa" on editor attributes)
+  * Formatting toolbar: Bold, Italic, H2, Bullet List, Ordered List, Blockquote, Code, Link, Undo, Redo
+  * Character count with limit warning (green → yellow at 90% → red over limit)
+  * Word count
+  * Placeholder text (Persian)
+  * Link insertion dialog
+  * Markdown shortcuts (built into StarterKit: ** for bold, ## for H2, > for quote, etc.)
+  * `immediatelyRender: false` for SSR safety (Next.js 16)
+  * Loading skeleton while editor initializes
+  * Accessible toolbar buttons with aria-labels (Persian)
+- Added Tiptap content styles to `src/app/globals.css` (`.ProseMirror` + elements: p, h2, h3, ul, ol, li, blockquote, code, a, strong, em, placeholder, selection). RTL-aware (border-right for blockquotes, padding-right for lists).
+- Replaced the plain `<Textarea>` in `src/components/views/compose-view.tsx` with `<NashrinoEditor>`. The editor's onChange passes (html, text) — we store the plain text in `caption` state for backward compatibility with the publish pipeline. The old char-count span was removed (the editor has its own footer with char + word count).
+- Added NashrinoEditor import to compose-view.tsx.
+
+- **Agent Browser verification**:
+  * Logged in (demo@nashrino.ir / demo1234) → redirected to dashboard.
+  * Pressed 'c' → compose view loaded ("ساخت محتوای جدید").
+  * Typed "قهوه تازه دم" in title → AI assistant + tone selector appeared.
+  * Tiptap editor rendered: `.ProseMirror` element present, 18 toolbar buttons found.
+  * Typed "این یک تست است" in editor → text confirmed in `.ProseMirror.textContent`.
+  * Screenshot: `verify-tiptap-editor.png`.
+- `bun run lint` → 0 errors, 0 warnings.
+
+Stage Summary:
+- **The editor is no longer "too weak."** Tiptap rich-text editor with toolbar, char count, RTL Persian support replaces the plain `<Textarea>`.
+- Files created: `src/components/editor/nashrino-editor.tsx`.
+- Files modified: `src/app/globals.css` (Tiptap styles), `src/components/views/compose-view.tsx` (Textarea → NashrinoEditor).
+- Feature completeness: Compose/Editor 28% → 45% (rich text + toolbar + char count + AI assistant + tones; still missing: multi-platform preview, media upload, scheduling integration, autosave).
+- Next steps (per R4 roadmap): E2 multi-platform preview tabs, E3 media upload, E4 AI floating toolbar, E5 autosave.

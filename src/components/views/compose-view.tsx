@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { CaptionAssistant } from "@/components/ai/caption-assistant";
+import { NashrinoEditor } from "@/components/editor/nashrino-editor";
 import {
   PenLine,
   Image as ImageIcon,
@@ -514,24 +515,12 @@ function StepContent(props: {
       )}
 
       <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <Label className="text-[12px] text-ink-secondary">کپشن</Label>
-          <span
-            className={cn(
-              "text-[10px] num-tabular",
-              props.caption.length > IG_LIMIT ? "text-danger" : "text-ink-tertiary"
-            )}
-          >
-            {toPersianDigits(props.caption.length)} / {toPersianDigits(IG_LIMIT)}
-          </span>
-        </div>
-        <Textarea
-          dir="rtl"
-          value={props.caption}
-          onChange={(e) => props.setCaption(e.target.value)}
-          placeholder="متن کامل کپشن… (پشتیبانی از دوطرفه)"
-          rows={6}
-          className="resize-none"
+        <Label className="text-[12px] text-ink-secondary mb-1.5 block">کپشن</Label>
+        <NashrinoEditor
+          content={props.caption}
+          onChange={(_html, text) => props.setCaption(text)}
+          placeholder="متن کامل کپشن… (پشتیبانی از متن غنی)"
+          maxLength={IG_LIMIT}
         />
       </div>
 
