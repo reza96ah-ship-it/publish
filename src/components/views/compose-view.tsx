@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
   FileText,
   Layers,
   Sparkles,
+  Eye,
+  MessageSquare,
   UploadCloud,
   X,
   Plus,
@@ -107,6 +109,21 @@ export function ComposeView() {
   const [scheduleMode, setScheduleMode] = useState<"now" | "schedule" | "queue">("now");
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("12:00");
+
+  // Right panel tab state: "preview" | "ai" | "comments"
+  const [rightTab, setRightTab] = useState<"preview" | "ai" | "comments">("preview");
+
+  // ⌘J shortcut to switch to AI tab
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        setRightTab("ai");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ["campaigns"],
@@ -347,15 +364,20 @@ export function ComposeView() {
               />
             </div>
 
-            {/* AI Caption Assistant */}
-            {title.trim().length >= 3 && (
-              <CaptionAssistant
-                platform={(selectedPlatforms[0] as any) || "instagram"}
-                topic={title}
-                onInsert={(text) => setCaption(text)}
-                onHashtags={(tags) => setHashtags(tags.join(" "))}
-              />
-            )}
+            {/* AI trigger button — opens AI in right panel */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setRightTab("ai")}
+                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
+              >
+                <Sparkles className="size-3.5" strokeWidth={2.5} />
+                دستیار هوش مصنوعی
+                <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">⌘J</kbd>
+              </button>
+              {title.trim().length < 3 && (
+                <span className="text-[10px] text-ink-tertiary">ابتدا موضوع را بنویسید</span>
+              )}
+            </div>
 
             {/* Rich-text editor */}
             <div>
@@ -474,25 +496,85 @@ export function ComposeView() {
           </div>
         </div>
 
-        {/* Preview panel (right) */}
+        {/* Right panel: tabbed (Preview | AI | Comments) */}
         <div className="lg:col-span-2">
           <div className="sticky top-4 space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Sparkles className="size-4 text-accent" />
-              <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
-              <span className="text-[10px] text-ink-tertiary ms-auto">
-                {selectedPlatforms.length > 0
-                  ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
-                  : "پلتفرمی انتخاب نشده"}
+            {/* Tab strip */}
+            <div className="n-card-compact flex items-center gap-1 p-1">
+              {[
+                { id: "preview" as const, label: "پیش‌نمایش", icon: Eye },
+                { id: "ai" as const, label: "✨ هوش مصنوعی", icon: Sparkles },
+                { id: "comments" as const, label: "نظرات", icon: MessageSquare },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setRightTab(tab.id)}
+                  className={cn(
+                    "n-focus-ring flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11.5px] font-[600] transition-colors",
+                    rightTab === tab.id
+                      ? "bg-accent text-white"
+                      : "text-ink-secondary hover:bg-surface-hover hover:text-ink-primary",
+                  )}
+                >
+                  <tab.icon className="size-3.5" strokeWidth={2.5} />
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab content */}
+            {rightTab === "preview" && (
+              <PlatformPreviewTabs
+                caption={caption}
+                title={title}
+                hashtags={hashtags}
+                media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
+                selectedPlatforms={selectedPlatforms}
+              />
+            )}
+
+            {rightTab === "ai" && (
+              <div className="n-card p-3 max-h-[70vh] overflow-y-auto thin-scrollbar">
+                {title.trim().length >= 3 ? (
+                  <CaptionAssistant
+                    platform={(selectedPlatforms[0] as any) || "instagram"}
+                    topic={title}
+                    onInsert={(text) => { setCaption(text); setRightTab("preview"); }}
+                    onHashtags={(tags) => setHashtags(tags.join(" "))}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <Sparkles className="size-8 text-ink-tertiary opacity-40 mb-2" />
+                    <p className="text-[12px] text-ink-tertiary">ابتدا موضوع محتوا را بنویسید</p>
+                    <p className="text-[10px] text-ink-tertiary mt-1">سپس دستیار هوش مصنوعی آماده کمک است</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {rightTab === "comments" && (
+              <div className="n-card p-4 flex flex-col items-center justify-center py-10 text-center">
+                <MessageSquare className="size-8 text-ink-tertiary opacity-40 mb-2" />
+                <p className="text-[12px] text-ink-tertiary">بخش نظرات</p>
+                <p className="text-[10px] text-ink-tertiary mt-1">برای محتوای ارسال‌شده فعال می‌شود</p>
+              </div>
+            )}
+
+            {/* Schedule info (always visible below tabs) */}
+            <div className="n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
+              <span>
+                {campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین"}
+              </span>
+              <span>
+                {scheduleMode === "now"
+                  ? "اکنون"
+                  : scheduleMode === "schedule"
+                    ? scheduleDate
+                      ? `${scheduleDate} - ${scheduleTime}`
+                      : "زمان‌بندی نشده"
+                    : "در صف انتشار"}
               </span>
             </div>
-            <PlatformPreviewTabs
-              caption={caption}
-              title={title}
-              hashtags={hashtags}
-              media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
-              selectedPlatforms={selectedPlatforms}
-            />
           </div>
         </div>
       </div>

@@ -1799,3 +1799,46 @@ Stage Summary:
   * Voice examples (few-shot brand voice transfer)
   * X-Accel-Buffering: no header
   * SSE heartbeat (immediate + every 2s)
+
+---
+Task ID: R8
+Agent: Research (AI Assistant UI/UX Patterns)
+Task: Research how top apps handle AI assistant UI/UX; produce recommendation for نشرینو.
+
+Work Log:
+- Read worklog.md (focused AI-related sections via Grep) — confirmed current AI assistant is an inline card in `src/components/ai/caption-assistant.tsx` (383 lines), rendered by `src/components/views/compose-view.tsx` when `title.trim().length >= 3`. Card exposes all 4 control matrices (role × goal × tone × length) upfront, then streams the result below the controls, pushing the editor ~420 px down.
+- Confirmed prior research notes (R3 Persian AI Architecture + Task 8 UX digest) already flagged the target pattern: "AI right-panel deep-context expert + inline AI overlay in composer" — R8 specifies and validates that direction against external benchmarks.
+- Read `caption-assistant.tsx` end-to-end: streaming SSE handler, abort controller, 7-tone palette, hashtag suggestion, save-draft flow. Confirmed all logic is reusable inside the recommended side-panel pattern.
+- Ran 18 web searches via `web_search` covering all 13 target apps (Buffer, Hootsuite, Sprout, Later, Planable, Notion, Linear, GitHub Copilot, ChatGPT, Canva Magic Write, Google Docs Help me write, Slack AI, Figma AI) + 5 cross-cutting UX-pattern topics (where AI sits in UI, side-panel vs inline, command-bar pattern, mobile bottom sheets, Cursor ⌘K).
+- Fetched 6 long-form articles via `page_reader` for design-pattern depth: (1) UX Collective "Where should AI sit in your UI?" (Sharang Sharma, Jun 2025) — 7 spatial AI layouts taxonomy; (2) AI UX Playground "ChatGPT composer UX teardown" — calm default + progressive disclosure + tool-switching; (3) AI UX Playground "Command Bar" pattern — Linear/Notion/Cursor/Raycast ⌘K; (4) Medium "Design for AI 2" (Hao Wu, May 2025) — 6 interaction patterns across Figma/Photoshop/Notion; (5) Buffer Help Center "Using Buffer's AI Assistant" — explicit "opens on the side of the composer" + post-gen controls (Regenerate/Rephrase/Shorten/Expand/More Casual/More Formal); (6) Later designer case study (joeylimmena.com — 404 at fetch time, but search snippet captured the key rationale: "side modal fly-out … work on their captions at the same time they are generating them").
+- Synthesized findings into a comparison table (13 apps × spatial pattern × trigger × layout × output delivery), cross-cutting pattern taxonomies (7 spatial + 6 interaction), and a 3-tier recommendation tailored to نشرینو's existing 5-col grid (editor 3-cols + preview 2-cols).
+- Wrote report to `/home/z/my-project/audit/R8-ai-assistant-uiux.md` (~10 KB, 9 sections): §0 Executive Summary, §1 Current State in نشرینو (baseline), §2 Research Method, §3 Comparison Table (13 apps + 2 taxonomies), §4 Recommendation (3-tier: right-side sheet primary + inline selection toolbar secondary + ⌘K tertiary), §5 Text Wireframe (desktop compose view + inline selection toolbar + mobile bottom sheet), §6 Specific UX Details (trigger/entry points, sizing/positioning, animation/transitions with easing curves, controls flow, streaming, content interaction, mobile vs desktop), §7 Top 5 Inspiring Apps (Buffer, Later, Notion, Google Docs, Linear), §8 Migration Path (5 phases, additive/non-breaking), §9 Sources (27 citations).
+
+Stage Summary:
+- **Recommended pattern**: Replace the inline card with a **tabbed right-side sheet** — the existing 2-col preview column gains a tab strip `پیش‌نمایش | ✨ هوش مصنوعی | 💬 نظرات` (`Preview | AI | Comments`), opened by a ✨ button on the Tiptap editor toolbar and `⌘/Ctrl + J`. Supplement with a Notion/Google-Docs-style floating inline selection toolbar (✨ بهبود / کوتاه‌تر / طولانی‌تر / رسمی‌تر / صمیمی‌تر / ترجمه) for in-place text transforms. Mobile degrades to an 80vh modal bottom sheet with drag-to-dismiss.
+- **Why better than the current inline card**: (1) eliminates ~420 px layout shift — the right column already exists, switching tabs is a 200 ms cross-fade; (2) restores side-by-side editing (Later's stated design rationale — "work on captions at the same time they are generating them"); (3) adopts Buffer/Google-Docs "controls come after first generation" flow instead of the current 4-matrix upfront form; (4) decouples discoverability from typing a title (✨ button + ⌘J always available, so AI can suggest the title itself); (5) gives room for variation history (stack, not replace), hashtags, and saved drafts in one surface; (6) sets up a clean evolution path toward a Notion-style chat mode without another redesign; (7) mobile pattern (bottom sheet) is dismissable and doesn't monopolize the small screen.
+- **Top 5 inspiring apps**: Buffer (side panel + post-gen controls), Later (side modal fly-out rationale), Notion AI (inline selection toolbar + right-side chat tab), Google Docs "Help me write" (Refine floating bar: Tone/Summarize/Bulletize/Elaborate/Shorten/Rephrase/Retry/Custom + Insert/Replace), Linear AI (⌘K → Ask AI tertiary entry point — نشرینو already has ⌘K wired).
+- **Report path**: `/home/z/my-project/audit/R8-ai-assistant-uiux.md`
+- **Implementation note for next agent**: Phase 1 (move CaptionAssistant into a tabbed right column + add ✨ toolbar button + ⌘J shortcut + remove the inline card from the editor column) is additive and non-breaking, and alone resolves the layout-shift problem. All existing streaming/abort/tone/hashtag/draft logic in `caption-assistant.tsx` is reusable as-is inside the new container.
+
+---
+Task ID: AI-UI-V3
+Agent: Main Agent (Z.ai Code)
+Task: Redesign AI assistant UI per R8 research — tabbed right-side panel.
+
+Work Log:
+- R8 research found: top apps (Buffer, Later, Notion, Google Docs, Linear) use a **side panel** or **tabbed panel** for AI, NOT an inline card. Key reasons: no layout shift, side-by-side editing, room for variation history, progressive controls.
+- Redesigned compose view right column from preview-only → **3-tab panel**: پیش‌نمایش (Preview) | ✨ هوش مصنوعی (AI) | نظرات (Comments)
+- Removed inline CaptionAssistant card from the editor column (was pushing editor ~420px down on appear)
+- Added ✨ "دستیار هوش مصنوعی" button in the editor column with ⌘J keyboard shortcut hint — always visible, doesn't require title to be typed first
+- Added ⌘J keyboard shortcut → switches right panel to AI tab
+- AI tab shows empty state ("ابتدا موضوع را بنویسید") when title < 3 chars, then shows full CaptionAssistant when title is available
+- When user clicks "قبول و درج" (accept caption), the panel auto-switches back to Preview tab so they can see the result
+- Comments tab is a placeholder for the future inline-comments feature (P1.5)
+- Schedule info moved below the tab panel (always visible)
+- Verified: Agent Browser confirms 3 tabs, AI button, ⌘J hint, empty state → full AI panel after typing title. Zero console errors.
+
+Stage Summary:
+- AI assistant UI upgraded from inline card → tabbed right-side panel (Buffer/Later/Notion pattern).
+- No more layout shift when AI opens. Editor stays full-height. Side-by-side editing possible.
+- Files: src/components/views/compose-view.tsx (right panel rewrite + AI button + ⌘J shortcut).
