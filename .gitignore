@@ -63,3 +63,21 @@ db/*.db
 db/*.db-journal
 db/*.db-wal
 db/*.db-shm
+
+# Scraped research artifacts (large JSON/HTML dumps from external sites;
+# these contain third-party content that triggers GitHub secret scanning
+# false-positives and don't belong in source control)
+/research/
+/research-glass/
+/research-10of10/
+/audit/
+/screenshots/
+/tool-results/
+/agent-ctx/
+/upload/
+/download/
+verify-*.png
+verify-*.jpg
+*.png
+!src/**/*.png
+!public/**/*.png
