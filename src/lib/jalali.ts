@@ -1,5 +1,5 @@
 // Jalali (Solar Hijri) calendar utilities — Persian-first, the moat.
-// Algorithm:天文-based conversion well-known in the Persian dev community.
+// Algorithm: astronomy-based conversion well-known in the Persian dev community.
 
 export const JALALI_MONTHS = [
   'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
