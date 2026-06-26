@@ -71,7 +71,7 @@ export async function generateCaption(
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
-      const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       if (text && text.trim().length > 10) return text;
@@ -111,7 +111,7 @@ export async function* streamCaption(
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
-      const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const stream = await model.generateContentStream(prompt);
       let yielded = false;
       for await (const chunk of stream) {
@@ -197,7 +197,7 @@ export async function suggestHashtags(
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
-      const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       text = result.response.text();
     } catch (err) {
@@ -310,7 +310,7 @@ ${brandVoice ? `لحن برند: ${brandVoice}` : ""}
   if (hasGemini()) {
     try {
       const gemini = getGemini()!;
-      const model = gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       if (text && text.trim().length > 5) return text;
