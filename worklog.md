@@ -1861,3 +1861,32 @@ Work Log:
 Stage Summary:
 - AI button now has visible feedback: hover scale, tap scale, icon rotation, tab slide transition, smooth scroll on mobile.
 - Files: src/components/views/compose-view.tsx.
+
+---
+Task ID: AI-POPUP-SHEET + CAPTION-QUALITY-V2
+Agent: Main Agent (Z.ai Code)
+Task: Fix caption quality (too machine-like) + redesign AI as popup sheet.
+
+Work Log:
+- **Caption quality fix**: User showed caption output with `✔️ آماده‌سازی سریع:` section labels + mechanical structure. This violates anti-AI-smell rule 10 but the model was still doing it because the example wasn't specific enough. Fixed by:
+  * Added rules 13-15 to ANTI_AI_SMELL_BLOCK: explicit ban on ✔️/✅ bullets with labels, ban on translated "Pain→Solution→Benefit→Urgency" template, ban on meaning-translated phrases ("با هر فنجان، خستگی رو فراموش کن")
+  * Added the user's EXACT bad output as the ❌ example in the prompt, paired with a ✅ natural example that shows real product writing (specific times, specific counts, conversational tone)
+  * The ✅ example demonstrates: no greeting, no bullet labels, conversational opening ("صبح هفت، دستات سردن"), real product info (three flavors, 30 cups per packet), specific CTA
+
+- **UI redesign — popup sheet**: Replaced the tabbed right-panel AI with a **slide-out sheet** (Buffer/Later pattern):
+  * Created `src/components/ai/ai-assistant-sheet.tsx` — a right-side slide-out panel (max-width 440px) with backdrop overlay
+  * Spring animation: `type: "spring", stiffness: 350, damping: 32` for natural slide-in
+  * Contains: topic input (editable in-sheet), role/goal/tone/length selectors, generate button, thinking indicator, streaming caption, action buttons (insert/regenerate/copy/save), hashtags
+  * Esc to close, backdrop click to close
+  * Header with animated Sparkles icon + version counter
+  * Footer with disclaimer
+  * Replaced the tabbed right panel in compose-view.tsx with a simple preview-only panel (removed AI tab + comments tab)
+  * The AI button now opens the sheet instead of switching a tab
+  * ⌘J still works to open the sheet
+
+- **Verified**: Agent Browser — click AI button → sheet slides in from right → topic input visible → type topic → generate button visible → zero console errors.
+
+Stage Summary:
+- Caption quality: 3 new anti-patterns added (✔️ bullets, translated template, meaning-translated phrases) + user's exact bad output as ❌ example
+- UI: tabbed panel → popup sheet (slide-out from right with spring animation + backdrop)
+- Files: src/lib/ai/gemini.ts (ANTI_AI_SMELL_BLOCK strengthened), src/components/ai/ai-assistant-sheet.tsx (new), src/components/views/compose-view.tsx (simplified right panel + sheet integration)

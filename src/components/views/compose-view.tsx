@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { CaptionAssistant } from "@/components/ai/caption-assistant";
+import { AIAssistantSheet } from "@/components/ai/ai-assistant-sheet";
 import { NashrinoEditor } from "@/components/editor/nashrino-editor";
 import { PlatformPreviewTabs } from "@/components/editor/platform-preview-tabs";
 import { MediaUploader } from "@/components/editor/media-uploader";
@@ -110,30 +111,20 @@ export function ComposeView() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("12:00");
 
-  // Right panel tab state: "preview" | "ai" | "comments"
-  const [rightTab, setRightTab] = useState<"preview" | "ai" | "comments">("preview");
-  const rightPanelRef = useRef<HTMLDivElement>(null);
+  // AI sheet state
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
-  // Switch to AI tab + scroll right panel into view (for mobile)
-  const openAITab = useCallback(() => {
-    setRightTab("ai");
-    // Scroll right panel into view after a brief delay (for mobile/tablet)
-    setTimeout(() => {
-      rightPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
-  }, []);
-
-  // ⌘J shortcut to switch to AI tab
+  // ⌘J shortcut to open AI sheet
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "j") {
         e.preventDefault();
-        openAITab();
+        setAiSheetOpen(true);
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [openAITab]);
+  }, []);
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ["campaigns"],
@@ -374,13 +365,13 @@ export function ComposeView() {
               />
             </div>
 
-            {/* AI trigger button — opens AI in right panel */}
+            {/* AI trigger button — opens popup sheet */}
             <div className="flex items-center gap-2">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
-                onClick={openAITab}
+                onClick={() => setAiSheetOpen(true)}
                 className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
               >
                 <motion.span
@@ -514,103 +505,25 @@ export function ComposeView() {
           </div>
         </div>
 
-        {/* Right panel: tabbed (Preview | AI | Comments) */}
-        <div className="lg:col-span-2" ref={rightPanelRef}>
+        {/* Right panel: preview only (AI is now a popup sheet) */}
+        <div className="lg:col-span-2">
           <div className="sticky top-4 space-y-3">
-            {/* Tab strip */}
-            <div className="n-card-compact flex items-center gap-1 p-1">
-              {[
-                { id: "preview" as const, label: "پیش‌نمایش", icon: Eye },
-                { id: "ai" as const, label: "✨ هوش مصنوعی", icon: Sparkles },
-                { id: "comments" as const, label: "نظرات", icon: MessageSquare },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setRightTab(tab.id)}
-                  className={cn(
-                    "n-focus-ring flex-1 flex items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11.5px] font-[600] transition-colors",
-                    rightTab === tab.id
-                      ? "bg-accent text-white"
-                      : "text-ink-secondary hover:bg-surface-hover hover:text-ink-primary",
-                  )}
-                >
-                  <tab.icon className="size-3.5" strokeWidth={2.5} />
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 px-1">
+              <Eye className="size-4 text-accent" />
+              <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
+              <span className="text-[10px] text-ink-tertiary ms-auto">
+                {selectedPlatforms.length > 0
+                  ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
+                  : "پلتفرمی انتخاب نشده"}
+              </span>
             </div>
-
-            {/* Tab content with motion transitions */}
-            <AnimatePresence mode="wait">
-              {rightTab === "preview" && (
-                <motion.div
-                  key="preview"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
-                >
-                  <PlatformPreviewTabs
-                    caption={caption}
-                    title={title}
-                    hashtags={hashtags}
-                    media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
-                    selectedPlatforms={selectedPlatforms}
-                  />
-                </motion.div>
-              )}
-
-              {rightTab === "ai" && (
-                <motion.div
-                  key="ai"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
-                  className="n-card p-3 max-h-[70vh] overflow-y-auto thin-scrollbar"
-                >
-                  {title.trim().length >= 3 ? (
-                    <CaptionAssistant
-                      platform={(selectedPlatforms[0] as any) || "instagram"}
-                      topic={title}
-                      onInsert={(text) => { setCaption(text); setRightTab("preview"); }}
-                      onHashtags={(tags) => setHashtags(tags.join(" "))}
-                    />
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
-                      className="flex flex-col items-center justify-center py-10 text-center"
-                    >
-                      <motion.div
-                        animate={{ y: [0, -6, 0] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                      >
-                        <Sparkles className="size-10 text-accent opacity-50" strokeWidth={1.5} />
-                      </motion.div>
-                      <p className="text-[12px] text-ink-secondary font-[600] mt-3">ابتدا موضوع محتوا را بنویسید</p>
-                      <p className="text-[10px] text-ink-tertiary mt-1">سپس دستیار هوش مصنوعی آماده کمک است</p>
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-
-              {rightTab === "comments" && (
-                <motion.div
-                  key="comments"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  transition={{ duration: 0.2, ease: [0, 0, 0.2, 1] }}
-                  className="n-card p-4 flex flex-col items-center justify-center py-10 text-center"
-                >
-                  <MessageSquare className="size-8 text-ink-tertiary opacity-40 mb-2" />
-                  <p className="text-[12px] text-ink-tertiary">بخش نظرات</p>
-                  <p className="text-[10px] text-ink-tertiary mt-1">برای محتوای ارسال‌شده فعال می‌شود</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <PlatformPreviewTabs
+              caption={caption}
+              title={title}
+              hashtags={hashtags}
+              media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
+              selectedPlatforms={selectedPlatforms}
+            />
 
             {/* Schedule info (always visible below tabs) */}
             <div className="n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
@@ -668,6 +581,16 @@ export function ComposeView() {
           </div>
         </div>
       </div>
+
+      {/* AI Assistant popup sheet */}
+      <AIAssistantSheet
+        open={aiSheetOpen}
+        onClose={() => setAiSheetOpen(false)}
+        platform={(selectedPlatforms[0] as any) || "instagram"}
+        topic={title}
+        onInsert={(text) => setCaption(text)}
+        onHashtags={(tags) => setHashtags(tags.join(" "))}
+      />
     </motion.div>
   );
 }
