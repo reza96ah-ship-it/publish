@@ -6,6 +6,14 @@ import { Sparkles, Send, Loader2, Check, X, Hash } from "lucide-react";
 import { toast } from "sonner";
 
 type Platform = "instagram" | "telegram" | "linkedin" | "rubika" | "bale" | "eitaa";
+type Tone = "formal" | "friendly" | "playful" | "professional";
+
+const TONES: { id: Tone; label: string; emoji: string }[] = [
+  { id: "friendly", label: "دوستانه", emoji: "😊" },
+  { id: "formal", label: "رسمی", emoji: "🎩" },
+  { id: "playful", label: "شاد", emoji: "🎉" },
+  { id: "professional", label: "حرفه‌ای", emoji: "💼" },
+];
 
 interface CaptionAssistantProps {
   platform: Platform;
@@ -29,6 +37,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
   const [streamedText, setStreamedText] = useState("");
   const [hasResult, setHasResult] = useState(false);
   const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false);
+  const [selectedTone, setSelectedTone] = useState<Tone>("friendly");
   const abortRef = useRef<AbortController | null>(null);
 
   const generateCaption = useCallback(async () => {
@@ -48,7 +57,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       const res = await fetch("/api/ai/caption", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, platform }),
+        body: JSON.stringify({ topic, platform, tone: selectedTone }),
         signal: controller.signal,
       });
 
@@ -111,7 +120,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       setIsStreaming(false);
       setHasResult(!!streamedText);
     }
-  }, [topic, platform, streamedText]);
+  }, [topic, platform, selectedTone, streamedText]);
 
   const cancelStream = useCallback(() => {
     abortRef.current?.abort();
@@ -164,6 +173,32 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       <div className="flex items-center gap-2 mb-2">
         <Sparkles className="size-4 text-accent" strokeWidth={2} />
         <span className="text-[12px] font-[600] text-ink-primary">دستیار هوش مصنوعی</span>
+      </div>
+
+      {/* Tone selector */}
+      <div className="mb-2.5">
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[10.5px] font-[600] text-ink-tertiary">لحن کپشن:</span>
+        </div>
+        <div className="flex items-center gap-1 flex-wrap">
+          {TONES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedTone(t.id)}
+              disabled={isStreaming}
+              className={
+                "n-focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-[600] transition-colors disabled:opacity-50 disabled:cursor-not-allowed " +
+                (selectedTone === t.id
+                  ? "bg-accent text-white"
+                  : "border border-border bg-surface text-ink-secondary hover:bg-surface-hover hover:text-ink-primary")
+              }
+              aria-pressed={selectedTone === t.id}
+            >
+              <span>{t.emoji}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Action buttons */}
