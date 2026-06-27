@@ -49,9 +49,7 @@ export function decrypt(value: string): string {
   const tag = Buffer.from(parts[4], 'hex')
   const decipher = createDecipheriv(ALGORITHM, key, iv)
   decipher.setAuthTag(tag)
-  let plaintext: string = decipher.update(ciphertext as any, 'hex', 'utf8') as string
-  plaintext += decipher.final('utf8') as string
-  return plaintext
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
 }
 
 export function ensureEncrypted(value: string): string {

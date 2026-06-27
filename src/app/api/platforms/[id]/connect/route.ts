@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateBody, platformConnectSchema } from "@/lib/validations";
+import { ensureEncrypted } from "@/lib/crypto";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -64,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await db.platform.update({
     where: { id },
     data: {
-      tokenSecret: token,
+      tokenSecret: ensureEncrypted(token),
       targetId: targetId || null,
       name: name || (botInfo?.username ? `@${botInfo.username}` : platform.name),
       username: botInfo?.username || platform.username,
