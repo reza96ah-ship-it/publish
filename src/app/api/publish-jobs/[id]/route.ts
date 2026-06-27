@@ -5,6 +5,8 @@ import { randomUUID } from 'crypto'
 import { rescheduleSchema, validateBody } from '@/lib/validations'
 import { enqueuePublishJob } from '@/lib/queue'
 
+export const dynamic = 'force-dynamic'
+
 type PatchBody =
   | { action: 'retry' }
   | { action: 'discard' }

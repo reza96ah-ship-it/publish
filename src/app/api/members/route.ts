@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateBody, validateParams, memberInviteSchema, cursorPaginationSchema } from '@/lib/validations'
 import { randomUUID } from 'crypto'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const guard = await requireWorkspaceApi()
@@ -40,14 +42,14 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// POST — add a team member directly (similar to /api/members/invite but without invite token)
+// POST â€” add a team member directly (similar to /api/members/invite but without invite token)
 export async function POST(req: NextRequest) {
   const guard = await requireWorkspaceApi()
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
   const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
 
   const validation = validateBody(memberInviteSchema, body)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
@@ -55,12 +57,12 @@ export async function POST(req: NextRequest) {
 
   // Check duplicate
   const existing = await db.workspaceMember.findFirst({ where: { workspaceId, email } })
-  if (existing) return NextResponse.json({ error: 'این عضو قبلاً اضافه شده است' }, { status: 409 })
+  if (existing) return NextResponse.json({ error: 'ط§غŒظ† ط¹ط¶ظˆ ظ‚ط¨ظ„ط§ظ‹ ط§ط¶ط§ظپظ‡ ط´ط¯ظ‡ ط§ط³طھ' }, { status: 409 })
 
   const member = await db.workspaceMember.create({
     data: {
       workspaceId,
-      userId: randomUUID(), // temporary — replaced when user accepts
+      userId: randomUUID(), // temporary â€” replaced when user accepts
       name: name || email.split('@')[0],
       email,
       role,
@@ -81,10 +83,10 @@ export async function POST(req: NextRequest) {
 
 function roleLabel(r: string) {
   switch (r) {
-    case 'admin': return 'مدیر'
-    case 'editor': return 'ویراستار'
-    case 'approver': return 'تأییدکننده'
-    case 'viewer': return 'بیننده'
+    case 'admin': return 'ظ…ط¯غŒط±'
+    case 'editor': return 'ظˆغŒط±ط§ط³طھط§ط±'
+    case 'approver': return 'طھط£غŒغŒط¯ع©ظ†ظ†ط¯ظ‡'
+    case 'viewer': return 'ط¨غŒظ†ظ†ط¯ظ‡'
     default: return r
   }
 }

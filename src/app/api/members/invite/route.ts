@@ -1,5 +1,5 @@
-/**
- * POST /api/members/invite — invite a team member by email.
+﻿/**
+ * POST /api/members/invite â€” invite a team member by email.
  * Creates a WorkspaceMember with role + generates invite token.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -8,13 +8,15 @@ import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { randomUUID } from "crypto";
 import { validateBody, memberInviteSchema } from "@/lib/validations";
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(req: NextRequest) {
   const guard = await requireWorkspaceApi();
   if (guard.error) return guard.error;
   const workspaceId = guard.workspace.id;
 
   const raw = await req.json().catch(() => null);
-  if (!raw) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });
+  if (!raw) return NextResponse.json({ error: "ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±" }, { status: 400 });
 
   const validation = validateBody(memberInviteSchema, raw);
   if (!validation.success) {
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     where: { workspaceId, email },
   });
   if (existing) {
-    return NextResponse.json({ error: "این عضو قبلاً اضافه شده است" }, { status: 409 });
+    return NextResponse.json({ error: "ط§غŒظ† ط¹ط¶ظˆ ظ‚ط¨ظ„ط§ظ‹ ط§ط¶ط§ظپظ‡ ط´ط¯ظ‡ ط§ط³طھ" }, { status: 409 });
   }
 
   // Create member with a temporary userId (will be linked when user registers)
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
   const member = await db.workspaceMember.create({
     data: {
       workspaceId,
-      userId: inviteToken, // temporary — replaced when user accepts invite
+      userId: inviteToken, // temporary â€” replaced when user accepts invite
       name: name || email.split("@")[0],
       email,
       role,
@@ -47,8 +49,8 @@ export async function POST(req: NextRequest) {
     data: {
       workspaceId,
       type: "approval_requested",
-      title: "عضو جدید اضافه شد",
-      body: `${name || email} با نقش ${role} به تیم اضافه شد`,
+      title: "ط¹ط¶ظˆ ط¬ط¯غŒط¯ ط§ط¶ط§ظپظ‡ ط´ط¯",
+      body: `${name || email} ط¨ط§ ظ†ظ‚ط´ ${role} ط¨ظ‡ طھغŒظ… ط§ط¶ط§ظپظ‡ ط´ط¯`,
     },
   });
 

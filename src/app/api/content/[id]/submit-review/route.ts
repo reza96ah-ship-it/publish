@@ -4,6 +4,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+
+export const dynamic = 'force-dynamic'
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateId } from "@/lib/validations";
 

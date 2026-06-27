@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateParams, contentListQuerySchema, cursorPaginationSchema } from '@/lib/validations'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const guard = await requireWorkspaceApi()
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
       status: c.status,
       authorName: c.authorName,
       thumbnail: c.thumbnailUrl,
-      campaign: c.campaign?.name ?? 'بدون کمپین',
+      campaign: c.campaign?.name ?? 'ط¨ط¯ظˆظ† ع©ظ…ظ¾غŒظ†',
       platforms: c.platforms.map((p) => p.platform.type),
       scheduledAt: c.scheduledAt,
       publishedAt: c.publishedAt,

@@ -1,5 +1,5 @@
-/**
- * POST /api/ai/caption — Streaming Persian caption generation.
+﻿/**
+ * POST /api/ai/caption â€” Streaming Persian caption generation.
  *
  * Sends SSE heartbeat immediately + every 2s during reasoning to prevent
  * gateway 502 timeouts. Supports role, goal, length, variation params.
@@ -10,6 +10,8 @@ import { streamCaption, type Platform, type Tone, type CreatorRole, type Content
 import { getWorkspace } from "@/lib/server";
 import { validateBody, aiCaptionSchema } from "@/lib/validations";
 import { aiRateLimit } from "@/lib/ratelimit";
+
+export const dynamic = 'force-dynamic'
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -26,11 +28,11 @@ export async function POST(req: NextRequest) {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "unknown";
     const { success: rateOk } = await aiRateLimit(ip);
     if (!rateOk) {
-      return Response.json({ error: "تعداد درخواست‌ها زیاد است — یک دقیقه صبر کنید" }, { status: 429 });
+      return Response.json({ error: "طھط¹ط¯ط§ط¯ ط¯ط±ط®ظˆط§ط³طھâ€Œظ‡ط§ ط²غŒط§ط¯ ط§ط³طھ â€” غŒع© ط¯ظ‚غŒظ‚ظ‡ طµط¨ط± ع©ظ†غŒط¯" }, { status: 429 });
     }
 
     const raw = await req.json().catch(() => null);
-    if (!raw) return Response.json({ error: "بدنه درخواست نامعتبر" }, { status: 400 });
+    if (!raw) return Response.json({ error: "ط¨ط¯ظ†ظ‡ ط¯ط±ط®ظˆط§ط³طھ ظ†ط§ظ…ط¹طھط¨ط±" }, { status: 400 });
 
     const validation = validateBody(aiCaptionSchema, raw);
     if (!validation.success) {
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
           // (e.g., "GapGPT 401: Invalid API key").
           console.error("[ai/caption] stream error:", err);
           const errorData = JSON.stringify({
-            error: "خطا در تولید کپشن. لطفاً دوباره تلاش کنید.",
+            error: "ط®ط·ط§ ط¯ط± طھظˆظ„غŒط¯ ع©ظ¾ط´ظ†. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯.",
           });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
         } finally {
@@ -120,7 +122,7 @@ export async function POST(req: NextRequest) {
     // Log the full error server-side, return generic Persian message to client
     console.error("[ai/caption] route error:", err);
     return Response.json(
-      { error: "خطا در پردازش درخواست. لطفاً دوباره تلاش کنید." },
+      { error: "ط®ط·ط§ ط¯ط± ظ¾ط±ط¯ط§ط²ط´ ط¯ط±ط®ظˆط§ط³طھ. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯." },
       { status: 500 },
     );
   }

@@ -4,6 +4,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
+
+export const dynamic = 'force-dynamic'
 import { validateBody, inboxAssignSchema, validateId } from "@/lib/validations";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

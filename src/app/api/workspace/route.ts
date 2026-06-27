@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi()

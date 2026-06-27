@@ -1,5 +1,5 @@
-/**
- * GET /api/analytics/real — fetch real analytics from platform APIs.
+﻿/**
+ * GET /api/analytics/real â€” fetch real analytics from platform APIs.
  *
  * For platforms with valid tokens, calls:
  * - Telegram: getChatMemberCount (channel subscribers)
@@ -12,6 +12,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { decrypt } from "@/lib/crypto";
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi();

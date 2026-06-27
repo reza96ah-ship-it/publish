@@ -1,6 +1,6 @@
-/**
- * GET /api/ai/drafts — list AI-saved caption drafts.
- * POST /api/ai/drafts — save a new draft.
+﻿/**
+ * GET /api/ai/drafts â€” list AI-saved caption drafts.
+ * POST /api/ai/drafts â€” save a new draft.
  *
  * Reuses the Content model with status='draft' and internalNote='[ai-draft]{...metadata}'.
  */
@@ -9,7 +9,9 @@ import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateBody, aiDraftSchema } from "@/lib/validations";
 
-// GET — list drafts
+export const dynamic = 'force-dynamic'
+
+// GET â€” list drafts
 export async function GET() {
   const guard = await requireWorkspaceApi();
   if (guard.error) return guard.error;
@@ -42,21 +44,21 @@ export async function GET() {
       role: meta.role ?? null,
       goal: meta.goal ?? null,
       length: meta.length ?? null,
-      authorName: c.authorName ?? "دستیار هوش مصنوعی",
+      authorName: c.authorName ?? "ط¯ط³طھغŒط§ط± ظ‡ظˆط´ ظ…طµظ†ظˆط¹غŒ",
       createdAt: c.createdAt,
       updatedAt: c.updatedAt,
     };
   }));
 }
 
-// POST — save a new draft
+// POST â€” save a new draft
 export async function POST(req: NextRequest) {
   const guard = await requireWorkspaceApi();
   if (guard.error) return guard.error;
   const workspaceId = guard.workspace.id;
 
   const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });
+  if (!body) return NextResponse.json({ error: "ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±" }, { status: 400 });
 
   const validation = validateBody(aiDraftSchema, body);
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 });
@@ -64,11 +66,11 @@ export async function POST(req: NextRequest) {
 
   // Zod min(1) catches empty string; also reject whitespace-only to preserve old behavior.
   if (!captionBody.trim()) {
-    return NextResponse.json({ error: "متن کپشن خالی است" }, { status: 400 });
+    return NextResponse.json({ error: "ظ…طھظ† ع©ظ¾ط´ظ† ط®ط§ظ„غŒ ط§ط³طھ" }, { status: 400 });
   }
 
   // Derive title from first non-empty line if not provided
-  const derivedTitle = title?.trim() || captionBody.split("\n").find((l: string) => l.trim())?.slice(0, 60) || "پیش‌نویس کپشن";
+  const derivedTitle = title?.trim() || captionBody.split("\n").find((l: string) => l.trim())?.slice(0, 60) || "ظ¾غŒط´â€Œظ†ظˆغŒط³ ع©ظ¾ط´ظ†";
 
   const meta = JSON.stringify({ platform, tone, role, goal, length });
 
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
       body: captionBody,
       hashtags: hashtags || null,
       status: "draft",
-      authorName: "دستیار هوش مصنوعی",
+      authorName: "ط¯ط³طھغŒط§ط± ظ‡ظˆط´ ظ…طµظ†ظˆط¹غŒ",
       internalNote: `[ai-draft]${meta}`,
     },
   });

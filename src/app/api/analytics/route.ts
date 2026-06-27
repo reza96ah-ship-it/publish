@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateParams } from '@/lib/validations'
 import { z } from 'zod'
+
+export const dynamic = 'force-dynamic'
 
 const analyticsQuerySchema = z.object({
   platform: z.string().max(50).optional(),

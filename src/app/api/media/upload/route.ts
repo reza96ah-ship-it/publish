@@ -1,5 +1,5 @@
-/**
- * POST /api/media/upload — real media upload with sharp processing.
+﻿/**
+ * POST /api/media/upload â€” real media upload with sharp processing.
  *
  * Accepts multipart/form-data with a `file` field.
  * Processes the image with sharp:
@@ -20,6 +20,8 @@ import { randomUUID } from "crypto";
 import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
+
+export const dynamic = 'force-dynamic'
 
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -42,13 +44,13 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
 
     if (!file) {
-      return NextResponse.json({ error: "فایلی ارسال نشده است" }, { status: 400 });
+      return NextResponse.json({ error: "ظپط§غŒظ„غŒ ط§ط±ط³ط§ظ„ ظ†ط´ط¯ظ‡ ط§ط³طھ" }, { status: 400 });
     }
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: `فرمت پشتیبانی نمی‌شود: ${file.type}. فقط JPEG, PNG, WebP, GIF` },
+        { error: `ظپط±ظ…طھ ظ¾ط´طھغŒط¨ط§ظ†غŒ ظ†ظ…غŒâ€Œط´ظˆط¯: ${file.type}. ظپظ‚ط· JPEG, PNG, WebP, GIF` },
         { status: 400 },
       );
     }
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: `حجم فایل نباید از ۱۰ مگابایت بیشتر باشد` },
+        { error: `ط­ط¬ظ… ظپط§غŒظ„ ظ†ط¨ط§غŒط¯ ط§ط² غ±غ° ظ…ع¯ط§ط¨ط§غŒطھ ط¨غŒط´طھط± ط¨ط§ط´ط¯` },
         { status: 400 },
       );
     }
@@ -114,7 +116,7 @@ export async function POST(req: NextRequest) {
         fileSize: file.size,
         url: fileUrl,
         thumbnailUrl: existsSync(thumbPath) ? thumbUrl : fileUrl,
-        folder: "عمومی",
+        folder: "ط¹ظ…ظˆظ…غŒ",
         width,
         height,
         tags: "",
@@ -137,7 +139,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[media:upload] error:", err);
     return NextResponse.json(
-      { error: "خطا در آپلود فایل" },
+      { error: "ط®ط·ط§ ط¯ط± ط¢ظ¾ظ„ظˆط¯ ظپط§غŒظ„" },
       { status: 500 },
     );
   }

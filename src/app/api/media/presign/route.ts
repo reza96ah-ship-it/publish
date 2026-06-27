@@ -1,5 +1,5 @@
-/**
- * POST /api/media/presign — get a presigned URL for direct-to-S3 upload.
+﻿/**
+ * POST /api/media/presign â€” get a presigned URL for direct-to-S3 upload.
  *
  * Request: { fileName: string, fileType: string, fileSize: number }
  * Response: { uploadUrl, key, publicUrl, mediaId }
@@ -18,10 +18,12 @@ import { z } from 'zod'
 import { createPresignedUpload } from '@/lib/storage'
 import { randomUUID } from 'crypto'
 
+export const dynamic = 'force-dynamic'
+
 const presignSchema = z.object({
-  fileName: z.string().min(1, 'نام فایل الزامی است').max(200, 'نام فایل خیلی طولانی است'),
-  fileType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'فرمت فایل باید jpeg, png, webp یا gif باشد'),
-  fileSize: z.number().int().positive().max(10_485_760, 'حداکثر حجم فایل ۱۰ مگابایت است'), // 10MB
+  fileName: z.string().min(1, 'ظ†ط§ظ… ظپط§غŒظ„ ط§ظ„ط²ط§ظ…غŒ ط§ط³طھ').max(200, 'ظ†ط§ظ… ظپط§غŒظ„ ط®غŒظ„غŒ ط·ظˆظ„ط§ظ†غŒ ط§ط³طھ'),
+  fileType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'ظپط±ظ…طھ ظپط§غŒظ„ ط¨ط§غŒط¯ jpeg, png, webp غŒط§ gif ط¨ط§ط´ط¯'),
+  fileSize: z.number().int().positive().max(10_485_760, 'ط­ط¯ط§ع©ط«ط± ط­ط¬ظ… ظپط§غŒظ„ غ±غ° ظ…ع¯ط§ط¨ط§غŒطھ ط§ط³طھ'), // 10MB
 })
 
 const STORAGE_QUOTA_BYTES = 500 * 1024 * 1024 // 500MB per workspace
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
   const workspaceId = guard.workspace.id
 
   const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
 
   const validation = validateBody(presignSchema, body)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (usedBytes + fileSize > STORAGE_QUOTA_BYTES) {
     const remaining = Math.max(0, STORAGE_QUOTA_BYTES - usedBytes)
     return NextResponse.json({
-      error: `سقف ذخیره‌سازی تکمیل است. فضای باقیمانده: ${Math.round(remaining / 1024 / 1024)} مگابایت`,
+      error: `ط³ظ‚ظپ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ طھع©ظ…غŒظ„ ط§ط³طھ. ظپط¶ط§غŒ ط¨ط§ظ‚غŒظ…ط§ظ†ط¯ظ‡: ${Math.round(remaining / 1024 / 1024)} ظ…ع¯ط§ط¨ط§غŒطھ`,
     }, { status: 413 })
   }
 

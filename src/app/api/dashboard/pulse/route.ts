@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi()
@@ -30,9 +32,9 @@ export async function GET() {
     schedule: j.scheduledAt,
     processLabel: j.processLabel,
     progress: j.progress,
-    assignee: j.assignee?.name ?? 'بدون مسئول',
+    assignee: j.assignee?.name ?? 'ط¨ط¯ظˆظ† ظ…ط³ط¦ظˆظ„',
     assigneeAvatar: j.assignee?.avatarUrl ?? '',
-    campaign: j.campaign?.name ?? 'بدون کمپین',
+    campaign: j.campaign?.name ?? 'ط¨ط¯ظˆظ† ع©ظ…ظ¾غŒظ†',
     thumbnail: j.content.thumbnailUrl ?? j.thumbnailUrl ?? '',
     platformColor: platformColor(j.platform.type),
     platformBg: platformBg(j.platform.type),
@@ -43,12 +45,12 @@ export async function GET() {
 
 function statusLabel(s: string) {
   switch (s) {
-    case 'processing': return 'در حال پردازش'
-    case 'success': return 'منتشر شد'
-    case 'failed': return 'ناموفق'
-    case 'action': return 'نیازمند اقدام'
-    case 'scheduled': return 'در صف'
-    case 'pending': return 'در انتظار'
+    case 'processing': return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
+    case 'success': return 'ظ…ظ†طھط´ط± ط´ط¯'
+    case 'failed': return 'ظ†ط§ظ…ظˆظپظ‚'
+    case 'action': return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
+    case 'scheduled': return 'ط¯ط± طµظپ'
+    case 'pending': return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
     default: return s
   }
 }

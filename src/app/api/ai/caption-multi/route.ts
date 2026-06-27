@@ -1,5 +1,5 @@
-/**
- * POST /api/ai/caption-multi — multi-platform parallel caption generation.
+﻿/**
+ * POST /api/ai/caption-multi â€” multi-platform parallel caption generation.
  *
  * Accepts { topic, platforms[], tone, role, goal, length } and generates
  * one adapted caption per platform in parallel. Multiplexes results into
@@ -9,6 +9,8 @@
 import { NextRequest } from "next/server";
 import { streamCaption, type Platform, type Tone, type CreatorRole, type ContentGoal, type CaptionLength } from "@/lib/ai/gemini";
 import { getWorkspace } from "@/lib/server";
+
+export const dynamic = 'force-dynamic'
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -21,12 +23,12 @@ export async function POST(req: NextRequest) {
     const { topic, platforms, tone, role, goal, length } = body;
 
     if (!topic || typeof topic !== "string" || topic.trim().length < 3) {
-      return Response.json({ error: "موضوع حداقل ۳ کاراکتر باید باشد" }, { status: 400 });
+      return Response.json({ error: "ظ…ظˆط¶ظˆط¹ ط­ط¯ط§ظ‚ظ„ غ³ ع©ط§ط±ط§ع©طھط± ط¨ط§غŒط¯ ط¨ط§ط´ط¯" }, { status: 400 });
     }
 
     const validPlatforms = (platforms as string[]).filter((p) => VALID_PLATFORMS.includes(p as Platform));
     if (validPlatforms.length < 2 || validPlatforms.length > 4) {
-      return Response.json({ error: "۲ تا ۴ پلتفرم انتخاب کنید" }, { status: 400 });
+      return Response.json({ error: "غ² طھط§ غ´ ظ¾ظ„طھظپط±ظ… ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯" }, { status: 400 });
     }
 
     let workspace: Awaited<ReturnType<typeof getWorkspace>> = null;
@@ -59,7 +61,7 @@ export async function POST(req: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, platform: p })}\n\n`));
           } catch (err: any) {
             console.error(`[ai/caption-multi] stream error for ${p}:`, err);
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "خطا در تولید کپشن. لطفاً دوباره تلاش کنید.", platform: p })}\n\n`));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "ط®ط·ط§ ط¯ط± طھظˆظ„غŒط¯ ع©ظ¾ط´ظ†. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯.", platform: p })}\n\n`));
           }
         });
 
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[ai/caption-multi] route error:", err);
     return Response.json(
-      { error: "خطا در پردازش درخواست. لطفاً دوباره تلاش کنید." },
+      { error: "ط®ط·ط§ ط¯ط± ظ¾ط±ط¯ط§ط²ط´ ط¯ط±ط®ظˆط§ط³طھ. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯." },
       { status: 500 },
     );
   }

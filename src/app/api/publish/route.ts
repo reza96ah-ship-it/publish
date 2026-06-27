@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { getServerSession } from 'next-auth'
@@ -6,6 +6,8 @@ import { authOptions } from '@/lib/auth'
 import { enqueuePublishJob } from '@/lib/queue'
 import { randomUUID } from 'crypto'
 import { validateBody, publishSchema } from '@/lib/validations'
+
+export const dynamic = 'force-dynamic'
 
 interface PublishRequest {
   title: string
@@ -27,18 +29,18 @@ export async function POST(req: Request) {
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
-  // Fetch the authenticated user's name (fallback to workspace member or '—')
+  // Fetch the authenticated user's name (fallback to workspace member or 'â€”')
   const session = await getServerSession(authOptions)
   const authorName = (session?.user as any)?.name
     || (await db.workspaceMember.findFirst({
          where: { userId: (session?.user as any)?.id },
          select: { name: true },
        }))?.name
-    || '—'
+    || 'â€”'
 
   let body
   const raw = await req.json().catch(() => null)
-  if (!raw) return NextResponse.json({ error: 'بدنه درخواست نامعتبر است' }, { status: 400 })
+  if (!raw) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ط¯ط±ط®ظˆط§ط³طھ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ' }, { status: 400 })
 
   const validation = validateBody(publishSchema, raw)
   if (!validation.success) {
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
   const mode = body.mode ?? 'publish'
 
   if (mode === 'publish' && (!body.platformTypes || body.platformTypes.length === 0)) {
-    return NextResponse.json({ error: 'حداقل یک پلتفرم باید انتخاب شود' }, { status: 400 })
+    return NextResponse.json({ error: 'ط­ط¯ط§ظ‚ظ„ غŒع© ظ¾ظ„طھظپط±ظ… ط¨ط§غŒط¯ ط§ظ†طھط®ط§ط¨ ط´ظˆط¯' }, { status: 400 })
   }
 
   // Resolve platforms for the selected types (one job per connected platform)
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
 
   if (platforms.length === 0) {
     return NextResponse.json(
-      { error: 'هیچ پلتفرم متصلی برای پلتفرم‌های انتخاب‌شده یافت نشد' },
+      { error: 'ظ‡غŒع† ظ¾ظ„طھظپط±ظ… ظ…طھطµظ„غŒ ط¨ط±ط§غŒ ظ¾ظ„طھظپط±ظ…â€Œظ‡ط§غŒ ط§ظ†طھط®ط§ط¨â€Œط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯' },
       { status: 400 },
     )
   }
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
   const contentId = randomUUID()
 
   const result = await db.$transaction(async (tx) => {
-    // 1. Create content — status depends on mode
+    // 1. Create content â€” status depends on mode
     const content = await tx.content.create({
       data: {
         id: contentId,
@@ -108,7 +110,7 @@ export async function POST(req: Request) {
       })
     }
 
-    // 3. Create a publish job per platform (only in publish mode — skip for review)
+    // 3. Create a publish job per platform (only in publish mode â€” skip for review)
     const jobs: { id: string; platform: string; idempotencyKey: string }[] = []
     if (mode === 'publish') {
       for (const p of platforms) {
@@ -123,7 +125,7 @@ export async function POST(req: Request) {
             campaignId: body.campaignId || null,
             status: 'pending',
             progress: 0,
-            processLabel: 'در انتظار',
+            processLabel: 'ط¯ط± ط§ظ†طھط¸ط§ط±',
             idempotencyKey,
             scheduledAt,
             thumbnailUrl,
@@ -163,8 +165,8 @@ export async function POST(req: Request) {
       data: {
         workspaceId,
         type: 'approval_requested',
-        title: 'محتوای جدید برای تأیید',
-        body: `«${body.title.trim()}» برای بررسی ارسال شد`,
+        title: 'ظ…ط­طھظˆط§غŒ ط¬ط¯غŒط¯ ط¨ط±ط§غŒ طھط£غŒغŒط¯',
+        body: `آ«${body.title.trim()}آ» ط¨ط±ط§غŒ ط¨ط±ط±ط³غŒ ط§ط±ط³ط§ظ„ ط´ط¯`,
         isRead: false,
       },
     })
@@ -173,8 +175,8 @@ export async function POST(req: Request) {
       data: {
         workspaceId,
         type: 'publish_success',
-        title: `محتوای «${body.title.trim()}» برای انتشار در ${String(platforms.length)} پلتفرم زمان‌بندی شد`,
-        body: `پلتفرم‌ها: ${platforms.map((p) => p.name).join('، ')}`,
+        title: `ظ…ط­طھظˆط§غŒ آ«${body.title.trim()}آ» ط¨ط±ط§غŒ ط§ظ†طھط´ط§ط± ط¯ط± ${String(platforms.length)} ظ¾ظ„طھظپط±ظ… ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ ط´ط¯`,
+        body: `ظ¾ظ„طھظپط±ظ…â€Œظ‡ط§: ${platforms.map((p) => p.name).join('طŒ ')}`,
         isRead: false,
       },
     })
@@ -186,19 +188,19 @@ export async function POST(req: Request) {
     scheduledAt: scheduledAt?.toISOString() ?? null,
     message:
       mode === 'review'
-        ? 'محتوا برای تأیید ارسال شد'
+        ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ طھط£غŒغŒط¯ ط§ط±ط³ط§ظ„ ط´ط¯'
         : body.scheduleMode === 'now'
-          ? 'محتوا برای انتشار ارسال شد'
+          ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ ط§ظ†طھط´ط§ط± ط§ط±ط³ط§ظ„ ط´ط¯'
           : body.scheduleMode === 'schedule'
-            ? 'زمان‌بندی انتشار ثبت شد'
-            : 'محتوا به صف انتشار افزوده شد',
+            ? 'ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ ط§ظ†طھط´ط§ط± ط«ط¨طھ ط´ط¯'
+            : 'ظ…ط­طھظˆط§ ط¨ظ‡ طµظپ ط§ظ†طھط´ط§ط± ط§ظپط²ظˆط¯ظ‡ ط´ط¯',
   }, { status: 201 })
 }
 
 /**
  * Compute the scheduledAt timestamp from the schedule mode.
- * - "now": null (publish immediately — worker picks it up)
- * - "schedule": parse Jalali date + time → Date
+ * - "now": null (publish immediately â€” worker picks it up)
+ * - "schedule": parse Jalali date + time â†’ Date
  * - "queue": null (worker processes in order)
  */
 function computeScheduledAt(body: PublishRequest): Date | null {
@@ -213,7 +215,7 @@ function computeScheduledAt(body: PublishRequest): Date | null {
   return null
 }
 
-/** Jalali → Gregorian conversion (same algorithm as src/lib/jalali.ts) */
+/** Jalali â†’ Gregorian conversion (same algorithm as src/lib/jalali.ts) */
 function jalaliToGregorian(jy: number, jm: number, jd: number): { year: number; month: number; day: number } {
   function div(a: number, b: number) { return Math.floor(a / b) }
   function mod(a: number, b: number) { return a - Math.floor(a / b) * b }

@@ -3,6 +3,8 @@
  * Transitions content from review → approved.
  */
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = 'force-dynamic'
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateId } from "@/lib/validations";

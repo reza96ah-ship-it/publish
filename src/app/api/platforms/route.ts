@@ -1,13 +1,15 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi()
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
-  // P8.3: Fixed N+1 — single groupBy query instead of count per platform
+  // P8.3: Fixed N+1 â€” single groupBy query instead of count per platform
   const platforms = await db.platform.findMany({
     where: { workspaceId },
     orderBy: { createdAt: 'asc' },
@@ -54,11 +56,11 @@ function logoFor(t: string) {
   return `https://picsum.photos/seed/${t}/64/64`
 }
 function stateLabel(p: { status: string; circuitState: string; accountKind: string }) {
-  if (p.status === 'expired') return 'نیازمند احراز مجدد'
-  if (p.status === 'error' || p.circuitState === 'open') return 'اختلال API'
-  if (p.status === 'disconnected') return 'قطع شده'
-  if (p.accountKind === 'personal') return 'حساب شخصی (دستی)'
-  return 'متصل و پایدار'
+  if (p.status === 'expired') return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ط­ط±ط§ط² ظ…ط¬ط¯ط¯'
+  if (p.status === 'error' || p.circuitState === 'open') return 'ط§ط®طھظ„ط§ظ„ API'
+  if (p.status === 'disconnected') return 'ظ‚ط·ط¹ ط´ط¯ظ‡'
+  if (p.accountKind === 'personal') return 'ط­ط³ط§ط¨ ط´ط®طµغŒ (ط¯ط³طھغŒ)'
+  return 'ظ…طھطµظ„ ظˆ ظ¾ط§غŒط¯ط§ط±'
 }
 function stateColor(p: { status: string; circuitState: string; accountKind: string }) {
   if (p.status === 'expired') return 'text-amber-700 bg-amber-50 border-amber-200'

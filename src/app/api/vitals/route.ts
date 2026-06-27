@@ -1,11 +1,13 @@
-/**
- * POST /api/vitals — receive Core Web Vitals from the browser.
+﻿/**
+ * POST /api/vitals â€” receive Core Web Vitals from the browser.
  *
  * Logs LCP, INP, CLS, FCP, TTFB to the server console (Prometheus in prod).
- * Non-blocking — always returns 204.
+ * Non-blocking â€” always returns 204.
  */
 
 import { NextRequest, NextResponse } from "next/server"
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
     // In production, push to Prometheus / Sentry
     // TODO: metrics.vitalsHistogram.observe({ name }, value)
   } catch {
-    // Non-blocking — don't fail the request
+    // Non-blocking â€” don't fail the request
   }
 
   return new NextResponse(null, { status: 204 })

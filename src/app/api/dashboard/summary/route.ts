@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi()
@@ -9,7 +11,7 @@ export async function GET() {
 
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
-  // P8.3: Fixed N+1 — use groupBy instead of findMany + filter
+  // P8.3: Fixed N+1 â€” use groupBy instead of findMany + filter
   const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] = await Promise.all([
     db.publishJob.groupBy({
       by: ['status'],
@@ -29,7 +31,7 @@ export async function GET() {
     }),
   ])
 
-  // Build status → count map
+  // Build status â†’ count map
   const jobMap = new Map(jobCounts.map((j) => [j.status, j._count._all]))
   const failed = (jobMap.get('failed') ?? 0) + (jobMap.get('action') ?? 0)
   const queued = (jobMap.get('pending') ?? 0) + (jobMap.get('scheduled') ?? 0)
@@ -40,7 +42,7 @@ export async function GET() {
   const disconnected = (platMap.get('error') ?? 0) + (platMap.get('expired') ?? 0) + (platMap.get('disconnected') ?? 0)
 
   const health = failed > 2 || disconnected > 1 ? 'critical' : failed > 0 || disconnected > 0 ? 'warning' : 'healthy'
-  const healthLabel = health === 'healthy' ? 'پایدار' : health === 'warning' ? 'نیازمند توجه' : 'بحرانی'
+  const healthLabel = health === 'healthy' ? 'ظ¾ط§غŒط¯ط§ط±' : health === 'warning' ? 'ظ†غŒط§ط²ظ…ظ†ط¯ طھظˆط¬ظ‡' : 'ط¨ط­ط±ط§ظ†غŒ'
   const healthColor = health === 'healthy' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : health === 'warning' ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200'
 
   return NextResponse.json({

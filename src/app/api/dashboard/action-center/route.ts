@@ -1,6 +1,8 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requireWorkspaceApi()
@@ -16,7 +18,7 @@ export async function GET() {
   // Primary critical task
   const failed = notifications.find((n) => n.type === 'publish_failed')
   const primary = failed
-    ? { id: failed.id, type: 'critical', title: failed.title, context: failed.body ?? '', time: failed.createdAt, action: 'بررسی و تلاش مجدد' }
+    ? { id: failed.id, type: 'critical', title: failed.title, context: failed.body ?? '', time: failed.createdAt, action: 'ط¨ط±ط±ط³غŒ ظˆ طھظ„ط§ط´ ظ…ط¬ط¯ط¯' }
     : null
 
   // Secondary tasks
