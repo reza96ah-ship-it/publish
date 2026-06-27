@@ -38,7 +38,7 @@ import {
   type CalendarCell,
 } from "@/lib/jalali";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 import { announce } from "@/lib/aria-live";
 import { SectionTitle, PlatformIcon, StatusBadge, EmptyState, AnimatedTabs } from "@/components/dashboard/shared";
 import { Button } from "@/components/ui/button";
@@ -97,7 +97,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function CalendarView() {
   const { calendarCursor, setCalendarCursor } = useAppStore();
-  const { setView: navigateTo } = useViewRoute();
+  const router = useRouter();
+  const navigateTo = (path: string) => router.push(path);
   const [view, setView] = useState<"month" | "week" | "agenda">("month");
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null);
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null);
@@ -343,7 +344,7 @@ export function CalendarView() {
                 message="با ایجاد اولین رویداد، برنامه انتشار این ماه را آغاز کنید."
                 illustration="calendar"
                 action={
-                  <Button size="sm" onClick={() => navigateTo("compose")}>
+                  <Button size="sm" onClick={() => navigateTo("/compose")}>
                     <Plus className="size-4" />
                     ایجاد محتوا
                   </Button>
@@ -441,7 +442,7 @@ export function CalendarView() {
                 <Button
                   className="w-full"
                   variant="outline"
-                  onClick={() => navigateTo("compose")}
+                  onClick={() => navigateTo("/compose")}
                 >
                   ایجاد محتوای جدید
                 </Button>

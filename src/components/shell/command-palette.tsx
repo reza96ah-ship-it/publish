@@ -20,7 +20,7 @@ import {
   Bell,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute, type AppView } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 import { toPersianDigits } from "@/lib/jalali";
 import { modalBackdrop, modalContent } from "@/lib/motion";
 
@@ -34,12 +34,12 @@ interface NavAction {
 }
 
 export function CommandPalette() {
+  const router = useRouter();
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
     setMobileMenuOpen,
   } = useAppStore();
-  const { setView } = useViewRoute();
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -56,29 +56,29 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", handler);
   }, [isCommandPaletteOpen, setCommandPaletteOpen]);
 
-  const go = (view: AppView) => {
-    setView(view);
+  const go = (path: string) => {
+    router.push(path);
     setMobileMenuOpen(false);
     setCommandPaletteOpen(false);
   };
 
   const actions: NavAction[] = [
     // Pages
-    { id: "dashboard", label: "داشبورد", icon: LayoutDashboard, shortcut: "G D", group: "pages", onSelect: () => go("dashboard") },
-    { id: "compose", label: "انتشار جدید", icon: Send, shortcut: "C", group: "pages", onSelect: () => go("compose") },
-    { id: "calendar", label: "تقویم محتوا", icon: Calendar, group: "pages", onSelect: () => go("calendar") },
-    { id: "campaigns", label: "کمپین‌ها", icon: Flag, group: "pages", onSelect: () => go("campaigns") },
-    { id: "content", label: "کتابخانه محتوا", icon: Folder, group: "pages", onSelect: () => go("content") },
-    { id: "media", label: "رسانه", icon: ImageIcon, group: "pages", onSelect: () => go("media") },
-    { id: "inbox", label: "صندوق ورودی", icon: Mail, group: "pages", onSelect: () => go("inbox") },
-    { id: "analytics", label: "تحلیل و گزارش‌ها", icon: BarChart3, group: "pages", onSelect: () => go("analytics") },
-    { id: "channels", label: "پلتفرم‌ها و اتصال‌ها", icon: Link2, group: "pages", onSelect: () => go("channels") },
-    { id: "settings", label: "تنظیمات", icon: Settings, group: "pages", onSelect: () => go("settings") },
+    { id: "dashboard", label: "داشبورد", icon: LayoutDashboard, shortcut: "G D", group: "pages", onSelect: () => go("/") },
+    { id: "compose", label: "انتشار جدید", icon: Send, shortcut: "C", group: "pages", onSelect: () => go("/compose") },
+    { id: "calendar", label: "تقویم محتوا", icon: Calendar, group: "pages", onSelect: () => go("/calendar") },
+    { id: "campaigns", label: "کمپین‌ها", icon: Flag, group: "pages", onSelect: () => go("/campaigns") },
+    { id: "content", label: "کتابخانه محتوا", icon: Folder, group: "pages", onSelect: () => go("/content") },
+    { id: "media", label: "رسانه", icon: ImageIcon, group: "pages", onSelect: () => go("/media") },
+    { id: "inbox", label: "صندوق ورودی", icon: Mail, group: "pages", onSelect: () => go("/inbox") },
+    { id: "analytics", label: "تحلیل و گزارش‌ها", icon: BarChart3, group: "pages", onSelect: () => go("/analytics") },
+    { id: "channels", label: "پلتفرم‌ها و اتصال‌ها", icon: Link2, group: "pages", onSelect: () => go("/channels") },
+    { id: "settings", label: "تنظیمات", icon: Settings, group: "pages", onSelect: () => go("/settings") },
     // Actions
-    { id: "new-publish", label: "انتشار محتوای جدید", icon: Plus, shortcut: "C", group: "actions", onSelect: () => go("compose") },
-    { id: "ai-assistant", label: "باز کردن دستیار هوش مصنوعی", icon: Sparkles, group: "actions", onSelect: () => go("compose") },
-    { id: "search-content", label: "جستجوی محتوا…", icon: Search, group: "actions", onSelect: () => go("content") },
-    { id: "view-notifications", label: "مشاهده اعلان‌ها", icon: Bell, group: "actions", onSelect: () => go("inbox") },
+    { id: "new-publish", label: "انتشار محتوای جدید", icon: Plus, shortcut: "C", group: "actions", onSelect: () => go("/compose") },
+    { id: "ai-assistant", label: "باز کردن دستیار هوش مصنوعی", icon: Sparkles, group: "actions", onSelect: () => go("/compose") },
+    { id: "search-content", label: "جستجوی محتوا…", icon: Search, group: "actions", onSelect: () => go("/content") },
+    { id: "view-notifications", label: "مشاهده اعلان‌ها", icon: Bell, group: "actions", onSelect: () => go("/inbox") },
   ];
 
   return (

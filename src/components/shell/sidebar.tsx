@@ -2,6 +2,8 @@
 
 import { type LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Calendar,
@@ -18,28 +20,28 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute, type AppView } from "@/lib/view-route";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
 interface NavItem {
-  view: AppView;
+  view: string;
+  href: string;
   icon: LucideIcon;
   label: string;
   badgeKey?: "unreadInbox" | "pendingApproval" | "failed";
 }
 
 const navItems: NavItem[] = [
-  { view: "dashboard", icon: LayoutDashboard, label: "داشبورد" },
-  { view: "compose", icon: Send, label: "انتشار" },
-  { view: "calendar", icon: Calendar, label: "تقویم محتوا" },
-  { view: "campaigns", icon: Flag, label: "کمپین‌ها" },
-  { view: "content", icon: Folder, label: "کتابخانه محتوا" },
-  { view: "media", icon: ImageIcon, label: "رسانه" },
-  { view: "inbox", icon: Mail, label: "صندوق ورودی", badgeKey: "unreadInbox" },
-  { view: "analytics", icon: BarChart3, label: "تحلیل و گزارش‌ها" },
-  { view: "channels", icon: Link2, label: "پلتفرم‌ها و اتصال‌ها" },
-  { view: "settings", icon: Settings, label: "تنظیمات" },
+  { view: "dashboard", href: "/", icon: LayoutDashboard, label: "داشبورد" },
+  { view: "compose", href: "/compose", icon: Send, label: "انتشار" },
+  { view: "calendar", href: "/calendar", icon: Calendar, label: "تقویم محتوا" },
+  { view: "campaigns", href: "/campaigns", icon: Flag, label: "کمپین‌ها" },
+  { view: "content", href: "/content", icon: Folder, label: "کتابخانه محتوا" },
+  { view: "media", href: "/media", icon: ImageIcon, label: "رسانه" },
+  { view: "inbox", href: "/inbox", icon: Mail, label: "صندوق ورودی", badgeKey: "unreadInbox" },
+  { view: "analytics", href: "/analytics", icon: BarChart3, label: "تحلیل و گزارش‌ها" },
+  { view: "channels", href: "/channels", icon: Link2, label: "پلتفرم‌ها و اتصال‌ها" },
+  { view: "settings", href: "/settings", icon: Settings, label: "تنظیمات" },
 ];
 
 interface Summary {
@@ -52,12 +54,14 @@ function toPersianDigits(n: number) {
   return String(n).replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
-function SidebarNavItem({ item, isActive, onClick, badge }: { item: NavItem; isActive: boolean; onClick: () => void; badge?: number }) {
+function SidebarNavItem({ item, isActive, badge }: { item: NavItem; isActive: boolean; badge?: number }) {
   const Icon = item.icon;
+  const { setMobileMenuOpen } = useAppStore();
   return (
-    <button
+    <Link
+      href={item.href}
       data-active={isActive || undefined}
-      onClick={onClick}
+      onClick={() => setMobileMenuOpen(false)}
       className="group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-[500] transition-colors duration-150 text-ink-secondary hover:bg-surface-hover/70 hover:text-ink-primary data-[active]:bg-accent data-[active]:text-white data-[active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
     >
       {isActive && (
@@ -68,7 +72,6 @@ function SidebarNavItem({ item, isActive, onClick, badge }: { item: NavItem; isA
           transition={{ type: "spring", stiffness: 400, damping: 30 }}
         />
       )}
-      {/* Hover accent bar — appears on hover for non-active items */}
       {!isActive && (
         <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent opacity-0 group-hover:opacity-30 transition-opacity duration-150" aria-hidden />
       )}
@@ -82,13 +85,12 @@ function SidebarNavItem({ item, isActive, onClick, badge }: { item: NavItem; isA
           {toPersianDigits(badge)}
         </span>
       )}
-    </button>
+    </Link>
   );
 }
 
 export function Sidebar() {
-  const { view: activeView, setView } = useViewRoute();
-  const { setMobileMenuOpen } = useAppStore();
+  const pathname = usePathname();
 
   const { data: summary } = useQuery<Summary>({
     queryKey: ["dashboard-summary"],
@@ -96,17 +98,18 @@ export function Sidebar() {
     refetchInterval: 30000,
   });
 
-  const handleNav = (view: AppView) => {
-    setView(view);
-    setMobileMenuOpen(false);
-  };
-
   const badgeFor = (key?: NavItem["badgeKey"]) => {
     if (!key || !summary) return undefined;
     return summary[key];
   };
 
   const notifCount = (summary?.failed ?? 0) + (summary?.pendingApproval ?? 0);
+
+  // Derive active state from pathname
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname.startsWith(href);
+  };
 
   return (
     <aside
@@ -139,8 +142,7 @@ export function Sidebar() {
           <SidebarNavItem
             key={item.view}
             item={item}
-            isActive={activeView === item.view}
-            onClick={() => handleNav(item.view)}
+            isActive={isActive(item.href)}
             badge={badgeFor(item.badgeKey)}
           />
         ))}
@@ -149,8 +151,7 @@ export function Sidebar() {
           <SidebarNavItem
             key={item.view}
             item={item}
-            isActive={activeView === item.view}
-            onClick={() => handleNav(item.view)}
+            isActive={isActive(item.href)}
             badge={badgeFor(item.badgeKey)}
           />
         ))}
@@ -158,7 +159,6 @@ export function Sidebar() {
 
       {/* Bottom Section */}
       <div className="mt-auto border-t border-border/60 px-2 py-2 space-y-px">
-        {/* Connection status indicator */}
         <div className="flex items-center gap-2 px-2.5 py-1">
           <span className="relative flex size-2">
             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
@@ -167,7 +167,6 @@ export function Sidebar() {
           <span className="text-[10px] font-[500] text-ink-tertiary">متصل لحظه‌ای</span>
         </div>
 
-        {/* Workspace switcher */}
         <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-right transition-colors hover:bg-surface-hover/70">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-[11px] font-[700] text-accent">
             ب
@@ -179,7 +178,6 @@ export function Sidebar() {
           <ChevronLeft className="size-3.5 text-ink-tertiary shrink-0" strokeWidth={2} />
         </button>
 
-        {/* User Profile */}
         <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-surface-hover/70 transition-colors cursor-pointer">
           <img
             src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
