@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { toPersianDigits, relativeTime } from "@/lib/jalali";
 import { Link2, MoreHorizontal } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useViewRoute } from "@/lib/view-route";
 import { PanelHeader, LinkAction, EmptyState } from "./shared";
 import { PlatformLogo } from "@/components/ui/platform-logo";
 
@@ -27,7 +28,7 @@ export function PlatformsPanel() {
     queryKey: ["platforms"],
     queryFn: () => api.get<Platform[]>("/api/platforms"),
   });
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  const { setView: setActiveView } = useViewRoute();
 
   return (
     <div className="n-card p-5 h-full flex flex-col">

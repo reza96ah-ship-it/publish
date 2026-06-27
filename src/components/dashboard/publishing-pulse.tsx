@@ -6,6 +6,7 @@ import { toPersianDigits, relativeTime } from "@/lib/jalali";
 import { PlatformIcon, PanelHeader, LinkAction, EmptyState } from "./shared";
 import { Radio, AlertTriangle, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useViewRoute } from "@/lib/view-route";
 
 interface PulseJob {
   id: string;
@@ -32,7 +33,7 @@ export function PublishingPulse() {
     queryFn: () => api.get<PulseJob[]>("/api/dashboard/pulse"),
     refetchInterval: 10000,
   });
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  const { setView: setActiveView } = useViewRoute();
 
   return (
     <div className="n-card p-5 h-full flex flex-col">

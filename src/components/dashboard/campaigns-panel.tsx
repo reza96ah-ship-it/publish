@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { toPersianDigits } from "@/lib/jalali";
 import { Flag, MoreHorizontal, ArrowLeft } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { useViewRoute } from "@/lib/view-route";
 import { PanelHeader, LinkAction, EmptyState } from "./shared";
 
 interface Campaign {
@@ -24,7 +25,7 @@ export function CampaignsPanel() {
     queryKey: ["campaigns"],
     queryFn: () => api.get<Campaign[]>("/api/campaigns"),
   });
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  const { setView: setActiveView } = useViewRoute();
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
