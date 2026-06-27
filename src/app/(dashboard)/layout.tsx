@@ -11,11 +11,17 @@
  */
 
 import { AppShell } from "@/components/shell/app-shell";
+import { WebVitals } from "@/components/providers/web-vitals";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <AppShell>
+      <WebVitals />
+      {children}
+    </AppShell>
+  );
 }
