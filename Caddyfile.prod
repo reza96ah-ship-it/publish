@@ -1,0 +1,35 @@
+# Nashrino — Production Caddyfile
+# Reverse proxy with automatic HTTPS (Let's Encrypt).
+# Replace {$DOMAIN} with your domain in .env.production: DOMAIN=nashrino.example.com
+
+{$DOMAIN} {
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-XSS-Protection "1; mode=block"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:; media-src 'self' data:; frame-ancestors 'self'"
+	}
+
+	# WebSocket upgrade for socket.io
+	@socketio path /socket.io/*
+	reverse_proxy @socketio realtime:3003 {
+		flush_interval -1
+	}
+
+	# All other traffic → Next.js app
+	reverse_proxy app:3000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	encode gzip zstd
+
+	log {
+		output stdout
+		format json
+	}
+}
