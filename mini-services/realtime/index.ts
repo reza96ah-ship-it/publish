@@ -1,61 +1,149 @@
 /**
- * Nashrino SocialOps Studio — Realtime WebSocket Mini-Service (P1-2)
+ * Nashrino SocialOps Studio — Realtime WebSocket Mini-Service
  *
- * A socket.io relay that broadcasts publish-job status changes from the
- * publish-worker to subscribed frontend clients.
+ * Phase 7 additions:
+ * - JWT handshake auth (connection rejected without valid token)
+ * - Room authorization (membership check via DB on subscribe)
+ * - Secure POST /emit (requires X-Emit-Secret header)
+ * - Redis adapter for horizontal scaling (multiple realtime instances)
+ * - Configurable port + CORS origin
  *
  * Architecture:
- *   publish-worker  ──HTTP POST /emit──▶  realtime (this)  ──socket.io──▶  frontend
+ *   publish-worker ──HTTP POST /emit (X-Emit-Secret)──▶  realtime  ──socket.io (JWT auth)──▶  frontend
  *
- * Room model:
- *   Each workspace gets a room named `workspace:{workspaceId}`. The frontend
- *   subscribes to its workspace room on connect; the worker broadcasts to
- *   that room by POSTing to /emit.
- *
- * Port: 3003 (hardcoded — do NOT use env PORT; the Caddyfile routes
- * `?XTransformPort=3003` here).
- *
- * Path: socket.io default (`/socket.io/`) — the frontend connects with
- *   `io("/?XTransformPort=3003")` and Caddy's `@transform_port_query`
- *   matcher forwards the request to localhost:3003.
+ * Auth flow:
+ *   1. Frontend fetches NextAuth session token
+ *   2. Frontend connects with io({ auth: { token } })
+ *   3. Realtime verifies JWT, extracts userId + activeWorkspaceId
+ *   4. On subscribe, checks WorkspaceMember membership
+ *   5. If member, joins room; otherwise rejects
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { Server, type Socket } from 'socket.io'
+import { createAdapter } from '@socket.io/redis-adapter'
+import { createClient } from 'redis'
 
 // ── Config ───────────────────────────────────────────────────────────────
-const PORT = 3003
+const PORT = parseInt(process.env.REALTIME_PORT || '3003', 10)
+const EMIT_SECRET = process.env.EMIT_SECRET || 'nashrino-dev-emit-secret'
+const NEXTAUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'nashrino-dev-secret-change-in-production'
+const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*'  // tighten in production
+const REDIS_URL = process.env.REDIS_URL || ''
+
+const isDev = process.env.NODE_ENV !== 'production'
 
 // ── Types ────────────────────────────────────────────────────────────────
 type JobStatus = 'pending' | 'processing' | 'success' | 'failed' | 'action'
 type Platform = 'instagram' | 'rubika' | 'telegram' | 'linkedin'
 
-/** Wire shape for `job:status` and `job:progress` events. */
 interface JobPayload {
   jobId: string
   status: JobStatus
-  progress: number // 0-100
+  progress: number
   processLabel: string
   error: string | null
   platform: Platform
   externalId: string | null
 }
 
-/** Body for `POST /emit`, called by the publish-worker. */
 interface EmitBody {
   workspaceId: string
   event: 'job:status' | 'job:progress'
   payload: JobPayload
 }
 
+interface SessionData {
+  userId: string
+  activeWorkspaceId: string | null
+}
+
 const ALLOWED_EVENTS = ['job:status', 'job:progress'] as const
 const roomFor = (workspaceId: string): string => `workspace:${workspaceId}`
 
-// ── HTTP server (carries POST /emit + health; socket.io rides on top) ─────
+// ── JWT verification (lightweight — no external dep) ────────────────────
+// We use NextAuth's JWT format: header.payload.signature (HMAC-SHA256)
+// We verify the signature using NEXTAUTH_SECRET, same as NextAuth does.
+import { createHmac, timingSafeEqual } from 'crypto'
+
+function base64UrlDecode(str: string): string {
+  const padded = str.replace(/-/g, '+').replace(/_/g, '/')
+  const pad = padded.length % 4
+  return Buffer.from(padded + (pad ? '='.repeat(4 - pad) : ''), 'base64').toString('utf8')
+}
+
+function verifyJwt(token: string): SessionData | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+
+    const [headerB64, payloadB64, signatureB64] = parts
+
+    // Verify signature
+    const expectedSig = createHmac('sha256', NEXTAUTH_SECRET)
+      .update(`${headerB64}.${payloadB64}`)
+      .digest('base64url')
+
+    if (!timingSafeEqual(Buffer.from(signatureB64), Buffer.from(expectedSig))) {
+      return null
+    }
+
+    // Decode payload
+    const payload = JSON.parse(base64UrlDecode(payloadB64))
+
+    // Check expiry
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      return null
+    }
+
+    return {
+      userId: payload.userId || payload.sub || '',
+      activeWorkspaceId: payload.activeWorkspaceId || null,
+    }
+  } catch {
+    return null
+  }
+}
+
+// ── In-memory workspace membership cache (avoids DB hit on every subscribe) ──
+const membershipCache = new Map<string, { ok: boolean; expiresAt: number }>()
+const CACHE_TTL_MS = 60_000 // 1 minute
+
+async function checkMembership(userId: string, workspaceId: string): Promise<boolean> {
+  const cacheKey = `${userId}:${workspaceId}`
+  const cached = membershipCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.ok
+  }
+
+  // Dynamic import to avoid loading Prisma on every request
+  const { db } = await import('./lib/db')
+  try {
+    const member = await db.workspaceMember.findFirst({
+      where: { userId, workspaceId },
+      select: { id: true },
+    })
+    const ok = !!member
+    membershipCache.set(cacheKey, { ok, expiresAt: Date.now() + CACHE_TTL_MS })
+    return ok
+  } catch (err) {
+    console.error('[auth] membership check failed:', err)
+    return false
+  }
+}
+
+// ── HTTP server ──────────────────────────────────────────────────────────
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   try {
-    // POST /emit — worker → relay broadcast
+    // POST /emit — worker → relay broadcast (requires X-Emit-Secret)
     if (req.method === 'POST' && req.url?.split('?')[0] === '/emit') {
+      // P7.3: verify shared secret
+      const emitSecret = req.headers['x-emit-secret']
+      if (!emitSecret || emitSecret !== EMIT_SECRET) {
+        console.warn('[emit] unauthorized — missing or wrong X-Emit-Secret')
+        return sendJson(res, 401, { ok: false, error: 'unauthorized' })
+      }
+
       const body = await readJsonBody<EmitBody>(req)
       if (body == null) {
         return sendJson(res, 400, { ok: false, error: 'invalid JSON body' })
@@ -70,7 +158,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       ) {
         return sendJson(res, 400, {
           ok: false,
-          error: 'body must be { workspaceId: string, event: "job:status"|"job:progress", payload: JobPayload }',
+          error: 'body must be { workspaceId, event, payload }',
         })
       }
 
@@ -83,36 +171,32 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       return sendJson(res, 200, { ok: true, event, room, subscribers })
     }
 
-    // GET / or /health — lightweight liveness probe
+    // GET / or /health — liveness probe
     if (req.method === 'GET' && (req.url === '/' || req.url?.split('?')[0] === '/health')) {
       return sendJson(res, 200, {
         ok: true,
         service: 'nashrino-realtime',
         port: PORT,
         sockets: io.engine.clientsCount,
+        redis: REDIS_URL ? 'connected' : 'disabled',
       })
     }
 
-    // Everything that's NOT a socket.io request gets a clean 404.
-    // (socket.io attaches its own request listener and intercepts /socket.io/* paths
-    // before this handler runs, so we only see non-socket.io traffic here.)
     return sendJson(res, 404, { ok: false, error: 'not found' })
   } catch (err) {
     console.error('[http] unhandled error:', err)
     try {
       sendJson(res, 500, { ok: false, error: 'internal error' })
     } catch {
-      // response already sent — ignore
+      // response already sent
     }
   }
 })
 
-// ── socket.io server ─────────────────────────────────────────────────────
+// ── socket.io server ────────────────────────────────────────────────────
 const io = new Server(httpServer, {
-  // Default path (`/socket.io/`) — the frontend connects with
-  // `io("/?XTransformPort=3003")` and Caddy forwards based on the query param.
   cors: {
-    origin: '*', // frontend on :3000, Caddy on :81
+    origin: CORS_ORIGIN,
     methods: ['GET', 'POST'],
   },
   pingTimeout: 60_000,
@@ -120,15 +204,53 @@ const io = new Server(httpServer, {
   connectTimeout: 10_000,
 })
 
-io.on('connection', (socket: Socket) => {
-  console.log(`[io] connected id=${socket.id}`)
+// P7.1: JWT handshake auth — runs on every new connection
+io.use(async (socket: Socket, next) => {
+  const token = socket.handshake.auth?.token as string | undefined
 
-  socket.on('subscribe', (data: unknown) => {
+  // Dev bypass: if no token and NODE_ENV !== production, allow (for preview)
+  if (!token) {
+    if (isDev) {
+      console.log(`[io] dev bypass: ${socket.id} connected without token`)
+      ;(socket as any).data.session = { userId: 'dev-user', activeWorkspaceId: null }
+      return next()
+    }
+    return next(new Error('unauthorized: no token'))
+  }
+
+  const session = verifyJwt(token)
+  if (!session) {
+    console.warn(`[io] auth failed: ${socket.id} — invalid token`)
+    return next(new Error('unauthorized: invalid token'))
+  }
+
+  ;(socket as any).data.session = session
+  console.log(`[io] auth ok: ${socket.id} userId=${session.userId}`)
+  next()
+})
+
+io.on('connection', (socket: Socket) => {
+  const session = (socket as any).data.session as SessionData
+  console.log(`[io] connected id=${socket.id} userId=${session?.userId}`)
+
+  // P7.2: Room authorization — check membership before joining
+  socket.on('subscribe', async (data: unknown) => {
     const workspaceId = (data as { workspaceId?: unknown })?.workspaceId
     if (typeof workspaceId !== 'string' || workspaceId.length === 0) {
       socket.emit('error', { message: 'subscribe requires { workspaceId: string }' })
       return
     }
+
+    // Dev bypass: skip membership check if no userId (preview mode)
+    if (session?.userId && session.userId !== 'dev-user') {
+      const isMember = await checkMembership(session.userId, workspaceId)
+      if (!isMember) {
+        console.warn(`[io] forbidden: ${socket.id} userId=${session.userId} → ${workspaceId}`)
+        socket.emit('error', { message: 'forbidden: not a member of this workspace' })
+        return
+      }
+    }
+
     const room = roomFor(workspaceId)
     void socket.join(room)
     console.log(`[io] ${socket.id} → joined ${room}`)
@@ -157,8 +279,26 @@ io.on('connection', (socket: Socket) => {
 })
 
 io.engine.on('connection_error', (err: { context?: unknown; code?: number; message?: string; req?: IncomingMessage }) => {
-  console.error('[io] connection_error:', err.code, err.message, err.context?.toString?.() ?? '')
+  console.error('[io] connection_error:', err.code, err.message)
 })
+
+// P7.4: Redis adapter for horizontal scaling
+if (REDIS_URL) {
+  const pubClient = createClient({ url: REDIS_URL })
+  const subClient = pubClient.duplicate()
+
+  Promise.all([
+    pubClient.connect().catch((err) => console.error('[redis] pub connect failed:', err)),
+    subClient.connect().catch((err) => console.error('[redis] sub connect failed:', err)),
+  ]).then(() => {
+    io.adapter(createAdapter(pubClient, subClient))
+    console.log('[redis] adapter enabled — realtime can scale horizontally')
+  }).catch((err) => {
+    console.error('[redis] adapter setup failed:', err)
+  })
+} else {
+  console.log('[redis] disabled (REDIS_URL not set) — single-instance only')
+}
 
 httpServer.on('error', (err: NodeJS.ErrnoException) => {
   console.error('[http] server error:', err)
@@ -174,14 +314,12 @@ const shutdown = (signal: string) => {
   if (shuttingDown) return
   shuttingDown = true
   console.log(`\n[realtime] ${signal} received, shutting down...`)
-  // Stop accepting new connections, then close existing ones.
   io.close(() => {
     httpServer.close(() => {
       console.log('[realtime] closed')
       process.exit(0)
     })
   })
-  // Hard-exit fallback in case something hangs.
   setTimeout(() => {
     console.error('[realtime] forced exit after timeout')
     process.exit(1)
@@ -193,7 +331,7 @@ process.on('SIGINT', () => shutdown('SIGINT'))
 
 // ── Boot ─────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
-  console.log(` realtime service on :${PORT}`)
+  console.log(`[realtime] service on :${PORT} (cors: ${CORS_ORIGIN}, redis: ${REDIS_URL ? 'on' : 'off'})`)
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────
