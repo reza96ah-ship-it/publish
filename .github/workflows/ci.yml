@@ -46,12 +46,12 @@ jobs:
       - run: bunx prisma db push --skip-generate --accept-data-loss
       - run: bun run lint
       - run: bun run typecheck
-        continue-on-error: true  # Phase 4 introduced 14 type errors (schema drift). Fix in Phase 10.
       - run: bun run test
       - run: bun run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-        continue-on-error: true  # Pre-existing build issue — fix in Phase 10.
+          NEXTAUTH_SECRET: test-secret
+          NEXTAUTH_URL: http://localhost:3000
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -80,7 +80,7 @@ jobs:
     name: Docker Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: false  # Disabled until Dockerfile build issue is fixed (Phase 10)
+    # Run on main branch pushes (validates Dockerfile builds)
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
