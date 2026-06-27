@@ -85,7 +85,7 @@ export function AnalyticsView() {
 
   const { data: publishJobs } = useQuery<PublishJob[]>({
     queryKey: ["publish-jobs"],
-    queryFn: () => api.get<PublishJob[]>("/api/publish-jobs"),
+    queryFn: () => api.getPaginated<PublishJob>("/api/publish-jobs"),
   });
 
   // Per-platform analytics (parallel)

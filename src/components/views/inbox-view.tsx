@@ -90,12 +90,12 @@ export function InboxView() {
 
   const { data: messages, isLoading } = useQuery<InboxMessage[]>({
     queryKey: ["inbox"],
-    queryFn: () => api.get<InboxMessage[]>("/api/inbox"),
+    queryFn: () => api.getPaginated<InboxMessage>("/api/inbox"),
   });
 
   const { data: members } = useQuery<Member[]>({
     queryKey: ["members"],
-    queryFn: () => api.get<Member[]>("/api/members"),
+    queryFn: () => api.getPaginated<Member>("/api/members"),
   });
 
   const filtered = useMemo(() => {

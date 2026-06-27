@@ -67,7 +67,7 @@ export function ContentView() {
 
   const { data: content, isLoading } = useQuery<ContentItem[]>({
     queryKey: ["content"],
-    queryFn: () => api.get<ContentItem[]>("/api/content"),
+    queryFn: () => api.getPaginated<ContentItem>("/api/content"),
   });
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ["campaigns"],

@@ -74,7 +74,7 @@ export function MediaView() {
 
   const { data: media, isLoading } = useQuery<MediaItem[]>({
     queryKey: ["media"],
-    queryFn: () => api.get<MediaItem[]>("/api/media"),
+    queryFn: () => api.getPaginated<MediaItem>("/api/media"),
   });
 
   // Optimistic upload: append a placeholder media item to the ["media"] cache
