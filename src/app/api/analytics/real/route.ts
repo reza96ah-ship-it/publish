@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
+import { decrypt } from "@/lib/crypto";
 
 export async function GET() {
   const guard = await requireWorkspaceApi();
@@ -26,12 +27,13 @@ export async function GET() {
 
   for (const platform of platforms) {
     if (!platform.tokenSecret) continue;
+    const token = decrypt(platform.tokenSecret);
 
     try {
       if (platform.type === "telegram" && platform.targetId) {
         // Telegram: get chat member count
         const res = await fetch(
-          `https://api.telegram.org/bot${platform.tokenSecret}/getChatMemberCount`,
+          `https://api.telegram.org/bot${token}/getChatMemberCount`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -48,7 +50,7 @@ export async function GET() {
       } else if (platform.type === "bale" && platform.targetId) {
         // Bale: get chat member count (same API as Telegram)
         const res = await fetch(
-          `https://tapi.bale.ai/bot${platform.tokenSecret}/getChatMemberCount`,
+          `https://tapi.bale.ai/bot${token}/getChatMemberCount`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -64,7 +66,6 @@ export async function GET() {
         }
       } else if (platform.type === "instagram" && platform.targetId) {
         // Instagram Graph API: insights
-        const token = platform.tokenSecret;
         const igUserId = platform.targetId;
         const res = await fetch(
           `https://graph.facebook.com/v21.0/${igUserId}/insights?metric=follower_count,reach,impressions&period=day&access_token=${token}`

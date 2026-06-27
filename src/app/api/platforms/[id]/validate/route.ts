@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateId } from "@/lib/validations";
+import { decrypt } from "@/lib/crypto";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params;
@@ -25,24 +26,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   let valid = false;
   let botInfo: any = null;
+  const token = decrypt(platform.tokenSecret);
 
   if (platform.type === "telegram") {
     try {
-      const res = await fetch(`https://api.telegram.org/bot${platform.tokenSecret}/getMe`);
+      const res = await fetch(`https://api.telegram.org/bot${token}/getMe`);
       const data = await res.json();
       valid = data.ok;
       botInfo = data.result;
     } catch {}
   } else if (platform.type === "bale") {
     try {
-      const res = await fetch(`https://tapi.bale.ai/bot${platform.tokenSecret}/getMe`);
+      const res = await fetch(`https://tapi.bale.ai/bot${token}/getMe`);
       const data = await res.json();
       valid = data.ok;
       botInfo = data.result;
     } catch {}
   } else if (platform.type === "rubika") {
     try {
-      const res = await fetch(`https://botapi.rubika.ir/v3/${platform.tokenSecret}/getMe`, { method: "POST" });
+      const res = await fetch(`https://botapi.rubika.ir/v3/${token}/getMe`, { method: "POST" });
       const data = await res.json();
       valid = data.status === "OK" || data.ok;
       botInfo = data.data || data.result;

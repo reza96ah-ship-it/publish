@@ -21,6 +21,7 @@ import type { AdapterJob } from './adapters/types'
 import { CHANNEL_RETRY_POLICIES, computeBackoff, shouldRetry, sleep } from './lib/retry'
 import { circuitBreakers } from './lib/circuit'
 import { emitJobStatus } from './lib/emit'
+import { decrypt } from './lib/crypto'
 
 const POLL_INTERVAL_MS = 2000 // poll every 2s
 const VISIBILITY_TIMEOUT_MS = 5 * 60 * 1000 // requeue processing jobs stuck for 5min
@@ -171,7 +172,7 @@ async function processJob(job: any): Promise<void> {
       status: job.platform.status,
       circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
       // Pass the real bot token / OAuth token from the platform record
-      token: (job.platform as any).tokenSecret ?? undefined,
+      token: (job.platform as any).tokenSecret ? decrypt((job.platform as any).tokenSecret) : undefined,
       // Pass the platform-specific target (chat_id, ig-user-id, author URN)
       targetId: (job.platform as any).targetId ?? undefined,
     },
