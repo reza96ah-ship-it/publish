@@ -22,6 +22,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nashrino_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nashrino_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       redis:
         image: redis:7-alpine
         ports:
@@ -32,7 +45,8 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      DATABASE_URL: "file:./db/nashrino-ci.db"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public&connection_limit=10"
+      DIRECT_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public"
       NEXTAUTH_SECRET: "test-secret-not-for-production"
       NEXTAUTH_URL: "http://localhost:3000"
       REDIS_URL: "redis://localhost:6379"
@@ -42,8 +56,9 @@ jobs:
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
+      - run: sed -i "s/provider  = \"sqlite\"/provider  = \"postgresql\"/" prisma/schema.prisma
       - run: bunx prisma generate
-      - run: bunx prisma db push --skip-generate --accept-data-loss
+      - run: bunx prisma migrate deploy --accept-data-loss || bunx prisma db push --accept-data-loss
       - run: bun run lint
       - run: bun run typecheck
       - run: bun run test
@@ -108,8 +123,9 @@ jobs:
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
+      - run: sed -i "s/provider  = \"sqlite\"/provider  = \"postgresql\"/" prisma/schema.prisma
       - run: bunx prisma generate
-      - run: bunx prisma db push --skip-generate --accept-data-loss
+      - run: bunx prisma migrate deploy --accept-data-loss || bunx prisma db push --accept-data-loss
       - run: bun run seed:auth  # Seed demo user for E2E
       - run: bunx playwright install --with-deps chromium
       - run: bun run dev &
