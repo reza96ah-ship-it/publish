@@ -100,7 +100,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check production secrets
+        id: production-secrets
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+        run: |
+          if [ -n "$SSH_HOST" ] && [ -n "$SSH_USER" ] && [ -n "$SSH_PRIVATE_KEY" ] && [ -n "$PRODUCTION_DOMAIN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Production deploy skipped because SSH_HOST, SSH_USER, SSH_PRIVATE_KEY, or PRODUCTION_DOMAIN is not configured."
+          fi
+
       - name: Deploy via SSH
+        if: steps.production-secrets.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -118,6 +134,7 @@ jobs:
             docker compose -f compose.production.yaml ps
 
       - name: Health check
+        if: steps.production-secrets.outputs.configured == 'true'
         run: |
           sleep 30
           curl -sf https://${{ secrets.PRODUCTION_DOMAIN }}/api/health | \
