@@ -9,7 +9,12 @@
  * - Exponential backoff: base 1s, factor 2, cap 5min, jitter ±20%
  * - Circuit breaker: 5 consecutive failures → OPEN, health-check every 60s
  * - Job state machine: pending → processing → success|failed|action
+ *
+ * Phase 2 additions:
+ * - Health HTTP server on port 3002 (GET /health)
+ * - Graceful shutdown (SIGTERM/SIGINT) — stops polling, awaits in-flight jobs
  */
+import { createServer } from 'http'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
 import type { AdapterJob } from './adapters/types'
@@ -19,13 +24,22 @@ import { emitJobStatus } from './lib/emit'
 
 const POLL_INTERVAL_MS = 2000 // poll every 2s
 const VISIBILITY_TIMEOUT_MS = 5 * 60 * 1000 // requeue processing jobs stuck for 5min
+const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
+
+// ── Graceful shutdown state ───────────────────────────────────
+let shuttingDown = false
+let inFlightJobs = 0
+const startTime = Date.now()
 
 async function main() {
-  console.log(' publish-worker on :3001 (internal — no HTTP server)')
-  console.log('   polling DB every', POLL_INTERVAL_MS, 'ms')
+  console.log(`[worker] publish-worker started (health on :${HEALTH_PORT})`)
+  console.log(`[worker] polling DB every ${POLL_INTERVAL_MS}ms`)
+
+  // Start health HTTP server
+  startHealthServer()
 
   // Main loop
-  while (true) {
+  while (!shuttingDown) {
     try {
       await processDueJobs()
       await requeueStuckJobs()
@@ -34,6 +48,16 @@ async function main() {
     }
     await sleep(POLL_INTERVAL_MS)
   }
+
+  console.log('[worker] polling stopped, waiting for in-flight jobs...')
+  // Wait for in-flight jobs to complete (max 30s)
+  const shutdownStart = Date.now()
+  while (inFlightJobs > 0 && Date.now() - shutdownStart < 30_000) {
+    console.log(`[worker] waiting for ${inFlightJobs} in-flight job(s)...`)
+    await sleep(1000)
+  }
+  console.log('[worker] shutdown complete')
+  process.exit(0)
 }
 
 async function processDueJobs(): Promise<void> {
@@ -62,9 +86,14 @@ async function processDueJobs(): Promise<void> {
     }
 
     // Process asynchronously so jobs run concurrently
-    processJob(job).catch((err) => {
-      console.error(`[worker] unhandled error processing job ${job.id}:`, err)
-    })
+    inFlightJobs++
+    processJob(job)
+      .catch((err) => {
+        console.error(`[worker] unhandled error processing job ${job.id}:`, err)
+      })
+      .finally(() => {
+        inFlightJobs--
+      })
   }
 }
 
@@ -281,6 +310,41 @@ async function emit(
     },
   })
 }
+
+// ── Health HTTP server ────────────────────────────────────────
+
+function startHealthServer() {
+  const server = createServer((req, res) => {
+    if (req.url === '/health') {
+      const uptime = Math.floor((Date.now() - startTime) / 1000)
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({
+        ok: true,
+        status: shuttingDown ? 'shutting_down' : 'running',
+        uptime,
+        inFlightJobs,
+        timestamp: new Date().toISOString(),
+      }))
+    } else {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'not found' }))
+    }
+  })
+
+  server.listen(HEALTH_PORT, () => {
+    console.log(`[worker] health endpoint on http://localhost:${HEALTH_PORT}/health`)
+  })
+}
+
+// ── Graceful shutdown ─────────────────────────────────────────
+
+function handleShutdown(signal: string) {
+  console.log(`[worker] ${signal} received, initiating graceful shutdown...`)
+  shuttingDown = true
+}
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'))
+process.on('SIGINT', () => handleShutdown('SIGINT'))
 
 main().catch((err) => {
   console.error('[worker] fatal:', err)
