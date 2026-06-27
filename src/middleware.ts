@@ -35,12 +35,15 @@ export default withAuth({
 export const config = {
   matcher: [
     // Protect everything EXCEPT:
-    //   api/auth      — NextAuth callback endpoints (must be public)
-    //   api/webhooks  — Platform webhook receivers (verified separately)
-    //   auth          — The signin page itself
-    //   _next/static  — Next.js static assets
-    //   _next/image   — Next.js image optimizer
+    //   api/auth       — NextAuth callback endpoints (must be public)
+    //   api/webhooks   — Platform webhook receivers (verified separately)
+    //   api/health     — Liveness probe (orchestrator access)
+    //   api/readyz     — Readiness probe (orchestrator access)
+    //   api/metrics    — Prometheus metrics (scraped by monitoring)
+    //   auth           — The signin page itself
+    //   _next/static   — Next.js static assets
+    //   _next/image    — Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* — public assets
-    "/((?!api/auth|api/webhooks|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)",
+    "/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)",
   ],
 };
