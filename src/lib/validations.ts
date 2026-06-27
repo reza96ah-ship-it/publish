@@ -144,6 +144,12 @@ export const paginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 });
 
+// Cursor-based pagination (more efficient than offset for large tables)
+export const cursorPaginationSchema = z.object({
+  cursor: z.string().optional(), // last item ID from previous page
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+});
+
 // Helper: validate a single [id] path param — returns Persian error on failure.
 export function validateId(id: unknown): { success: true; data: string } | { success: false; error: string } {
   return validateBody(idSchema, id) as { success: true; data: string } | { success: false; error: string };

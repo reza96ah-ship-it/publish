@@ -7,27 +7,44 @@ export async function GET() {
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
+  // P8.3: Fixed N+1 — single groupBy query instead of count per platform
   const platforms = await db.platform.findMany({
     where: { workspaceId },
     orderBy: { createdAt: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      status: true,
+      circuitState: true,
+      accountKind: true,
+      username: true,
+      primaryIssue: true,
+      lastSuccessAt: true,
+    },
   })
 
-  const result = await Promise.all(platforms.map(async (p) => {
-    const accounts = await db.platform.count({ where: { workspaceId, type: p.type } })
-    return {
-      id: p.id,
-      name: p.name,
-      type: p.type,
-      logo: logoFor(p.type),
-      state: stateLabel(p),
-      stateColor: stateColor(p),
-      accounts,
-      primaryIssue: p.primaryIssue,
-      lastSuccess: p.lastSuccessAt,
-      accountKind: p.accountKind,
-      circuitState: p.circuitState,
-      username: p.username,
-    }
+  // Single groupBy query to get counts per type (was N queries)
+  const typeCounts = await db.platform.groupBy({
+    by: ['type'],
+    where: { workspaceId },
+    _count: { _all: true },
+  })
+  const countMap = new Map(typeCounts.map((t) => [t.type, t._count._all]))
+
+  const result = platforms.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    logo: logoFor(p.type),
+    state: stateLabel(p),
+    stateColor: stateColor(p),
+    accounts: countMap.get(p.type) ?? 1,
+    primaryIssue: p.primaryIssue,
+    lastSuccess: p.lastSuccessAt,
+    accountKind: p.accountKind,
+    circuitState: p.circuitState,
+    username: p.username,
   }))
 
   return NextResponse.json(result)

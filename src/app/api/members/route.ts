@@ -1,27 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
-import { validateBody, memberInviteSchema } from '@/lib/validations'
+import { validateBody, validateParams, memberInviteSchema, cursorPaginationSchema } from '@/lib/validations'
 import { randomUUID } from 'crypto'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const guard = await requireWorkspaceApi()
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries())
+  const queryCheck = validateParams(cursorPaginationSchema, query)
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
+  const { cursor, limit } = queryCheck.data
+
   const members = await db.workspaceMember.findMany({
-    where: { workspaceId },
-    orderBy: { createdAt: 'asc' },
+    where: {
+      workspaceId,
+      ...(cursor ? { id: { lt: cursor } } : {}),
+    },
+    orderBy: { id: 'desc' },
+    take: limit + 1,
   })
 
-  return NextResponse.json(members.map((m) => ({
-    id: m.id,
-    name: m.name,
-    email: m.email,
-    role: m.role,
-    roleLabel: roleLabel(m.role),
-    avatar: m.avatarUrl,
-  })))
+  const hasMore = members.length > limit
+  const data = hasMore ? members.slice(0, limit) : members
+  const nextCursor = hasMore ? data[data.length - 1]?.id : null
+
+  return NextResponse.json({
+    data: data.map((m) => ({
+      id: m.id,
+      name: m.name,
+      email: m.email,
+      role: m.role,
+      roleLabel: roleLabel(m.role),
+      avatar: m.avatarUrl,
+    })),
+    nextCursor,
+  })
 }
 
 // POST — add a team member directly (similar to /api/members/invite but without invite token)
