@@ -44,6 +44,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
@@ -60,8 +61,7 @@ RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY prisma ./prisma
-ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
-ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+COPY prisma.config.ts ./
 CMD ["bunx", "prisma", "migrate", "deploy"]
 
 # ── Stage 3b: worker (no Next.js build needed) ────────────────────────
@@ -75,6 +75,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY mini-services/publish-worker ./mini-services/publish-worker
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 RUN bunx prisma generate
