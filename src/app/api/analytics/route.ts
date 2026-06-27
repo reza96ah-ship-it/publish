@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { validateParams } from '@/lib/validations'
+import { z } from 'zod'
+
+const analyticsQuerySchema = z.object({
+  platform: z.string().max(50).optional(),
+})
 
 export async function GET(req: Request) {
   const guard = await requireWorkspaceApi()
@@ -8,7 +14,11 @@ export async function GET(req: Request) {
   const workspaceId = guard.workspace.id
 
   const { searchParams } = new URL(req.url)
-  const platform = searchParams.get('platform') // null = aggregate
+  const queryCheck = validateParams(analyticsQuerySchema, {
+    platform: searchParams.get('platform') ?? undefined,
+  })
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
+  const platform = queryCheck.data.platform
 
   const snapshots = await db.analyticsSnapshot.findMany({
     where: { workspaceId, platform: platform === 'all' ? null : platform ?? null },

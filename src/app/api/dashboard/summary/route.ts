@@ -7,23 +7,37 @@ export async function GET() {
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
-  const [jobs, unreadInbox, pendingContent, platforms, campaigns] = await Promise.all([
-    db.publishJob.findMany({ where: { workspaceId }, select: { status: true } }),
+  const today = new Date(); today.setHours(0, 0, 0, 0)
+
+  // P8.3: Fixed N+1 — use groupBy instead of findMany + filter
+  const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] = await Promise.all([
+    db.publishJob.groupBy({
+      by: ['status'],
+      where: { workspaceId },
+      _count: { _all: true },
+    }),
     db.inboxMessage.count({ where: { workspaceId, isRead: false } }),
     db.content.count({ where: { workspaceId, status: 'review' } }),
-    db.platform.findMany({ where: { workspaceId }, select: { status: true, circuitState: true } }),
+    db.platform.groupBy({
+      by: ['status'],
+      where: { workspaceId },
+      _count: { _all: true },
+    }),
     db.campaign.count({ where: { workspaceId, status: 'active' } }),
+    db.publishJob.count({
+      where: { workspaceId, status: 'success', completedAt: { gte: today } },
+    }),
   ])
 
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  const publishedToday = await db.publishJob.count({
-    where: { workspaceId, status: 'success', completedAt: { gte: today } },
-  })
+  // Build status → count map
+  const jobMap = new Map(jobCounts.map((j) => [j.status, j._count._all]))
+  const failed = (jobMap.get('failed') ?? 0) + (jobMap.get('action') ?? 0)
+  const queued = (jobMap.get('pending') ?? 0) + (jobMap.get('scheduled') ?? 0)
+  const processing = jobMap.get('processing') ?? 0
 
-  const failed = jobs.filter((j) => j.status === 'failed' || j.status === 'action').length
-  const queued = jobs.filter((j) => j.status === 'pending' || j.status === 'scheduled').length
-  const processing = jobs.filter((j) => j.status === 'processing').length
-  const disconnected = platforms.filter((p) => p.status === 'error' || p.status === 'expired' || p.status === 'disconnected' || p.circuitState === 'open').length
+  // Count disconnected platforms
+  const platMap = new Map(platformCounts.map((p) => [p.status, p._count._all]))
+  const disconnected = (platMap.get('error') ?? 0) + (platMap.get('expired') ?? 0) + (platMap.get('disconnected') ?? 0)
 
   const health = failed > 2 || disconnected > 1 ? 'critical' : failed > 0 || disconnected > 0 ? 'warning' : 'healthy'
   const healthLabel = health === 'healthy' ? 'پایدار' : health === 'warning' ? 'نیازمند توجه' : 'بحرانی'
