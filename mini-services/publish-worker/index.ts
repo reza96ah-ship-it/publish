@@ -1,240 +1,217 @@
 /**
- * Nashrino Publish Worker — polls the DB for pending/scheduled publish jobs,
- * processes them through channel adapters with retry/backoff/circuit-breaker,
- * and emits status changes to the realtime WebSocket service.
+ * Nashrino Publish Worker — BullMQ event-driven queue worker.
  *
- * Architecture (per docs/05_TECHNICAL_ARCHITECTURE.md §4):
- * - Per-channel polling (all channels polled in one loop)
- * - Idempotent: checks externalId before retry
- * - Exponential backoff: base 1s, factor 2, cap 5min, jitter ±20%
- * - Circuit breaker: 5 consecutive failures → OPEN, health-check every 60s
- * - Job state machine: pending → processing → success|failed|action
+ * Sprint B: Replaced DB-polling with BullMQ Worker.
+ * - Zero DB queries on idle (no polling)
+ * - Sub-second job dispatch (event-driven, not 2s poll)
+ * - Built-in retry with exponential backoff
+ * - Circuit breaker still enforced before processing
+ * - DB PublishJob records updated from BullMQ events (audit log)
+ * - Bull Board dashboard at /board (basic auth protected)
  *
- * Phase 2 additions:
- * - Health HTTP server on port 3002 (GET /health)
- * - Graceful shutdown (SIGTERM/SIGINT) — stops polling, awaits in-flight jobs
+ * Architecture:
+ *   /api/publish → publishQueue.add() → Redis → Worker (this) → adapter.publish()
+ *                                                       ↓
+ *                                               DB PublishJob update (audit)
+ *                                                       ↓
+ *                                               emitJobStatus → realtime
  */
-import { createServer } from 'http'
+
+import { Worker, type Job } from 'bullmq'
+import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
 import type { AdapterJob } from './adapters/types'
-import { CHANNEL_RETRY_POLICIES, computeBackoff, shouldRetry, sleep } from './lib/retry'
 import { circuitBreakers } from './lib/circuit'
 import { emitJobStatus } from './lib/emit'
 import { decrypt } from './lib/crypto'
+import { writeAuditLog } from './lib/audit'
+import { publishQueue, connection } from './lib/queue'
 
-const POLL_INTERVAL_MS = 2000 // poll every 2s
-const VISIBILITY_TIMEOUT_MS = 5 * 60 * 1000 // requeue processing jobs stuck for 5min
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
+const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'
+const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '5', 10)
 
-// ── Graceful shutdown state ───────────────────────────────────
-let shuttingDown = false
-let inFlightJobs = 0
 const startTime = Date.now()
 
-async function main() {
-  console.log(`[worker] publish-worker started (health on :${HEALTH_PORT})`)
-  console.log(`[worker] polling DB every ${POLL_INTERVAL_MS}ms`)
+// ── BullMQ Worker ──────────────────────────────────────────────
 
-  // Start health HTTP server
-  startHealthServer()
+const worker = new Worker(
+  'publish-jobs',
+  async (bullJob: Job) => {
+    const { jobId, contentId, platformId, workspaceId } = bullJob.data
 
-  // Main loop
-  while (!shuttingDown) {
-    try {
-      await processDueJobs()
-      await requeueStuckJobs()
-    } catch (err) {
-      console.error('[worker] error in poll cycle:', err)
-    }
-    await sleep(POLL_INTERVAL_MS)
-  }
-
-  console.log('[worker] polling stopped, waiting for in-flight jobs...')
-  // Wait for in-flight jobs to complete (max 30s)
-  const shutdownStart = Date.now()
-  while (inFlightJobs > 0 && Date.now() - shutdownStart < 30_000) {
-    console.log(`[worker] waiting for ${inFlightJobs} in-flight job(s)...`)
-    await sleep(1000)
-  }
-  console.log('[worker] shutdown complete')
-  process.exit(0)
-}
-
-async function processDueJobs(): Promise<void> {
-  const now = new Date()
-
-  // Find pending jobs that are due (scheduledAt is null or in the past)
-  const jobs = await db.publishJob.findMany({
-    where: {
-      status: 'pending',
-      OR: [{ scheduledAt: null }, { scheduledAt: { lte: now } }],
-    },
-    include: {
-      content: true,
-      platform: true,
-      workspace: { select: { id: true } },
-    },
-    take: 10, // process up to 10 per cycle
-    orderBy: { createdAt: 'asc' },
-  })
-
-  for (const job of jobs) {
-    // Check circuit breaker
-    if (!circuitBreakers.canDispatch(job.workspaceId, job.platform.type)) {
-      console.log(`[worker] circuit OPEN for ${job.platform.type}, skipping ${job.id}`)
-      continue
-    }
-
-    // Process asynchronously so jobs run concurrently
-    inFlightJobs++
-    processJob(job)
-      .catch((err) => {
-        console.error(`[worker] unhandled error processing job ${job.id}:`, err)
-      })
-      .finally(() => {
-        inFlightJobs--
-      })
-  }
-}
-
-async function requeueStuckJobs(): Promise<void> {
-  const cutoff = new Date(Date.now() - VISIBILITY_TIMEOUT_MS)
-  const stuck = await db.publishJob.findMany({
-    where: {
-      status: 'processing',
-      startedAt: { lt: cutoff },
-    },
-    select: { id: true },
-  })
-  for (const job of stuck) {
-    await db.publishJob.update({
-      where: { id: job.id },
-      data: { status: 'pending', processLabel: 'بازگردانده شده به صف (worker timeout)' },
+    // Fetch the PublishJob + Content + Platform from DB
+    const job = await db.publishJob.findFirst({
+      where: { id: jobId, workspaceId },
+      include: {
+        content: true,
+        platform: true,
+        workspace: { select: { id: true } },
+      },
     })
-    console.log(`[worker] requeued stuck job ${job.id}`)
-  }
-}
 
-async function processJob(job: any): Promise<void> {
-  const adapter = getAdapter(job.platform.type)
-  if (!adapter) {
-    await markFailed(job, `آداپتور پلتفرم «${job.platform.type}» یافت نشد`, false)
-    return
-  }
+    if (!job) {
+      console.error(`[worker] job ${jobId} not found in DB`)
+      throw new Error(`PublishJob ${jobId} not found`)
+    }
 
-  // Transition to processing (outbox pattern — persist before side effect)
+    // Idempotency: if already has externalId, skip
+    if (job.externalId) {
+      console.log(`[worker] job ${job.id} already published (externalId=${job.externalId})`)
+      await updateJobStatus(job, 'success', 100, 'منتشر شد (تأیید همخوانی)', null, job.externalId)
+      return { status: 'success', externalId: job.externalId }
+    }
+
+    // Circuit breaker check
+    if (!circuitBreakers.canDispatch(job.workspaceId, job.platform.type)) {
+      console.log(`[worker] circuit OPEN for ${job.platform.type}, deferring job ${job.id}`)
+      throw new Error(`Circuit breaker OPEN for ${job.platform.type}`)
+    }
+
+    // Update DB: processing
+    await updateJobStatus(job, 'processing', 5, 'شروع پردازش', null)
+    await emit(job, 'processing', 5, 'شروع پردازش', null)
+
+    // Build adapter job
+    const adapterJob: AdapterJob = {
+      id: job.id,
+      idempotencyKey: job.idempotencyKey || job.id,
+      retryCount: bullJob.attemptsMade,
+      content: {
+        id: job.content.id,
+        title: job.content.title,
+        body: job.content.body,
+        hashtags: job.content.hashtags,
+        thumbnailUrl: job.content.thumbnailUrl,
+        mediaItems: job.content.thumbnailUrl
+          ? [{ type: 'photo' as const, url: job.content.thumbnailUrl }]
+          : undefined,
+      },
+      account: {
+        id: job.platform.id,
+        type: job.platform.type,
+        username: job.platform.username,
+        status: job.platform.status,
+        circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
+        token: (job.platform as any).tokenSecret ? decrypt((job.platform as any).tokenSecret) : undefined,
+        targetId: (job.platform as any).targetId ?? undefined,
+      },
+    }
+
+    // Emit progress
+    await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
+
+    // Publish via adapter
+    const result = await getAdapter(job.platform.type)?.publish(adapterJob)
+
+    if (!result) {
+      throw new Error(`آداپتور پلتفرم «${job.platform.type}» یافت نشد`)
+    }
+
+    if (result.status === 'success') {
+      circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
+      await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId)
+
+      // Update platform
+      await db.platform.update({
+        where: { id: job.platform.id },
+        data: { lastSuccessAt: new Date(), lastError: null, circuitState: 'closed' },
+      })
+
+      // Check if all jobs for this content are done
+      await checkContentPublished(job.contentId)
+
+      await emit(job, 'success', 100, 'منتشر شد', null)
+      await writeAuditLog({
+        action: 'publish.success',
+        workspaceId: job.workspaceId,
+        metadata: { jobId: job.id, platform: job.platform.type, externalId: result.externalId },
+      })
+
+      console.log(`[worker] job ${job.id} → success (${result.externalId})`)
+      return { status: 'success', externalId: result.externalId }
+    }
+
+    // Failure — throw so BullMQ retries with backoff
+    circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+
+    const needsAction = result.error?.includes('احراز') || result.error?.includes('توکن') || result.error?.includes('مجوز')
+
+    if (needsAction) {
+      // Non-retryable — mark as action needed
+      await markFailed(job, result.error ?? 'خطای نامشخص', true)
+      throw new Error(result.error ?? 'خطای نامشخص') // BullMQ won't retry if we return, but throw for logging
+    }
+
+    // Retryable — BullMQ will retry with exponential backoff
+    await updateJobStatus(job, 'processing', 0, `تلاش مجدد (${bullJob.attemptsMade + 1})`, result.error)
+    await emit(job, 'job:progress', 0, `تلاش مجدد در ${Math.pow(2, bullJob.attemptsMade)}ث`, result.error)
+    console.log(`[worker] job ${job.id} → retry ${bullJob.attemptsMade + 1}/5: ${result.error}`)
+    throw new Error(result.error ?? 'خطای نامشخص')
+  },
+  {
+    connection,
+    concurrency: CONCURRENCY,
+    limiter: {
+      max: 10,       // max 10 jobs per second
+      duration: 1000,
+    },
+  },
+)
+
+// ── BullMQ event listeners (update DB audit log) ───────────────
+
+worker.on('completed', (job: Job, result: any) => {
+  console.log(`[worker] job ${job.id} completed: ${result?.status}`)
+})
+
+worker.on('failed', async (job: Job | undefined, err: Error) => {
+  if (!job) return
+  console.error(`[worker] job ${job.id} failed permanently: ${err.message}`)
+
+  // Update DB: mark as failed (all retries exhausted)
+  const { jobId, workspaceId } = job.data
+  try {
+    const dbJob = await db.publishJob.findFirst({
+      where: { id: jobId, workspaceId },
+      include: { platform: true },
+    })
+    if (dbJob && dbJob.status !== 'success' && dbJob.status !== 'action') {
+      const needsAction = err.message.includes('احراز') || err.message.includes('توکن') || err.message.includes('مجوز')
+      await markFailed(dbJob, err.message, false, needsAction)
+    }
+  } catch (dbErr) {
+    console.error('[worker] failed to update DB on job failure:', dbErr)
+  }
+})
+
+worker.on('error', (err: Error) => {
+  console.error('[worker] worker error:', err)
+})
+
+// ── DB helpers ─────────────────────────────────────────────────
+
+async function updateJobStatus(
+  job: any,
+  status: string,
+  progress: number,
+  processLabel: string,
+  error: string | null,
+  externalId?: string,
+): Promise<void> {
   await db.publishJob.update({
     where: { id: job.id },
     data: {
-      status: 'processing',
-      startedAt: new Date(),
-      processLabel: 'شروع پردازش',
-      progress: 5,
+      status,
+      progress,
+      processLabel,
+      error,
+      ...(externalId ? { externalId } : {}),
+      ...(status === 'success' ? { completedAt: new Date() } : {}),
+      ...(status === 'processing' ? { startedAt: new Date() } : {}),
     },
   })
-  await emit(job, 'processing', 5, 'شروع پردازش', null)
-
-  // Idempotency check: if already has externalId, skip
-  if (job.externalId) {
-    await db.publishJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'success',
-        progress: 100,
-        processLabel: 'منتشر شد (تأیید همخوانی)',
-        completedAt: new Date(),
-      },
-    })
-    await emit(job, 'success', 100, 'منتشر شد', null)
-    return
-  }
-
-  const adapterJob: AdapterJob = {
-    id: job.id,
-    idempotencyKey: job.idempotencyKey || job.id,
-    retryCount: job.retryCount,
-    content: {
-      id: job.content.id,
-      title: job.content.title,
-      body: job.content.body,
-      hashtags: job.content.hashtags,
-      thumbnailUrl: job.content.thumbnailUrl,
-      // If content has a thumbnail, pass it as a media item so adapters can publish it
-      mediaItems: job.content.thumbnailUrl
-        ? [{ type: 'photo' as const, url: job.content.thumbnailUrl }]
-        : undefined,
-    },
-    account: {
-      id: job.platform.id,
-      type: job.platform.type,
-      username: job.platform.username,
-      status: job.platform.status,
-      circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
-      // Pass the real bot token / OAuth token from the platform record
-      token: (job.platform as any).tokenSecret ? decrypt((job.platform as any).tokenSecret) : undefined,
-      // Pass the platform-specific target (chat_id, ig-user-id, author URN)
-      targetId: (job.platform as any).targetId ?? undefined,
-    },
-  }
-
-  // Emit progress for multi-step adapters (e.g., IG two-step)
-  await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
-
-  const result = await adapter.publish(adapterJob)
-
-  if (result.status === 'success') {
-    circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
-    await db.publishJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'success',
-        progress: 100,
-        processLabel: 'منتشر شد',
-        completedAt: new Date(),
-        externalId: result.externalId,
-        error: null,
-      },
-    })
-    // Update platform lastSuccessAt
-    await db.platform.update({
-      where: { id: job.platform.id },
-      data: { lastSuccessAt: new Date(), lastError: null, circuitState: 'closed' },
-    })
-    // Update content status if all jobs done
-    await checkContentPublished(job.contentId)
-    await emit(job, 'success', 100, 'منتشر شد', null)
-    console.log(`[worker] job ${job.id} → success (${result.externalId})`)
-    return
-  }
-
-  // Failure — decide retry vs action vs DLQ
-  const policy = CHANNEL_RETRY_POLICIES[job.platform.type] ?? CHANNEL_RETRY_POLICIES.instagram
-  const attempt = job.retryCount + 1
-
-  if (shouldRetry(attempt, result.retryable, policy)) {
-    const backoff = computeBackoff(attempt, policy)
-    const nextRun = new Date(Date.now() + backoff)
-
-    await db.publishJob.update({
-      where: { id: job.id },
-      data: {
-        status: 'pending', // back to pending for retry
-        retryCount: attempt,
-        processLabel: `تلاش مجدد در ${Math.round(backoff / 1000)} ثانیه`,
-        progress: 0,
-        error: result.error,
-        scheduledAt: nextRun, // delay the retry
-      },
-    })
-    await emit(job, 'job:progress', 0, `تلاش مجدد در ${Math.round(backoff / 1000)}ث`, result.error)
-    console.log(`[worker] job ${job.id} → retry ${attempt}/${policy.maxAttempts} in ${backoff}ms`)
-    return
-  }
-
-  // Non-retryable or exhausted → action needed (if 401/403) or failed (DLQ)
-  const needsAction = result.error?.includes('احراز') || result.error?.includes('توکن') || result.error?.includes('مجوز')
-  await markFailed(job, result.error ?? 'خطای نامشخص', result.retryable, needsAction)
 }
 
 async function markFailed(
@@ -243,9 +220,7 @@ async function markFailed(
   _retryable: boolean,
   needsAction = false,
 ): Promise<void> {
-  circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
   const breakerState = circuitBreakers.getState(job.workspaceId, job.platform.type)
-
   const status = needsAction ? 'action' : 'failed'
   const label = needsAction
     ? 'نیازمند اقدام دستی'
@@ -255,26 +230,20 @@ async function markFailed(
 
   await db.publishJob.update({
     where: { id: job.id },
-    data: {
-      status,
-      progress: 100,
-      processLabel: label,
-      error,
-      completedAt: new Date(),
-    },
+    data: { status, progress: 100, processLabel: label, error, completedAt: new Date() },
   })
 
-  // Update platform circuit state in DB
   await db.platform.update({
     where: { id: job.platform.id },
-    data: {
-      circuitState: breakerState,
-      lastError: error,
-      primaryIssue: breakerState === 'open' ? 'اختلال API' : null,
-    },
+    data: { circuitState: breakerState, lastError: error, primaryIssue: breakerState === 'open' ? 'اختلال API' : null },
   })
 
   await emit(job, status, 100, label, error)
+  await writeAuditLog({
+    action: `publish.${status}`,
+    workspaceId: job.workspaceId,
+    metadata: { jobId: job.id, platform: job.platform.type, error, breakerState },
+  })
   console.log(`[worker] job ${job.id} → ${status}: ${error}`)
 }
 
@@ -312,42 +281,135 @@ async function emit(
   })
 }
 
-// ── Health HTTP server ────────────────────────────────────────
+// ── Health HTTP server + Bull Board ────────────────────────────
+
+let inFlightJobs = 0
+worker.on('active', () => { inFlightJobs++ })
+worker.on('completed', () => { inFlightJobs-- })
+worker.on('failed', () => { inFlightJobs-- })
 
 function startHealthServer() {
-  const server = createServer((req, res) => {
-    if (req.url === '/health') {
-      const uptime = Math.floor((Date.now() - startTime) / 1000)
+  const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
+    const url = req.url?.split('?')[0]
+
+    // GET /health — liveness + queue depth
+    if (req.method === 'GET' && url === '/health') {
+      let queueDepth = 0
+      let failedCount = 0
+      try {
+        const counts = await publishQueue.getJobCounts()
+        queueDepth = counts.waiting + counts.active + counts.delayed
+        failedCount = counts.failed
+      } catch {
+        // Redis might not be connected yet
+      }
+
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         ok: true,
-        status: shuttingDown ? 'shutting_down' : 'running',
-        uptime,
+        status: 'running',
+        uptime: Math.floor((Date.now() - startTime) / 1000),
         inFlightJobs,
+        queueDepth,
+        failedCount,
         timestamp: new Date().toISOString(),
       }))
-    } else {
-      res.writeHead(404, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ error: 'not found' }))
+      return
     }
+
+    // GET /board — Bull Board dashboard (basic auth protected)
+    if (req.method === 'GET' && url === '/board') {
+      // Basic auth
+      const auth = req.headers.authorization
+      if (!auth || !auth.startsWith('Basic ')) {
+        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Bull Board"' })
+        res.end('Authentication required')
+        return
+      }
+      const decoded = Buffer.from(auth.slice(6), 'base64').toString()
+      const [, password] = decoded.split(':')
+      if (password !== BOARD_PASSWORD) {
+        res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Bull Board"' })
+        res.end('Invalid password')
+        return
+      }
+
+      // Serve a simple queue status page (Bull Board Express adapter needs express,
+      // but we're using raw http — so serve a JSON status instead)
+      try {
+        const counts = await publishQueue.getJobCounts()
+        const jobs = await publishQueue.getJobs(['waiting', 'active', 'failed', 'completed'], 0, 20)
+
+        const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Nashrino — Bull Board</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; }
+  h1 { color: #333; } h2 { color: #666; margin-top: 30px; }
+  .stat { display: inline-block; margin: 10px 20px 10px 0; padding: 10px 20px; background: #f5f5f5; border-radius: 8px; }
+  .stat strong { font-size: 24px; display: block; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; }
+  th { background: #f5f5f5; }
+  .status-success { color: green; } .status-failed { color: red; }
+  .status-active { color: blue; } .status-waiting { color: orange; }
+</style></head><body>
+<h1>🐂 Nashrino Publish Queue</h1>
+<div>
+  <div class="stat"><strong>${counts.waiting}</strong>Waiting</div>
+  <div class="stat"><strong>${counts.active}</strong>Active</div>
+  <div class="stat"><strong>${counts.delayed}</strong>Delayed</div>
+  <div class="stat"><strong>${counts.completed}</strong>Completed</div>
+  <div class="stat"><strong>${counts.failed}</strong>Failed</div>
+</div>
+<h2>Recent Jobs</h2>
+<table><tr><th>ID</th><th>Status</th><th>Attempts</th><th>Error</th></tr>
+${jobs.map(j => `<tr>
+  <td>${j.id?.slice(0, 12) ?? '—'}</td>
+  <td class="status-${j.finishedOn ? (j.failedReason ? 'failed' : 'success') : 'active'}">
+    ${j.finishedOn ? (j.failedReason ? 'failed' : 'completed') : (j.processedOn ? 'active' : 'waiting')}
+  </td>
+  <td>${j.attemptsMade}</td>
+  <td>${j.failedReason ? j.failedReason.slice(0, 80) : '—'}</td>
+</tr>`).join('')}
+</table>
+</body></html>`
+
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(html)
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Failed to fetch queue data', detail: String(err) }))
+      }
+      return
+    }
+
+    res.writeHead(404, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'not found' }))
   })
 
   server.listen(HEALTH_PORT, () => {
-    console.log(`[worker] health endpoint on http://localhost:${HEALTH_PORT}/health`)
+    console.log(`[worker] health on http://localhost:${HEALTH_PORT}/health`)
+    console.log(`[worker] bull board on http://localhost:${HEALTH_PORT}/board (password: ${BOARD_PASSWORD === 'nashrino' ? 'default' : 'custom'})`)
   })
 }
 
-// ── Graceful shutdown ─────────────────────────────────────────
+// ── Graceful shutdown ──────────────────────────────────────────
 
-function handleShutdown(signal: string) {
-  console.log(`[worker] ${signal} received, initiating graceful shutdown...`)
+let shuttingDown = false
+
+async function shutdown(signal: string) {
+  if (shuttingDown) return
   shuttingDown = true
+  console.log(`\n[worker] ${signal} received, closing worker...`)
+  await worker.close()
+  console.log('[worker] worker closed, exiting')
+  process.exit(0)
 }
 
-process.on('SIGTERM', () => handleShutdown('SIGTERM'))
-process.on('SIGINT', () => handleShutdown('SIGINT'))
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
 
-main().catch((err) => {
-  console.error('[worker] fatal:', err)
-  process.exit(1)
-})
+// ── Boot ───────────────────────────────────────────────────────
+
+console.log(`[worker] BullMQ worker started (concurrency: ${CONCURRENCY}, health: :${HEALTH_PORT})`)
+startHealthServer()

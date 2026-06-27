@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
     "http://*.space-z.ai",
     "https://preview-chat-*.space-z.ai",
   ],
-  serverExternalPackages: ["z-ai-web-dev-sdk", "@google/generative-ai"],
+  serverExternalPackages: ["z-ai-web-dev-sdk", "@google/generative-ai", "bullmq", "@bull-board/api", "@bull-board/express"],
 };
 
 export default nextConfig;
