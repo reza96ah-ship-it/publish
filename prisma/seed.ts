@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client'
-
-const db = new PrismaClient()
+import { db } from '../src/lib/db'
 
 const WORKSPACE_SLUG = 'nashrino-demo'
 
