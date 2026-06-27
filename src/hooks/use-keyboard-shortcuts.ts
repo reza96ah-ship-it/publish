@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useAppStore, type AppView } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
+import { useViewRoute, type AppView } from "@/lib/view-route";
 
 /**
  * useKeyboardShortcuts — global keyboard navigation.
@@ -34,7 +35,7 @@ const VIEW_DIRECT_MAP: Record<string, AppView> = {
 };
 
 export function useKeyboardShortcuts() {
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  const { setView } = useViewRoute();
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
@@ -105,7 +106,7 @@ export function useKeyboardShortcuts() {
         const target = G_PREFIX_MAP[key];
         if (target) {
           e.preventDefault();
-          setActiveView(target);
+          setView(target);
         }
         clearG();
         return;
@@ -114,17 +115,17 @@ export function useKeyboardShortcuts() {
       // Single-key shortcuts
       if (key === "c") {
         e.preventDefault();
-        setActiveView("compose");
+        setView("compose");
         return;
       }
       if (key === "n") {
         e.preventDefault();
-        setActiveView("campaigns");
+        setView("campaigns");
         return;
       }
       if (key === "r") {
         e.preventDefault();
-        setActiveView("inbox");
+        setView("inbox");
         return;
       }
     };
@@ -135,7 +136,6 @@ export function useKeyboardShortcuts() {
       if (gTimer) clearTimeout(gTimer);
     };
   }, [
-    setActiveView,
     setCommandPaletteOpen,
     setShortcutsOpen,
     setMobileMenuOpen,

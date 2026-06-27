@@ -17,7 +17,8 @@ import {
   ImageIcon,
   ChevronLeft,
 } from "lucide-react";
-import { useAppStore, type AppView } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
+import { useViewRoute, type AppView } from "@/lib/view-route";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 
@@ -86,7 +87,8 @@ function SidebarNavItem({ item, isActive, onClick, badge }: { item: NavItem; isA
 }
 
 export function Sidebar() {
-  const { activeView, setActiveView, setMobileMenuOpen } = useAppStore();
+  const { view: activeView, setView } = useViewRoute();
+  const { setMobileMenuOpen } = useAppStore();
 
   const { data: summary } = useQuery<Summary>({
     queryKey: ["dashboard-summary"],
@@ -95,7 +97,7 @@ export function Sidebar() {
   });
 
   const handleNav = (view: AppView) => {
-    setActiveView(view);
+    setView(view);
     setMobileMenuOpen(false);
   };
 

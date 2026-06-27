@@ -1,20 +1,23 @@
 /**
  * Root page — Server Component.
  *
- * This is a Server Component (no "use client" directive) that renders the
- * interactive `<AppRouter />` client island. The view-switching logic and
- * all dashboard sub-components remain client-side (they use Zustand state,
- * TanStack Query, and Framer Motion), but the page shell itself is now RSC,
- * which enables:
- *  - Future streaming with `<Suspense>` boundaries
- *  - Server-side metadata exports per route
- *  - A cleaner separation between server data-fetching and client interactivity
+ * Renders the interactive `<AppRouter />` client island.
+ * Wrapped in <Suspense> because AppRouter uses useSearchParams (requires Suspense).
  *
- * The user-visible route is still only `/` (per project constraints).
+ * The user-visible route is / with ?view=<name> search params.
  */
 
+import { Suspense } from "react";
 import { AppRouter } from "@/components/shell/app-router";
 
 export default function Home() {
-  return <AppRouter />;
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-dvh">
+        <div className="animate-pulse text-[12px] text-ink-tertiary">در حال بارگذاری…</div>
+      </div>
+    }>
+      <AppRouter />
+    </Suspense>
+  );
 }
