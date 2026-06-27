@@ -16,7 +16,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-# ── Stage 2: builder ──────────────────────────────────────────────────
+# ── Stage 2: builder (Next.js app only) ───────────────────────────────
 FROM oven/bun:1.2 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -30,7 +30,7 @@ ENV NEXTAUTH_SECRET=build-time-dummy-secret-not-used-at-runtime
 ENV NEXTAUTH_URL=http://localhost:3000
 RUN bun run build
 
-# ── Stage 3a: app ─────────────────────────────────────────────────────
+# ── Stage 3a: app (Next.js standalone) ────────────────────────────────
 FROM oven/bun:1.2-slim AS app
 WORKDIR /app
 ENV NODE_ENV=production
@@ -50,32 +50,34 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD bun -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
 CMD ["bun", "server.js"]
 
-# ── Stage 3b: worker ──────────────────────────────────────────────────
+# ── Stage 3b: worker (no Next.js build needed) ────────────────────────
 FROM oven/bun:1.2-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
-COPY --from=builder /app/mini-services/publish-worker ./mini-services/publish-worker
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/prisma ./prisma
+# Copy deps from the deps stage (not builder — avoids running next build)
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
+COPY mini-services/publish-worker ./mini-services/publish-worker
+COPY prisma ./prisma
+RUN bunx prisma generate
 USER nextjs
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD bun -e "fetch('http://localhost:3002/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
 CMD ["bun", "run", "mini-services/publish-worker/index.ts"]
 
-# ── Stage 3c: realtime ────────────────────────────────────────────────
+# ── Stage 3c: realtime (no Next.js build needed) ──────────────────────
 FROM oven/bun:1.2-slim AS realtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV REALTIME_PORT=3003
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
-COPY --from=builder /app/mini-services/realtime ./mini-services/realtime
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
+COPY mini-services/realtime ./mini-services/realtime
 USER nextjs
 EXPOSE 3003
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
