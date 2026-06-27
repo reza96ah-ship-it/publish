@@ -123,10 +123,14 @@ jobs:
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
-      - run: sed -i "s/provider  = \"sqlite\"/provider  = \"postgresql\"/" prisma/schema.prisma
+      # Schema is postgresql on main — switch to sqlite for E2E (no PG service)
+      - run: |
+          sed -i 's/provider  = "postgresql"/provider  = "sqlite"/' prisma/schema.prisma
+          sed -i '/directUrl/d' prisma/schema.prisma
       - run: bunx prisma generate
-      - run: bunx prisma migrate deploy --accept-data-loss || bunx prisma db push --accept-data-loss
-      - run: bun run seed:auth  # Seed demo user for E2E
+      - run: bunx prisma db push --skip-generate --accept-data-loss
+      - run: bun run seed:auth
       - run: bunx playwright install --with-deps chromium
       - run: bun run dev &
+      - run: sleep 10
       - run: bun run test:e2e
