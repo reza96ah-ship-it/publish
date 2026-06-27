@@ -3,9 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  // DEV: SQLite (no PostgreSQL server in local/preview env).
+  // PROD: switch provider to "postgresql" + set DATABASE_URL to postgresql://...
+  // The schema is compatible with both (only 1 Json? field, no PG-specific types).
+  // See docs/PRODUCTION_READINESS_MASTER_PLAN.md Phase 4.
+  provider  = "sqlite"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 /* ─── Auth & Identity ─── */
