@@ -52,6 +52,18 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD bun -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
 CMD ["bun", "server.js"]
 
+# ── Stage 3d: migrate (dedicated — ships the pinned prisma CLI from deps) ─
+FROM oven/bun:1.2-slim AS migrate
+WORKDIR /app
+ENV NODE_ENV=production
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json bun.lock ./
+COPY prisma ./prisma
+ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+CMD ["bunx", "prisma", "migrate", "deploy"]
+
 # ── Stage 3b: worker (no Next.js build needed) ────────────────────────
 FROM oven/bun:1.2-slim AS worker
 WORKDIR /app

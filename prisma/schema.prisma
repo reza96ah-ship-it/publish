@@ -3,23 +3,10 @@ generator client {
 }
 
 datasource db {
-  // Provider is determined by DATABASE_URL:
-  //   postgresql://... → provider = "postgresql" (production, docker-compose dev)
-  //   file:...          → provider = "sqlite" (quick preview without Docker)
-  // Prisma requires a static provider, so we use the env var.
-  // For Docker dev: uncomment the postgresql block below.
-  // For quick preview: use the sqlite block.
-  provider  = "sqlite"
+  provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
-
-// When running with Docker (PostgreSQL), comment out the block above
-// and uncomment the block below:
-// datasource db {
-//   provider  = "postgresql"
-//   url       = env("DATABASE_URL")
-//   directUrl = env("DIRECT_DATABASE_URL")
-// }
 
 /* ─── Auth & Identity ─── */
 

@@ -76,7 +76,7 @@ services:
   migrate:
     build:
       context: .
-      target: app
+      target: migrate
     env_file:
       - path: .env
         required: false
