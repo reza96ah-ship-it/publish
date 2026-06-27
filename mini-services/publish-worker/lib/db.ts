@@ -1,10 +1,11 @@
-/**
- * Prisma client for the publish worker.
- * The worker shares the root Prisma schema and DATABASE_URL with the Next.js app.
- */
 import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+
+const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL ?? ''
+const adapter = new PrismaPg({ connectionString: url })
 
 export const db = new PrismaClient({
+  adapter,
   log: ['warn', 'error'],
 })
 
