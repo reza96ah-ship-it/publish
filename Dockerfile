@@ -27,7 +27,7 @@ RUN bunx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Set dummy secrets for build — Next.js build evaluates auth.ts which requires
 # NEXTAUTH_SECRET in production. The real secret is injected at runtime via .env.
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV NEXTAUTH_SECRET=build-time-dummy-secret-not-used-at-runtime
 ENV NEXTAUTH_URL=http://localhost:3000
 RUN bun run build
