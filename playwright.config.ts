@@ -11,7 +11,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     locale: 'fa-IR',
-    timezone: 'Asia/Tehran',
+    timezoneId: 'Asia/Tehran',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
