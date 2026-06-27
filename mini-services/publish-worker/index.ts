@@ -4,7 +4,7 @@
  * and emits status changes to the realtime WebSocket service.
  *
  * Architecture (per docs/05_TECHNICAL_ARCHITECTURE.md §4):
- * - Per-channel polling (all channels polled in one loop for SQLite simplicity)
+ * - Per-channel polling (all channels polled in one loop)
  * - Idempotent: checks externalId before retry
  * - Exponential backoff: base 1s, factor 2, cap 5min, jitter ±20%
  * - Circuit breaker: 5 consecutive failures → OPEN, health-check every 60s

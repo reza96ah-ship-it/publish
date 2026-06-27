@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Nashrino — Backup script
-# Backs up: SQLite DB (or PostgreSQL via pg_dump), .env.production (encrypted)
+# Backs up: PostgreSQL via pg_dump, .env.production (encrypted)
 # Usage: ./scripts/backup.sh
 #        BACKUP_ENCRYPTION_KEY=mykey S3_BUCKET=my-bucket ./scripts/backup.sh
 set -euo pipefail
@@ -20,17 +20,14 @@ echo "   Output: $BACKUP_FILE"
 
 # 1. Database
 DB_BACKUP="$BACKUP_DIR/db-$TIMESTAMP"
-if [ -n "${DATABASE_URL:-}" ] && [[ "${DATABASE_URL}" == postgresql://* ]]; then
+DB_URL="${DIRECT_DATABASE_URL:-${DATABASE_URL:-}}"
+if [ -n "$DB_URL" ] && [[ "$DB_URL" == postgresql://* ]]; then
   echo "   DB: PostgreSQL"
-  pg_dump "$DATABASE_URL" --no-owner --no-privileges > "$DB_BACKUP.sql"
+  pg_dump "$DB_URL" --no-owner --no-privileges > "$DB_BACKUP.sql"
   DB_FILE="$DB_BACKUP.sql"
-elif [ -f "db/custom.db" ]; then
-  echo "   DB: SQLite (db/custom.db)"
-  cp "db/custom.db" "$DB_BACKUP.db"
-  DB_FILE="$DB_BACKUP.db"
 else
-  echo "   ⚠️  No database found — skipping"
-  DB_FILE=""
+  echo "   ❌ DIRECT_DATABASE_URL or DATABASE_URL must be a PostgreSQL URL"
+  exit 1
 fi
 
 # 2. Env (encrypted)
