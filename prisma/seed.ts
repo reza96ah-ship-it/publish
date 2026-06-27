@@ -21,6 +21,11 @@ async function main() {
   await db.platform.deleteMany()
   await db.workspaceMember.deleteMany()
   await db.workspace.deleteMany()
+  await db.user.deleteMany({
+    where: {
+      id: { in: ['u1', 'u2', 'u3', 'u4', 'u5'] },
+    },
+  })
 
   // ─── Workspace ───
   const ws = await db.workspace.create({
@@ -44,6 +49,14 @@ async function main() {
   })
 
   // ─── Members ───
+  await db.$transaction([
+    db.user.create({ data: { id: 'u1', email: 'ali@nashrino.ir', name: 'ط¹ظ„غŒ ط§ط­ظ…ط¯غŒ' } }),
+    db.user.create({ data: { id: 'u2', email: 'sara@nashrino.ir', name: 'ط³ط§ط±ط§ ظ…ط±ط§ط¯غŒ' } }),
+    db.user.create({ data: { id: 'u3', email: 'mohammad@nashrino.ir', name: 'ظ…ط­ظ…ط¯ ط±ط¶ط§غŒغŒ' } }),
+    db.user.create({ data: { id: 'u4', email: 'farnaz@nashrino.ir', name: 'ظپط±ظ†ط§ط² ط§ط³ط¯غŒ' } }),
+    db.user.create({ data: { id: 'u5', email: 'hossein@nashrino.ir', name: 'ط­ط³غŒظ† ع©ط±غŒظ…غŒ' } }),
+  ])
+
   const members = await db.$transaction([
     db.workspaceMember.create({ data: { workspaceId: ws.id, userId: 'u1', name: 'علی احمدی', email: 'ali@nashrino.ir', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=1' } }),
     db.workspaceMember.create({ data: { workspaceId: ws.id, userId: 'u2', name: 'سارا مرادی', email: 'sara@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=2' } }),
