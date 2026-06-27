@@ -5,9 +5,9 @@ const isProd = process.env.NODE_ENV === "production";
 const nextConfig: NextConfig = {
   output: "standalone",
   typescript: {
-    ignoreBuildErrors: true, // P0-3: will be set to false after fixing 25 type errors
+    ignoreBuildErrors: false, // P0-3: type errors now fixed (0 in src/)
   },
-  reactStrictMode: false, // P0-3: will be set to true after fixing type errors
+  reactStrictMode: true,
   // Security headers — environment-aware.
   // Development: relaxed (frame-ancestors *, unsafe-eval) so the Z.ai preview
   //   iframe can render the app.
@@ -18,11 +18,9 @@ const nextConfig: NextConfig = {
         source: "/(.*)",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          // Production: SAMEORIGIN. Dev: ALLOWALL (Z.ai preview iframe).
           { key: "X-Frame-Options", value: isProd ? "SAMEORIGIN" : "ALLOWALL" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
-          // HSTS — production only (dev uses http, HSTS would break local access)
           ...(isProd
             ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]
             : []),
@@ -30,7 +28,6 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // Dev: needs 'unsafe-eval' for Next.js dev tools. Prod: removed.
               isProd
                 ? "script-src 'self' 'unsafe-inline'"
                 : "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
@@ -39,7 +36,6 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https:",
               "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:",
               "media-src 'self' data:",
-              // Production: 'self' only. Dev: * (Z.ai preview panel).
               isProd ? "frame-ancestors 'self'" : "frame-ancestors *",
             ].join("; "),
           },
@@ -48,7 +44,6 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // Allow the Z.ai preview panel to use Next.js dev HMR websocket.
   allowedDevOrigins: [
     "https://*.space-z.ai",
     "http://*.space-z.ai",

@@ -110,7 +110,7 @@ export function CampaignsView() {
       announce("کمپین جدید ایجاد شد");
       return { previous };
     },
-    onError: (_err, _newItem, context) => {
+    onError: (_err, _newItem, context: any) => {
       if (context?.previous) queryClient.setQueryData(["campaigns"], context.previous);
       toast.error("ایجاد کمپین ناموفق بود. تغییرات برگردانده شد.");
       announce("خطا در ایجاد کمپین", "assertive");

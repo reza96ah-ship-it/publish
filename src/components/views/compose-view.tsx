@@ -202,7 +202,7 @@ export function ComposeView() {
       ]);
       return { previous };
     },
-    onError: (err, _payload, context) => {
+    onError: (err, _payload, context: any) => {
       if (context?.previous) queryClient.setQueryData(["content"], context.previous);
       toast.error(err.message || "انتشار محتوا ناموفق بود. تغییرات برگردانده شد.");
     },
@@ -250,7 +250,7 @@ export function ComposeView() {
           toast.success("محتوا برای تأیید ارسال شد", { id: toastId });
           setTitle(""); setCaption(""); setHashtags(""); setNote("");
           setCampaignId(""); setSelectedMedia([]); setSelectedPlatforms([]);
-          setPlatformCaptions({}); setScheduleMode("now"); setScheduledAt(null); setActiveStep(0);
+          setPlatformCaptions({}); setScheduleMode("now"); setScheduledAt(null);
         },
         onError: (err) => {
           toast.error(err.message || "خطا در ارسال", { id: toastId });
@@ -293,7 +293,6 @@ export function ComposeView() {
         setSelectedPlatforms([]);
         setPlatformCaptions({});
         setScheduleMode("now"); setScheduledAt(null);
-        setActiveStep(0);
       },
       onError: (err) => {
         toast.error(err.message || "خطا در انتشار محتوا", { id: toastId });
