@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateBody, validateParams, validateId, contentCommentSchema, contentCommentsQuerySchema } from "@/lib/validations";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,8 +13,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
   const id = idCheck.data;
 
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   // Validate ?parentId= query (optional)
   const query = Object.fromEntries(req.nextUrl.searchParams.entries());
@@ -35,8 +36,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
   const id = idCheck.data;
 
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   const body = await req.json().catch(() => ({}));
   const validation = validateBody(contentCommentSchema, body);

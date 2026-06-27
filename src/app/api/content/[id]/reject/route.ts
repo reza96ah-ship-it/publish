@@ -4,13 +4,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateBody, contentRejectSchema } from "@/lib/validations";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   const raw = await req.json().catch(() => null);
   if (!raw) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });

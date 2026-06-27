@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { validateBody, campaignCreateSchema } from '@/lib/validations'
 
 export async function GET() {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const campaigns = await db.campaign.findMany({
     where: { workspaceId },
@@ -34,8 +35,9 @@ export async function GET() {
 
 // POST — create a new campaign
 export async function POST(req: NextRequest) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })

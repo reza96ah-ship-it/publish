@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { randomUUID } from 'crypto'
 import { rescheduleSchema, validateBody } from '@/lib/validations'
 
@@ -19,10 +19,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
-  }
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const { id } = await params
   let raw: unknown

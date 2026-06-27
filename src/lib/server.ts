@@ -5,12 +5,12 @@ import { authOptions } from './auth'
 /**
  * Get the active workspace for the current user.
  *
- * If the user is authenticated, uses their activeWorkspaceId from the session.
- * If not authenticated (demo mode), falls back to the first workspace.
+ * Production: requires an authenticated session. Returns null if no session,
+ * no activeWorkspaceId, or no membership — NO demo-mode fallback.
  *
- * This is the bridge between the old single-tenant demo and the new
- * multi-tenant auth system. API routes can be migrated gradually to use
- * requireWorkspace() from auth-guards.ts.
+ * Development: falls back to the first workspace (demo mode) so the Z.ai
+ * preview iframe works without a login session. This bypass is gated by
+ * NODE_ENV and is IMPOSSIBLE in production.
  */
 export async function getWorkspace() {
   try {
@@ -23,12 +23,17 @@ export async function getWorkspace() {
       }
     }
   } catch {
-    // No session or DB error — fall through to demo mode
+    // No session or DB error — fall through
   }
 
-  // Demo mode: return first workspace
-  const ws = await db.workspace.findFirst({ orderBy: { createdAt: 'asc' } })
-  return ws
+  // Dev-only fallback: return first workspace (demo mode for Z.ai preview).
+  // In production, this branch is never taken — returns null → 401/403.
+  if (process.env.NODE_ENV !== 'production') {
+    return await db.workspace.findFirst({ orderBy: { createdAt: 'asc' } })
+  }
+
+  // Production: no session = no workspace
+  return null
 }
 
 export async function getWorkspaceId() {
@@ -37,7 +42,7 @@ export async function getWorkspaceId() {
 }
 
 /**
- * Get the current user ID (or null in demo mode).
+ * Get the current user ID (or null if not authenticated).
  */
 export async function getUserId(): Promise<string | null> {
   try {

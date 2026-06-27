@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { jalaliToDate } from '@/lib/jalali'
 import { validateParams, contentListQuerySchema } from '@/lib/validations'
 import { z } from 'zod'
@@ -11,8 +11,9 @@ const calendarQuerySchema = z.object({
 })
 
 export async function GET(req: Request) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   const { searchParams } = new URL(req.url)
   const paramCheck = validateParams(calendarQuerySchema, {

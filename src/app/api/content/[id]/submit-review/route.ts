@@ -4,7 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateId } from "@/lib/validations";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,8 +13,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 });
   const id = idCheck.data;
 
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   const content = await db.content.findFirst({
     where: { id, workspaceId },

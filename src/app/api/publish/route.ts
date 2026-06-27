@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { getWorkspaceId } from '@/lib/server'
+import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { randomUUID } from 'crypto'
@@ -21,10 +21,9 @@ interface PublishRequest {
 }
 
 export async function POST(req: Request) {
-  const workspaceId = await getWorkspaceId()
-  if (!workspaceId) {
-    return NextResponse.json({ error: 'workspace not found' }, { status: 404 })
-  }
+  const guard = await requireWorkspaceApi()
+  if (guard.error) return guard.error
+  const workspaceId = guard.workspace.id
 
   // Fetch the authenticated user's name (fallback to workspace member or '—')
   const session = await getServerSession(authOptions)

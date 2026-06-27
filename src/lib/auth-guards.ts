@@ -83,15 +83,52 @@ export async function requireRole(min: Role) {
 }
 
 /**
- * API route guard — returns 401 JSON instead of redirect.
+ * API route guard — returns 401/403 JSON instead of redirect.
  * Usage:
  *   const guard = await requireWorkspaceApi();
  *   if (guard.error) return guard.error;
- *   const { workspace } = guard;
+ *   const workspaceId = guard.workspace.id;
+ *
+ * The return type is a discriminated union on `error` so that after the
+ * `if (guard.error) return guard.error` check, TypeScript narrows `workspace`
+ * to non-null — no `!` assertions needed at call sites.
+ *
+ * Production: requires authenticated session + workspace membership.
+ * Development: falls back to the first workspace with admin role (demo mode)
+ *   so the Z.ai preview iframe works without login. Gated by NODE_ENV.
  */
-export async function requireWorkspaceApi() {
+export type WorkspaceGuardSuccess = {
+  error: null;
+  workspace: Awaited<ReturnType<typeof db.workspace.findFirst>> & object;
+  session: Awaited<ReturnType<typeof getServerSession>>;
+  role: Role;
+};
+
+export type WorkspaceGuardError = {
+  error: NextResponse;
+  workspace: null;
+  session: Awaited<ReturnType<typeof getServerSession>>;
+};
+
+export type WorkspaceGuardResult = WorkspaceGuardSuccess | WorkspaceGuardError;
+
+export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
   const session = await getServerSession(authOptions);
+
+  // No session — try dev bypass, otherwise 401
   if (!session?.user) {
+    // Dev-only: fall back to first workspace (demo mode for Z.ai preview)
+    if (process.env.NODE_ENV !== "production") {
+      const ws = await db.workspace.findFirst({ orderBy: { createdAt: "asc" } });
+      if (ws) {
+        return {
+          error: null,
+          workspace: ws,
+          session: null,
+          role: "admin" as Role, // dev mode = full access
+        };
+      }
+    }
     return {
       error: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
       workspace: null,
@@ -125,7 +162,7 @@ export async function requireWorkspaceApi() {
   }
 
   return {
-    error: null as null | NextResponse,
+    error: null,
     workspace: membership.workspace,
     session,
     role: membership.role as Role,

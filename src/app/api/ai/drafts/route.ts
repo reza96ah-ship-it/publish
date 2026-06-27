@@ -6,13 +6,14 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 import { validateBody, aiDraftSchema } from "@/lib/validations";
 
 // GET — list drafts
 export async function GET() {
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   const items = await db.content.findMany({
     where: {
@@ -50,8 +51,9 @@ export async function GET() {
 
 // POST — save a new draft
 export async function POST(req: NextRequest) {
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "بدنه نامعتبر" }, { status: 400 });

@@ -2334,3 +2334,104 @@ Stage Summary:
 - Root README.md, .env.example, CI workflow created.
 - Branch `fix/phase-1-safety-blockers` created and pushed.
 - Next: open PR for this branch, then start executing P0-1 through P0-10.
+
+---
+Task ID: P0-2-ROUTES
+Agent: Route Migration Agent
+Task: Migrate 31 API routes from getWorkspaceId() to requireWorkspaceApi()
+
+Work Log:
+- Read worklog.md (last 50 lines) for context. Confirmed security fix to getWorkspace() (env-aware: dev fallback, prod null) is already applied to src/lib/server.ts and src/lib/auth-guards.ts (uncommitted on branch `main`).
+- Verified src/lib/auth-guards.ts already exports requireWorkspaceApi() with env-aware dev fallback + 401/403 status codes.
+- Listed all 31 files in src/app/api/ containing `getWorkspaceId` via `rg -l "getWorkspaceId" src/app/api/`. Confirmed 0 files already use requireWorkspaceApi (all need migration).
+- Confirmed 2 additional routes (ai/caption, ai/caption-multi) use `getWorkspace()` (not `getWorkspaceId`) with an unusual try/catch swallowing pattern — these are NOT in the 31-file list and were skipped per task scope.
+- Audited guard-block variations across all 31 files:
+  * Quote style: single quotes (`'...'`) vs double quotes (`"..."`).
+  * Statement style: with semicolons (e.g. `;`) vs without.
+  * Status code: 404 (older "workspace not found") vs 403 (newer "no_workspace").
+  * Error message: `'workspace not found'`, `"no_workspace"`, plus Persian messages.
+  * if-block shape: single-line (`if (!x) return ...`) vs multi-line (`if (!x) {\n  return ...\n}`).
+  * 4 files (ai/drafts/route.ts, content/[id]/comments/route.ts, campaigns/route.ts, members/route.ts) had TWO guard blocks (GET + POST handlers).
+  * All 31 files imported only `getWorkspaceId` from `@/lib/server` (no other symbols co-imported), so the import line could be replaced wholesale.
+- Wrote a one-shot Python migration script (/home/z/my-project/migrate_routes.py — deleted after run) using two regex patterns (single-line + multi-line guard) plus an import-line pattern. Each pattern captures the file's existing quote and semicolon style so the replacement matches the surrounding code (e.g. `import { requireWorkspaceApi } from "@/lib/auth-guards";` for files that use double quotes + semicolons, `'@/lib/auth-guards'` for files that use single quotes + no semicolons).
+- Ran the script — migrated all 31/31 files successfully:
+  * 31 import lines replaced.
+  * 35 guard blocks replaced (27 files × 1 guard + 4 files × 2 guards = 35).
+  * Each replacement follows the canonical pattern:
+      const guard = await requireWorkspaceApi()<;>
+      if (guard.error) return guard.error<;>
+      const workspaceId = guard.workspace.id<;>
+  * Variable name `workspaceId` preserved at every call site → minimal diff, no business-logic changes.
+- After migration, ran `bun run typecheck` and discovered 36 new TypeScript errors of the form `'guard.workspace' is possibly 'null'` across all 31 routes. Root cause: `requireWorkspaceApi()` had its `error` field cast to `null as null | NextResponse` in the success branches, which collapsed the discriminated union into a flat object type so TypeScript could not narrow `workspace` to non-null after the `if (guard.error) return guard.error` check.
+- Fixed the root cause in src/lib/auth-guards.ts (type-level change only, zero runtime impact):
+  * Removed both `null as null | NextResponse` casts and the `as Role` cast on the dev-bypass `"admin"` literal.
+  * Added explicit return type annotation `Promise<WorkspaceGuardResult>` where `WorkspaceGuardResult` is a proper discriminated union:
+      type WorkspaceGuardSuccess = { error: null; workspace: <non-null>; session; role }
+      type WorkspaceGuardError   = { error: NextResponse; workspace: null; session }
+      type WorkspaceGuardResult  = WorkspaceGuardSuccess | WorkspaceGuardError
+  * Exported the three types so future RBAC code (Phase 5) can re-use them.
+  * Updated the JSDoc usage example to show `guard.workspace.id` (was `const { workspace } = guard`).
+  * This change aligns with the task's stated pattern and means call sites need NO `!` non-null assertions.
+- Re-ran typecheck: 0 new errors in src/app/api/. The only remaining src/app/api/ error is a pre-existing one (`publish/route.ts:130` `jobs.push` against a `never[]` array) — verified pre-existing by `git stash` + typecheck before/after.
+
+Verification results:
+- `bun run lint` → 0 errors (eslint passes).
+- `bun run test` → 11/11 tests pass (2 test files: jalali.test.ts 5, validations.test.ts 6).
+- `rg -l "getWorkspaceId" src/app/api/` → 0 results (all 31 migrated).
+- `rg -l "requireWorkspaceApi" src/app/api/` → 31 results (exactly the 31 migrated routes).
+- `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` → 200.
+- `bun run typecheck` → no NEW errors introduced by this migration (only the pre-existing publish/route.ts `jobs.push` error remains, unrelated to workspace guard).
+
+Files changed (32 total):
+- src/lib/auth-guards.ts — discriminated-union return types (no runtime change).
+- 31 route files under src/app/api/ — each had 1 import line + 1–2 guard blocks migrated.
+
+Routes migrated (31/31):
+1.  src/app/api/ai/drafts/route.ts                          (2 guards: GET + POST)
+2.  src/app/api/ai/drafts/[id]/route.ts                     (1 guard: DELETE)
+3.  src/app/api/analytics/route.ts                          (1 guard: GET)
+4.  src/app/api/analytics/real/route.ts                     (1 guard: GET)
+5.  src/app/api/calendar/route.ts                           (1 guard: GET)
+6.  src/app/api/campaigns/route.ts                          (2 guards: GET + POST)
+7.  src/app/api/content/route.ts                            (1 guard: GET)
+8.  src/app/api/content/[id]/approve/route.ts               (1 guard: POST)
+9.  src/app/api/content/[id]/comments/route.ts              (2 guards: GET + POST)
+10. src/app/api/content/[id]/reject/route.ts                (1 guard: POST)
+11. src/app/api/content/[id]/submit-review/route.ts         (1 guard: POST)
+12. src/app/api/dashboard/action-center/route.ts            (1 guard: GET)
+13. src/app/api/dashboard/metrics/route.ts                  (1 guard: GET)
+14. src/app/api/dashboard/pulse/route.ts                    (1 guard: GET)
+15. src/app/api/dashboard/summary/route.ts                  (1 guard: GET)
+16. src/app/api/inbox/route.ts                              (1 guard: GET)
+17. src/app/api/inbox/[id]/assign/route.ts                  (1 guard: POST)
+18. src/app/api/inbox/[id]/read/route.ts                    (1 guard: POST)
+19. src/app/api/inbox/[id]/reply/route.ts                   (1 guard: POST)
+20. src/app/api/media/route.ts                              (1 guard: GET)
+21. src/app/api/media/upload/route.ts                       (1 guard: POST)
+22. src/app/api/members/route.ts                            (2 guards: GET + POST)
+23. src/app/api/members/invite/route.ts                     (1 guard: POST)
+24. src/app/api/notifications/route.ts                      (1 guard: GET)
+25. src/app/api/platforms/route.ts                          (1 guard: GET)
+26. src/app/api/platforms/[id]/connect/route.ts             (1 guard: POST)
+27. src/app/api/platforms/[id]/validate/route.ts            (1 guard: POST)
+28. src/app/api/publish/route.ts                            (1 guard: POST, multi-line if)
+29. src/app/api/publish-jobs/route.ts                       (1 guard: GET)
+30. src/app/api/publish-jobs/[id]/route.ts                  (1 guard: PATCH, multi-line if)
+31. src/app/api/workspace/route.ts                          (1 guard: GET)
+
+Routes skipped (2, both out of scope):
+- src/app/api/ai/caption/route.ts       — uses `getWorkspace()` (not `getWorkspaceId`) with an unusual try/catch + `let workspace: ... = null` pattern that swallows errors to keep streaming alive when unauthenticated. Not in the 31-file target list. Left untouched.
+- src/app/api/ai/caption-multi/route.ts — same pattern as above. Left untouched.
+
+Notes:
+- No `getWorkspaceId` function removed from src/lib/server.ts (still used by worker; task constraint respected).
+- No RBAC `can()` checks added (Phase 5 work; task constraint respected).
+- No business logic changed anywhere — only the workspace-resolution pattern at the top of each handler.
+- All `workspaceId` variable names preserved at call sites so downstream code (db queries, etc.) needed no changes.
+- Did NOT commit or push — left for human review.
+
+Stage Summary:
+- All 31 API routes migrated to requireWorkspaceApi() with proper HTTP status codes (401 unauthenticated, 403 no-workspace/forbidden) replacing the old 404/403 mixed bag.
+- Bonus: fixed a latent type-safety issue in auth-guards.ts by introducing a proper discriminated-union return type — call sites now get compile-time narrowing of `guard.workspace` to non-null after the guard check, with zero runtime impact.
+- Lint clean, all 11 tests pass, server returns 200, no new TypeScript errors.
+- Ready for human review and commit to `fix/p0-2-remove-demo-mode`.

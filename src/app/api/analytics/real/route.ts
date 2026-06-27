@@ -10,11 +10,12 @@
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getWorkspaceId } from "@/lib/server";
+import { requireWorkspaceApi } from "@/lib/auth-guards";
 
 export async function GET() {
-  const workspaceId = await getWorkspaceId();
-  if (!workspaceId) return NextResponse.json({ error: "no_workspace" }, { status: 403 });
+  const guard = await requireWorkspaceApi();
+  if (guard.error) return guard.error;
+  const workspaceId = guard.workspace.id;
 
   // Get all connected platforms
   const platforms = await db.platform.findMany({
