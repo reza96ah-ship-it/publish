@@ -98,11 +98,19 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: false  # Disabled until Phase 10
+    env:
+      DATABASE_URL: "file:./db/nashrino-e2e.db"
+      NEXTAUTH_SECRET: "test-secret-not-for-production"
+      NEXTAUTH_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+      - run: bunx prisma db push --skip-generate --accept-data-loss
+      - run: bun run seed:auth  # Seed demo user for E2E
+      - run: bunx playwright install --with-deps chromium
+      - run: bun run dev &
       - run: bun run test:e2e
