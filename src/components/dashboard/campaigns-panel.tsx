@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { toPersianDigits } from "@/lib/jalali";
 import { Flag, MoreHorizontal, ArrowLeft } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 import { PanelHeader, LinkAction, EmptyState } from "./shared";
 
 interface Campaign {
@@ -25,7 +25,8 @@ export function CampaignsPanel() {
     queryKey: ["campaigns"],
     queryFn: () => api.get<Campaign[]>("/api/campaigns"),
   });
-  const { setView: setActiveView } = useViewRoute();
+  const router = useRouter();
+  const navigateTo = (path: string) => router.push(path);
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -33,7 +34,7 @@ export function CampaignsPanel() {
         icon={Flag}
         title="کمپین‌ها"
         subtitle="سلامت و پیشرفت"
-        action={<LinkAction onClick={() => setActiveView("campaigns")}>همه کمپین‌ها ←</LinkAction>}
+        action={<LinkAction onClick={() => navigateTo("/campaigns")}>همه کمپین‌ها ←</LinkAction>}
       />
 
       <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-2">

@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { toPersianDigits, relativeTime } from "@/lib/jalali";
 import { Link2, MoreHorizontal } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 import { PanelHeader, LinkAction, EmptyState } from "./shared";
 import { PlatformLogo } from "@/components/ui/platform-logo";
 
@@ -28,7 +28,8 @@ export function PlatformsPanel() {
     queryKey: ["platforms"],
     queryFn: () => api.get<Platform[]>("/api/platforms"),
   });
-  const { setView: setActiveView } = useViewRoute();
+  const router = useRouter();
+  const navigateTo = (path: string) => router.push(path);
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -36,7 +37,7 @@ export function PlatformsPanel() {
         icon={Link2}
         title="پلتفرم‌ها"
         subtitle="وضعیت اتصال"
-        action={<LinkAction onClick={() => setActiveView("channels")}>مدیریت ←</LinkAction>}
+        action={<LinkAction onClick={() => navigateTo("/channels")}>مدیریت ←</LinkAction>}
       />
 
       <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-1.5">

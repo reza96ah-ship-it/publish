@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute, type AppView } from "@/lib/view-route";
 
 /**
  * useKeyboardShortcuts — global keyboard navigation.
  *
  * Wires the shortcuts advertised in the ShortcutsModal:
- *   G then D  → Dashboard
- *   G then C  → Calendar
- *   G then I  → Inbox
- *   G then A  → Analytics
- *   G then S  → Settings
- *   C         → Compose
- *   N         → New Campaign (navigates to campaigns view)
+ *   G then D  → Dashboard (/)
+ *   G then C  → Calendar (/calendar)
+ *   G then I  → Inbox (/inbox)
+ *   G then A  → Analytics (/analytics)
+ *   G then S  → Settings (/settings)
+ *   C         → Compose (/compose)
+ *   N         → New Campaign (/campaigns)
  *   ⌘K / Ctrl+K → Command palette
  *   ?          → Shortcuts modal
  *   Esc        → Close any open modal
@@ -22,20 +22,24 @@ import { useViewRoute, type AppView } from "@/lib/view-route";
  * Two-step "G then X" sequences use a 600ms timeout window (Linear/Raycast style).
  * All shortcuts are ignored when typing in inputs/textareas/contentEditable.
  */
-const G_PREFIX_MAP: Record<string, AppView> = {
-  d: "dashboard",
-  c: "calendar",
-  i: "inbox",
-  a: "analytics",
-  s: "settings",
+
+// Maps keyboard keys to URL paths for G-prefix shortcuts
+const G_PREFIX_MAP: Record<string, string> = {
+  d: "/",
+  c: "/calendar",
+  i: "/inbox",
+  a: "/analytics",
+  s: "/settings",
 };
 
-const VIEW_DIRECT_MAP: Record<string, AppView> = {
-  // Single-key shortcuts (no prefix) — only when not typing
+// Maps single-key shortcuts to URL paths (no prefix)
+const VIEW_DIRECT_MAP: Record<string, string> = {
+  c: "/compose",
+  n: "/campaigns",
 };
 
 export function useKeyboardShortcuts() {
-  const { setView } = useViewRoute();
+  const router = useRouter();
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen);
   const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
@@ -71,75 +75,56 @@ export function useKeyboardShortcuts() {
       // Escape — close any open modal
       if (e.key === "Escape") {
         if (isCommandPaletteOpen) setCommandPaletteOpen(false);
-        if (isShortcutsOpen) setShortcutsOpen(false);
+        else if (isShortcutsOpen) setShortcutsOpen(false);
+        else if (typeof document !== "undefined") {
+          const open = document.querySelector("[data-state='open']");
+          if (open) (open as HTMLElement).click();
+        }
         return;
       }
 
-      // Don't interfere with modifier combos (except ⌘K handled above)
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      // Skip when typing
-      if (isTyping(e.target)) return;
-
-      const key = e.key.toLowerCase();
-
-      // ? — open shortcuts modal
-      if (e.key === "?") {
+      // ? — show shortcuts modal (shift+/ = ?)
+      if (e.key === "?" && !isTyping(e.target)) {
         e.preventDefault();
         setShortcutsOpen(!isShortcutsOpen);
         return;
       }
 
-      // Two-step G+X navigation
+      // Don't process shortcuts while typing
+      if (isTyping(e.target)) return;
+
+      const key = e.key.toLowerCase();
+
+      // G-prefix sequences (G then D/C/I/A/S)
       if (key === "g") {
         if (!gPressed) {
           gPressed = true;
-          // Reset after 600ms if no second key
           gTimer = setTimeout(clearG, 600);
-          e.preventDefault();
         }
         return;
       }
 
-      // If G was pressed, handle the second key
       if (gPressed) {
         const target = G_PREFIX_MAP[key];
         if (target) {
           e.preventDefault();
-          setView(target);
+          router.push(target);
+          setMobileMenuOpen(false);
         }
         clearG();
         return;
       }
 
-      // Single-key shortcuts
-      if (key === "c") {
+      // Direct shortcuts (single key)
+      const directTarget = VIEW_DIRECT_MAP[key];
+      if (directTarget) {
         e.preventDefault();
-        setView("compose");
-        return;
-      }
-      if (key === "n") {
-        e.preventDefault();
-        setView("campaigns");
-        return;
-      }
-      if (key === "r") {
-        e.preventDefault();
-        setView("inbox");
-        return;
+        router.push(directTarget);
+        setMobileMenuOpen(false);
       }
     };
 
     window.addEventListener("keydown", handler);
-    return () => {
-      window.removeEventListener("keydown", handler);
-      if (gTimer) clearTimeout(gTimer);
-    };
-  }, [
-    setCommandPaletteOpen,
-    setShortcutsOpen,
-    setMobileMenuOpen,
-    isCommandPaletteOpen,
-    isShortcutsOpen,
-  ]);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router, setCommandPaletteOpen, setShortcutsOpen, setMobileMenuOpen, isCommandPaletteOpen, isShortcutsOpen]);
 }

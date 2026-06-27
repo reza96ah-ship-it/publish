@@ -6,7 +6,7 @@ import { toPersianDigits, relativeTime } from "@/lib/jalali";
 import { PlatformIcon, PanelHeader, LinkAction, EmptyState } from "./shared";
 import { Radio, AlertTriangle, CheckCircle2, Clock3, RefreshCw } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 
 interface PulseJob {
   id: string;
@@ -33,7 +33,8 @@ export function PublishingPulse() {
     queryFn: () => api.get<PulseJob[]>("/api/dashboard/pulse"),
     refetchInterval: 10000,
   });
-  const { setView: setActiveView } = useViewRoute();
+  const router = useRouter();
+  const navigateTo = (path: string) => router.push(path);
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -41,7 +42,7 @@ export function PublishingPulse() {
         icon={Radio}
         title="نبض انتشار"
         subtitle="وضعیت لحظه‌ای انتشارها"
-        action={<LinkAction onClick={() => setActiveView("calendar")}>مشاهده صف ←</LinkAction>}
+        action={<LinkAction onClick={() => navigateTo("/calendar")}>مشاهده صف ←</LinkAction>}
       />
 
       <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-1.5">

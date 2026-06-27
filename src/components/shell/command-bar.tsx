@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Search, Plus, Sparkles, Keyboard } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { useViewRoute } from "@/lib/view-route";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { toPersianDigits } from "@/lib/jalali";
@@ -17,7 +17,8 @@ interface Summary {
 }
 
 export function CommandBar() {
-  const { setView } = useViewRoute();
+  const router = useRouter();
+  const navigateTo = (path: string) => router.push(path);
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
   const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen);
   const { data: summary } = useQuery<Summary>({
@@ -58,7 +59,7 @@ export function CommandBar() {
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
-        onClick={() => setView("compose")}
+        onClick={() => navigateTo("/compose")}
         className="n-focus-ring flex h-10 items-center gap-1.5 rounded-lg bg-accent px-3.5 text-[12.5px] font-[600] text-white shadow-sm transition-colors hover:bg-accent-hover"
       >
         <Plus className="size-4" strokeWidth={2.5} />
@@ -67,7 +68,7 @@ export function CommandBar() {
 
       {/* AI assistant — glass control */}
       <button
-        onClick={() => setView("compose")}
+        onClick={() => navigateTo("/compose")}
         className="n-glass-control n-focus-ring hidden h-10 items-center gap-2 rounded-lg px-3.5 text-[12.5px] font-[600] text-ink-secondary transition-colors hover:text-ink-primary md:flex"
       >
         <Sparkles className="size-4 text-accent" strokeWidth={2} />
