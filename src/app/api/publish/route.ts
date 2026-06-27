@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { enqueuePublishJob } from '@/lib/queue'
 import { randomUUID } from 'crypto'
 import { validateBody, publishSchema } from '@/lib/validations'
 
@@ -134,6 +135,26 @@ export async function POST(req: Request) {
 
     return { content, jobs }
   })
+
+  // 3a. Enqueue BullMQ jobs for each created PublishJob (Sprint B #63)
+  if (mode === 'publish' && result.jobs.length > 0) {
+    for (const job of result.jobs) {
+      try {
+        await enqueuePublishJob({
+          jobId: job.id,
+          idempotencyKey: job.idempotencyKey,
+          contentId: result.content.id,
+          platformId: platforms.find(p => p.type === job.platform)?.id ?? '',
+          workspaceId,
+          scheduledAt: scheduledAt ?? null,
+        })
+      } catch (err) {
+        // Non-fatal: if Redis is down, the DB record still exists.
+        // The worker can be restarted to re-enqueue from DB if needed.
+        console.error(`[publish] failed to enqueue BullMQ job ${job.id}:`, err)
+      }
+    }
+  }
 
   // 4. Create a notification
   if (mode === 'review') {
