@@ -134,7 +134,7 @@ export function ComposeView() {
   });
   const { data: media, isLoading: mediaIsLoading } = useQuery<MediaItem[]>({
     queryKey: ["media"],
-    queryFn: () => api.get<MediaItem[]>("/api/media"),
+    queryFn: () => api.getPaginated<MediaItem>("/api/media"),
   });
   const { data: platforms } = useQuery<Platform[]>({
     queryKey: ["platforms"],

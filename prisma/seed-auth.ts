@@ -7,10 +7,8 @@
  *   - Links the user to the first workspace as admin
  */
 
-import { PrismaClient } from '@prisma/client'
+import { db } from '../src/lib/db'
 import { hashPassword } from '../src/lib/password'
-
-const db = new PrismaClient()
 
 async function main() {
   const email = 'demo@nashrino.ir'

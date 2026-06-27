@@ -330,7 +330,7 @@ function CampaignDetail({ campaign }: { campaign: Campaign }) {
   const [tab, setTab] = useState<"overview" | "posts" | "report">("overview");
   const { data: content, isLoading: contentLoading } = useQuery<Content[]>({
     queryKey: ["content"],
-    queryFn: () => api.get<Content[]>("/api/content"),
+    queryFn: () => api.getPaginated<Content>("/api/content"),
   });
 
   const campaignPosts = useMemo(

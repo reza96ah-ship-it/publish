@@ -468,7 +468,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
 function TeamTab() {
   const { data: members, isLoading } = useQuery<Member[]>({
     queryKey: ["members"],
-    queryFn: () => api.get<Member[]>("/api/members"),
+    queryFn: () => api.getPaginated<Member>("/api/members"),
   });
   const [inviteOpen, setInviteOpen] = useState(false);
   const [email, setEmail] = useState("");

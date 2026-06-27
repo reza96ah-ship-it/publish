@@ -143,7 +143,7 @@ export function CalendarView() {
 
   const { data: queue } = useQuery<PublishJob[]>({
     queryKey: ["publish-jobs"],
-    queryFn: () => api.get<PublishJob[]>("/api/publish-jobs"),
+    queryFn: () => api.getPaginated<PublishJob>("/api/publish-jobs"),
   });
 
   const cells = useMemo(

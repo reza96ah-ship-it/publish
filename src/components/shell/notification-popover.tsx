@@ -65,7 +65,7 @@ export function NotificationPopover() {
 
   const { data: notifications } = useQuery<Notification[]>({
     queryKey: ["notifications"],
-    queryFn: () => api.get<Notification[]>("/api/notifications"),
+    queryFn: () => api.getPaginated<Notification>("/api/notifications"),
     refetchInterval: 30000,
   });
 
