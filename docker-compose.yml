@@ -1,5 +1,5 @@
-# Nashrino — Development Docker Compose
-# For local dev with hot reload. NOT for production (use compose.production.yaml).
+# Nashrino - Development Docker Compose
+# Local container stack for the app, worker, realtime, PostgreSQL, PgBouncer, and Redis.
 
 services:
   app:
@@ -7,13 +7,15 @@ services:
       context: .
       target: app
     ports: ["3000:3000"]
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=file:/app/db/custom.db
-    volumes:
-      - app-db:/app/db
+      NODE_ENV: production
+      DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
+      DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
     depends_on:
+      pgbouncer: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
@@ -27,15 +29,17 @@ services:
     build:
       context: .
       target: worker
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=file:/app/db/custom.db
-      - REALTIME_EMIT_URL=http://realtime:3003/emit
-    volumes:
-      - app-db:/app/db
+      NODE_ENV: production
+      DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
+      DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
+      REALTIME_EMIT_URL: http://realtime:3003/emit
     depends_on:
       app: { condition: service_healthy }
+      pgbouncer: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "bun", "-e", "fetch('http://localhost:3002/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
@@ -50,10 +54,12 @@ services:
       context: .
       target: realtime
     ports: ["3003:3003"]
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - NODE_ENV=production
-      - REDIS_URL=redis://redis:6379
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
     depends_on:
       redis: { condition: service_healthy }
     healthcheck:
@@ -62,6 +68,61 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: app
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
+      DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
+    command: ["bunx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    ports: ["${PGBOUNCER_PORT:-6432}:6432"]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: nashrino
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-nashrino_dev}
+      DB_NAME: nashrino
+      LISTEN_PORT: "6432"
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "200"
+      DEFAULT_POOL_SIZE: "20"
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U nashrino -d nashrino"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nashrino
+      POSTGRES_USER: nashrino
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nashrino_dev}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: ["pg_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nashrino -d nashrino"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   redis:
@@ -75,23 +136,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # PostgreSQL (Phase 4 — currently SQLite)
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_DB: nashrino
-  #     POSTGRES_USER: nashrino
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nashrino_dev}
-  #   ports: ["5432:5432"]
-  #   volumes: ["pg_data:/var/lib/postgresql/data"]
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U nashrino"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #   restart: unless-stopped
-
 volumes:
-  app-db:
+  pg_data:
   redis_data:
-  # pg_data:

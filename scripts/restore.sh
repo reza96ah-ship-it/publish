@@ -2,7 +2,7 @@
 # Nashrino — Restore script
 # Restores a backup created by scripts/backup.sh
 # Usage: ./scripts/restore.sh ./backups/nashrino-backup-YYYY-MM-DD-HHMMSS.tar.gz
-# WARNING: Overwrites current database. Stop the app first.
+# WARNING: Overwrites current PostgreSQL database. Stop the app first.
 set -euo pipefail
 
 if [ $# -lt 1 ]; then
@@ -23,23 +23,19 @@ echo "📦 Nashrino restore — $BACKUP_FILE"
 tar -xzf "$BACKUP_FILE" -C "$TEMP_DIR"
 
 # Database
-if [ -n "${DATABASE_URL:-}" ] && [[ "${DATABASE_URL}" == postgresql://* ]]; then
-  SQL_FILE=$(find "$TEMP_DIR" -name "db-*.sql" | head -1)
-  if [ -n "$SQL_FILE" ]; then
-    echo "   DB: PostgreSQL — ⚠️  OVERWRITES current database!"
-    read -p "   Continue? (yes/no): " confirm
-    [ "$confirm" != "yes" ] && echo "   ❌ Cancelled" && exit 0
-    psql "$DATABASE_URL" --no-owner --no-privileges -f "$SQL_FILE"
-    echo "   ✅ PostgreSQL restored"
-  fi
-else
-  DB_FILE=$(find "$TEMP_DIR" -name "db-*.db" | head -1)
-  if [ -n "$DB_FILE" ]; then
-    echo "   DB: SQLite"
-    mkdir -p db
-    cp "$DB_FILE" "db/custom.db"
-    echo "   ✅ SQLite restored to db/custom.db"
-  fi
+DB_URL="${DIRECT_DATABASE_URL:-${DATABASE_URL:-}}"
+if [ -z "$DB_URL" ] || [[ "$DB_URL" != postgresql://* ]]; then
+  echo "❌ DIRECT_DATABASE_URL or DATABASE_URL must be a PostgreSQL URL"
+  exit 1
+fi
+
+SQL_FILE=$(find "$TEMP_DIR" -name "db-*.sql" | head -1)
+if [ -n "$SQL_FILE" ]; then
+  echo "   DB: PostgreSQL — ⚠️  OVERWRITES current database!"
+  read -p "   Continue? (yes/no): " confirm
+  [ "$confirm" != "yes" ] && echo "   ❌ Cancelled" && exit 0
+  psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$SQL_FILE"
+  echo "   ✅ PostgreSQL restored"
 fi
 
 # Env

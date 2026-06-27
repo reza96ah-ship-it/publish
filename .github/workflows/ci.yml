@@ -1,8 +1,8 @@
 # Nashrino CI — runs on every push and pull request
 # Gates: install → lint → typecheck → test → build → security audit
 #
-# NOTE: Uses SQLite for now (the app is on SQLite until Phase 4 PostgreSQL migration).
-# PostgreSQL + Redis services will be re-enabled in Phase 4 when the app migrates.
+# NOTE: Uses PostgreSQL from Phase 4 onward. Prisma migrations are the source
+# of truth; db push is intentionally not used in CI.
 #
 # See docs/PRODUCTION_READINESS_MASTER_PLAN.md §11 for the full testing plan.
 
@@ -23,10 +23,35 @@ jobs:
     name: Lint + Typecheck + Test + Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nashrino_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nashrino_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: "file:./db/nashrino-ci.db"
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public&connection_limit=10"
+      DIRECT_DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public"
       NEXTAUTH_SECRET: "test-secret-not-for-production"
       NEXTAUTH_URL: "http://localhost:3000"
+      REDIS_URL: "redis://localhost:6379"
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -34,15 +59,14 @@ jobs:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
       - run: bunx prisma generate
-      - run: bunx prisma db push --skip-generate
+      - run: bunx prisma migrate deploy
+      - run: bunx prisma migrate status
       - run: bun run lint
       - run: bun run typecheck
-        continue-on-error: true  # P0-3: 156 type errors exist (ignoreBuildErrors: true). Remove after P0-3 fix.
       - run: bun run test
       - run: bun run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-        continue-on-error: true  # P0-3: build fails on type errors. Remove after P0-3 fix.
       - uses: actions/upload-artifact@v4
         if: always()
         with:

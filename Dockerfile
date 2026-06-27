@@ -21,6 +21,8 @@ FROM oven/bun:1.2 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 RUN bunx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Set dummy secrets for build — Next.js build evaluates auth.ts which requires
@@ -61,6 +63,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY mini-services/publish-worker ./mini-services/publish-worker
 COPY prisma ./prisma
+ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 RUN bunx prisma generate
 USER nextjs
 EXPOSE 3002

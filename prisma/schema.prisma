@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 /* ─── Auth & Identity ─── */
@@ -73,7 +74,7 @@ model AuditLog {
   workspaceId String?
   action      String
   resource    String   @default("")
-  metadata    String   @default("{}")
+  metadata    Json?
   ipHash      String?
   createdAt   DateTime @default(now())
 
@@ -167,6 +168,7 @@ model Platform {
 
   @@index([workspaceId])
   @@index([workspaceId, type])
+  @@index([workspaceId, status])
   @@index([status])
 }
 
@@ -233,6 +235,7 @@ model Content {
 
   @@index([workspaceId])
   @@index([workspaceId, status])
+  @@index([workspaceId, scheduledAt])
   @@index([campaignId])
   @@index([scheduledAt])
   @@index([status])
