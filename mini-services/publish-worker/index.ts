@@ -17,7 +17,7 @@
  *                                               emitJobStatus → realtime
  */
 
-import { Worker, type Job } from 'bullmq'
+import { Worker, UnrecoverableError, type Job } from 'bullmq'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
@@ -63,10 +63,11 @@ const worker = new Worker(
       return { status: 'success', externalId: job.externalId }
     }
 
-    // Circuit breaker check
+    // Circuit breaker check — defer the job (not retry) until circuit recovers
     if (!circuitBreakers.canDispatch(job.workspaceId, job.platform.type)) {
       console.log(`[worker] circuit OPEN for ${job.platform.type}, deferring job ${job.id}`)
-      throw new Error(`Circuit breaker OPEN for ${job.platform.type}`)
+      await bullJob.moveToDelayed(Date.now() + 60_000)
+      return
     }
 
     // Update DB: processing
@@ -139,9 +140,9 @@ const worker = new Worker(
     const needsAction = result.error?.includes('احراز') || result.error?.includes('توکن') || result.error?.includes('مجوز')
 
     if (needsAction) {
-      // Non-retryable — mark as action needed
-      await markFailed(job, result.error ?? 'خطای نامشخص', true)
-      throw new Error(result.error ?? 'خطای نامشخص') // BullMQ won't retry if we return, but throw for logging
+      // Non-retryable — mark as action needed and stop BullMQ from retrying
+      await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
+      throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
     }
 
     // Retryable — BullMQ will retry with exponential backoff
@@ -327,7 +328,8 @@ function startHealthServer() {
         return
       }
       const decoded = Buffer.from(auth.slice(6), 'base64').toString()
-      const [, password] = decoded.split(':')
+      const colonIdx = decoded.indexOf(':')
+      const password = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : ''
       if (password !== BOARD_PASSWORD) {
         res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Bull Board"' })
         res.end('Invalid password')

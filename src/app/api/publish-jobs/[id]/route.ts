@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
 import { randomUUID } from 'crypto'
 import { rescheduleSchema, validateBody } from '@/lib/validations'
+import { enqueuePublishJob } from '@/lib/queue'
 
 type PatchBody =
   | { action: 'retry' }
@@ -46,14 +47,24 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error }, { status: 400 })
     }
+    const newScheduledAt = new Date(parsed.data.scheduledAt)
     const updated = await db.publishJob.update({
       where: { id },
       data: {
-        scheduledAt: new Date(parsed.data.scheduledAt),
-        status: job.status === 'failed' ? 'scheduled' : job.status,
+        scheduledAt: newScheduledAt,
+        status: 'scheduled',
         processLabel: 'زمان‌بندی مجدد شد',
         error: null,
+        idempotencyKey: randomUUID(),
       },
+    })
+    await enqueuePublishJob({
+      jobId: updated.id,
+      idempotencyKey: updated.idempotencyKey!,
+      contentId: updated.contentId,
+      platformId: updated.platformId,
+      workspaceId: updated.workspaceId,
+      scheduledAt: newScheduledAt,
     })
     return NextResponse.json({
       ok: true,
@@ -66,6 +77,7 @@ export async function PATCH(
 
   // ── retry ──
   if (body.action === 'retry') {
+    const newKey = randomUUID()
     const updated = await db.publishJob.update({
       where: { id },
       data: {
@@ -74,12 +86,19 @@ export async function PATCH(
         progress: 0,
         processLabel: 'در انتظار تلاش مجدد',
         error: null,
-        idempotencyKey: randomUUID(),
+        idempotencyKey: newKey,
         scheduledAt: null,
         startedAt: null,
         completedAt: null,
         externalId: null,
       },
+    })
+    await enqueuePublishJob({
+      jobId: updated.id,
+      idempotencyKey: newKey,
+      contentId: updated.contentId,
+      platformId: updated.platformId,
+      workspaceId: updated.workspaceId,
     })
     return NextResponse.json({
       ok: true,
