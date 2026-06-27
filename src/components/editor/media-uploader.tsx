@@ -66,23 +66,55 @@ export function MediaUploader({ onUploaded, selectedMedia, onToggle, existingMed
 
     for (const file of fileArray) {
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch("/api/media/upload", {
+        // P9.1: Presigned URL flow — bypasses Next.js body limit
+        // Step 1: Get presigned URL from server
+        const presignRes = await fetch("/api/media/presign", {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+          }),
         });
 
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: "خطا در آپلود" }));
+        if (!presignRes.ok) {
+          const err = await presignRes.json().catch(() => ({ error: "خطا در آماده‌سازی آپلود" }));
           toast.error(err.error || `آپلود ناموفق: ${file.name}`);
           continue;
         }
 
-        const data = await res.json();
-        setUploadedFiles((prev) => [...prev, data]);
-        onUploaded(data);
+        const { uploadUrl, key, mediaId } = await presignRes.json();
+
+        // Step 2: Upload directly to S3 (or local-upload in dev)
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+
+        if (!uploadRes.ok) {
+          toast.error(`آپلود ناموفق: ${file.name}`);
+          continue;
+        }
+
+        // Step 3: Confirm upload + validate magic bytes
+        const confirmRes = await fetch("/api/media/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mediaId, key }),
+        });
+
+        if (!confirmRes.ok) {
+          const err = await confirmRes.json().catch(() => ({ error: "اعتبارسنجی ناموفق" }));
+          toast.error(err.error || `فایل نامعتبر: ${file.name}`);
+          continue;
+        }
+
+        const data = await confirmRes.json();
+        const media = data.media;
+        setUploadedFiles((prev) => [...prev, media]);
+        onUploaded(media);
         toast.success(`${file.name} آپلود شد ✓`);
       } catch (err) {
         toast.error(`خطا در آپلود: ${file.name}`);
