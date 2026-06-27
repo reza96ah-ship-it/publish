@@ -19,7 +19,8 @@ import {
   Sparkles,
   Bell,
 } from "lucide-react";
-import { useAppStore, type AppView } from "@/lib/store";
+import { useAppStore } from "@/lib/store";
+import { useViewRoute, type AppView } from "@/lib/view-route";
 import { toPersianDigits } from "@/lib/jalali";
 import { modalBackdrop, modalContent } from "@/lib/motion";
 
@@ -36,9 +37,9 @@ export function CommandPalette() {
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
-    setActiveView,
     setMobileMenuOpen,
   } = useAppStore();
+  const { setView } = useViewRoute();
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
@@ -56,7 +57,7 @@ export function CommandPalette() {
   }, [isCommandPaletteOpen, setCommandPaletteOpen]);
 
   const go = (view: AppView) => {
-    setActiveView(view);
+    setView(view);
     setMobileMenuOpen(false);
     setCommandPaletteOpen(false);
   };

@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { api } from "@/lib/api";
 import { toPersianDigits, relativeTime } from "@/lib/jalali";
 import { useAppStore } from "@/lib/store";
+import { useViewRoute } from "@/lib/view-route";
 import { Bell, CheckCheck, MessageCircle, AlertTriangle, CheckCircle2, Clock, UserPlus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +58,8 @@ function groupByDate(items: Notification[]) {
 export function NotificationPopover() {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  // Sprint A: navigation via useViewRoute
+  const { setView } = useViewRoute();
   const queryClient = useQueryClient();
 
   const { data: notifications } = useQuery<Notification[]>({
@@ -85,8 +87,8 @@ export function NotificationPopover() {
       old?.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
     );
     // Navigate based on type
-    if (notif.type === "approval_requested") setActiveView("inbox");
-    else if (notif.type === "publish_failed" || notif.type === "publish_success") setActiveView("calendar");
+    if (notif.type === "approval_requested") setView("inbox");
+    else if (notif.type === "publish_failed" || notif.type === "publish_success") setView("calendar");
     setOpen(false);
   };
 
@@ -217,7 +219,7 @@ export function NotificationPopover() {
           <div className="shrink-0 border-t border-border h-10 flex items-center justify-center px-4">
             <button
               onClick={() => {
-                setActiveView("inbox");
+                setView("inbox");
                 setOpen(false);
               }}
               className="text-[11px] font-[600] text-accent hover:text-accent-hover transition-colors"

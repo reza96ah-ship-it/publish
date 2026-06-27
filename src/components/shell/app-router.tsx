@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * AppRouter — client-side view switcher (SPA router).
+ * AppRouter — client-side view switcher using URL search params.
+ *
+ * Sprint A: Replaced Zustand activeView with useViewRoute() hook.
+ * Views are now at /?view=<name> — shareable, bookmarkable, back/forward.
  *
  * P10-7: Uses React.lazy + Suspense for route-level code splitting.
- * Heavy views (Compose with Tiptap, Analytics with Recharts, Calendar with dnd-kit)
- * are loaded on-demand, reducing initial JS bundle.
  */
 
 import { lazy, Suspense } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useAppStore, type AppView } from "@/lib/store";
+import { useViewRoute } from "@/lib/view-route";
 import { AppShell } from "@/components/shell/app-shell";
 import { OperationalSummary } from "@/components/dashboard/operational-summary";
 import { ExecutiveMetrics } from "@/components/dashboard/executive-metrics";
@@ -70,7 +71,7 @@ function DashboardView() {
   );
 }
 
-const viewComponents: Record<AppView, React.ComponentType> = {
+const viewComponents: Record<string, React.ComponentType> = {
   dashboard: DashboardView,
   compose: ComposeView,
   calendar: CalendarView,
@@ -92,14 +93,14 @@ function ViewSkeleton() {
 }
 
 export function AppRouter() {
-  const activeView = useAppStore((s) => s.activeView);
-  const ViewComponent = viewComponents[activeView] ?? DashboardView;
+  const { view } = useViewRoute();
+  const ViewComponent = viewComponents[view] ?? DashboardView;
 
   return (
     <AppShell>
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeView}
+          key={view}
           initial={false}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -4 }}

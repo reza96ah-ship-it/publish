@@ -1,20 +1,9 @@
 import { create } from 'zustand'
 
-export type AppView =
-  | 'dashboard'
-  | 'compose'
-  | 'calendar'
-  | 'campaigns'
-  | 'content'
-  | 'media'
-  | 'inbox'
-  | 'analytics'
-  | 'channels'
-  | 'settings'
+// AppView type is now in view-route.ts (URL-based routing)
+// Zustand is only for UI-only state (modals, mobile menu, calendar cursor)
 
 interface AppState {
-  activeView: AppView
-  setActiveView: (view: AppView) => void
   isMobileMenuOpen: boolean
   setMobileMenuOpen: (open: boolean) => void
   isCommandPaletteOpen: boolean
@@ -44,8 +33,6 @@ function defaultCursor() {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  activeView: 'dashboard',
-  setActiveView: (view) => set({ activeView: view }),
   isMobileMenuOpen: false,
   setMobileMenuOpen: (open) => set({ isMobileMenuOpen: open }),
   isCommandPaletteOpen: false,
