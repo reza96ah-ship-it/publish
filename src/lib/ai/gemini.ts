@@ -257,7 +257,7 @@ export async function* streamCaption(
       const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`;
       const stream = await model.generateContentStream(prompt);
       let yielded = false;
-      for await (const chunk of stream) {
+      for await (const chunk of stream as any) {
         const text = chunk.text();
         if (text) {
           yielded = true;
@@ -837,7 +837,7 @@ function buildCaptionSystem(
   // Otherwise the model creates fake products like "قهوه نشرینو" — using the
   // workspace name as a product brand. This is the #1 hallucination pattern.
   // The workspace name should ONLY appear in the signature line at the end.
-  if (ws?.name && topic.includes(ws.name)) {
+  if (ws?.name && topic && topic.includes(ws.name)) {
     wsParts.push(`نام ناشر (فقط در خط امضای پایانی، هرگز در بدنه): ${ws.name}`);
   } else if (ws?.name) {
     // Don't pass the name — the model will create fake products if it sees a brand name

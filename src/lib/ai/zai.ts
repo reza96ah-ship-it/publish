@@ -148,8 +148,8 @@ export async function suggestHashtags(
   // Parse hashtags from comma-separated list
   return text
     .split(/[,\n]/)
-    .map((s) => s.trim().replace(/^["'\d.\-\s]+/, ""))
-    .filter((s) => s.startsWith("#") && s.length > 1)
+    .map((s: string) => s.trim().replace(/^["'\d.\-\s]+/, ""))
+    .filter((s: string) => s.startsWith("#") && s.length > 1)
     .slice(0, 10);
 }
 

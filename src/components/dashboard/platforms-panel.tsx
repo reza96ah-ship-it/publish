@@ -57,7 +57,7 @@ export function PlatformsPanel() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <p className="text-[12.5px] font-[600] text-ink-primary truncate">{p.name}</p>
-                  <span className="text-[10px] text-ink-tertiary">@{p.username || "—"}</span>
+                  <span className="text-[10px] text-ink-tertiary">@{(p as any).username || "—"}</span>
                 </div>
                 <span className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border mt-1 ${p.stateColor}`}>
                   {p.state}

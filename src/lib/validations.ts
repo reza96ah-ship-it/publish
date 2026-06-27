@@ -25,7 +25,7 @@ export const publishSchema = z.object({
   campaignName: z.string().optional(),
   mediaIds: z.array(z.string()).optional().default([]),
   platformTypes: z.array(platformTypeSchema).optional(),
-  platformCaptions: z.record(z.string()).optional(),
+  platformCaptions: z.record(z.string(), z.string()).optional(),
   scheduleMode: z.enum(["now", "schedule", "queue"]).optional().default("now"),
   scheduleDate: z.string().optional(),
   scheduleTime: z.string().optional(),

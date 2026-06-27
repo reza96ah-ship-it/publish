@@ -401,7 +401,7 @@ function CalendarGrid({
               disabled={disabledDay}
               onClick={() => onSelect(j)}
               aria-label={`${j.day} ${JALALI_MONTHS[j.month - 1]} ${toPersianDigits(j.year)}`}
-              aria-pressed={isSelected}
+              aria-pressed={!!isSelected}
               className={cn(
                 "n-focus-ring relative aspect-square rounded-lg text-[12px] font-[600] transition-all",
                 "flex items-center justify-center",

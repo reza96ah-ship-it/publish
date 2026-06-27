@@ -18,6 +18,7 @@ interface PublishRequest {
   scheduleMode: 'now' | 'schedule' | 'queue'
   scheduleDate?: string // Jalali YYYY/MM/DD
   scheduleTime?: string // HH:MM
+  mode?: 'publish' | 'review'
 }
 
 export async function POST(req: Request) {
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Create a publish job per platform (only in publish mode — skip for review)
-    const jobs = []
+    const jobs: { id: string; platform: string; idempotencyKey: string }[] = []
     if (mode === 'publish') {
       for (const p of platforms) {
         const jobId = randomUUID()
