@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -121,6 +121,11 @@ export function ComposeView() {
   // Single source of truth — a real Date object from the Jalali picker
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
 
+  // MISS-04: debounced autosave state
+  type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // AI sheet state
   const [aiSheetOpen, setAiSheetOpen] = useState(false)
 
@@ -135,6 +140,35 @@ export function ComposeView() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
+  useEffect(() => {
+    if (!title && !caption && selectedPlatforms.length === 0) return
+    setSaveState('saving')
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    autosaveTimer.current = setTimeout(async () => {
+      try {
+        await fetch('/api/compose-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: { title, caption, hashtags, note, campaignId, scheduleMode },
+            channelIds: selectedPlatforms,
+            scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
+          }),
+        })
+        setSaveState('saved')
+        // Reset to idle after 3s so the indicator doesn't stay permanently
+        setTimeout(() => setSaveState('idle'), 3000)
+      } catch {
+        setSaveState('error')
+      }
+    }, 3000)
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms])
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
@@ -345,7 +379,24 @@ export function ComposeView() {
       <SectionTitle
         icon={PenLine}
         badge={
-          <span className="text-[11px] text-ink-tertiary">دکمه ذخیره پیش‌نویس را فراموش نکنید</span>
+          <span
+            className={cn(
+              'text-[11px]',
+              saveState === 'saved'
+                ? 'text-emerald-600'
+                : saveState === 'error'
+                  ? 'text-red-500'
+                  : 'text-ink-tertiary'
+            )}
+          >
+            {saveState === 'saving'
+              ? 'در حال ذخیره…'
+              : saveState === 'saved'
+                ? '✓ ذخیره شد'
+                : saveState === 'error'
+                  ? '⚠ خطا در ذخیره'
+                  : 'ذخیره خودکار'}
+          </span>
         }
       >
         ساخت محتوای جدید

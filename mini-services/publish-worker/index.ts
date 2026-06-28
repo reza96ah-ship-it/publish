@@ -27,6 +27,8 @@ import { emitJobStatus } from './lib/emit'
 import { decrypt } from './lib/crypto'
 import { writeAuditLog } from './lib/audit'
 import { publishQueue, connection } from './lib/queue'
+import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
+import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
 const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'
@@ -268,14 +270,33 @@ async function markFailed(
   console.log(`[worker] job ${job.id} → ${status}: ${error}`)
 }
 
+// MISS-06: derive content status from all job outcomes instead of naive "all done → published"
 async function checkContentPublished(contentId: string): Promise<void> {
-  const remaining = await db.publishJob.count({
-    where: { contentId, status: { in: ['pending', 'processing', 'scheduled'] } },
+  const jobs = await db.publishJob.findMany({
+    where: { contentId },
+    select: { status: true },
   })
-  if (remaining === 0) {
+  if (jobs.length === 0) return
+
+  const statuses = jobs.map((j) => j.status as JobStatus)
+  const { status, markPublishedAt } = deriveContentStatus(statuses)
+
+  // Only update content if it has reached a terminal or different aggregate state
+  const terminalOrActive = [
+    'published',
+    'partially_published',
+    'failed',
+    'action_required',
+    'cancelled',
+    'publishing',
+  ]
+  if (terminalOrActive.includes(status)) {
     await db.content.update({
       where: { id: contentId },
-      data: { status: 'published', publishedAt: new Date() },
+      data: {
+        status,
+        ...(markPublishedAt ? { publishedAt: new Date() } : {}),
+      },
     })
   }
 }
@@ -437,6 +458,7 @@ async function shutdown(signal: string) {
   if (shuttingDown) return
   shuttingDown = true
   console.log(`\n[worker] ${signal} received, closing worker...`)
+  stopOutboxDispatcher()
   await worker.close()
   console.log('[worker] worker closed, exiting')
   process.exit(0)
@@ -449,3 +471,5 @@ process.on('SIGINT', () => shutdown('SIGINT'))
 
 console.log(`[worker] BullMQ worker started (concurrency: ${CONCURRENCY}, health: :${HEALTH_PORT})`)
 startHealthServer()
+// MISS-01: start outbox dispatcher — polls OutboxEvent → enqueues to BullMQ
+startOutboxDispatcher()
