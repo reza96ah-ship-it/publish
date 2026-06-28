@@ -16,6 +16,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import { verifyPassword } from '@/lib/password'
 import { verifyTotpCode, decryptMfaSecret, parseBackupCodes, consumeBackupCode, serializeBackupCodes } from '@/lib/mfa'
+import { authFailuresTotal } from '@/lib/metrics'
 
 export const authOptions: NextAuthOptions = {
   // JWT strategy is REQUIRED for Credentials provider in v4
@@ -47,10 +48,14 @@ export const authOptions: NextAuthOptions = {
           },
         })
 
-        if (!user || !user.passwordHash) return null
+        if (!user || !user.passwordHash) {
+          authFailuresTotal.inc({ reason: 'invalid_credentials' })
+          return null
+        }
 
         // Account lockout check (5 failed attempts → 15 min lock)
         if (user.lockedUntil && user.lockedUntil > new Date()) {
+          authFailuresTotal.inc({ reason: 'account_locked' })
           return null
         }
 
@@ -65,6 +70,7 @@ export const authOptions: NextAuthOptions = {
               lockedUntil: attempts >= 5 ? new Date(Date.now() + 15 * 60_000) : null,
             },
           })
+          authFailuresTotal.inc({ reason: 'invalid_credentials' })
           return null
         }
 
@@ -78,6 +84,7 @@ export const authOptions: NextAuthOptions = {
           const totpCode = (credentials as any).totpCode as string | undefined
           if (!totpCode) {
             // Password valid but MFA code missing — signal the client to show MFA step
+            authFailuresTotal.inc({ reason: 'mfa_required' })
             return null
           }
 
@@ -89,6 +96,7 @@ export const authOptions: NextAuthOptions = {
             const stored = parseBackupCodes(user.mfaBackupCodes)
             const { valid, remaining } = consumeBackupCode(totpCode, stored)
             if (!valid) {
+              authFailuresTotal.inc({ reason: 'mfa_invalid' })
               return null
             }
             // Consume the backup code (single-use)

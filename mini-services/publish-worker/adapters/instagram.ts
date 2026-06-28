@@ -150,12 +150,13 @@ export class InstagramAdapter implements ChannelAdapter {
 
       // Step 1: Create media container(s)
       if (mediaItems.length === 1) {
-        // Single media
+        // Single media — noUncheckedIndexedAccess: guard against undefined
         const m = mediaItems[0]
+        if (!m) throw new Error('media item missing')
         containerId = await this.createMediaContainer(token, igUserId, m, caption)
 
-        // For video/reel, wait for processing
-        if (m.type === 'video' || m.type === 'reel') {
+        // For video, wait for processing (reels use media_type=REELS in createMediaContainer)
+        if (m.type === 'video') {
           await this.waitForProcessing(token, containerId)
         }
       } else {

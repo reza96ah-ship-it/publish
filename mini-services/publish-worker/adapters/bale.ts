@@ -147,6 +147,7 @@ export class BaleAdapter implements ChannelAdapter {
         result = await this.sendMessage(token, chatId, caption)
       } else if (mediaItems.length === 1) {
         const m = mediaItems[0]
+        if (!m) throw new Error('media item missing')
         if (m.type === 'photo') {
           result = await this.sendPhoto(token, chatId, m.url, caption)
         } else if (m.type === 'video') {
