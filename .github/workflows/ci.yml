@@ -75,21 +75,21 @@ jobs:
         run: |
           bunx prisma migrate status
           # migrate status exits 1 if there are pending migrations or drift
-      # Issue #141: Schema-drift check — fail if schema.prisma doesn't match migrations.
-      # --exit-code makes prisma exit 2 when schemas differ (0 = match, 1 = error, 2 = diff).
-      # --shadow-database-url is NOT a valid flag for migrate diff in Prisma 7; the command
-      # computes the migration-state in-memory from the SQL files without a live connection.
+      # Issue #141: Schema-drift check — fail if schema.prisma has changes not yet
+      # captured in a migration. Uses the live CI database (migrations already applied
+      # by the migrate status step above) as the baseline via --from-config-datasource.
+      # This avoids the shadow DB requirement that --from-migrations imposes in Prisma 7.
       - name: Schema-drift check (migrate diff)
         run: |
           if ! DIFF=$(bunx prisma migrate diff \
-            --from-migrations prisma/migrations \
+            --from-config-datasource \
             --to-schema prisma/schema.prisma \
             --exit-code 2>&1); then
-            echo "::error::Schema drift detected — prisma/schema.prisma does not match migrations. Run 'bunx prisma migrate dev --name <name>' to create a migration."
+            echo "::error::Schema drift detected — prisma/schema.prisma has changes not captured in a migration. Run 'bunx prisma migrate dev --name <name>' to create a migration."
             echo "$DIFF"
             exit 1
           fi
-          echo "✓ No schema drift — migrations match schema.prisma"
+          echo "✓ No schema drift — schema.prisma matches the applied database state"
 
       - run: bun run lint
       - run: bun run typecheck
