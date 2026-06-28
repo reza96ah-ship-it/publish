@@ -295,7 +295,7 @@ model PublishJob {
   platformId  String
   campaignId  String?
   assigneeId  String?
-  status      String   @default("pending") // pending, processing, live, success, failed, action, scheduled
+  status      String   @default("pending") // pending, processing, live, success, failed, action, scheduled, cancelled
   progress    Int      @default(0)
   processLabel String  @default("در انتظار")
   idempotencyKey String @default("")
@@ -309,11 +309,12 @@ model PublishJob {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  content    Content          @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  platform   Platform         @relation(fields: [platformId], references: [id])
-  campaign   Campaign?        @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  assignee   WorkspaceMember? @relation(fields: [assigneeId], references: [id])
+  workspace  Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  content    Content               @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  platform   Platform              @relation(fields: [platformId], references: [id])
+  campaign   Campaign?             @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  assignee   WorkspaceMember?      @relation(fields: [assigneeId], references: [id])
+  attempts   PublicationAttempt[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -321,6 +322,31 @@ model PublishJob {
   @@index([platformId])
   @@index([assigneeId])
   @@unique([idempotencyKey])
+}
+
+/* ─── Publication Attempt Ledger (MISS-02) ─── */
+
+// One row per provider call attempt. Prevents duplicate posts when
+// a worker crash occurs after provider success but before DB update.
+model PublicationAttempt {
+  id                     String    @id @default(cuid())
+  publishJobId           String
+  attemptNumber          Int
+  requestFingerprint     String    // sha256(platformId + ':' + contentId + ':' + attemptNumber)
+  providerOperationId    String?
+  providerPostId         String?   // externalId from provider (set on provider_success)
+  outcome                String    // started|provider_success|local_success|retryable_failure|permanent_failure|outcome_unknown
+  errorCategory          String?
+  safeUserMessage        String?
+  startedAt              DateTime
+  providerAcknowledgedAt DateTime?
+  locallyCommittedAt     DateTime?
+  completedAt            DateTime?
+
+  job PublishJob @relation(fields: [publishJobId], references: [id], onDelete: Cascade)
+
+  @@index([publishJobId])
+  @@index([requestFingerprint])
 }
 
 /* ─── Media Library ─── */

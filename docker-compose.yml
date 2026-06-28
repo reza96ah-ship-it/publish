@@ -1,5 +1,6 @@
 # Nashrino - Development Docker Compose
 # Local container stack for the app, worker, realtime, PostgreSQL, PgBouncer, and Redis.
+# #111: Two Redis instances — redis-queue (noeviction/BullMQ) and redis-cache (LRU/Socket.io)
 
 services:
   app:
@@ -15,10 +16,11 @@ services:
       HOSTNAME: '0.0.0.0'
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
       DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
-      REDIS_URL: redis://redis:6379
+      REDIS_CACHE_URL: redis://redis-cache:6379
     depends_on:
       pgbouncer: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      redis-queue: { condition: service_healthy }
+      redis-cache: { condition: service_healthy }
     healthcheck:
       test:
         [
@@ -44,12 +46,12 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
       DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
-      REDIS_URL: redis://redis:6379
+      REDIS_QUEUE_URL: redis://redis-queue:6379
       REALTIME_EMIT_URL: http://realtime:3003/emit
     depends_on:
       app: { condition: service_healthy }
       pgbouncer: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      redis-queue: { condition: service_healthy }
     healthcheck:
       test:
         [
@@ -74,9 +76,9 @@ services:
         required: false
     environment:
       NODE_ENV: production
-      REDIS_URL: redis://redis:6379
+      REDIS_CACHE_URL: redis://redis-cache:6379
     depends_on:
-      redis: { condition: service_healthy }
+      redis-cache: { condition: service_healthy }
     healthcheck:
       test:
         [
@@ -146,10 +148,31 @@ services:
       retries: 5
     restart: unless-stopped
 
-  redis:
+  # #111: BullMQ queue Redis — noeviction, persistent (jobs must not be evicted)
+  redis-queue:
     image: redis:7-alpine
     ports: ['6379:6379']
-    volumes: ['redis_data:/data']
+    volumes: ['redis_queue_data:/data']
+    command:
+      - redis-server
+      - --maxmemory-policy noeviction
+      - --appendonly yes
+      - --appendfsync everysec
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # #111: Cache Redis — LRU eviction, no persistence (disposable cache data)
+  redis-cache:
+    image: redis:7-alpine
+    ports: ['6380:6379']
+    command:
+      - redis-server
+      - --maxmemory 256mb
+      - --maxmemory-policy allkeys-lru
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
@@ -159,4 +182,4 @@ services:
 
 volumes:
   pg_data:
-  redis_data:
+  redis_queue_data:

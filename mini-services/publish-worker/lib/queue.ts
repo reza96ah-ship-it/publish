@@ -6,7 +6,8 @@
 
 import { Queue } from 'bullmq'
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379'
+// #111: REDIS_QUEUE_URL for BullMQ (noeviction policy); falls back to REDIS_URL
+const REDIS_URL = process.env.REDIS_QUEUE_URL || process.env.REDIS_URL || 'redis://localhost:6379'
 
 export const connection = {
   url: REDIS_URL,

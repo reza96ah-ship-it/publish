@@ -42,9 +42,11 @@ export async function GET() {
     schedule: j.scheduledAt,
     processLabel: j.processLabel,
     progress: j.progress,
-    assignee: j.assignee?.name ?? 'ط¨ط¯ظˆظ† ظ…ط³ط¦ظˆظ„',
+    // #113: expose error field for repair UI (retry/reconnect/cancel buttons)
+    errorCategory: (j as any).errorCategory ?? null,
+    assignee: j.assignee?.name ?? 'بدون مسئول',
     assigneeAvatar: j.assignee?.avatarUrl ?? '',
-    campaign: j.campaign?.name ?? 'ط¨ط¯ظˆظ† ع©ظ…ظ¾غŒظ†',
+    campaign: j.campaign?.name ?? 'بدون کمپین',
     thumbnail: j.content.thumbnailUrl ?? j.thumbnailUrl ?? '',
     platformColor: platformColor(j.platform.type),
     platformBg: platformBg(j.platform.type),

@@ -32,7 +32,8 @@ const NEXTAUTH_SECRET =
   process.env.NEXTAUTH_SECRET ||
   'nashrino-dev-secret-change-in-production'
 const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*' // tighten in production
-const REDIS_URL = process.env.REDIS_URL || ''
+// #111: REDIS_CACHE_URL for Socket.io adapter (allkeys-lru policy); falls back to REDIS_URL
+const REDIS_URL = process.env.REDIS_CACHE_URL || process.env.REDIS_URL || ''
 
 // BUG-15: explicit opt-in flag instead of NODE_ENV so staging can run with auth
 const isDev = process.env.DISABLE_AUTH === '1'
