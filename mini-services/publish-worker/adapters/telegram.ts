@@ -170,8 +170,9 @@ export class TelegramAdapter implements ChannelAdapter {
         // Text-only message
         result = await this.sendMessage(token, chatId, caption)
       } else if (mediaItems.length === 1) {
-        // Single media
+        // Single media — noUncheckedIndexedAccess: guard against undefined
         const m = mediaItems[0]
+        if (!m) throw new Error('media item missing')
         if (m.type === 'photo') {
           result = await this.sendPhoto(token, chatId, m.url, caption)
         } else if (m.type === 'video') {

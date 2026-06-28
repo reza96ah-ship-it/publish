@@ -21,7 +21,7 @@ import { Worker, UnrecoverableError, type Job } from 'bullmq'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
-import type { AdapterJob } from './adapters/types'
+import type { AdapterJob, PlatformType } from './adapters/types'
 import { circuitBreakers } from './lib/circuit'
 import { emitJobStatus } from './lib/emit'
 import { decrypt } from './lib/crypto'
@@ -30,6 +30,11 @@ import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
+import {
+  publishJobsCompleted,
+  publishJobsFailed,
+  publishDurationHistogram,
+} from './lib/metrics'
 import {
   buildFingerprint,
   findPreviousSuccess,
@@ -126,6 +131,9 @@ const worker = new Worker(
     await updateJobStatus(job, 'processing', 5, 'شروع پردازش', null)
     await emit(job, 'processing', 5, 'شروع پردازش', null)
 
+    // Issue #126: record job start time for duration histogram
+    const jobStartedAt = Date.now()
+
     // Build adapter job
     const adapterJob: AdapterJob = {
       id: job.id,
@@ -143,7 +151,7 @@ const worker = new Worker(
       },
       account: {
         id: job.platform.id,
-        type: job.platform.type,
+        type: job.platform.type as PlatformType,
         username: job.platform.username,
         status: job.platform.status,
         circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
@@ -182,7 +190,7 @@ const worker = new Worker(
       await markProviderSuccess(attemptId, result.externalId ?? '')
 
       circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
-      await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId)
+      await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId ?? undefined)
 
       // Update platform
       await db.platform.update({
@@ -204,11 +212,25 @@ const worker = new Worker(
       })
 
       console.log(`[worker] job ${job.id} → success (${result.externalId})`)
+      // Issue #126: increment completed counter + observe duration
+      publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'success' })
+      publishDurationHistogram.observe(
+        { platform: job.platform.type },
+        (Date.now() - jobStartedAt) / 1000
+      )
       return { status: 'success', externalId: result.externalId }
     }
 
     // Failure — throw so BullMQ retries with backoff
     circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+
+    // Issue #126: increment failed counter + observe duration for all failure paths
+    const errorCategory = result.errorCategory ?? 'unknown'
+    publishJobsFailed.inc({ platform: job.platform.type, category: errorCategory })
+    publishDurationHistogram.observe(
+      { platform: job.platform.type },
+      (Date.now() - jobStartedAt) / 1000
+    )
 
     // BUG-05: typed errorCategory instead of matching Persian error strings
     const needsAction = result.errorCategory === 'auth'
@@ -216,9 +238,10 @@ const worker = new Worker(
     if (needsAction) {
       await markFailure(attemptId, {
         outcome: 'permanent_failure',
-        errorCategory: result.errorCategory,
-        safeUserMessage: result.error,
+        errorCategory: result.errorCategory ?? undefined,
+        safeUserMessage: result.error ?? undefined,
       })
+      publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
       await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
       throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
     }
@@ -226,8 +249,8 @@ const worker = new Worker(
     // Retryable failure
     await markFailure(attemptId, {
       outcome: 'retryable_failure',
-      errorCategory: result.errorCategory,
-      safeUserMessage: result.error,
+      errorCategory: result.errorCategory ?? undefined,
+      safeUserMessage: result.error ?? undefined,
     })
     await updateJobStatus(
       job,
@@ -249,8 +272,9 @@ const worker = new Worker(
   {
     connection,
     concurrency: CONCURRENCY,
-    // #112: allow up to 30s for in-progress jobs to complete on SIGTERM
-    stopTimeout: 30_000,
+    // #112: allow up to 30s for in-progress jobs to complete on SIGTERM.
+    // (stopTimeout is a valid BullMQ option but missing from some type defs)
+    ...({ stopTimeout: 30_000 } as object),
     limiter: {
       max: 10,
       duration: 1000,
@@ -426,8 +450,8 @@ function startHealthServer() {
       let failedCount = 0
       try {
         const counts = await publishQueue.getJobCounts()
-        queueDepth = counts.waiting + counts.active + counts.delayed
-        failedCount = counts.failed
+        queueDepth = (counts.waiting ?? 0) + (counts.active ?? 0) + (counts.delayed ?? 0)
+        failedCount = counts.failed ?? 0
       } catch {
         // Redis might not be connected yet
       }

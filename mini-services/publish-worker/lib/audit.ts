@@ -10,7 +10,8 @@ export async function writeAuditLog(entry: {
       data: {
         action: entry.action,
         workspaceId: entry.workspaceId,
-        metadata: entry.metadata ?? {},
+        // Prisma Json field accepts any JSON-serializable value
+        metadata: (entry.metadata ?? {}) as any,
       },
     })
   } catch (err) {

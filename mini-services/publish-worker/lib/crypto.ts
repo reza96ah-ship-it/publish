@@ -89,10 +89,17 @@ export function decrypt(value: string): string {
   if (!isEncrypted(value)) return value
   const parts = value.split(':')
   if (parts.length !== 5) throw new Error('Invalid encrypted token format')
+  // noUncheckedIndexedAccess: parts[N] is string | undefined — guard explicitly
   const keyId = parts[1]
-  const iv = Buffer.from(parts[2], 'hex')
-  const ciphertext = Buffer.from(parts[3], 'hex')
-  const tag = Buffer.from(parts[4], 'hex')
+  const ivHex = parts[2]
+  const ctHex = parts[3]
+  const tagHex = parts[4]
+  if (!keyId || !ivHex || !ctHex || !tagHex) {
+    throw new Error('Invalid encrypted token format — missing segments')
+  }
+  const iv = Buffer.from(ivHex, 'hex')
+  const ciphertext = Buffer.from(ctHex, 'hex')
+  const tag = Buffer.from(tagHex, 'hex')
 
   const encryptionKey = getKey(keyId)
   if (!encryptionKey) {

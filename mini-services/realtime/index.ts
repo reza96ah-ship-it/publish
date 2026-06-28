@@ -23,6 +23,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { Server, type Socket } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient } from 'redis'
+import { realtimeRegistry, activeSocketsGauge } from './lib/metrics'
 
 // ── Config ───────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.REALTIME_PORT || '3003', 10)
@@ -83,6 +84,8 @@ function verifyJwt(token: string): SessionData | null {
     if (parts.length !== 3) return null
 
     const [headerB64, payloadB64, signatureB64] = parts
+    // noUncheckedIndexedAccess: destructured values are string | undefined
+    if (!headerB64 || !payloadB64 || !signatureB64) return null
 
     // Verify signature
     const expectedSig = createHmac('sha256', NEXTAUTH_SECRET)
@@ -189,6 +192,13 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       })
     }
 
+    // GET /metrics — Prometheus scrape endpoint (Issue #126)
+    if (req.method === 'GET' && req.url?.split('?')[0] === '/metrics') {
+      res.writeHead(200, { 'Content-Type': realtimeRegistry.contentType })
+      res.end(await realtimeRegistry.metrics())
+      return
+    }
+
     return sendJson(res, 404, { ok: false, error: 'not found' })
   } catch (err) {
     console.error('[http] unhandled error:', err)
@@ -239,6 +249,8 @@ io.use(async (socket: Socket, next) => {
 io.on('connection', (socket: Socket) => {
   const session = (socket as any).data.session as SessionData
   console.log(`[io] connected id=${socket.id} userId=${session?.userId}`)
+  // Issue #126: update active sockets gauge on connect
+  activeSocketsGauge.set(io.engine.clientsCount)
 
   // P7.2: Room authorization — check membership before joining
   socket.on('subscribe', async (data: unknown) => {
@@ -278,6 +290,8 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', (reason: string) => {
     console.log(`[io] disconnected id=${socket.id} reason=${reason}`)
+    // Issue #126: update active sockets gauge on disconnect
+    activeSocketsGauge.set(io.engine.clientsCount)
   })
 
   socket.on('error', (err: Error) => {

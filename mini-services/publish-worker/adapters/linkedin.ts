@@ -158,8 +158,10 @@ export class LinkedInAdapter implements ChannelAdapter {
           isReshareDisabledByAuthor: false,
         }
       } else if (mediaItems.length === 1) {
-        // Single image
-        const assetUrn = await this.uploadImage(token, authorUrn, mediaItems[0])
+        // Single image — noUncheckedIndexedAccess: guard against undefined
+        const m = mediaItems[0]
+        if (!m) throw new Error('media item missing')
+        const assetUrn = await this.uploadImage(token, authorUrn, m)
         postBody = {
           author: authorUrn,
           commentary: text,

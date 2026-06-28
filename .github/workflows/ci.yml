@@ -61,6 +61,19 @@ jobs:
       - run: bunx prisma migrate deploy || bunx prisma db push --accept-data-loss
       - run: bun run lint
       - run: bun run typecheck
+      # Issue #123: typecheck mini-services with strict mode (noImplicitAny + noUncheckedIndexedAccess)
+      - name: Typecheck publish-worker (strict)
+        working-directory: mini-services/publish-worker
+        run: |
+          bun install --frozen-lockfile
+          bunx prisma generate --schema=../../prisma/schema.prisma
+          bunx tsc --noEmit
+      - name: Typecheck realtime (strict)
+        working-directory: mini-services/realtime
+        run: |
+          bun install --frozen-lockfile
+          bunx prisma generate --schema=../../prisma/schema.prisma
+          bunx tsc --noEmit
       - run: bun run test
       - run: bun run build
         env:
