@@ -25,8 +25,15 @@ import type {
   AdapterContent,
   AdapterAccount,
 } from './types'
+import { getCapabilities } from '../lib/provider-capabilities'
 
-const BALE_TEXT_LIMIT = 4096
+// Issue #115: Bale is Telegram-Bot-API-compatible, so it shares the same limits.
+// Text-only: 4096, media caption: 1024. Bale does NOT support parse_mode
+// (uses plain text), so no HTML escaping needed — but caption limit still applies.
+const BALE_LIMITS = {
+  text: 4096,
+  caption: 1024,
+} as const
 const BALE_API_BASE = 'https://tapi.bale.ai/bot'
 
 export class BaleAdapter implements ChannelAdapter {
@@ -59,10 +66,14 @@ export class BaleAdapter implements ChannelAdapter {
   ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
-    if (text.length > BALE_TEXT_LIMIT) {
+    // Issue #115: use capability registry — media posts use caption limit (1024)
+    const cap = getCapabilities('bale')
+    const isMediaPost = (content.mediaItems?.length ?? 0) > 0
+    const limit = isMediaPost ? cap.maxCaptionLength : cap.maxTextLength
+    if (text.length > limit) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پیام بله نباید از ${BALE_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
+        message: `متن پیام بله نباید از ${limit} کاراکتر بیشتر باشد.`,
         platform: 'bale',
       })
     }
@@ -113,6 +124,20 @@ export class BaleAdapter implements ChannelAdapter {
 
     const caption = platformCaption || this.buildCaption(content)
     const mediaItems = content.mediaItems || []
+
+    // Issue #115: enforce caption limit before calling Bale API (1024 for media)
+    const isMediaPost = mediaItems.length > 0
+    const captionLimit = isMediaPost ? BALE_LIMITS.caption : BALE_LIMITS.text
+    if (caption.length > captionLimit) {
+      return {
+        externalId: null,
+        rawResponse: {},
+        status: 'action',
+        error: `متن بله بیش از حد مجاز است (${caption.length}/${captionLimit}).`,
+        retryable: false,
+        steps: [{ label: 'بررسی طول متن', at: now }],
+      }
+    }
 
     try {
       let result: { messageId: string; raw: any }

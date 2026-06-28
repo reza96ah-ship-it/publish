@@ -63,6 +63,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'توکن نامعتبر است — اتصال ناموفق بود' }, { status: 400 })
   }
 
+  // Issue #116: Instagram long-lived access tokens expire after 60 days.
+  // Record the expiry so the worker's daily scan can warn users in advance
+  // (7-day + 1-day notifications) and mark expired tokens as auth errors.
+  // LinkedIn tokens also expire after 60 days — same lifecycle applies.
+  // Bot tokens (Telegram/Bale/Rubika) do NOT expire, so tokenExpiresAt stays null.
+  const tokenExpiresAt =
+    platform.type === 'instagram' || platform.type === 'linkedin'
+      ? new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) // 60 days
+      : null
+
   // Save token + target to platform
   await db.platform.update({
     where: { id },
@@ -74,6 +84,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       status: 'active',
       lastError: null,
       circuitState: 'closed',
+      tokenExpiresAt,
+      lastValidatedAt: new Date(),
     },
   })
 

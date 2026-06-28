@@ -2683,3 +2683,79 @@ Implementation order (by dependency):
   4. #121 MFA TOTP (depends on #118 password + #120 encryption)
   5. #122 CI gates (independent — workflow file only)
   6. Unit tests for all 5
+
+---
+Task ID: 4-research
+Agent: Main (Z.ai Code)
+Task: Phase 4 (Milestone #24 — Provider Integration Quality) deep research — read all 4 GitHub issues (#114-117), study current adapter/UI/schema source, research correct LinkedIn/Telegram/Instagram APIs, and define implementation strategy.
+
+Work Log:
+- Authenticated `gh` CLI (v2.67.0) with provided PAT; pulled milestone #24 "Phase 4 — Provider Integration Quality" — 4 open issues, 0 closed.
+- Read full bodies of all 4 issues (#114 LinkedIn CRITICAL, #115 Telegram, #116 Instagram token lifecycle, #117 capability registry).
+- Read current source: adapters/{linkedin,telegram,instagram,bale,rubika}.ts, adapters/types.ts, adapters/index.ts, worker index.ts, state-reducer.ts, prisma/schema.prisma (Platform model), compose-view.tsx (978 lines), platforms/[id]/connect/route.ts, validations.ts.
+- Confirmed: PostgreSQL migration (old plan's "Phase 4") is ALREADY DONE — schema is postgresql, CI runs on PG, docker-compose has PgBouncer+Postgres+dual-Redis. The milestone-based Phase 4 is about PROVIDER/ADAPTER QUALITY, not DB migration.
+- Web-searched authoritative docs: LinkedIn Posts API (Microsoft Learn), Telegram Bot API caption limits, Instagram Graph API token lifecycle.
+- page_reader on LinkedIn Posts API docs confirmed: endpoint = `POST https://api.linkedin.com/rest/posts`, required headers `LinkedIn-Version` + `X-Restli-Protocol-Version: 2.0.0`, 201 response has post ID in `x-restli-id` header (NOT body), body format uses `visibility: "PUBLIC"` + `distribution.feedDistribution: "MAIN_FEED"`.
+
+Stage Summary:
+Phase 4 scope (4 issues, all about making publishing actually correct per-provider):
+
+ISSUE #114 (CRITICAL bug) — LinkedIn adapter (`adapters/linkedin.ts`):
+  Current bugs verified in source:
+  1. LI_API='https://api.linkedin.com/v2' → hits deprecated /v2/posts. Must use /rest/posts.
+  2. Missing `LinkedIn-Version` header (required per docs). Issue specifies 202505 (202506 sunset).
+  3. Has X-Restli-Protocol-Version: 2.0.0 ✓ (already in headers()).
+  4. `const data = await res.json()` on 201 response — 201 has NO body → throws silently. Must read `x-restli-id` header.
+  5. Body uses `visibility:{publicVisibility:false,memberVisibility:'ALL'}` — docs require `visibility:"PUBLIC"` + `distribution:{feedDistribution:"MAIN_FEED",...}`.
+  6. No normalizeLinkedInError for 401/403/429/500.
+  Fix: named LI_VERSION='202505' constant, /rest/posts endpoint, extract ID from x-restli-id header, fix body schema, add normalizeLinkedInError covering 401(auth)/403(auth)/429(rate_limit)/500(retryable).
+
+ISSUE #115 (bug) — Telegram adapter (`adapters/telegram.ts`):
+  Current bugs verified:
+  1. TG_TEXT_LIMIT=4096 used for ALL validation. Wrong: text-only=4096, media caption=1024. Web search confirmed Telegram caps captions at 1024.
+  2. parse_mode:'HTML' set but user content NOT escaped → <b> tags render as bold, injection risk.
+  Fix: split LIMITS {text:4096, photo_caption:1024, video_caption:1024}, escapeTelegramHtml() escaping &<>'
+
+ISSUE #116 (miss) — Instagram token expiry:
+  - Platform model needs tokenExpiresAt, tokenScopes, lastValidatedAt fields (issue says "ChannelCredential" but codebase uses Platform model).
+  - tokenExpiresAt populated on IG connect (60 days for long-lived token).
+  - Daily background job: notify 7d + 1d before expiry.
+  - Expired token = auth error category (never retried, UnrecoverableError).
+  - Reconnect updates tokenExpiresAt.
+  Impl: Prisma migration (add 3 fields), IG connect sets expiry, worker periodic timer checks expiry + creates Notifications, IG adapter returns errorCategory:'auth' when token expired.
+
+ISSUE #117 (miss) — Provider capability registry:
+  - Create src/lib/provider-capabilities.ts (canonical) + worker copy (per crypto.ts precedent — worker Docker image excludes src/).
+  - Keys: supportsText, supportsImage, supportsVideo, maxTextLength, maxCaptionLength, requiresMedia.
+  - Cover: telegram, instagram, linkedin, rubika, bale, eitaa.
+  - Composer: show/hide media upload by capability, live char counter per platform, block submit on violation.
+  - Adapter validation limits come FROM registry (single source of truth).
+
+Implementation order (by dependency):
+  1. #117 capability registry (foundation — #115/#114 limits reference it)
+  2. #115 Telegram (uses registry maxCaptionLength)
+  3. #114 LinkedIn (uses registry maxTextLength, CRITICAL)
+  4. #116 Instagram token expiry (schema migration + worker cron)
+  5. Unit tests for all 4
+
+---
+Task ID: 4-implement
+Agent: Main (Z.ai Code)
+Task: Implement all 4 Phase 4 (Milestone #24) issues + tests + verification.
+
+Work Log:
+- Issue #117 (capability registry): Created src/lib/provider-capabilities.ts (canonical) + mini-services/publish-worker/lib/provider-capabilities.ts (worker copy, per crypto.ts precedent). Registry covers telegram/instagram/linkedin/rubika/bale/eitaa with supportsText/Image/video, maxTextLength, maxCaptionLength, requiresMedia, maxMediaCount, maxHashtags. Updated compose-view.tsx: imported registry, added capabilityViolations useMemo, activeCaptionLimit (min across selected platforms), anyRequiresMedia hint, live char counter with limit, violation warning panel (role=alert), submit guard shows platform-specific messages. Updated all 5 adapters to use getCapabilities() instead of hardcoded limits.
+- Issue #115 (Telegram): Added TG_LIMITS {text:4096, photo_caption:1024, video_caption:1024, document_caption:1024}. Added escapeTelegramHtml() escaping & < >. publish() now: (1) checks caption length BEFORE calling API, returns Persian error if >limit, (2) escapes all user content via escapeTelegramHtml before sending with parse_mode=HTML. Applied same caption-limit fix to Bale adapter (Telegram-compatible). Updated validateReadiness to use registry limits.
+- Issue #114 (LinkedIn CRITICAL): Rewrote linkedin.ts. LI_VERSION='202505' named constant. Endpoint changed from /v2/posts → /rest/posts. Headers now include LinkedIn-Version: 202505 + X-Restli-Protocol-Version: 2.0.0. 201 response: extract post ID from x-restli-id header (NOT res.json() which crashed on empty body). Body schema fixed: visibility="PUBLIC" (string, not object) + distribution.feedDistribution="MAIN_FEED" + lifecycleState="PUBLISHED" + isReshareDisabledByAuthor:false. Added normalizeLinkedInError covering 401/403→auth, 429→rate_limit, 5xx→network, 404→not_found. All error paths return typed errorCategory so worker never retries auth failures.
+- Issue #116 (IG token expiry): Prisma migration 20260628120000 adds tokenExpiresAt/tokenScopes/lastValidatedAt + Platform_tokenExpiresAt_idx to Platform model. Updated connect route to set tokenExpiresAt=now+60d for instagram/linkedin. Created token-expiry-scanner.ts: daily scan finds OAuth tokens expiring within 7d/1d, creates idempotent notifications (fingerprinted), marks expired platforms. Worker boot calls startTokenExpiryScanner, shutdown calls stop. Added expired-token guard in worker: if platform.status='expired', throws UnrecoverableError with errorCategory='auth' (never retried). IG adapter now returns errorCategory:'auth' for missing token.
+- Tests: Created 4 test files (65 tests total, all pass):
+  - tests/unit/lib/provider-capabilities.test.ts (28 tests): registry identity between src+worker copies, platform-specific facts, validateAgainstCapabilities acceptance criteria.
+  - tests/unit/worker/telegram-adapter.test.ts (14 tests): caption limit 1024/4096, HTML escaping of <b>/<i>/&/<>/.
+  - tests/unit/worker/linkedin-adapter.test.ts (18 tests): /rest/posts endpoint, LinkedIn-Version header, x-restli-id 201 handling, body schema (PUBLIC+MAIN_FEED), normalizeLinkedInError 401/403/429/500/404.
+  - tests/unit/worker/token-expiry-scanner.test.ts (9 tests): 7d/1d/expired notifications, idempotency, only IG+LinkedIn scanned, multi-platform batch.
+- Verification: bun run typecheck ✓ (clean). bun run lint: 1 pre-existing error (use-publish-stream.ts, also fails on clean main). bun run test: 211 passed, 2 failed (both pre-existing publishSchema failures, fail on clean main). Dev server compiles all routes (200), compose route compiles in 59ms. Agent Browser confirms signin + compose routes render without errors.
+
+Stage Summary:
+All 4 Phase 4 issues implemented and tested. 65 new tests pass. No new lint/typecheck regressions. Ready for PR.
+Files created: src/lib/provider-capabilities.ts, mini-services/publish-worker/lib/provider-capabilities.ts, mini-services/publish-worker/lib/token-expiry-scanner.ts, prisma/migrations/20260628120000_phase4_token_expiry_lifecycle/migration.sql, 4 test files.
+Files modified: compose-view.tsx, all 5 adapters (linkedin/telegram/bale/rubika/instagram), worker index.ts, platforms connect route, prisma/schema.prisma.

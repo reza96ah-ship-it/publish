@@ -35,8 +35,8 @@ import type {
   AdapterContent,
   AdapterAccount,
 } from './types'
+import { getCapabilities } from '../lib/provider-capabilities'
 
-const RUBIKA_TEXT_LIMIT = 4096
 const RUBIKA_API_BASE = 'https://botapi.rubika.ir/v3'
 
 export class RubikaAdapter implements ChannelAdapter {
@@ -69,10 +69,12 @@ export class RubikaAdapter implements ChannelAdapter {
   ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
-    if (text.length > RUBIKA_TEXT_LIMIT) {
+    // Issue #117: use capability registry as single source of truth
+    const cap = getCapabilities('rubika')
+    if (text.length > cap.maxTextLength) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پیام روبیکا نباید از ${RUBIKA_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
+        message: `متن پیام روبیکا نباید از ${cap.maxTextLength} کاراکتر بیشتر باشد.`,
         platform: 'rubika',
       })
     }
