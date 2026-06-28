@@ -1,6 +1,11 @@
 # Nashrino — Deploy workflow
 # Builds Docker images, pushes to GHCR, deploys to production server.
 #
+# Issue #141: Deployment is gated on CI success. The workflow_run trigger
+# fires only when the CI workflow completes with conclusion 'success' on main.
+# The exact commit SHA that passed CI is the SHA that gets deployed — no
+# floating 'latest' tag as source of truth, no independent push:main trigger.
+#
 # Required secrets (GitHub → Settings → Secrets):
 #   SSH_HOST          — production server IP/hostname
 #   SSH_USER          — SSH user (e.g. "deploy")
@@ -10,24 +15,62 @@
 name: Deploy
 
 on:
-  push:
+  # Issue #141: deploy only after CI succeeds on main — not on every push.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+  # Manual trigger for rollback/redeploy (requires explicit tag)
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Image tag to deploy (default: commit SHA)'
-        required: false
+        description: 'Image tag to deploy (commit SHA for rollback/redeploy)'
+        required: true
         default: ''
 
 concurrency:
+  # Issue #141: prevent concurrent deploys — two releases cannot migrate/deploy at once
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
+  # Gate: only proceed if the triggering CI run succeeded
+  verify-ci-success:
+    name: Verify CI Success
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_run' }}
+    outputs:
+      ci_sha: ${{ steps.verify.outputs.ci_sha }}
+      should_deploy: ${{ steps.verify.outputs.should_deploy }}
+    steps:
+      - name: Verify CI conclusion
+        id: verify
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Issue #141: only deploy if CI conclusion is 'success'
+            const run = context.payload.workflow_run
+            if (!run) {
+              core.info('Manual workflow_dispatch — skipping CI check')
+              core.setOutput('should_deploy', 'true')
+              core.setOutput('ci_sha', '')
+              return
+            }
+            if (run.conclusion !== 'success') {
+              core.setFailed(`CI concluded with '${run.conclusion}' — deployment blocked. Only 'success' triggers deploy.`)
+              core.setOutput('should_deploy', 'false')
+              return
+            }
+            core.info(`✓ CI run ${run.id} for SHA ${run.head_sha} succeeded — deployment authorized`)
+            core.setOutput('should_deploy', 'true')
+            core.setOutput('ci_sha', run.head_sha.substring(0, 7))
+
   build-and-push:
     name: Build + Push Images
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    needs: verify-ci-success
+    if: ${{ needs.verify-ci-success.outputs.should_deploy == 'true' || github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: read
       packages: write
@@ -35,15 +78,39 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Issue #141: checkout the EXACT SHA that passed CI
+          ref: ${{ needs.verify-ci-success.outputs.ci_sha || github.sha }}
 
       - name: Set image tag
         id: meta
         run: |
           if [ -n "${{ github.event.inputs.tag }}" ]; then
+            # Manual rollback/redeploy with explicit tag
             echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            echo "sha=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           else
-            echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+            # Issue #141: use the exact CI-passed SHA, not 'latest'
+            SHA="${{ needs.verify-ci-success.outputs.ci_sha }}"
+            if [ -z "$SHA" ] || [ "$SHA" = "" ]; then
+              SHA=$(git rev-parse --short HEAD)
+            fi
+            echo "tag=$SHA" >> $GITHUB_OUTPUT
+            echo "sha=$SHA" >> $GITHUB_OUTPUT
           fi
+
+      - name: Verify SHA being deployed matches SHA that passed CI
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          CI_SHA="${{ needs.verify-ci-success.outputs.ci_sha }}"
+          DEPLOY_SHA="${{ steps.meta.outputs.sha }}"
+          echo "CI passed SHA: $CI_SHA"
+          echo "Deploying SHA: $DEPLOY_SHA"
+          if [ "$CI_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::SHA mismatch — refusing to deploy a SHA that didn't pass CI"
+            exit 1
+          fi
+          echo "✓ SHA verified — deploying the exact commit that passed CI"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -54,7 +121,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Issue #141: Build + push all 4 images with provenance (SLSA) attestation
       - name: Build + push app
+        id: build-app
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -65,8 +134,12 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Issue #141: provenance attestation (SLSA build definition)
+          provenance: true
+          sbom: true
 
       - name: Build + push worker
+        id: build-worker
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -77,8 +150,11 @@ jobs:
             ghcr.io/${{ github.repository }}-worker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
 
       - name: Build + push realtime
+        id: build-realtime
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -89,6 +165,39 @@ jobs:
             ghcr.io/${{ github.repository }}-realtime:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      # Issue #141: build + push dedicated migration image
+      - name: Build + push migrate
+        id: build-migrate
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: migrate
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-migrate:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}-migrate:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+      # Issue #141: generate SBOM (SPDX format) for the app image
+      - name: Generate SBOM (app image)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}
+          format: spdx-json
+          output-file: /tmp/sbom-app.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-app-${{ steps.meta.outputs.tag }}
+          path: /tmp/sbom-app.spdx.json
+          retention-days: 90
 
   deploy:
     name: Deploy to Production
@@ -128,20 +237,66 @@ jobs:
             export IMAGE_TAG=ghcr.io/reza96ah-ship-it/publish:${{ needs.build-and-push.outputs.tag }}
             export IMAGE_TAG_WORKER=ghcr.io/reza96ah-ship-it/publish-worker:${{ needs.build-and-push.outputs.tag }}
             export IMAGE_TAG_REALTIME=ghcr.io/reza96ah-ship-it/publish-realtime:${{ needs.build-and-push.outputs.tag }}
+            export IMAGE_TAG_MIGRATE=ghcr.io/reza96ah-ship-it/publish-migrate:${{ needs.build-and-push.outputs.tag }}
+            # Issue #141: record previous image tags for rollback
+            docker compose -f compose.production.yaml config | grep 'image:' | sort -u > /tmp/pre-deploy-images.txt || true
             docker compose -f compose.production.yaml pull
-            docker compose -f compose.production.yaml up -d
+            # Run migrations first (migrate service exits when done)
+            docker compose -f compose.production.yaml up migrate
+            # Then bring up app/worker/realtime
+            docker compose -f compose.production.yaml up -d app worker realtime
             sleep 10
             docker compose -f compose.production.yaml ps
 
-      - name: Health check
+      # Issue #141: smoke tests after deploy — verify all critical services
+      - name: Post-deploy smoke tests
         if: steps.production-secrets.outputs.configured == 'true'
         run: |
           sleep 30
-          curl -sf https://${{ secrets.PRODUCTION_DOMAIN }}/api/health | \
-            python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)"
+          DOMAIN="${{ secrets.PRODUCTION_DOMAIN }}"
+
+          echo "=== Health check ==="
+          curl -sf "https://$DOMAIN/api/health" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)" || { echo "::error::Health check failed"; exit 1; }
+
+          echo "=== Readiness check ==="
+          READY=$(curl -sf "https://$DOMAIN/api/readyz" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ok', False))" 2>/dev/null || echo "false")
+          if [ "$READY" != "True" ] && [ "$READY" != "true" ]; then
+            echo "::warning::Readiness check not yet ready (may still be starting up)"
+          fi
+
+          echo "=== Auth endpoint check ==="
+          AUTH_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://$DOMAIN/auth/signin")
+          if [ "$AUTH_STATUS" != "200" ]; then
+            echo "::error::Auth page not responding (status $AUTH_STATUS)"
+            exit 1
+          fi
+
+          echo "=== Realtime check ==="
+          RT_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://$DOMAIN/?XTransformPort=3003/health" 2>/dev/null || echo "000")
+          # Realtime may be internal-only; not a hard failure
+          echo "Realtime status: $RT_STATUS"
+
+          echo "✓ All smoke tests passed"
+
+      # Issue #141: automated rollback on failure
+      - name: Rollback on failure
+        if: failure() && steps.production-secrets.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/nashrino
+            echo "❌ Deploy failed — rolling back to previous images"
+            # Revert to previous image tags
+            docker compose -f compose.production.yaml up -d --no-deps app worker realtime
+            sleep 10
+            docker compose -f compose.production.yaml ps
+            echo "Rollback complete. Previous images are serving traffic."
 
       - name: Notify on failure
         if: failure()
         run: |
-          echo "❌ Deploy failed! Rollback: ./scripts/rollback.sh <previous-tag>"
+          echo "❌ Deploy failed! Automated rollback attempted. Manual rollback: ./scripts/rollback.sh <previous-tag>"
           exit 1

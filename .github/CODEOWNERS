@@ -1,0 +1,33 @@
+# Nashrino CODEOWNERS — Issue #141
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# These owners are automatically requested for review on PRs that touch
+# the specified paths. Branch protection should require their approval.
+
+# Security-critical files: auth, crypto, password, MFA, RBAC
+/src/lib/auth.ts           @reza96ah-ship-it
+/src/lib/auth-guards.ts    @reza96ah-ship-it
+/src/lib/crypto.ts         @reza96ah-ship-it
+/src/lib/password.ts       @reza96ah-ship-it
+/src/lib/mfa.ts            @reza96ah-ship-it
+/src/middleware.ts         @reza96ah-ship-it
+
+# Migrations — must be reviewed before any schema change reaches production
+/prisma/schema.prisma      @reza96ah-ship-it
+/prisma/migrations/        @reza96ah-ship-it
+
+# Provider adapters — certified against official APIs
+/mini-services/publish-worker/adapters/ @reza96ah-ship-it
+
+# Deployment + CI — release pipeline safety
+/.github/workflows/        @reza96ah-ship-it
+/Dockerfile                @reza96ah-ship-it
+/compose.production.yaml   @reza96ah-ship-it
+/docker-compose.yml        @reza96ah-ship-it
+/scripts/                  @reza96ah-ship-it
+
+# Environment configuration
+/.env.example              @reza96ah-ship-it
+
+# Default: all files not matched above
+*                          @reza96ah-ship-it

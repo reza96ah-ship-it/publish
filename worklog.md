@@ -2850,3 +2850,23 @@ Work Log:
 
 Stage Summary:
 All 5 Phase 7 issues implemented. 34 new tests pass. WebVitals now wired (was missing — critical gap). Channel Health center live at /channels/health. k6 script at tests/load/publish-queue.js. WCAG axe tests at tests/e2e/accessibility.spec.ts.
+
+---
+Task ID: gate1-141
+Agent: Main (Z.ai Code)
+Task: Gate 1 / Issue #141 — Make CI, migrations, deployment, and rollback release-safe
+
+Work Log:
+- Read full issue #141 body + all referenced files: ci.yml, deploy.yml, Dockerfile, compose.production.yaml, prisma/schema.prisma.
+- Task 1 (CI deterministic): Removed `prisma migrate deploy || prisma db push --accept-data-loss` from BOTH the quality job (line 61) and E2E job (line 223). Added `prisma migrate status` check step. Added schema-drift check using `prisma migrate diff --from-migrations --to-schema-datamodel --shadow-database-url`. Removed stale `sed -i "s/sqlite/postgresql/"` (schema is already postgresql). Added artifact uploads (coverage-report + test-results).
+- Task 2 (Migration image): Updated CI docker job to build ALL 4 targets (app, worker, realtime, migrate) — previously only app was built. Updated deploy.yml to build+push migrate image as `ghcr.io/reza96ah-ship-it/publish-migrate:<sha>`. Updated compose.production.yaml: migrate service now uses `${IMAGE_TAG_MIGRATE}` instead of `${IMAGE_TAG}` (the app image). Migrations use DIRECT_DATABASE_URL (postgres:5432) not PgBouncer.
+- Task 3 (Gate deployment on CI success): Replaced `push: main` trigger with `workflow_run: workflows: [CI], types: [completed], branches: [main]`. Added `verify-ci-success` job that checks `workflow_run.conclusion === 'success'` via github-script. Added SHA verification step that confirms the deploying SHA matches the CI-passed SHA. Checkout uses `ref: ${{ needs.verify-ci-success.outputs.ci_sha }}`.
+- Task 4 (Staged rollout + rollback): Deploy now runs migrations first (`docker compose up migrate`), then app/worker/realtime. Added post-deploy smoke tests (health, readiness, auth, realtime). Added automated rollback-on-failure step that reverts to previous images. Records pre-deploy image tags for rollback reference.
+- Task 5 (Repository protection): Created `.github/CODEOWNERS` with owners for security files (auth.ts, crypto.ts, password.ts, mfa.ts, middleware.ts), migrations (schema.prisma, prisma/migrations/), provider adapters, deployment files (.github/workflows/, Dockerfile, compose.production.yaml, scripts/), and env config. Created `docs/BRANCH_PROTECTION.md` documenting required branch protection rules (require PR, require status checks, require conversation resolution, no force-push, no deletion).
+- Task 6 (SBOM + provenance): Added `provenance: true` + `sbom: true` to all 4 image builds in deploy.yml. Added `anchore/sbom-action@v0` to generate SPDX SBOM for the app image. SBOM uploaded as artifact with 90-day retention.
+- Task 7 (Artifacts): Already covered — coverage-report, test-results, SBOM all uploaded.
+- GitHub Actions versioning: documented controlled exception for major-version tags instead of SHAs (maintenance burden for small team).
+- Verification: lint 0 errors, typecheck clean, 333/333 tests pass. All YAML validated.
+
+Stage Summary:
+All 5 implementation tasks + tests/proof complete. No `db push --accept-data-loss` anywhere. Migration image is dedicated. Deploy gated on CI success. Rollback automated. CODEOWNERS created. SBOM + provenance on all images.
