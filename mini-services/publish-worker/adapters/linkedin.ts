@@ -267,10 +267,12 @@ export class LinkedInAdapter implements ChannelAdapter {
     authorUrn: string,
     media: { url: string; type?: string }
   ): Promise<string> {
-    // Step 1: Register upload (still on v2/assets)
+    // Step 1: Register upload (v2/assets — LinkedIn's legacy image upload API).
+    // Bug fix: use v2Headers() here, not headers() — the v2/assets endpoint
+    // predates the versioned REST API and rejects the LinkedIn-Version header.
     const registerRes = await fetch(`${LI_V2_API}/assets?action=registerUpload`, {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.v2Headers(token),
       body: JSON.stringify({
         registerUploadRequest: {
           recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
@@ -281,21 +283,39 @@ export class LinkedInAdapter implements ChannelAdapter {
         },
       }),
     })
-    const register = await registerRes.json()
-    if (register.status && register.code) {
+
+    // Bug fix: check HTTP status before parsing — a 4xx/5xx may not have the
+    // expected JSON shape; checking res.ok first gives a clean error instead of
+    // a cryptic TypeError from the deep nested access below.
+    let register: any = {}
+    try {
+      register = await registerRes.json()
+    } catch {
+      throw this.normalizeLinkedInError(registerRes.status, { message: registerRes.statusText })
+    }
+    if (!registerRes.ok) {
       throw this.normalizeLinkedInError(registerRes.status, register)
     }
 
-    const uploadUrl =
-      register.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']
-        .uploadUrl
-    const asset = register.value.asset // urn:li:digitalmediaAsset:{id}
+    // Bug fix: null-safe access — unexpected response shape throws TypeError without this.
+    const mechanism =
+      register?.value?.uploadMechanism?.[
+        'com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'
+      ]
+    const uploadUrl = mechanism?.uploadUrl
+    const asset = register?.value?.asset
+
+    if (!uploadUrl || !asset) {
+      throw this.normalizeLinkedInError(registerRes.status, {
+        message: `LinkedIn registerUpload response missing uploadUrl or asset: ${JSON.stringify(register)}`,
+      })
+    }
 
     // Step 2: Download image from URL and upload to LinkedIn
     const imgRes = await fetch(media.url)
     const imageBlob = await imgRes.blob()
 
-    // Step 3: Upload binary
+    // Step 3: Upload binary — LinkedIn CDN accepts PUT with Content-Type only (no auth header)
     await fetch(uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'image/jpeg' },
@@ -306,10 +326,8 @@ export class LinkedInAdapter implements ChannelAdapter {
   }
 
   /**
-   * Issue #114: headers now include the required LinkedIn-Version.
-   * All LinkedIn REST APIs require both:
-   *   - LinkedIn-Version: {YYYYMM}
-   *   - X-Restli-Protocol-Version: 2.0.0
+   * Headers for the versioned LinkedIn REST API (/rest/ endpoints).
+   * LinkedIn-Version is REQUIRED here.
    */
   private headers(token: string) {
     return {
@@ -317,6 +335,18 @@ export class LinkedInAdapter implements ChannelAdapter {
       Authorization: `Bearer ${token}`,
       'X-Restli-Protocol-Version': '2.0.0',
       'LinkedIn-Version': LI_VERSION,
+    }
+  }
+
+  /**
+   * Headers for legacy LinkedIn v2 endpoints (/v2/ — userinfo, assets).
+   * These endpoints predate the versioned REST API and reject LinkedIn-Version.
+   */
+  private v2Headers(token: string) {
+    return {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      'X-Restli-Protocol-Version': '2.0.0',
     }
   }
 
