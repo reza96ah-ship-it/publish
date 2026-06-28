@@ -107,11 +107,12 @@ jobs:
       # that cannot be patched without a major framework upgrade.
       # GHSA-5xrq-8626-4rwp (@vitest/ui): affects the UI dev server only; that server is
       # never started in CI or production. Accepted as dev-only risk until vitest 3 is stable.
+      # NOTE: bun audit exits 1 when it finds any vuln at the specified level. We pipe to tee
+      # and use || true so set -eo pipefail does not abort the step before the grep filter runs.
       - name: Dependency audit (bun audit --level critical)
         run: |
-          output=$(bun audit --level critical 2>&1)
-          echo "$output"
-          if echo "$output" | grep "critical:" | grep -qv "GHSA-5xrq-8626-4rwp"; then
+          bun audit --level critical 2>&1 | tee /tmp/audit.txt || true
+          if grep "critical:" /tmp/audit.txt | grep -qv "GHSA-5xrq-8626-4rwp"; then
             echo "::error::Unacceptable critical vulnerabilities found"
             exit 1
           fi
