@@ -49,15 +49,16 @@ interface JobStatusPayload {
  */
 export function usePublishStream(workspaceId: string | null | undefined): void {
   const queryClient = useQueryClient()
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const [realtimeToken, setRealtimeToken] = useState<string | null>(null)
 
-  // Fetch a verifiable JWT whenever the session becomes available
+  // Fetch a verifiable JWT whenever the session becomes available.
+  // Token is cleared in the cleanup (not synchronously in the effect body)
+  // to satisfy react-hooks/set-state-in-effect: the cleanup runs when status
+  // changes away from 'authenticated', which is the correct clear point.
   useEffect(() => {
-    if (status !== 'authenticated') {
-      setRealtimeToken(null)
-      return
-    }
+    if (status !== 'authenticated') return
+
     let cancelled = false
     fetch('/api/realtime-token')
       .then((r) => (r.ok ? r.json() : null))
@@ -67,6 +68,7 @@ export function usePublishStream(workspaceId: string | null | undefined): void {
       .catch(() => null)
     return () => {
       cancelled = true
+      setRealtimeToken(null)
     }
   }, [status])
 
