@@ -1,14 +1,14 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateParams, contentListQuerySchema, cursorPaginationSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // Validate query params: status, campaignId, cursor, limit
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())

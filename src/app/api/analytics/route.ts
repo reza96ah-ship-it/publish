@@ -1,6 +1,6 @@
 ﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateParams } from '@/lib/validations'
 import { z } from 'zod'
 
@@ -11,9 +11,9 @@ const analyticsQuerySchema = z.object({
 })
 
 export async function GET(req: Request) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const { searchParams } = new URL(req.url)
   const queryCheck = validateParams(analyticsQuerySchema, {

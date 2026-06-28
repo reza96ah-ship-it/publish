@@ -1,13 +1,13 @@
 ﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // Fetch all aggregate (platform=null) snapshots for the last 7 days.
   // There are 7 days أ— 4 metrics = 28 rows; take a comfortable ceiling so

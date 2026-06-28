@@ -1,6 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import {
   validateBody,
   validateParams,
@@ -12,9 +12,10 @@ import { randomUUID } from 'crypto'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  // Issue #142: viewing members requires security.admin permission
+  const guard = await requirePermissionApi('security.admin')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())
   const queryCheck = validateParams(cursorPaginationSchema, query)
@@ -49,9 +50,10 @@ export async function GET(req: NextRequest) {
 
 // POST â€” add a team member directly (similar to /api/members/invite but without invite token)
 export async function POST(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  // Issue #142: adding members requires member.invite permission (admin-only)
+  const guard = await requirePermissionApi('member.invite')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })

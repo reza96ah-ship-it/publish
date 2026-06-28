@@ -10,15 +10,15 @@
  */
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { decrypt } from '@/lib/crypto'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // Get all connected platforms
   const platforms = await db.platform.findMany({
