@@ -68,11 +68,11 @@ describe('Worker — circuit breaker', () => {
     for (let i = 0; i < 5; i++) {
       mockCircuitBreakers.recordFailure('ws1', 'telegram')
     }
-    
+
     // ws1:telegram is open, ws1:instagram is still closed
     expect(mockCircuitBreakers.getState('ws1', 'telegram')).toBe('open')
     expect(mockCircuitBreakers.getState('ws1', 'instagram')).toBe('closed')
-    
+
     // ws2:telegram is still closed (different workspace)
     expect(mockCircuitBreakers.getState('ws2', 'telegram')).toBe('closed')
   })
@@ -83,15 +83,15 @@ describe('Worker — circuit breaker', () => {
       mockCircuitBreakers.recordFailure('ws1', 'telegram')
     }
     expect(mockCircuitBreakers.getState('ws1', 'telegram')).toBe('open')
-    
+
     // Manually set to half_open (simulating the timeout probe)
     circuitState.set('ws1:telegram', 'half_open')
-    
+
     // Record 5 successes
     for (let i = 0; i < 5; i++) {
       mockCircuitBreakers.recordSuccess('ws1', 'telegram')
     }
-    
+
     expect(mockCircuitBreakers.getState('ws1', 'telegram')).toBe('closed')
   })
 })

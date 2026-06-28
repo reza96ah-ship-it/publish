@@ -1,16 +1,16 @@
 /**
  * Bale Bot API adapter — REAL implementation.
- * 
+ *
  * Official docs: https://docs.bale.ai/
  * URL pattern: https://tapi.bale.ai/bot<TOKEN>/<METHOD_NAME>
  * File download: https://tapi.bale.ai/file/bot<TOKEN>/<file_path>
- * 
+ *
  * Bale is Telegram-Bot-API-COMPATIBLE — same method names, same response format.
  * The only differences:
  *   1. Base URL: tapi.bale.ai (not api.telegram.org)
  *   2. No parse_mode MarkdownV2 — Bale uses MessageEntity objects for formatting
  *   3. chat_id can be @channelusername for channels (same as Telegram)
- * 
+ *
  * Auth: Bot token from @botfather in Bale app.
  * To post to a channel: promoteChatMember with can_post_messages=true, then use @channelusername.
  */
@@ -41,7 +41,11 @@ export class BaleAdapter implements ChannelAdapter {
       const res = await fetch(`${BALE_API_BASE}${token}/getMe`)
       const data = await res.json()
       if (!data.ok) {
-        return { healthy: false, status: 'error', lastError: data.description || 'توکن نامعتبر است' }
+        return {
+          healthy: false,
+          status: 'error',
+          lastError: data.description || 'توکن نامعتبر است',
+        }
       }
       return { healthy: true, status: 'active', lastError: null }
     } catch (err) {
@@ -49,7 +53,10 @@ export class BaleAdapter implements ChannelAdapter {
     }
   }
 
-  async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
+  async validateReadiness(
+    content: AdapterContent,
+    account: AdapterAccount
+  ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
     if (text.length > BALE_TEXT_LIMIT) {

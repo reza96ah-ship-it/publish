@@ -91,7 +91,7 @@ export class AdapterError extends Error {
     message: string,
     public readonly retryable: boolean,
     public readonly statusCode?: number,
-    public readonly externalId?: string,
+    public readonly externalId?: string
   ) {
     super(message)
     this.name = 'AdapterError'

@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { motion } from "framer-motion";
-import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 /**
  * error.tsx — App Router error boundary.
@@ -16,13 +16,13 @@ export default function Error({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
-  reset: () => void;
+  error: Error & { digest?: string }
+  reset: () => void
 }) {
   useEffect(() => {
     // Log to console (replace with Sentry/PostHog in production)
-    console.error("[نشرینو] Route error boundary:", error);
-  }, [error]);
+    console.error('[نشرینو] Route error boundary:', error)
+  }, [error])
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-6">
@@ -53,5 +53,5 @@ export default function Error({
         </button>
       </motion.div>
     </div>
-  );
+  )
 }

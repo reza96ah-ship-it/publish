@@ -1,25 +1,25 @@
 /**
  * Rubika Bot API adapter — REAL implementation.
- * 
+ *
  * Official docs: https://rubika.ir/botapi
  * URL pattern: https://botapi.rubika.ir/v3/{token}/{method} (always POST)
- * 
+ *
  * Auth: Bot token from @BotFather in Rubika app.
- * 
+ *
  * Methods (per official docs):
  *   - getMe: bot info
  *   - sendMessage: send text (chat_id, text, reply_to_message_id)
  *   - sendPoll: send poll
  *   - getUpdates: long-polling for updates (use start_id for pagination)
  *   - updateBotEndpoint: set webhook for real-time updates
- * 
+ *
  * To add bot to channel: go to channel → "add member" → add bot → set as admin → save.
  * Limitations (per official docs):
  *   - Limited bot access to messages
  *   - Limited editing capability
  *   - Cannot add bot via invite link
  *   - Limited number of admin bots per chat
- * 
+ *
  * Note: Rubika's public bot API v3 is primarily text-based. Media upload methods
  * are not in the public docs yet — this adapter sends text-only for now.
  * If media is provided, it sends the caption text and notes media is unsupported.
@@ -45,7 +45,11 @@ export class RubikaAdapter implements ChannelAdapter {
   async healthCheck(account: AdapterAccount): Promise<HealthResult> {
     const token = account.token
     if (!token) {
-      return { healthy: false, status: 'disconnected', lastError: 'توکن ربات روبیکا تنظیم نشده است' }
+      return {
+        healthy: false,
+        status: 'disconnected',
+        lastError: 'توکن ربات روبیکا تنظیم نشده است',
+      }
     }
     try {
       const res = await fetch(`${RUBIKA_API_BASE}/${token}/getMe`, { method: 'POST' })
@@ -59,7 +63,10 @@ export class RubikaAdapter implements ChannelAdapter {
     }
   }
 
-  async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
+  async validateReadiness(
+    content: AdapterContent,
+    account: AdapterAccount
+  ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
     if (text.length > RUBIKA_TEXT_LIMIT) {
@@ -118,9 +125,10 @@ export class RubikaAdapter implements ChannelAdapter {
     const mediaItems = content.mediaItems || []
 
     // Rubika v3 public API is text-only — if media provided, note it in text
-    const finalText = mediaItems.length > 0
-      ? `${text}\n\n📎 (${mediaItems.length} رسانه پیوست شده — پشتیبانی کامل از رسانه به‌زودی)`
-      : text
+    const finalText =
+      mediaItems.length > 0
+        ? `${text}\n\n📎 (${mediaItems.length} رسانه پیوست شده — پشتیبانی کامل از رسانه به‌زودی)`
+        : text
 
     try {
       const res = await fetch(`${RUBIKA_API_BASE}/${token}/sendMessage`, {
@@ -169,7 +177,7 @@ export class RubikaAdapter implements ChannelAdapter {
         rawResponse: { error: err.message },
         status: 'failed',
         error: `روبیکا: خطای شبکه — ${err.message}`,
-        retryable: true,  // network errors are retryable
+        retryable: true, // network errors are retryable
         steps: [
           { label: 'ارسال به روبیکا', at: now },
           { label: 'خطا', at: Date.now() },

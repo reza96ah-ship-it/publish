@@ -1,36 +1,36 @@
-"use client";
+'use client'
 
-import { type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AmbientMesh } from "./ambient-mesh";
-import { useAppStore } from "@/lib/store";
-import { Sidebar } from "./sidebar";
-import { CommandBar } from "./command-bar";
-import { Menu, X } from "lucide-react";
-import { api } from "@/lib/api";
-import { usePublishStream } from "@/hooks/use-publish-stream";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import { CommandPalette } from "./command-palette";
-import { ShortcutsModal } from "./shortcuts-modal";
-import { LiveRegionProvider } from "@/lib/aria-live";
+import { type ReactNode } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { AmbientMesh } from './ambient-mesh'
+import { useAppStore } from '@/lib/store'
+import { Sidebar } from './sidebar'
+import { CommandBar } from './command-bar'
+import { Menu, X } from 'lucide-react'
+import { api } from '@/lib/api'
+import { usePublishStream } from '@/hooks/use-publish-stream'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { CommandPalette } from './command-palette'
+import { ShortcutsModal } from './shortcuts-modal'
+import { LiveRegionProvider } from '@/lib/aria-live'
 
 function RealtimeProvider() {
   const { data: workspaceId } = useQuery<string>({
-    queryKey: ["workspace-id"],
+    queryKey: ['workspace-id'],
     queryFn: async () => {
-      const ws = await api.get<{ id: string }>("/api/workspace");
-      return ws.id;
+      const ws = await api.get<{ id: string }>('/api/workspace')
+      return ws.id
     },
     staleTime: Infinity,
-  });
-  usePublishStream(workspaceId);
-  return null;
+  })
+  usePublishStream(workspaceId)
+  return null
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const isMobileMenuOpen = useAppStore((s) => s.isMobileMenuOpen);
-  const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
-  useKeyboardShortcuts();
+  const isMobileMenuOpen = useAppStore((s) => s.isMobileMenuOpen)
+  const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen)
+  useKeyboardShortcuts()
 
   return (
     <div className="relative flex h-dvh w-full overflow-hidden">
@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav aria-label="ناوبری اصلی">
         <div
           className={`fixed inset-y-0 right-0 z-40 w-[260px] transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${
-            isMobileMenuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
           }`}
         >
           <Sidebar />
@@ -94,7 +94,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {/* Scrollable content stage — solid surfaces */}
-        <main id="main-content" className="flex-1 overflow-y-auto thin-scrollbar px-[var(--shell-gutter)] py-[var(--shell-gap)]" tabIndex={-1}>
+        <main
+          id="main-content"
+          className="flex-1 overflow-y-auto thin-scrollbar px-[var(--shell-gutter)] py-[var(--shell-gap)]"
+          tabIndex={-1}
+        >
           <div className="mx-auto w-full max-w-[1600px] pb-10">{children}</div>
         </main>
       </div>
@@ -110,5 +114,5 @@ export function AppShell({ children }: { children: ReactNode }) {
         </button>
       )}
     </div>
-  );
+  )
 }

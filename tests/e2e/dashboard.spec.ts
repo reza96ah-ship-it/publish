@@ -14,7 +14,9 @@ test.describe('Dashboard smoke tests', () => {
 
   test('signin page shows email + password fields', async ({ page }) => {
     await page.goto('/auth/signin')
-    const emailInput = page.locator('input[type="email"], input[name="email"], input[autocomplete="email"]').first()
+    const emailInput = page
+      .locator('input[type="email"], input[name="email"], input[autocomplete="email"]')
+      .first()
     const passwordInput = page.locator('input[type="password"], input[name="password"]').first()
     await expect(emailInput).toBeVisible()
     await expect(passwordInput).toBeVisible()
@@ -30,7 +32,9 @@ test.describe('Navigation', () => {
       await composeBtn.click()
       await page.waitForTimeout(1000)
       // Check that the compose view rendered (look for the editor or title input)
-      const editor = page.locator('textarea, [contenteditable], input[placeholder*="عنوان"]').first()
+      const editor = page
+        .locator('textarea, [contenteditable], input[placeholder*="عنوان"]')
+        .first()
       await expect(editor).toBeVisible({ timeout: 5000 })
     }
   })
@@ -62,7 +66,7 @@ test.describe('RTL + Mobile layout', () => {
     await page.setViewportSize({ width: 375, height: 812 }) // iPhone X
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    
+
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth)
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1) // +1 for rounding
@@ -72,7 +76,7 @@ test.describe('RTL + Mobile layout', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    
+
     const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
     const clientWidth = await page.evaluate(() => document.documentElement.clientWidth)
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1)
@@ -82,7 +86,7 @@ test.describe('RTL + Mobile layout', () => {
 test.describe('Dark mode', () => {
   test('dark mode toggle works', async ({ page }) => {
     await page.goto('/')
-    
+
     const toggleBtn = page.locator('button:has-text("تاریک"), button:has-text("روشن")').first()
     if (await toggleBtn.isVisible()) {
       // Get initial theme

@@ -9,27 +9,29 @@ export async function GET() {
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
-  const today = new Date(); today.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
   // P8.3: Fixed N+1 â€” use groupBy instead of findMany + filter
-  const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] = await Promise.all([
-    db.publishJob.groupBy({
-      by: ['status'],
-      where: { workspaceId },
-      _count: { _all: true },
-    }),
-    db.inboxMessage.count({ where: { workspaceId, isRead: false } }),
-    db.content.count({ where: { workspaceId, status: 'review' } }),
-    db.platform.groupBy({
-      by: ['status'],
-      where: { workspaceId },
-      _count: { _all: true },
-    }),
-    db.campaign.count({ where: { workspaceId, status: 'active' } }),
-    db.publishJob.count({
-      where: { workspaceId, status: 'success', completedAt: { gte: today } },
-    }),
-  ])
+  const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] =
+    await Promise.all([
+      db.publishJob.groupBy({
+        by: ['status'],
+        where: { workspaceId },
+        _count: { _all: true },
+      }),
+      db.inboxMessage.count({ where: { workspaceId, isRead: false } }),
+      db.content.count({ where: { workspaceId, status: 'review' } }),
+      db.platform.groupBy({
+        by: ['status'],
+        where: { workspaceId },
+        _count: { _all: true },
+      }),
+      db.campaign.count({ where: { workspaceId, status: 'active' } }),
+      db.publishJob.count({
+        where: { workspaceId, status: 'success', completedAt: { gte: today } },
+      }),
+    ])
 
   // Build status â†’ count map
   const jobMap = new Map(jobCounts.map((j) => [j.status, j._count._all]))
@@ -39,11 +41,27 @@ export async function GET() {
 
   // Count disconnected platforms
   const platMap = new Map(platformCounts.map((p) => [p.status, p._count._all]))
-  const disconnected = (platMap.get('error') ?? 0) + (platMap.get('expired') ?? 0) + (platMap.get('disconnected') ?? 0)
+  const disconnected =
+    (platMap.get('error') ?? 0) + (platMap.get('expired') ?? 0) + (platMap.get('disconnected') ?? 0)
 
-  const health = failed > 2 || disconnected > 1 ? 'critical' : failed > 0 || disconnected > 0 ? 'warning' : 'healthy'
-  const healthLabel = health === 'healthy' ? 'ظ¾ط§غŒط¯ط§ط±' : health === 'warning' ? 'ظ†غŒط§ط²ظ…ظ†ط¯ طھظˆط¬ظ‡' : 'ط¨ط­ط±ط§ظ†غŒ'
-  const healthColor = health === 'healthy' ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : health === 'warning' ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-rose-700 bg-rose-50 border-rose-200'
+  const health =
+    failed > 2 || disconnected > 1
+      ? 'critical'
+      : failed > 0 || disconnected > 0
+        ? 'warning'
+        : 'healthy'
+  const healthLabel =
+    health === 'healthy'
+      ? 'ظ¾ط§غŒط¯ط§ط±'
+      : health === 'warning'
+        ? 'ظ†غŒط§ط²ظ…ظ†ط¯ طھظˆط¬ظ‡'
+        : 'ط¨ط­ط±ط§ظ†غŒ'
+  const healthColor =
+    health === 'healthy'
+      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+      : health === 'warning'
+        ? 'text-amber-700 bg-amber-50 border-amber-200'
+        : 'text-rose-700 bg-rose-50 border-rose-200'
 
   return NextResponse.json({
     health,

@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useMemo, useState, useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useMemo, useState, useCallback } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import {
   Inbox as InboxIcon,
   Send,
@@ -18,188 +18,220 @@ import {
   UserCheck,
   Loader2,
   CheckCheck,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
-import { relativeTime } from "@/lib/jalali";
-import { SectionTitle, PlatformIcon, EmptyState, SkeletonList, LoadingState, AnimatedTabs } from "@/components/dashboard/shared";
-import { useAnnounceValue } from "@/lib/aria-live";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
+import { api } from '@/lib/api'
+import { relativeTime } from '@/lib/jalali'
+import {
+  SectionTitle,
+  PlatformIcon,
+  EmptyState,
+  SkeletonList,
+  LoadingState,
+  AnimatedTabs,
+} from '@/components/dashboard/shared'
+import { useAnnounceValue } from '@/lib/aria-live'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 interface InboxMessage {
-  id: string;
-  senderName: string;
-  senderAvatar: string | null;
-  message: string;
-  isRead: boolean;
-  isReplied: boolean;
-  reply: string | null;
-  platform: string;
-  platformName: string;
-  messageType: string;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  assigneeAvatar: string | null;
-  createdAt: string;
+  id: string
+  senderName: string
+  senderAvatar: string | null
+  message: string
+  isRead: boolean
+  isReplied: boolean
+  reply: string | null
+  platform: string
+  platformName: string
+  messageType: string
+  assigneeId: string | null
+  assigneeName: string | null
+  assigneeAvatar: string | null
+  createdAt: string
 }
 
 interface Member {
-  id: string;
-  name: string;
-  avatar: string | null;
-  roleLabel: string;
+  id: string
+  name: string
+  avatar: string | null
+  roleLabel: string
 }
 
 const MESSAGE_TYPE_LABEL: Record<string, string> = {
-  comment: "کامنت",
-  dm: "پیام مستقیم",
-  mention: "منشن",
-};
+  comment: 'کامنت',
+  dm: 'پیام مستقیم',
+  mention: 'منشن',
+}
 
 const MESSAGE_TYPE_ICON: Record<string, React.ElementType> = {
   comment: MessageSquare,
   dm: Mail,
   mention: AtSign,
-};
+}
 
 const AUTOMATIONS = [
-  { trigger: "کلمه کلیدی «کد»", action: "ارسال کاتالوگ محصول", platform: "instagram", active: true },
-  { trigger: "کلمه کلیدی «قیمت»", action: "ارسال لیست قیمت PDF", platform: "instagram", active: true },
-  { trigger: "کامنت حاوی «سفارش»", action: "ارسال لینک فرم سفارش", platform: "telegram", active: true },
-  { trigger: "پیام مستقیم جدید", action: "پاسخ خودکار خوش‌آمدگویی", platform: "rubika", active: false },
-  { trigger: "منشن برند", action: "اطلاع‌رسانی به تیم پشتیبانی", platform: "instagram", active: true },
-];
+  {
+    trigger: 'کلمه کلیدی «کد»',
+    action: 'ارسال کاتالوگ محصول',
+    platform: 'instagram',
+    active: true,
+  },
+  {
+    trigger: 'کلمه کلیدی «قیمت»',
+    action: 'ارسال لیست قیمت PDF',
+    platform: 'instagram',
+    active: true,
+  },
+  {
+    trigger: 'کامنت حاوی «سفارش»',
+    action: 'ارسال لینک فرم سفارش',
+    platform: 'telegram',
+    active: true,
+  },
+  {
+    trigger: 'پیام مستقیم جدید',
+    action: 'پاسخ خودکار خوش‌آمدگویی',
+    platform: 'rubika',
+    active: false,
+  },
+  {
+    trigger: 'منشن برند',
+    action: 'اطلاع‌رسانی به تیم پشتیبانی',
+    platform: 'instagram',
+    active: true,
+  },
+]
 
 export function InboxView() {
-  const [filter, setFilter] = useState<"all" | "unread" | "comment" | "dm">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
-  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<'all' | 'unread' | 'comment' | 'dm'>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [isGeneratingReply, setIsGeneratingReply] = useState(false)
+  const queryClient = useQueryClient()
 
   const { data: messages, isLoading } = useQuery<InboxMessage[]>({
-    queryKey: ["inbox"],
-    queryFn: () => api.getPaginated<InboxMessage>("/api/inbox"),
-  });
+    queryKey: ['inbox'],
+    queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
+  })
 
   const { data: members } = useQuery<Member[]>({
-    queryKey: ["members"],
-    queryFn: () => api.getPaginated<Member>("/api/members"),
-  });
+    queryKey: ['members'],
+    queryFn: () => api.getPaginated<Member>('/api/members'),
+  })
 
   const filtered = useMemo(() => {
-    if (!messages) return [];
+    if (!messages) return []
     return messages.filter((m) => {
-      if (filter === "unread") return !m.isRead;
-      if (filter === "comment") return m.messageType === "comment";
-      if (filter === "dm") return m.messageType === "dm";
-      return true;
-    });
-  }, [messages, filter]);
+      if (filter === 'unread') return !m.isRead
+      if (filter === 'comment') return m.messageType === 'comment'
+      if (filter === 'dm') return m.messageType === 'dm'
+      return true
+    })
+  }, [messages, filter])
 
-  const selected = messages?.find((m) => m.id === selectedId) ?? null;
-  const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0;
-  useAnnounceValue(unreadCount, "پیام خوانده‌نشده");
+  const selected = messages?.find((m) => m.id === selectedId) ?? null
+  const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0
+  useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
     mutationFn: ({ id, reply }: { id: string; reply: string }) =>
       api.post(`/api/inbox/${id}/reply`, { reply }),
     onSuccess: () => {
-      toast.success("پاسخ ارسال شد ✓");
-      setReplyText("");
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+      toast.success('پاسخ ارسال شد ✓')
+      setReplyText('')
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
-    onError: () => toast.error("خطا در ارسال پاسخ"),
-  });
+    onError: () => toast.error('خطا در ارسال پاسخ'),
+  })
 
   const assignMutation = useMutation({
     mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string | null }) =>
       api.post(`/api/inbox/${id}/assign`, { assigneeId }),
     onSuccess: () => {
-      toast.success("ارجاع شد");
-      queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      toast.success('ارجاع شد')
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
     },
-    onError: () => toast.error("خطا در ارجاع"),
-  });
+    onError: () => toast.error('خطا در ارجاع'),
+  })
 
   const readMutation = useMutation({
     mutationFn: (id: string) => api.post(`/api/inbox/${id}/read`, {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inbox"] }),
-  });
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] }),
+  })
 
   // ── Handlers ───────────────────────────────────────────────────────
   const handleSelectMessage = useCallback((id: string) => {
-    setSelectedId(id);
-  }, []);
+    setSelectedId(id)
+  }, [])
 
   const handleReply = () => {
     if (!replyText.trim()) {
-      toast.error("متن پاسخ خالی است.");
-      return;
+      toast.error('متن پاسخ خالی است.')
+      return
     }
-    if (!selected) return;
-    replyMutation.mutate({ id: selected.id, reply: replyText });
-  };
+    if (!selected) return
+    replyMutation.mutate({ id: selected.id, reply: replyText })
+  }
 
   const handleSmartReply = async () => {
-    if (!selected) return;
-    setIsGeneratingReply(true);
+    if (!selected) return
+    setIsGeneratingReply(true)
     try {
-      const res = await fetch("/api/ai/caption", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/ai/caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: `پاسخ به این پیام: "${selected.message}"`,
           platform: selected.platform,
-          tone: "friendly",
+          tone: 'friendly',
         }),
-      });
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let fullText = "";
+      })
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let fullText = ''
       if (reader) {
         while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
           for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const jsonStr = line.slice(6).trim();
-              if (jsonStr === "[DONE]") break;
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6).trim()
+              if (jsonStr === '[DONE]') break
               try {
-                const json = JSON.parse(jsonStr);
+                const json = JSON.parse(jsonStr)
                 if (json.content) {
-                  fullText += json.content;
-                  setReplyText(fullText);
+                  fullText += json.content
+                  setReplyText(fullText)
                 }
               } catch {}
             }
           }
         }
       }
-      toast.success("پاسخ هوشمند آماده شد — بررسی و ارسال کنید");
+      toast.success('پاسخ هوشمند آماده شد — بررسی و ارسال کنید')
     } catch {
-      toast.error("خطا در تولید پاسخ هوشمند");
+      toast.error('خطا در تولید پاسخ هوشمند')
     } finally {
-      setIsGeneratingReply(false);
+      setIsGeneratingReply(false)
     }
-  };
+  }
 
   return (
     <motion.div
@@ -214,7 +246,8 @@ export function InboxView() {
           unreadCount > 0 && (
             <span className="inline-flex items-center gap-1 text-[11px] bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
               <span className="size-1.5 rounded-full bg-info" />
-              {relativeTime(new Date(Date.now() - 1000 * 60 * 5)).replace("پیش", "پیش")} — {unreadCount} ناخوانده
+              {relativeTime(new Date(Date.now() - 1000 * 60 * 5)).replace('پیش', 'پیش')} —{' '}
+              {unreadCount} ناخوانده
             </span>
           )
         }
@@ -230,19 +263,16 @@ export function InboxView() {
               value={filter}
               onValueChange={(v) => setFilter(v as typeof filter)}
               tabs={[
-                { value: "all", label: "همه" },
-                { value: "unread", label: "ناخوانده", count: unreadCount },
-                { value: "comment", label: "کامنت" },
-                { value: "dm", label: "پیام مستقیم" },
+                { value: 'all', label: 'همه' },
+                { value: 'unread', label: 'ناخوانده', count: unreadCount },
+                { value: 'comment', label: 'کامنت' },
+                { value: 'dm', label: 'پیام مستقیم' },
               ]}
             />
           </div>
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
-            <LoadingState
-              isLoading={isLoading}
-              skeleton={<SkeletonList rows={6} avatar />}
-            >
+            <LoadingState isLoading={isLoading} skeleton={<SkeletonList rows={6} avatar />}>
               {filtered.length === 0 ? (
                 <EmptyState
                   icon={InboxIcon}
@@ -281,11 +311,15 @@ export function InboxView() {
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
                   <Avatar className="size-10">
-                    {selected.senderAvatar && <AvatarImage src={selected.senderAvatar} alt={selected.senderName} />}
+                    {selected.senderAvatar && (
+                      <AvatarImage src={selected.senderAvatar} alt={selected.senderName} />
+                    )}
                     <AvatarFallback>{selected.senderName.slice(0, 1)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-[600] text-ink-primary truncate">{selected.senderName}</p>
+                    <p className="text-[14px] font-[600] text-ink-primary truncate">
+                      {selected.senderName}
+                    </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <PlatformIcon platform={selected.platform} className="size-3.5" />
                       <span className="text-[11px] text-ink-tertiary">{selected.platformName}</span>
@@ -302,16 +336,21 @@ export function InboxView() {
                       )}
                     </div>
                   </div>
-                  <span className="text-[11px] text-ink-tertiary">{relativeTime(new Date(selected.createdAt))}</span>
+                  <span className="text-[11px] text-ink-tertiary">
+                    {relativeTime(new Date(selected.createdAt))}
+                  </span>
                 </div>
                 {/* Assign dropdown */}
                 {members && members.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-[10px] text-ink-tertiary">ارجاع به:</span>
                     <Select
-                      value={selected.assigneeId ?? "none"}
+                      value={selected.assigneeId ?? 'none'}
                       onValueChange={(v) =>
-                        assignMutation.mutate({ id: selected.id, assigneeId: v === "none" ? null : v })
+                        assignMutation.mutate({
+                          id: selected.id,
+                          assigneeId: v === 'none' ? null : v,
+                        })
                       }
                     >
                       <SelectTrigger className="h-7 w-40 text-[11px]">
@@ -320,7 +359,9 @@ export function InboxView() {
                       <SelectContent>
                         <SelectItem value="none">بدون ارجاع</SelectItem>
                         {members.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -332,14 +373,18 @@ export function InboxView() {
               <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3">
                 <div className="flex justify-start">
                   <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
-                    <p className="text-[13px] text-ink-primary whitespace-pre-wrap">{selected.message}</p>
+                    <p className="text-[13px] text-ink-primary whitespace-pre-wrap">
+                      {selected.message}
+                    </p>
                   </div>
                 </div>
                 {selected.isReplied && selected.reply && (
                   <div className="flex justify-end">
                     <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-accent-soft border border-accent/20 px-4 py-2.5">
                       <p className="text-[10px] text-accent font-[700] mb-1">پاسخ شما</p>
-                      <p className="text-[13px] text-ink-primary whitespace-pre-wrap">{selected.reply}</p>
+                      <p className="text-[13px] text-ink-primary whitespace-pre-wrap">
+                        {selected.reply}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -422,10 +467,10 @@ export function InboxView() {
               <div
                 key={i}
                 className={cn(
-                  "rounded-xl border p-3 transition-colors",
+                  'rounded-xl border p-3 transition-colors',
                   a.active
-                    ? "border-border bg-surface-subtle"
-                    : "border-border bg-surface-subtle opacity-60"
+                    ? 'border-border bg-surface-subtle'
+                    : 'border-border bg-surface-subtle opacity-60'
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -439,8 +484,8 @@ export function InboxView() {
                   </div>
                   <span
                     className={cn(
-                      "size-2 rounded-full shrink-0 mt-1.5",
-                      a.active ? "bg-success" : "bg-ink-tertiary"
+                      'size-2 rounded-full shrink-0 mt-1.5',
+                      a.active ? 'bg-success' : 'bg-ink-tertiary'
                     )}
                   />
                 </div>
@@ -451,7 +496,7 @@ export function InboxView() {
             variant="outline"
             size="sm"
             className="w-full mt-3"
-            onClick={() => toast.info("ساخت اتوماسیون جدید به‌زودی فعال خواهد شد.")}
+            onClick={() => toast.info('ساخت اتوماسیون جدید به‌زودی فعال خواهد شد.')}
           >
             <Plus className="size-3.5" />
             اتوماسیون جدید
@@ -459,7 +504,7 @@ export function InboxView() {
         </div>
       </div>
     </motion.div>
-  );
+  )
 }
 
 function MessageListItem({
@@ -467,23 +512,25 @@ function MessageListItem({
   active,
   onClick,
 }: {
-  message: InboxMessage;
-  active: boolean;
-  onClick: () => void;
+  message: InboxMessage
+  active: boolean
+  onClick: () => void
 }) {
-  const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare;
+  const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare
   return (
     <button
       onClick={onClick}
       className={cn(
-        "n-focus-ring w-full text-right flex items-start gap-3 p-3 border-b border-border transition-colors",
-        active ? "bg-accent-soft" : "hover:bg-surface-subtle",
-        !message.isRead && "bg-accent-soft"
+        'n-focus-ring w-full text-right flex items-start gap-3 p-3 border-b border-border transition-colors',
+        active ? 'bg-accent-soft' : 'hover:bg-surface-subtle',
+        !message.isRead && 'bg-accent-soft'
       )}
     >
       <div className="relative shrink-0">
         <Avatar className="size-10">
-          {message.senderAvatar && <AvatarImage src={message.senderAvatar} alt={message.senderName} />}
+          {message.senderAvatar && (
+            <AvatarImage src={message.senderAvatar} alt={message.senderName} />
+          )}
           <AvatarFallback className="text-[12px]">{message.senderName.slice(0, 1)}</AvatarFallback>
         </Avatar>
         <span className="absolute -bottom-0.5 -left-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
@@ -492,7 +539,12 @@ function MessageListItem({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <p className={cn("text-[13px] truncate", message.isRead ? "font-[600] text-ink-secondary" : "font-[700] text-ink-primary")}>
+          <p
+            className={cn(
+              'text-[13px] truncate',
+              message.isRead ? 'font-[600] text-ink-secondary' : 'font-[700] text-ink-primary'
+            )}
+          >
             {message.senderName}
           </p>
           <span className="text-[10px] text-ink-tertiary shrink-0">
@@ -504,25 +556,25 @@ function MessageListItem({
         </p>
         <div className="flex items-center gap-1.5 mt-1">
           <TypeIcon className="size-3 text-ink-tertiary" />
-          <span className="text-[10px] text-ink-tertiary">{MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}</span>
+          <span className="text-[10px] text-ink-tertiary">
+            {MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}
+          </span>
           {message.isReplied && (
             <span className="text-[10px] text-success font-[600] ms-auto">پاسخ داده شد</span>
           )}
-          {!message.isRead && (
-            <span className="size-2 rounded-full bg-accent ms-auto" />
-          )}
+          {!message.isRead && <span className="size-2 rounded-full bg-accent ms-auto" />}
         </div>
       </div>
     </button>
-  );
+  )
 }
 
 function TypeBadge({ type }: { type: string }) {
-  const Icon = MESSAGE_TYPE_ICON[type] ?? MessageSquare;
+  const Icon = MESSAGE_TYPE_ICON[type] ?? MessageSquare
   return (
     <span className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary">
       <Icon className="size-3" />
       {MESSAGE_TYPE_LABEL[type] ?? type}
     </span>
-  );
+  )
 }

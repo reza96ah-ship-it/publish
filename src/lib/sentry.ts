@@ -21,11 +21,14 @@ export const isSentryEnabled = !!SENTRY_DSN
  * Capture an exception with optional context.
  * No-op if SENTRY_DSN is not configured.
  */
-export function captureError(error: unknown, context?: {
-  tags?: Record<string, string | number>
-  extra?: Record<string, unknown>
-  user?: { id: string; email?: string }
-}) {
+export function captureError(
+  error: unknown,
+  context?: {
+    tags?: Record<string, string | number>
+    extra?: Record<string, unknown>
+    user?: { id: string; email?: string }
+  }
+) {
   if (!isSentryEnabled) return
   Sentry.captureException(error, {
     tags: context?.tags,

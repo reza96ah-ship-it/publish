@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ push: vi.fn() }), useSearchParams: () => new URLSearchParams() }))
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}))
 import { screen } from '@testing-library/react'
 import { renderWithProviders } from '../../setup'
 import { DashboardView } from '../../../src/components/views/dashboard-view'

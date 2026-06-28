@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { validateBody, validateParams, validateId, publishSchema, aiCaptionSchema, memberInviteSchema, cursorPaginationSchema } from '../../../src/lib/validations'
+import {
+  validateBody,
+  validateParams,
+  validateId,
+  publishSchema,
+  aiCaptionSchema,
+  memberInviteSchema,
+  cursorPaginationSchema,
+} from '../../../src/lib/validations'
 import { z } from 'zod'
 
 describe('God-node: validateBody()', () => {

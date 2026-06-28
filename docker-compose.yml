@@ -6,13 +6,13 @@ services:
     build:
       context: .
       target: app
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     env_file:
       - path: .env
         required: false
     environment:
       NODE_ENV: production
-      HOSTNAME: "0.0.0.0"
+      HOSTNAME: '0.0.0.0'
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
       DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
       REDIS_URL: redis://redis:6379
@@ -20,7 +20,13 @@ services:
       pgbouncer: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -45,7 +51,13 @@ services:
       pgbouncer: { condition: service_healthy }
       redis: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://localhost:3002/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3002/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -56,7 +68,7 @@ services:
     build:
       context: .
       target: realtime
-    ports: ["3003:3003"]
+    ports: ['3003:3003']
     env_file:
       - path: .env
         required: false
@@ -66,7 +78,13 @@ services:
     depends_on:
       redis: { condition: service_healthy }
     healthcheck:
-      test: ["CMD", "bun", "-e", "fetch('http://localhost:3003/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3003/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))",
+        ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -84,30 +102,30 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
       DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
-    command: ["bunx", "prisma", "migrate", "deploy"]
+    command: ['bunx', 'prisma', 'migrate', 'deploy']
     depends_on:
       postgres: { condition: service_healthy }
-    restart: "no"
+    restart: 'no'
 
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    ports: ["${PGBOUNCER_PORT:-6432}:6432"]
+    ports: ['${PGBOUNCER_PORT:-6432}:6432']
     environment:
       DB_HOST: postgres
-      DB_PORT: "5432"
+      DB_PORT: '5432'
       DB_USER: nashrino
       DB_PASSWORD: ${POSTGRES_PASSWORD:-nashrino_dev}
       DB_NAME: nashrino
-      LISTEN_PORT: "6432"
+      LISTEN_PORT: '6432'
       AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
-      MAX_CLIENT_CONN: "200"
-      DEFAULT_POOL_SIZE: "20"
+      MAX_CLIENT_CONN: '200'
+      DEFAULT_POOL_SIZE: '20'
       IGNORE_STARTUP_PARAMETERS: extra_float_digits
     depends_on:
       postgres: { condition: service_healthy }
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U nashrino -d nashrino"]
+      test: ['CMD-SHELL', 'pg_isready -h 127.0.0.1 -p 6432 -U nashrino -d nashrino']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -119,10 +137,10 @@ services:
       POSTGRES_DB: nashrino
       POSTGRES_USER: nashrino
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nashrino_dev}
-    ports: ["${POSTGRES_PORT:-5432}:5432"]
-    volumes: ["pg_data:/var/lib/postgresql/data"]
+    ports: ['${POSTGRES_PORT:-5432}:5432']
+    volumes: ['pg_data:/var/lib/postgresql/data']
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nashrino -d nashrino"]
+      test: ['CMD-SHELL', 'pg_isready -U nashrino -d nashrino']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -130,10 +148,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
-    volumes: ["redis_data:/data"]
+    ports: ['6379:6379']
+    volumes: ['redis_data:/data']
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5

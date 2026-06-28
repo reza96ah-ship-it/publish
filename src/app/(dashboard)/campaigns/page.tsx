@@ -1,5 +1,5 @@
-import { CampaignsView } from "@/components/views/campaigns-view";
+import { CampaignsView } from '@/components/views/campaigns-view'
 
 export default function CampaignsPage() {
-  return <CampaignsView />;
+  return <CampaignsView />
 }

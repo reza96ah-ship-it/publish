@@ -27,7 +27,11 @@ export const CHANNEL_RETRY_POLICIES: Record<string, RetryPolicy> = {
   eitaa: { ...DEFAULT_RETRY_POLICY, maxAttempts: 5 },
 }
 
-export function computeBackoff(attempt: number, policy: RetryPolicy, retryAfterMs?: number): number {
+export function computeBackoff(
+  attempt: number,
+  policy: RetryPolicy,
+  retryAfterMs?: number
+): number {
   // P6.3: honor platform-provided retryAfter (e.g. Telegram's retry_after)
   if (typeof retryAfterMs === 'number' && retryAfterMs > 0) {
     const capped = Math.min(retryAfterMs, policy.capMs)

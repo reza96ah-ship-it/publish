@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 /**
  * JalaliDatePicker — Persian-first date picker popover.
@@ -22,23 +22,14 @@
  *   <JalaliDatePicker value={date} onChange={setDate} showTime />
  */
 
-import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import {
-  Calendar as CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  X,
-} from "lucide-react"
+import * as React from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Input } from '@/components/ui/input'
 import {
   JALALI_MONTHS,
   JALALI_WEEKDAYS_SHORT,
@@ -50,7 +41,7 @@ import {
   toPersianDigits,
   getJalaliMonthGrid,
   type JalaliDate,
-} from "@/lib/jalali"
+} from '@/lib/jalali'
 
 interface JalaliDatePickerProps {
   value?: Date | null
@@ -66,9 +57,9 @@ interface JalaliDatePickerProps {
   /** Max selectable date */
   maxDate?: Date
   /** Trigger button size */
-  size?: "sm" | "md"
+  size?: 'sm' | 'md'
   /** Trigger button variant */
-  variant?: "outline" | "ghost" | "soft"
+  variant?: 'outline' | 'ghost' | 'soft'
   className?: string
   /** Optional id for the underlying trigger */
   id?: string
@@ -82,12 +73,12 @@ export function JalaliDatePicker({
   value,
   onChange,
   showTime = false,
-  placeholder = "انتخاب تاریخ",
+  placeholder = 'انتخاب تاریخ',
   disablePast = false,
   minDate,
   maxDate,
-  size = "md",
-  variant = "outline",
+  size = 'md',
+  variant = 'outline',
   className,
   id,
   disabled,
@@ -108,10 +99,10 @@ export function JalaliDatePicker({
 
   // Time state (only used when showTime is true)
   const [timeStr, setTimeStr] = React.useState<string>(() => {
-    if (!value) return "12:00"
+    if (!value) return '12:00'
     const h = value.getHours()
     const m = value.getMinutes()
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   })
 
   // When opening, sync cursor to value
@@ -122,10 +113,7 @@ export function JalaliDatePicker({
     }
   }, [open, value])
 
-  const cells = React.useMemo(
-    () => getJalaliMonthGrid(cursor.year, cursor.month),
-    [cursor]
-  )
+  const cells = React.useMemo(() => getJalaliMonthGrid(cursor.year, cursor.month), [cursor])
 
   const selectedJ: JalaliDate | null = React.useMemo(
     () => (value ? toJalali(value) : null),
@@ -157,7 +145,7 @@ export function JalaliDatePicker({
         0
       )
     } else if (showTime) {
-      const [h, m] = timeStr.split(":").map(Number)
+      const [h, m] = timeStr.split(':').map(Number)
       newDate = new Date(
         newDate.getFullYear(),
         newDate.getMonth(),
@@ -175,7 +163,7 @@ export function JalaliDatePicker({
   const handleTimeChange = (newTime: string) => {
     setTimeStr(newTime)
     if (value) {
-      const [h, m] = newTime.split(":").map(Number)
+      const [h, m] = newTime.split(':').map(Number)
       const newDate = new Date(value)
       newDate.setHours(h || 12, m || 0, 0, 0)
       onChange?.(newDate)
@@ -184,16 +172,12 @@ export function JalaliDatePicker({
 
   const goPrev = () => {
     setCursor((c) =>
-      c.month === 1
-        ? { year: c.year - 1, month: 12 }
-        : { year: c.year, month: c.month - 1 }
+      c.month === 1 ? { year: c.year - 1, month: 12 } : { year: c.year, month: c.month - 1 }
     )
   }
   const goNext = () => {
     setCursor((c) =>
-      c.month === 12
-        ? { year: c.year + 1, month: 1 }
-        : { year: c.year, month: c.month + 1 }
+      c.month === 12 ? { year: c.year + 1, month: 1 } : { year: c.year, month: c.month + 1 }
     )
   }
   const goToday = () => {
@@ -213,13 +197,13 @@ export function JalaliDatePicker({
       : formatJalali(value, true)
     : placeholder
 
-  const sizeClass = size === "sm" ? "h-8 text-[11px] px-2.5" : "h-9 text-[12px] px-3"
+  const sizeClass = size === 'sm' ? 'h-8 text-[11px] px-2.5' : 'h-9 text-[12px] px-3'
   const variantClass =
-    variant === "ghost"
-      ? "border-transparent bg-transparent hover:bg-surface-hover"
-      : variant === "soft"
-        ? "border-border bg-surface-subtle hover:bg-surface-hover"
-        : "border-input bg-background hover:bg-surface-hover"
+    variant === 'ghost'
+      ? 'border-transparent bg-transparent hover:bg-surface-hover'
+      : variant === 'soft'
+        ? 'border-border bg-surface-subtle hover:bg-surface-hover'
+        : 'border-input bg-background hover:bg-surface-hover'
 
   const calendarContent = (
     <CalendarGrid
@@ -244,7 +228,10 @@ export function JalaliDatePicker({
   // Inline mode: render the calendar grid directly (for use inside Sheets/Dialogs)
   if (inline) {
     return (
-      <div className={cn("bg-popover border border-border rounded-2xl overflow-hidden", className)} dir="rtl">
+      <div
+        className={cn('bg-popover border border-border rounded-2xl overflow-hidden', className)}
+        dir="rtl"
+      >
         {calendarContent}
       </div>
     )
@@ -261,8 +248,8 @@ export function JalaliDatePicker({
           disabled={disabled}
           data-empty={!value}
           className={cn(
-            "n-focus-ring justify-start text-right font-[500] gap-2 w-full",
-            "data-[empty=true]:text-ink-tertiary",
+            'n-focus-ring justify-start text-right font-[500] gap-2 w-full',
+            'data-[empty=true]:text-ink-tertiary',
             sizeClass,
             variantClass,
             className
@@ -371,8 +358,8 @@ function CalendarGrid({
           <div
             key={d}
             className={cn(
-              "text-center text-[10px] font-[600] py-1",
-              i >= 5 ? "text-amber-600 dark:text-amber-400" : "text-ink-tertiary"
+              'text-center text-[10px] font-[600] py-1',
+              i >= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-tertiary'
             )}
           >
             {d}
@@ -403,16 +390,16 @@ function CalendarGrid({
               aria-label={`${j.day} ${JALALI_MONTHS[j.month - 1]} ${toPersianDigits(j.year)}`}
               aria-pressed={!!isSelected}
               className={cn(
-                "n-focus-ring relative aspect-square rounded-lg text-[12px] font-[600] transition-all",
-                "flex items-center justify-center",
-                !cell.inMonth && "opacity-30",
-                disabledDay && "opacity-30 cursor-not-allowed",
-                !disabledDay && !isSelected && "hover:bg-surface-hover",
-                weekend && !isSelected && !holiday && "text-amber-700 dark:text-amber-300",
-                holiday && !isSelected && "text-rose-600 dark:text-rose-400",
-                isToday && !isSelected && "bg-accent-soft text-accent",
+                'n-focus-ring relative aspect-square rounded-lg text-[12px] font-[600] transition-all',
+                'flex items-center justify-center',
+                !cell.inMonth && 'opacity-30',
+                disabledDay && 'opacity-30 cursor-not-allowed',
+                !disabledDay && !isSelected && 'hover:bg-surface-hover',
+                weekend && !isSelected && !holiday && 'text-amber-700 dark:text-amber-300',
+                holiday && !isSelected && 'text-rose-600 dark:text-rose-400',
+                isToday && !isSelected && 'bg-accent-soft text-accent',
                 isSelected &&
-                  "bg-primary text-primary-foreground shadow-sm scale-105 hover:bg-primary"
+                  'bg-primary text-primary-foreground shadow-sm scale-105 hover:bg-primary'
               )}
             >
               {toPersianDigits(j.day)}
@@ -463,17 +450,11 @@ function CalendarGrid({
           </Button>
         )}
         {showTime && onClose && (
-          <Button
-            type="button"
-            size="sm"
-            onClick={onClose}
-            className="h-7 text-[11px] ms-auto"
-          >
+          <Button type="button" size="sm" onClick={onClose} className="h-7 text-[11px] ms-auto">
             تأیید
           </Button>
         )}
       </div>
     </>
   )
-
 }

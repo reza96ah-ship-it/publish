@@ -1,32 +1,32 @@
-"use client";
+'use client'
 
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import { toPersianDigits } from "@/lib/jalali";
-import { Flag, MoreHorizontal, ArrowLeft } from "lucide-react";
-import { useAppStore } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { PanelHeader, LinkAction, EmptyState } from "./shared";
+import { useQuery } from '@tanstack/react-query'
+import { api } from '@/lib/api'
+import { toPersianDigits } from '@/lib/jalali'
+import { Flag, MoreHorizontal, ArrowLeft } from 'lucide-react'
+import { useAppStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
+import { PanelHeader, LinkAction, EmptyState } from './shared'
 
 interface Campaign {
-  id: string;
-  name: string;
-  healthLabel: string;
-  healthColor: string;
-  owner: string | null;
-  daysRemaining: string;
-  pubProgress: number;
-  goalCompletion: string;
-  topBlocker: string | null;
+  id: string
+  name: string
+  healthLabel: string
+  healthColor: string
+  owner: string | null
+  daysRemaining: string
+  pubProgress: number
+  goalCompletion: string
+  topBlocker: string | null
 }
 
 export function CampaignsPanel() {
   const { data } = useQuery<Campaign[]>({
-    queryKey: ["campaigns"],
-    queryFn: () => api.get<Campaign[]>("/api/campaigns"),
-  });
-  const router = useRouter();
-  const navigateTo = (path: string) => router.push(path);
+    queryKey: ['campaigns'],
+    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+  })
+  const router = useRouter()
+  const navigateTo = (path: string) => router.push(path)
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -34,7 +34,7 @@ export function CampaignsPanel() {
         icon={Flag}
         title="کمپین‌ها"
         subtitle="سلامت و پیشرفت"
-        action={<LinkAction onClick={() => navigateTo("/campaigns")}>همه کمپین‌ها ←</LinkAction>}
+        action={<LinkAction onClick={() => navigateTo('/campaigns')}>همه کمپین‌ها ←</LinkAction>}
       />
 
       <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-2">
@@ -42,8 +42,12 @@ export function CampaignsPanel() {
           <div key={c.id} className="n-card-compact p-3">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
-                <p className="text-[12.5px] font-[600] text-ink-primary truncate leading-snug">{c.name}</p>
-                <p className="text-[10.5px] text-ink-tertiary mt-0.5 leading-tight">مسئول: {c.owner ?? "—"}</p>
+                <p className="text-[12.5px] font-[600] text-ink-primary truncate leading-snug">
+                  {c.name}
+                </p>
+                <p className="text-[10.5px] text-ink-tertiary mt-0.5 leading-tight">
+                  مسئول: {c.owner ?? '—'}
+                </p>
               </div>
               <button className="text-ink-tertiary hover:text-ink-primary shrink-0 transition-colors p-0.5 rounded-md hover:bg-surface-hover">
                 <MoreHorizontal className="size-4" strokeWidth={2} />
@@ -51,7 +55,9 @@ export function CampaignsPanel() {
             </div>
 
             <div className="flex items-center gap-2 mb-2.5">
-              <span className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${c.healthColor}`}>
+              <span
+                className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${c.healthColor}`}
+              >
                 {c.healthLabel}
               </span>
             </div>
@@ -59,16 +65,20 @@ export function CampaignsPanel() {
             <div className="flex items-center gap-2 mb-1.5">
               <div className="flex-1 h-1 rounded-full bg-border overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${c.pubProgress >= 70 ? "bg-success" : c.pubProgress >= 40 ? "bg-warning" : "bg-danger"}`}
+                  className={`h-full rounded-full transition-all duration-300 ${c.pubProgress >= 70 ? 'bg-success' : c.pubProgress >= 40 ? 'bg-warning' : 'bg-danger'}`}
                   style={{ width: `${c.pubProgress}%` }}
                 />
               </div>
-              <span className="text-[10px] font-[600] text-ink-secondary num-tabular">{toPersianDigits(c.pubProgress)}٪</span>
+              <span className="text-[10px] font-[600] text-ink-secondary num-tabular">
+                {toPersianDigits(c.pubProgress)}٪
+              </span>
             </div>
 
             <div className="flex items-center justify-between text-[10px] text-ink-tertiary">
               <span>{c.goalCompletion}</span>
-              <span className={c.daysRemaining.includes("پایان") ? "text-danger font-[600]" : ""}>{c.daysRemaining}</span>
+              <span className={c.daysRemaining.includes('پایان') ? 'text-danger font-[600]' : ''}>
+                {c.daysRemaining}
+              </span>
             </div>
 
             {c.topBlocker && (
@@ -80,9 +90,13 @@ export function CampaignsPanel() {
           </div>
         ))}
         {(!data || data.length === 0) && (
-          <EmptyState icon={Flag} title="هیچ کمپینی وجود ندارد" message="کمپین‌های فعال اینجا نمایش داده می‌شوند." />
+          <EmptyState
+            icon={Flag}
+            title="هیچ کمپینی وجود ندارد"
+            message="کمپین‌های فعال اینجا نمایش داده می‌شوند."
+          />
         )}
       </div>
     </div>
-  );
+  )
 }

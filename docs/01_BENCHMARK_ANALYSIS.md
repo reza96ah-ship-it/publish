@@ -4,7 +4,7 @@
 > identify what Nashrino must match, and define the defensible gaps Nashrino will exploit.
 > All pricing verified via vendor pricing pages and third-party audits (Zapier, G2,
 > Capterra) in late 2025 / early 2026. Where a number could not be confirmed, it is
-> marked *approx.*
+> marked _approx._
 
 ---
 
@@ -21,20 +21,20 @@
 
 ## 1. Executive snapshot — comparison matrix
 
-| Platform | Entry price (USD/mo) | Free tier | Channels (key) | Best for | Persian/RTL |
-|----------|---------------------|-----------|----------------|----------|-------------|
-| **Buffer** | $6 / channel (Essentials) | Yes (3 ch, 10 queued) | IG, FB, X, LinkedIn, Pinterest, TikTok, Mastodon, YouTube, Threads, Bluesky | Solo creators & small teams; simplest scheduling | ❌ |
-| **Hootsuite** | $99 / user (Professional) | No (30-day trial) | IG, FB, X, LinkedIn, TikTok, Pinterest, YouTube | Agencies & enterprises needing streams + reporting | ⚠️ partial locale, broken RTL |
-| **Sprout Social** | ~$249 / user (Standard) | No (30-day trial) | IG, FB, X, LinkedIn, TikTok, Pinterest, YouTube, WhatsApp, Google Business | Enterprises; best-in-class inbox & reporting | ❌ |
-| **Later** (Meltwater) | $25 / user (Starter) | Yes (1 seat, 1 set) | IG, FB, X, LinkedIn, Pinterest, TikTok | Visual planning, Instagram-first brands | ❌ |
-| **Loomly** | $42 / 2 users (Base) | No (15-day trial) | IG, FB, X, LinkedIn, Pinterest, Google, TikTok, YouTube, Reddit | SMB teams wanting approval workflows + content ideas | ❌ |
-| **Publer** | $12 / 3 socials (Premium) | Yes (3 socials, limited) | IG, FB, X, LinkedIn, Pinterest, TikTok, YouTube, Google Business, Telegram, WordPress | Budget-conscious SMBs & agencies; strong bulk scheduling | ❌ (offers Telegram publishing) |
-| **ContentStudio** | $19 / 5 socials (Standard) | No (14-day trial) | IG, FB, X, LinkedIn, Pinterest, Google Business, YouTube | Content discovery + AI + scheduling for agencies | ❌ |
-| **SocialPilot** | $30 / 3 users (Pro) | No (14-day trial) | IG, FB, X, LinkedIn, Pinterest, TikTok, Google Business, Tumblr | Agencies; low cost per account, white-label | ❌ |
-| **Metricool** | $20–22 / brand (Starter) | Yes (1 brand, 50 posts/mo) | IG, FB, X, LinkedIn, Pinterest, TikTok, YouTube, Threads, Bluesky, Google Business | Solo marketers; strong free tier + analytics | ❌ |
-| **Sendible** | $29 / 1 user (Creator) | No (14-day trial) | IG, FB, X, LinkedIn, Pinterest, YouTube | Agencies & creators; strong inbox + content suggestions | ❌ |
-| **Planable** | $13 / user (Basic) | Yes (limited) | IG, FB, X, LinkedIn, TikTok, Google Business, YouTube | Teams that need live preview & multi-level approvals | ❌ |
-| **Meta Business Suite** | Free | N/A | IG, FB | Solopreneurs on Meta only; baseline free tool | ⚠️ partial |
+| Platform                | Entry price (USD/mo)       | Free tier                  | Channels (key)                                                                        | Best for                                                 | Persian/RTL                     |
+| ----------------------- | -------------------------- | -------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------- |
+| **Buffer**              | $6 / channel (Essentials)  | Yes (3 ch, 10 queued)      | IG, FB, X, LinkedIn, Pinterest, TikTok, Mastodon, YouTube, Threads, Bluesky           | Solo creators & small teams; simplest scheduling         | ❌                              |
+| **Hootsuite**           | $99 / user (Professional)  | No (30-day trial)          | IG, FB, X, LinkedIn, TikTok, Pinterest, YouTube                                       | Agencies & enterprises needing streams + reporting       | ⚠️ partial locale, broken RTL   |
+| **Sprout Social**       | ~$249 / user (Standard)    | No (30-day trial)          | IG, FB, X, LinkedIn, TikTok, Pinterest, YouTube, WhatsApp, Google Business            | Enterprises; best-in-class inbox & reporting             | ❌                              |
+| **Later** (Meltwater)   | $25 / user (Starter)       | Yes (1 seat, 1 set)        | IG, FB, X, LinkedIn, Pinterest, TikTok                                                | Visual planning, Instagram-first brands                  | ❌                              |
+| **Loomly**              | $42 / 2 users (Base)       | No (15-day trial)          | IG, FB, X, LinkedIn, Pinterest, Google, TikTok, YouTube, Reddit                       | SMB teams wanting approval workflows + content ideas     | ❌                              |
+| **Publer**              | $12 / 3 socials (Premium)  | Yes (3 socials, limited)   | IG, FB, X, LinkedIn, Pinterest, TikTok, YouTube, Google Business, Telegram, WordPress | Budget-conscious SMBs & agencies; strong bulk scheduling | ❌ (offers Telegram publishing) |
+| **ContentStudio**       | $19 / 5 socials (Standard) | No (14-day trial)          | IG, FB, X, LinkedIn, Pinterest, Google Business, YouTube                              | Content discovery + AI + scheduling for agencies         | ❌                              |
+| **SocialPilot**         | $30 / 3 users (Pro)        | No (14-day trial)          | IG, FB, X, LinkedIn, Pinterest, TikTok, Google Business, Tumblr                       | Agencies; low cost per account, white-label              | ❌                              |
+| **Metricool**           | $20–22 / brand (Starter)   | Yes (1 brand, 50 posts/mo) | IG, FB, X, LinkedIn, Pinterest, TikTok, YouTube, Threads, Bluesky, Google Business    | Solo marketers; strong free tier + analytics             | ❌                              |
+| **Sendible**            | $29 / 1 user (Creator)     | No (14-day trial)          | IG, FB, X, LinkedIn, Pinterest, YouTube                                               | Agencies & creators; strong inbox + content suggestions  | ❌                              |
+| **Planable**            | $13 / user (Basic)         | Yes (limited)              | IG, FB, X, LinkedIn, TikTok, Google Business, YouTube                                 | Teams that need live preview & multi-level approvals     | ❌                              |
+| **Meta Business Suite** | Free                       | N/A                        | IG, FB                                                                                | Solopreneurs on Meta only; baseline free tool            | ⚠️ partial                      |
 
 **Headline insight**: The category is mature on scheduling, analytics, and team
 collaboration. It is **universally weak** on RTL/Persian/Jalali, **universally absent**
@@ -74,7 +74,7 @@ on Rubika/Eitaa, and **fragmented** on Telegram. This is Nashrino's opening.
   Enterprise custom.
 - **Channels**: IG, FB, X, LinkedIn, TikTok, Pinterest, YouTube, Threads.
 - **Core features**: **Streams** (the signature multi-column live monitor for mentions,
-  messages, scheduled), composer with bulk scheduling (CSV), OW.ly link shortener + 
+  messages, scheduled), composer with bulk scheduling (CSV), OW.ly link shortener +
   analytics, post-approval workflows, social listening (basic), robust analytics &
   exportable reports, team roles, Hootsuite Inbox (unified messaging).
 - **Differentiators**: Streams paradigm; breadth of integrations; brand-certified
@@ -250,6 +250,7 @@ on Rubika/Eitaa, and **fragmented** on Telegram. This is Nashrino's opening.
 ## 3. Tier-2 feature-angle notes
 
 ### 3.1 Agorapulse — the inbox angle
+
 - Premium unified inbox with **automated inbox assistant** (saved replies, routing
   rules, auto-tagging), social listening, ROI tracking (UTM), publishing, robust
   analytics. ~$49–$79/user/mo entry.
@@ -258,6 +259,7 @@ on Rubika/Eitaa, and **fragmented** on Telegram. This is Nashrino's opening.
   is the model.
 
 ### 3.2 Brandwatch — the listening angle
+
 - Enterprise social listening (mention tracking, sentiment, share-of-voice, crisis
   detection). Now part of Cision. Premium pricing.
 - **Takeaway**: Listening is a **Phase 4+** feature for Nashrino (mentions + keyword
@@ -265,6 +267,7 @@ on Rubika/Eitaa, and **fragmented** on Telegram. This is Nashrino's opening.
   store) so listening can be layered on.
 
 ### 3.3 Canva / CapCut — the content-creation angle
+
 - Canva (templates, brand kit, AI image) and CapCut (video editing, captions) are the
   de-facto content-creation stack. Mature social tools increasingly embed Canva.
 - **Takeaway**: Nashrino's media editor should be **Persian-first** (Vazirmatn text,
@@ -273,6 +276,7 @@ on Rubika/Eitaa, and **fragmented** on Telegram. This is Nashrino's opening.
   Persian typography and the exact aspect ratios IG/Rubika/Telegram demand.
 
 ### 3.4 ManyChat — the Instagram DM-automation angle
+
 - The market leader for Instagram comment-to-DM and DM-funnel automation. Flow-builder,
   triggers, conditions, 24h-window handling. ~$15–$300+/mo based on contacts.
 - **Takeaway**: Nashrino's automation engine should offer a **simpler, rule-based**
@@ -307,7 +311,7 @@ Nashrino must adopt:
 - **Dead-letter queue (DLQ).** Jobs that exhaust retries go to a DLQ for manual
   inspection and one-click "retry" or "discard" from the UI.
 - **Durable state machine.** Each publish job has an explicit state (`pending →
-  processing → live → success | failed | action`) persisted before the API call, so a
+processing → live → success | failed | action`) persisted before the API call, so a
   worker crash mid-publish resumes correctly.
 - **Publish-attempt audit log.** Every attempt records request payload, response
   payload, error, started_at, finished_at — the `publish_attempts` table in Nashrino's
@@ -352,8 +356,7 @@ Verified against Meta for Developers docs (2025–2026):
 - **Message Tags**: `HUMAN_AGENT` tag extends the window to **7 days** for legitimate
   customer support follow-up (requires the tag, content must be a response to a user
   question). `CONFIRMED_EVENT_UPDATE`, `ACCOUNT_UPDATE`, etc. exist but are restricted.
-- **Meta deprecation note**: Message Tags are being deprecated on **Messenger** (Feb 9,
-  2026) but **remain available on Instagram Messaging** as of writing. Nashrino must
+- **Meta deprecation note**: Message Tags are being deprecated on **Messenger** (Feb 9, 2026) but **remain available on Instagram Messaging** as of writing. Nashrino must
   monitor this and not over-rely on tags.
 - **One-Time Notification, Sponsored Messaging, News Messaging**: not available on
   Instagram Messaging.
@@ -361,7 +364,7 @@ Verified against Meta for Developers docs (2025–2026):
   regulation and Meta policy.
 - **Comment-to-DM flow**: The app subscribes to webhook `comments` events; when a
   comment matches a trigger rule, it sends a DM via the Messaging API (`POST
-  /{ig-user-id}/messages`). The first DM must be sent within the 24h window opened by
+/{ig-user-id}/messages`). The first DM must be sent within the 24h window opened by
   the comment.
 - **Nashrino policy**: Default to 24h-window-only automation for promotions. Use
   `HUMAN_AGENT` only for genuine support replies. Never send unsolicited DMs. Log every
@@ -389,27 +392,32 @@ From Planable, Sprout, Loomly:
 The metrics mature tools standardize on (Nashrino will adopt this taxonomy):
 
 **Reach & impressions**
+
 - Reach (unique accounts that saw the content)
 - Impressions (total views, including repeats)
 - Frequency (impressions / reach)
 
 **Engagement**
+
 - Engagement rate = (likes + comments + shares + saves) / reach (or / impressions)
 - Total interactions, by type (like, comment, share, save, click)
 - Avg. interactions per post
 
 **Audience**
+
 - Follower count & net growth (gains − losses)
 - Audience demographics (where available: age, gender, geo, active hours)
 - Best time to post (per channel, derived from follower active-hours + historical
   engagement)
 
 **Conversion**
+
 - Link clicks (UTM-tagged)
 - Conversion rate (clicks / reach) — requires UTM + analytics integration
 - Revenue attribution (Phase 4+; requires e-commerce integration)
 
 **Operational**
+
 - Publishing volume (posts per channel per period)
 - Publish success rate
 - Scheduled-vs-actual publish time variance
@@ -417,6 +425,7 @@ The metrics mature tools standardize on (Nashrino will adopt this taxonomy):
 - Comment-to-DM fulfillment rate
 
 **Comparative (Phase 4+)**
+
 - Share of voice (mentions vs competitors)
 - Sentiment (positive/neutral/negative)
 - Competitor benchmarking
@@ -472,37 +481,37 @@ From Later, Loomly, Buffer:
 To be considered world-class in 2026, a social ops platform must have all 18. Nashrino's
 phase plan delivers these incrementally (mapping in [04_Roadmap](./04_ROADMAP.md)).
 
-| # | Capability | Category | World-class reference |
-|---|------------|----------|----------------------|
-| 1 | Multi-channel composer with per-channel adaptation & live preview | Compose | Loomly, Planable |
-| 2 | Visual calendar (month/week/day) with drag-to-reschedule | Plan | Later, Loomly |
-| 3 | Queue-based scheduling with best-time suggestions | Plan | Buffer, Metricool |
-| 4 | Resilient publish worker: idempotent, retry w/ backoff, circuit breaker, DLQ | Publish | Sprout (internal) |
-| 5 | Failed-post detection + one-tap resend from Compose | Publish | Sprout |
-| 6 | Media library with folders, tags, search, reuse | Content | All |
-| 7 | Image/video editor with text overlay, crops per aspect ratio | Content | Later, Canva-embed |
-| 8 | Content library with status lifecycle & versioning | Content | Loomly |
-| 9 | Campaign management with portfolio health & blockers | Plan | Sprout (campaigns) |
-| 10 | Unified inbox (comments + DMs + mentions) with routing & SLA | Engage | Sprout Smart Inbox |
-| 11 | Saved replies / snippets + auto-tagging | Engage | Agorapulse |
-| 12 | Approval workflows (multi-level, in-context comments) | Collaborate | Planable |
-| 13 | Roles & permissions (Admin/Editor/Approver/Viewer) | Collaborate | All |
-| 14 | Analytics: reach, engagement, audience, conversions, exportable reports | Analyze | Sprout, Metricool |
-| 15 | AI assistant: caption gen, hashtags, best-time, ideas (Persian-first) | Intelligence | Buffer, Metricool |
-| 16 | Instagram comment-to-DM automation (compliant) | Automate | ManyChat |
-| 17 | Mobile-responsive (or native mobile app) for on-the-go | Access | Buffer, Sprout |
-| 18 | Brand kit & workspace governance (colors, voice, guidelines) | Govern | Loomly, Canva |
+| #   | Capability                                                                   | Category     | World-class reference |
+| --- | ---------------------------------------------------------------------------- | ------------ | --------------------- |
+| 1   | Multi-channel composer with per-channel adaptation & live preview            | Compose      | Loomly, Planable      |
+| 2   | Visual calendar (month/week/day) with drag-to-reschedule                     | Plan         | Later, Loomly         |
+| 3   | Queue-based scheduling with best-time suggestions                            | Plan         | Buffer, Metricool     |
+| 4   | Resilient publish worker: idempotent, retry w/ backoff, circuit breaker, DLQ | Publish      | Sprout (internal)     |
+| 5   | Failed-post detection + one-tap resend from Compose                          | Publish      | Sprout                |
+| 6   | Media library with folders, tags, search, reuse                              | Content      | All                   |
+| 7   | Image/video editor with text overlay, crops per aspect ratio                 | Content      | Later, Canva-embed    |
+| 8   | Content library with status lifecycle & versioning                           | Content      | Loomly                |
+| 9   | Campaign management with portfolio health & blockers                         | Plan         | Sprout (campaigns)    |
+| 10  | Unified inbox (comments + DMs + mentions) with routing & SLA                 | Engage       | Sprout Smart Inbox    |
+| 11  | Saved replies / snippets + auto-tagging                                      | Engage       | Agorapulse            |
+| 12  | Approval workflows (multi-level, in-context comments)                        | Collaborate  | Planable              |
+| 13  | Roles & permissions (Admin/Editor/Approver/Viewer)                           | Collaborate  | All                   |
+| 14  | Analytics: reach, engagement, audience, conversions, exportable reports      | Analyze      | Sprout, Metricool     |
+| 15  | AI assistant: caption gen, hashtags, best-time, ideas (Persian-first)        | Intelligence | Buffer, Metricool     |
+| 16  | Instagram comment-to-DM automation (compliant)                               | Automate     | ManyChat              |
+| 17  | Mobile-responsive (or native mobile app) for on-the-go                       | Access       | Buffer, Sprout        |
+| 18  | Brand kit & workspace governance (colors, voice, guidelines)                 | Govern       | Loomly, Canva         |
 
 **Nashrino's additional must-haves (the moat):**
 
-| # | Capability | Why it's the moat |
-|---|------------|-------------------|
-| 19 | RTL-native, Persian-first UI | Zero competitors do this correctly |
-| 20 | Jalali calendar with Iranian holidays & Sat–Wed work week | Zero competitors |
-| 21 | Rubika + Eitaa native publishing | Zero competitors |
-| 22 | Telegram-native scheduling tuned for channels | Only Publer (weakly) |
-| 23 | Persian-tuned AI (caption, hashtags, comment keywords) | Generic English AI fails at Persian |
-| 24 | IRR pricing + local payment gateways | USD pricing excludes the market |
+| #   | Capability                                                | Why it's the moat                   |
+| --- | --------------------------------------------------------- | ----------------------------------- |
+| 19  | RTL-native, Persian-first UI                              | Zero competitors do this correctly  |
+| 20  | Jalali calendar with Iranian holidays & Sat–Wed work week | Zero competitors                    |
+| 21  | Rubika + Eitaa native publishing                          | Zero competitors                    |
+| 22  | Telegram-native scheduling tuned for channels             | Only Publer (weakly)                |
+| 23  | Persian-tuned AI (caption, hashtags, comment keywords)    | Generic English AI fails at Persian |
+| 24  | IRR pricing + local payment gateways                      | USD pricing excludes the market     |
 
 ---
 
@@ -512,23 +521,27 @@ Synthesizing the benchmark, Nashrino's defensible position rests on **five gaps*
 incumbent closes:
 
 ### Gap 1 — RTL-native, Persian-first UX (zero competitors)
+
 No Tier-1 platform ships a correct RTL layout or Persian-first experience. Nashrino is
 built RTL from the root (`<html dir="rtl" lang="fa">`), Vazirmatn-native, with a
 bidirectional composer. This alone makes Nashrino usable for a Persian team in a way
 no incumbent is.
 
 ### Gap 2 — Jalali calendar (zero competitors)
+
 Every competitor assumes Gregorian. Nashrino's calendar renders Jalali months,
 Persian weekdays, Iranian holidays, and the Saturday–Wednesday work week. Planning
 around Nowruz, Yalda, and Ramadan becomes first-class.
 
 ### Gap 3 — Rubika + Eitaa native integration (zero competitors)
+
 Rubika (~40M users) and Eitaa (~30M) are dominant Iranian platforms with Bot APIs and
 **zero** third-party management tool support. Nashrino's Rubika adapter (Bot API v3)
 and Eitaa adapter (Phase 3) are a genuine category first. Combined with Instagram and
 Telegram, Nashrino covers the **actual** Iranian social stack.
 
 ### Gap 4 — Persian-tuned AI + comment-to-DM for local commerce
+
 Generic English AI produces stilted Persian and poor hashtag relevance. ManyChat
 exists for comment-to-DM but is English-first, foreign, and fragile under Iranian
 network conditions. Nashrino's Persian-tuned AI caption assistant and compliant
@@ -536,6 +549,7 @@ comment-to-DM engine (with Persian digit normalization, keyword matching tuned f
 commerce patterns like "کد", "قیمت", "لینک") serve the Persian seller directly.
 
 ### Gap 5 — Price & payment reality (IRR, local gateways)
+
 Hootsuite ($99/user/mo) and Sprout ($249/user/mo) are priced for Western enterprise
 budgets and billed in USD — inaccessible to Iranian SMBs. Nashrino prices in IRR,
 bills via local gateways (Zarinpal, etc.), and targets 10–20× cheaper for the same
@@ -543,6 +557,7 @@ capability set, making professional social ops affordable for the segment that n
 it most.
 
 ### The combined moat
+
 Any single gap could be closed by a determined incumbent. The **combination** —
 RTL + Jalali + Rubika/Eitaa + Persian AI + IRR pricing — requires a ground-up
 Persian-first rebuild that no Western incumbent will undertake for a market they

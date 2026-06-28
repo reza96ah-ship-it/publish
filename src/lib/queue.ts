@@ -37,24 +37,26 @@ export const publishQueue = new Queue('publish-jobs', {
  * Supports delayed scheduling via the `delay` option.
  */
 export async function enqueuePublishJob(opts: {
-  jobId: string         // PublishJob.id (DB record)
+  jobId: string // PublishJob.id (DB record)
   idempotencyKey: string // Used as BullMQ jobId for dedup
   contentId: string
   platformId: string
   workspaceId: string
-  scheduledAt?: Date | null  // If set, delay the job until this time
+  scheduledAt?: Date | null // If set, delay the job until this time
 }): Promise<void> {
-  const delay = opts.scheduledAt
-    ? Math.max(0, opts.scheduledAt.getTime() - Date.now())
-    : 0
+  const delay = opts.scheduledAt ? Math.max(0, opts.scheduledAt.getTime() - Date.now()) : 0
 
-  await publishQueue.add('publish', {
-    jobId: opts.jobId,
-    contentId: opts.contentId,
-    platformId: opts.platformId,
-    workspaceId: opts.workspaceId,
-  }, {
-    jobId: opts.idempotencyKey,  // BullMQ dedup — same key = same job
-    delay: delay > 0 ? delay : undefined,
-  })
+  await publishQueue.add(
+    'publish',
+    {
+      jobId: opts.jobId,
+      contentId: opts.contentId,
+      platformId: opts.platformId,
+      workspaceId: opts.workspaceId,
+    },
+    {
+      jobId: opts.idempotencyKey, // BullMQ dedup — same key = same job
+      delay: delay > 0 ? delay : undefined,
+    }
+  )
 }

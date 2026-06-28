@@ -59,13 +59,13 @@ for this environment. It is a multi-tenant web application that lets a team:
 
 ## 3. Target customers
 
-| Segment | Profile | Primary need | Willingness to pay |
-|---------|---------|--------------|--------------------|
-| **SMB online shops** | Instagram + Rubika sellers, 1–3 person teams | Schedule, comment-to-DM, basic analytics | Low–medium (IRR pricing essential) |
-| **Content creators & course sellers** | 1-person brands on IG + Telegram | Plan, repurpose, engage audience | Low |
-| **Agencies** | 3–15 person teams managing 10–50 client accounts | Multi-brand workspaces, approvals, reporting | Medium–high |
-| **Enterprise / brands** | 15+ person marketing teams | Governance, analytics, SSO, audit | High |
-| **News & media** | Newsrooms publishing to Telegram/Rubika/IG | High-volume scheduling, queue health | Medium–high |
+| Segment                               | Profile                                          | Primary need                                 | Willingness to pay                 |
+| ------------------------------------- | ------------------------------------------------ | -------------------------------------------- | ---------------------------------- |
+| **SMB online shops**                  | Instagram + Rubika sellers, 1–3 person teams     | Schedule, comment-to-DM, basic analytics     | Low–medium (IRR pricing essential) |
+| **Content creators & course sellers** | 1-person brands on IG + Telegram                 | Plan, repurpose, engage audience             | Low                                |
+| **Agencies**                          | 3–15 person teams managing 10–50 client accounts | Multi-brand workspaces, approvals, reporting | Medium–high                        |
+| **Enterprise / brands**               | 15+ person marketing teams                       | Governance, analytics, SSO, audit            | High                               |
+| **News & media**                      | Newsrooms publishing to Telegram/Rubika/IG       | High-volume scheduling, queue health         | Medium–high                        |
 
 **Primary beachhead**: Iranian SMB online shops and small agencies (segments 1 & 3).
 
@@ -97,18 +97,19 @@ The platform is organized around **10 primary navigational areas** (see
 
 ### 4.1 Channels supported (launch + roadmap)
 
-| Channel | Launch | API | Publishing mode |
-|---------|--------|-----|-----------------|
-| **Instagram** | ✅ Phase 1 | Graph API v25+ | Professional accounts: full API publishing (photo, carousel, Reels, Stories). Personal accounts: reminder/manual mode. |
-| **Rubika** | ✅ Phase 1 | Bot API v3 (`botapi.rubika.ir/v3`) | Bot publishing to channels/chats. |
-| **Telegram** | ✅ Phase 2 | Bot API | Bot publishing to channels. |
-| **LinkedIn** | ✅ Phase 2 | Marketing API / Share API | Text + image + article shares. |
-| **Eitaa** | 🔜 Phase 3 | Bot API | Bot publishing. |
-| **Twitter/X, Threads, YouTube Shorts** | 🔜 Phase 4+ | Native APIs | As market demands. |
+| Channel                                | Launch      | API                                | Publishing mode                                                                                                        |
+| -------------------------------------- | ----------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Instagram**                          | ✅ Phase 1  | Graph API v25+                     | Professional accounts: full API publishing (photo, carousel, Reels, Stories). Personal accounts: reminder/manual mode. |
+| **Rubika**                             | ✅ Phase 1  | Bot API v3 (`botapi.rubika.ir/v3`) | Bot publishing to channels/chats.                                                                                      |
+| **Telegram**                           | ✅ Phase 2  | Bot API                            | Bot publishing to channels.                                                                                            |
+| **LinkedIn**                           | ✅ Phase 2  | Marketing API / Share API          | Text + image + article shares.                                                                                         |
+| **Eitaa**                              | 🔜 Phase 3  | Bot API                            | Bot publishing.                                                                                                        |
+| **Twitter/X, Threads, YouTube Shorts** | 🔜 Phase 4+ | Native APIs                        | As market demands.                                                                                                     |
 
 ### 4.2 Instagram comment-to-DM automation (flagship feature)
 
 A compliant, Persian-tuned automation engine for Instagram professional accounts:
+
 - Trigger on comment keyword/regex (e.g., `کد`, `قیمت`, `link`).
 - Send a DM within Meta's **24-hour standard window** (or up to 7 days via the
   `HUMAN_AGENT` message tag for legitimate support follow-up).
@@ -124,30 +125,31 @@ Nashrino is **not** a clone of any single Western tool. It is a **Persian-first
 re-imagining** of the social ops category. Detailed benchmarking is in
 [01_BENCHMARK_ANALYSIS.md](./01_BENCHMARK_ANALYSIS.md); the headline positioning:
 
-| Dimension | Buffer / Hootsuite / Sprout / Later | Nashrino |
-|-----------|--------------------------------------|----------|
-| RTL / Persian UI | Broken or absent | Native, first-class |
-| Jalali calendar | Absent | Native (months, weekdays, holidays, Sat–Wed work week) |
-| Rubika / Eitaa | Not supported | Native Bot API integration |
-| Telegram scheduling | Limited / via 3rd-party | Native |
-| Persian AI captioning | Generic English AI | Persian-tuned, brand-voice aware |
-| Comment-to-DM for Persian sellers | ManyChat (foreign, English-first, fragile) | Native, Persian NLU, compliant |
-| Pricing currency | USD, expensive for Iran | IRR, 10–20× cheaper for the same seat |
-| Connectivity reality | Assumes open internet | Resilient to Iranian network conditions (retries, proxy-aware media fetch) |
+| Dimension                         | Buffer / Hootsuite / Sprout / Later        | Nashrino                                                                   |
+| --------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
+| RTL / Persian UI                  | Broken or absent                           | Native, first-class                                                        |
+| Jalali calendar                   | Absent                                     | Native (months, weekdays, holidays, Sat–Wed work week)                     |
+| Rubika / Eitaa                    | Not supported                              | Native Bot API integration                                                 |
+| Telegram scheduling               | Limited / via 3rd-party                    | Native                                                                     |
+| Persian AI captioning             | Generic English AI                         | Persian-tuned, brand-voice aware                                           |
+| Comment-to-DM for Persian sellers | ManyChat (foreign, English-first, fragile) | Native, Persian NLU, compliant                                             |
+| Pricing currency                  | USD, expensive for Iran                    | IRR, 10–20× cheaper for the same seat                                      |
+| Connectivity reality              | Assumes open internet                      | Resilient to Iranian network conditions (retries, proxy-aware media fetch) |
 
 ## 6. Success metrics (North Star & guardrails)
 
-| Metric | Definition | Target (12 months post-launch) |
-|--------|------------|---------------------------------|
-| **Weekly Active Workspaces (WAW)** | Workspaces with ≥1 successful publish in the last 7 days | 2,000 |
-| **Publish success rate** | `successful / (successful + failed)` per attempt | ≥ 98% |
-| **Median time-to-publish** | From "schedule" click to live post, scheduled-on-time | ≤ 30s past scheduled time, P95 ≤ 2 min |
-| **Inbox first-response time** | Median time from inbound message to first reply | ≤ 15 min (agency tier) |
-| **Comment-to-DM fulfillment rate** | DMs successfully sent / triggered (within policy) | ≥ 95% |
-| **Net Promoter Score** | Standard NPS survey at 30/60/90 days | ≥ 40 |
-| **Monthly recurring revenue** | Paid subscriptions (IRR equivalent tracked) | Break-even on infrastructure cost by month 9 |
+| Metric                             | Definition                                               | Target (12 months post-launch)               |
+| ---------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
+| **Weekly Active Workspaces (WAW)** | Workspaces with ≥1 successful publish in the last 7 days | 2,000                                        |
+| **Publish success rate**           | `successful / (successful + failed)` per attempt         | ≥ 98%                                        |
+| **Median time-to-publish**         | From "schedule" click to live post, scheduled-on-time    | ≤ 30s past scheduled time, P95 ≤ 2 min       |
+| **Inbox first-response time**      | Median time from inbound message to first reply          | ≤ 15 min (agency tier)                       |
+| **Comment-to-DM fulfillment rate** | DMs successfully sent / triggered (within policy)        | ≥ 95%                                        |
+| **Net Promoter Score**             | Standard NPS survey at 30/60/90 days                     | ≥ 40                                         |
+| **Monthly recurring revenue**      | Paid subscriptions (IRR equivalent tracked)              | Break-even on infrastructure cost by month 9 |
 
 **Guardrails (do not regress):**
+
 - Publish success rate never below 95% in any rolling 24h window.
 - P99 page load ≤ 3s on a 4G mobile connection inside Iran.
 - Zero data-loss events on the publishing queue (idempotent + durable).
@@ -156,32 +158,33 @@ re-imagining** of the social ops category. Detailed benchmarking is in
 
 A lean product team to execute the roadmap in [04](./04_ROADMAP.md):
 
-| Role | Count | Responsibility |
-|------|-------|----------------|
-| Product Manager | 1 | Roadmap, specs, prioritization |
-| Engineering Lead / Architect | 1 | System design, code quality, infra |
-| Full-stack Engineer (Next.js + FastAPI) | 2 | Feature delivery |
-| Frontend Engineer (RTL/design-system) | 1 | Design system, accessibility, RTL |
-| Backend/Worker Engineer | 1 | Queue, workers, integrations |
-| Designer | 1 | UX, design system, Persian typography |
-| QA / E2E | 1 (shared) | Playwright E2E, regression |
+| Role                                    | Count      | Responsibility                        |
+| --------------------------------------- | ---------- | ------------------------------------- |
+| Product Manager                         | 1          | Roadmap, specs, prioritization        |
+| Engineering Lead / Architect            | 1          | System design, code quality, infra    |
+| Full-stack Engineer (Next.js + FastAPI) | 2          | Feature delivery                      |
+| Frontend Engineer (RTL/design-system)   | 1          | Design system, accessibility, RTL     |
+| Backend/Worker Engineer                 | 1          | Queue, workers, integrations          |
+| Designer                                | 1          | UX, design system, Persian typography |
+| QA / E2E                                | 1 (shared) | Playwright E2E, regression            |
 
 **Total: ~7 people** for the launch phases. Phases 1–2 (MVP) can be delivered by a
 4-person core team with the PM and lead also contributing code.
 
 ## 8. Risks & mitigations (top 5)
 
-| # | Risk | Likelihood | Impact | Mitigation |
-|---|------|-----------|--------|------------|
-| 1 | Meta policy change restricts Instagram publishing or Messaging API | Medium | High | Maintain personal-account reminder mode as fallback; diversify to Rubika/Telegram-first workflows; stay compliant with 24h window. |
-| 2 | Rubika/Eitaa API instability or breaking changes | Medium | High | Adapter pattern + health checks + retry/backoff; degrade gracefully to manual. |
-| 3 | Iranian network instability causes media fetch / OAuth failures | High | Medium | Resilient media fetch with retry + proxy fallback; idempotent publish; local media caching. |
-| 4 | Payment / sanctions constraints on infrastructure (cloud, domains) | Medium | High | Host on Iran-resilient infra; multi-provider; IRR billing via local gateways (Zarinpal, etc.). |
-| 5 | RTL/Jalali quality regression under fast feature delivery | Medium | Medium | Design-system enforcement; RTL + Jalali E2E tests in CI; token audit gate. |
+| #   | Risk                                                               | Likelihood | Impact | Mitigation                                                                                                                         |
+| --- | ------------------------------------------------------------------ | ---------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Meta policy change restricts Instagram publishing or Messaging API | Medium     | High   | Maintain personal-account reminder mode as fallback; diversify to Rubika/Telegram-first workflows; stay compliant with 24h window. |
+| 2   | Rubika/Eitaa API instability or breaking changes                   | Medium     | High   | Adapter pattern + health checks + retry/backoff; degrade gracefully to manual.                                                     |
+| 3   | Iranian network instability causes media fetch / OAuth failures    | High       | Medium | Resilient media fetch with retry + proxy fallback; idempotent publish; local media caching.                                        |
+| 4   | Payment / sanctions constraints on infrastructure (cloud, domains) | Medium     | High   | Host on Iran-resilient infra; multi-provider; IRR billing via local gateways (Zarinpal, etc.).                                     |
+| 5   | RTL/Jalali quality regression under fast feature delivery          | Medium     | Medium | Design-system enforcement; RTL + Jalali E2E tests in CI; token audit gate.                                                         |
 
 ## 9. What "done" looks like for this document set
 
 This folder is complete when a vendor or new engineer can:
+
 1. Understand **what** to build (RFP, Backlog, Roadmap).
 2. Understand **how** to build it (Technical Architecture, Design System).
 3. Understand **why** it is built this way (Executive Summary, Benchmark Analysis).

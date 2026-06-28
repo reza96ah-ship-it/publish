@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import {
   Image as ImageIcon,
   Folder,
@@ -18,15 +18,15 @@ import {
   Plus,
   FileVideo,
   FileImage,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
-import { toPersianDigits, formatNumber, formatCompact, relativeTime } from "@/lib/jalali";
-import { SectionTitle, EmptyState, Skeleton, LoadingState } from "@/components/dashboard/shared";
-import { announce } from "@/lib/aria-live";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { api } from '@/lib/api'
+import { toPersianDigits, formatNumber, formatCompact, relativeTime } from '@/lib/jalali'
+import { SectionTitle, EmptyState, Skeleton, LoadingState } from '@/components/dashboard/shared'
+import { announce } from '@/lib/aria-live'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -34,118 +34,115 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 interface MediaItem {
-  id: string;
-  name: string;
-  fileType: string;
-  fileSize: number;
-  url: string;
-  thumbnail: string;
-  folder: string;
-  tags: string[];
-  width: number | null;
-  height: number | null;
-  createdAt: string;
+  id: string
+  name: string
+  fileType: string
+  fileSize: number
+  url: string
+  thumbnail: string
+  folder: string
+  tags: string[]
+  width: number | null
+  height: number | null
+  createdAt: string
 }
 
-function fileKind(ft: string): "image" | "video" | "file" {
-  if (ft.startsWith("image/")) return "image";
-  if (ft.startsWith("video/")) return "video";
-  return "file";
+function fileKind(ft: string): 'image' | 'video' | 'file' {
+  if (ft.startsWith('image/')) return 'image'
+  if (ft.startsWith('video/')) return 'video'
+  return 'file'
 }
 
 export function MediaView() {
-  const [folder, setFolder] = useState<string>("all");
-  const [search, setSearch] = useState("");
-  const [layout, setLayout] = useState<"grid" | "list">("grid");
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [selected, setSelected] = useState<MediaItem | null>(null);
-  const queryClient = useQueryClient();
+  const [folder, setFolder] = useState<string>('all')
+  const [search, setSearch] = useState('')
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid')
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [selected, setSelected] = useState<MediaItem | null>(null)
+  const queryClient = useQueryClient()
 
   const { data: media, isLoading } = useQuery<MediaItem[]>({
-    queryKey: ["media"],
-    queryFn: () => api.getPaginated<MediaItem>("/api/media"),
-  });
+    queryKey: ['media'],
+    queryFn: () => api.getPaginated<MediaItem>('/api/media'),
+  })
 
   // Optimistic upload: append a placeholder media item to the ["media"] cache
   // in <100ms. The backend upload endpoint is not wired yet; mutationFn resolves
   // immediately so the optimistic row remains visible.
   const uploadMutation = useMutation<MediaItem, Error, MediaItem>({
     mutationFn: async (newItem) => {
-      await new Promise((r) => setTimeout(r, 120));
-      return newItem;
+      await new Promise((r) => setTimeout(r, 120))
+      return newItem
     },
     onMutate: async (newItem) => {
-      await queryClient.cancelQueries({ queryKey: ["media"] });
-      const previous = queryClient.getQueryData<MediaItem[]>(["media"]);
-      queryClient.setQueryData<MediaItem[]>(["media"], (old) => [
-        newItem,
-        ...(old ?? []),
-      ]);
-      announce("رسانه جدید اضافه شد");
-      return { previous };
+      await queryClient.cancelQueries({ queryKey: ['media'] })
+      const previous = queryClient.getQueryData<MediaItem[]>(['media'])
+      queryClient.setQueryData<MediaItem[]>(['media'], (old) => [newItem, ...(old ?? [])])
+      announce('رسانه جدید اضافه شد')
+      return { previous }
     },
     onError: (_err, _newItem, context: any) => {
-      if (context?.previous) queryClient.setQueryData(["media"], context.previous);
-      toast.error("آپلود رسانه ناموفق بود. تغییرات برگردانده شد.");
-      announce("خطا در آپلود رسانه", "assertive");
+      if (context?.previous) queryClient.setQueryData(['media'], context.previous)
+      toast.error('آپلود رسانه ناموفق بود. تغییرات برگردانده شد.')
+      announce('خطا در آپلود رسانه', 'assertive')
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["media"] });
+      queryClient.invalidateQueries({ queryKey: ['media'] })
     },
-  });
+  })
 
   const handleUpload = () => {
     const newItem: MediaItem = {
       id: `optimistic-${Date.now()}`,
-      name: "رسانه جدید",
-      fileType: "image/png",
+      name: 'رسانه جدید',
+      fileType: 'image/png',
       fileSize: 0,
-      url: "",
-      thumbnail: "",
-      folder: folder === "all" ? "عمومی" : folder,
+      url: '',
+      thumbnail: '',
+      folder: folder === 'all' ? 'عمومی' : folder,
       tags: [],
       width: null,
       height: null,
       createdAt: new Date().toISOString(),
-    };
-    uploadMutation.mutate(newItem);
-    setUploadOpen(false);
-    toast.success("رسانه با موفقیت آپلود شد.");
-  };
+    }
+    uploadMutation.mutate(newItem)
+    setUploadOpen(false)
+    toast.success('رسانه با موفقیت آپلود شد.')
+  }
 
   const folders = useMemo(() => {
-    const set = new Set<string>();
-    (media ?? []).forEach((m) => set.add(m.folder));
-    return ["all", ...Array.from(set)];
-  }, [media]);
+    const set = new Set<string>()
+    ;(media ?? []).forEach((m) => set.add(m.folder))
+    return ['all', ...Array.from(set)]
+  }, [media])
 
   const filtered = useMemo(() => {
-    if (!media) return [];
+    if (!media) return []
     return media.filter((m) => {
-      if (folder !== "all" && m.folder !== folder) return false;
-      if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [media, folder, search]);
+      if (folder !== 'all' && m.folder !== folder) return false
+      if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false
+      return true
+    })
+  }, [media, folder, search])
 
   const folderCounts = useMemo(() => {
-    const map: Record<string, number> = {};
-    (media ?? []).forEach((m) => {
-      map[m.folder] = (map[m.folder] ?? 0) + 1;
-    });
-    return map;
-  }, [media]);
+    const map: Record<string, number> = {}
+    ;(media ?? []).forEach((m) => {
+      map[m.folder] = (map[m.folder] ?? 0) + 1
+    })
+    return map
+  }, [media])
 
   return (
     <motion.div
@@ -174,18 +171,18 @@ export function MediaView() {
           </div>
           <div className="space-y-1 max-h-72 lg:max-h-none overflow-y-auto thin-scrollbar">
             {folders.map((f) => {
-              const active = folder === f;
-              const count = f === "all" ? media?.length ?? 0 : folderCounts[f] ?? 0;
-              const label = f === "all" ? "همه" : f;
+              const active = folder === f
+              const count = f === 'all' ? (media?.length ?? 0) : (folderCounts[f] ?? 0)
+              const label = f === 'all' ? 'همه' : f
               return (
                 <button
                   key={f}
                   onClick={() => setFolder(f)}
                   className={cn(
-                    "n-focus-ring w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[12px] transition-colors",
+                    'n-focus-ring w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[12px] transition-colors',
                     active
-                      ? "bg-accent-soft text-accent font-[700]"
-                      : "text-ink-secondary hover:bg-surface-hover"
+                      ? 'bg-accent-soft text-accent font-[700]'
+                      : 'text-ink-secondary hover:bg-surface-hover'
                   )}
                 >
                   <span className="flex items-center gap-2 min-w-0">
@@ -196,7 +193,7 @@ export function MediaView() {
                     {toPersianDigits(count)}
                   </span>
                 </button>
-              );
+              )
             })}
           </div>
         </aside>
@@ -220,8 +217,11 @@ export function MediaView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("size-8 n-focus-ring", layout === "grid" && "bg-accent-soft text-accent")}
-                  onClick={() => setLayout("grid")}
+                  className={cn(
+                    'size-8 n-focus-ring',
+                    layout === 'grid' && 'bg-accent-soft text-accent'
+                  )}
+                  onClick={() => setLayout('grid')}
                   aria-label="نمای شبکه‌ای"
                 >
                   <Grid2x2 className="size-4" />
@@ -229,8 +229,11 @@ export function MediaView() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={cn("size-8 n-focus-ring", layout === "list" && "bg-accent-soft text-accent")}
-                  onClick={() => setLayout("list")}
+                  className={cn(
+                    'size-8 n-focus-ring',
+                    layout === 'list' && 'bg-accent-soft text-accent'
+                  )}
+                  onClick={() => setLayout('list')}
                   aria-label="نمای لیستی"
                 >
                   <List className="size-4" />
@@ -271,7 +274,7 @@ export function MediaView() {
                   }
                 />
               </div>
-            ) : layout === "grid" ? (
+            ) : layout === 'grid' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {filtered.map((m) => (
                   <MediaGridCard key={m.id} item={m} onClick={() => setSelected(m)} />
@@ -293,7 +296,9 @@ export function MediaView() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-right">آپلود رسانه جدید</DialogTitle>
-            <DialogDescription className="text-right">یک یا چند فایل را برای آپلود انتخاب کنید.</DialogDescription>
+            <DialogDescription className="text-right">
+              یک یا چند فایل را برای آپلود انتخاب کنید.
+            </DialogDescription>
           </DialogHeader>
           <div className="rounded-2xl border-2 border-dashed border-border p-8 text-center bg-surface-subtle">
             <UploadCloud className="size-10 text-ink-tertiary mx-auto mb-3" />
@@ -303,15 +308,21 @@ export function MediaView() {
               variant="outline"
               size="sm"
               className="mt-3 n-focus-ring"
-              onClick={() => toast.info("آپلود شبیه‌سازی‌شده با موفقیت انجام شد.")}
+              onClick={() => toast.info('آپلود شبیه‌سازی‌شده با موفقیت انجام شد.')}
             >
               انتخاب فایل
             </Button>
           </div>
           <DialogFooter>
-            <Button variant="ghost" className="n-focus-ring" onClick={() => setUploadOpen(false)}>انصراف</Button>
-            <Button className="n-focus-ring" onClick={handleUpload} disabled={uploadMutation.isPending}>
-              {uploadMutation.isPending ? "در حال آپلود…" : "آپلود"}
+            <Button variant="ghost" className="n-focus-ring" onClick={() => setUploadOpen(false)}>
+              انصراف
+            </Button>
+            <Button
+              className="n-focus-ring"
+              onClick={handleUpload}
+              disabled={uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? 'در حال آپلود…' : 'آپلود'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -330,11 +341,22 @@ export function MediaView() {
               </DialogHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="aspect-square rounded-xl overflow-hidden bg-border">
-                  <img src={selected.thumbnail} alt={selected.name} className="w-full h-full object-cover" />
+                  <img
+                    src={selected.thumbnail}
+                    alt={selected.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="space-y-2 text-[12px]">
                   <MetaRow label="نوع فایل" value={selected.fileType} />
-                  <MetaRow label="ابعاد" value={selected.width && selected.height ? `${toPersianDigits(selected.width)} × ${toPersianDigits(selected.height)}` : "—"} />
+                  <MetaRow
+                    label="ابعاد"
+                    value={
+                      selected.width && selected.height
+                        ? `${toPersianDigits(selected.width)} × ${toPersianDigits(selected.height)}`
+                        : '—'
+                    }
+                  />
                   <MetaRow label="حجم" value={`${formatCompact(selected.fileSize)} بایت`} />
                   <MetaRow label="پوشه" value={selected.folder} />
                   <MetaRow label="تاریخ آپلود" value={relativeTime(new Date(selected.createdAt))} />
@@ -354,7 +376,7 @@ export function MediaView() {
                     variant="outline"
                     size="sm"
                     className="w-full mt-3 n-focus-ring"
-                    onClick={() => toast.info("ویرایش تصویر به‌زودی فعال خواهد شد.")}
+                    onClick={() => toast.info('ویرایش تصویر به‌زودی فعال خواهد شد.')}
                   >
                     <Pencil className="size-3.5" />
                     ویرایش تصویر
@@ -366,17 +388,22 @@ export function MediaView() {
         </DialogContent>
       </Dialog>
     </motion.div>
-  );
+  )
 }
 
 function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void }) {
-  const kind = fileKind(item.fileType);
+  const kind = fileKind(item.fileType)
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       className="group n-card-interactive n-focus-ring p-0 overflow-hidden text-right hover:scale-[1.02] transition-transform cursor-pointer"
     >
       <div className="relative aspect-square bg-border">
@@ -388,7 +415,7 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
           </div>
         )}
         <div className="absolute top-2 right-2">
-          {kind === "video" ? (
+          {kind === 'video' ? (
             <span className="inline-flex items-center gap-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full">
               <FileVideo className="size-2.5" /> ویدئو
             </span>
@@ -400,13 +427,40 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
         </div>
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="ghost" className="size-8 n-focus-ring text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); onClick(); }} aria-label="مشاهده">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 n-focus-ring text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClick()
+              }}
+              aria-label="مشاهده"
+            >
               <Search className="size-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="size-8 n-focus-ring text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); toast.info("استفاده در محتوا به‌زودی فعال خواهد شد."); }} aria-label="استفاده">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 n-focus-ring text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation()
+                toast.info('استفاده در محتوا به‌زودی فعال خواهد شد.')
+              }}
+              aria-label="استفاده"
+            >
               <Send className="size-4" />
             </Button>
-            <Button size="icon" variant="ghost" className="size-8 n-focus-ring text-white hover:bg-white/20" onClick={(e) => { e.stopPropagation(); toast.error("حذف نیازمند تأیید است."); }} aria-label="حذف">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 n-focus-ring text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation()
+                toast.error('حذف نیازمند تأیید است.')
+              }}
+              aria-label="حذف"
+            >
               <Trash2 className="size-4" />
             </Button>
           </div>
@@ -420,15 +474,22 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void }) {
   return (
     <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-surface-subtle transition-colors">
-      <button onClick={onClick} className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-right">
+      <button
+        onClick={onClick}
+        className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-right"
+      >
         {item.thumbnail ? (
-          <img src={item.thumbnail} alt={item.name} className="size-12 rounded-lg object-cover shrink-0" />
+          <img
+            src={item.thumbnail}
+            alt={item.name}
+            className="size-12 rounded-lg object-cover shrink-0"
+          />
         ) : (
           <div className="size-12 rounded-lg bg-border flex items-center justify-center shrink-0">
             <ImageIcon className="size-4 text-ink-tertiary opacity-40" />
@@ -436,7 +497,9 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
         )}
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-[600] text-ink-primary truncate">{item.name}</p>
-          <p className="text-[11px] text-ink-tertiary">{item.folder} • {formatCompact(item.fileSize)}</p>
+          <p className="text-[11px] text-ink-tertiary">
+            {item.folder} • {formatCompact(item.fileSize)}
+          </p>
         </div>
       </button>
       <DropdownMenu>
@@ -449,20 +512,23 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
           <DropdownMenuItem onClick={onClick}>
             <Search className="size-3.5" /> مشاهده
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info("استفاده در محتوا به‌زودی فعال خواهد شد.")}>
+          <DropdownMenuItem onClick={() => toast.info('استفاده در محتوا به‌زودی فعال خواهد شد.')}>
             <Send className="size-3.5" /> استفاده در محتوا
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info("ویرایش به‌زودی فعال خواهد شد.")}>
+          <DropdownMenuItem onClick={() => toast.info('ویرایش به‌زودی فعال خواهد شد.')}>
             <Pencil className="size-3.5" /> ویرایش
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-danger focus:text-danger" onClick={() => toast.error("حذف نیازمند تأیید است.")}>
+          <DropdownMenuItem
+            className="text-danger focus:text-danger"
+            onClick={() => toast.error('حذف نیازمند تأیید است.')}
+          >
             <Trash2 className="size-3.5" /> حذف
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
-  );
+  )
 }
 
 function MetaRow({ label, value }: { label: string; value: string }) {
@@ -471,5 +537,5 @@ function MetaRow({ label, value }: { label: string; value: string }) {
       <span className="text-ink-tertiary">{label}</span>
       <span className="text-ink-primary font-[600] text-left truncate max-w-48">{value}</span>
     </div>
-  );
+  )
 }

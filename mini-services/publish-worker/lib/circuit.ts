@@ -94,7 +94,11 @@ export class CircuitBreakerRegistry {
   snapshot(): Record<string, { state: string; failures: number; successes: number }> {
     const out: Record<string, { state: string; failures: number; successes: number }> = {}
     for (const [k, b] of this.breakers) {
-      out[k] = { state: b.state, failures: b.consecutiveFailures, successes: b.consecutiveSuccesses }
+      out[k] = {
+        state: b.state,
+        failures: b.consecutiveFailures,
+        successes: b.consecutiveSuccesses,
+      }
     }
     return out
   }

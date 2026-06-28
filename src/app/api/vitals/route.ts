@@ -5,7 +5,7 @@
  * Non-blocking â€” always returns 204.
  */
 
-import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     const { name, value, rating, id } = body
 
     // Log vitals (replace with Prometheus metrics in prod)
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== 'production') {
       console.log(`[vitals] ${name}: ${Math.round(value)}ms (${rating}) id=${id}`)
     }
 

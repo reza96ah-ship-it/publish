@@ -1,36 +1,45 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Repeat2, ThumbsUp, Eye } from "lucide-react";
-import { PlatformLogo } from "@/components/ui/platform-logo";
-import { cn } from "@/lib/utils";
-import { toPersianDigits } from "@/lib/jalali";
+import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Heart,
+  MessageCircle,
+  Send,
+  Bookmark,
+  MoreHorizontal,
+  Repeat2,
+  ThumbsUp,
+  Eye,
+} from 'lucide-react'
+import { PlatformLogo } from '@/components/ui/platform-logo'
+import { cn } from '@/lib/utils'
+import { toPersianDigits } from '@/lib/jalali'
 
-type Platform = "instagram" | "telegram" | "linkedin" | "rubika" | "bale" | "eitaa";
+type Platform = 'instagram' | 'telegram' | 'linkedin' | 'rubika' | 'bale' | 'eitaa'
 
 interface MediaItem {
-  thumbnail: string;
-  name: string;
+  thumbnail: string
+  name: string
 }
 
 interface PlatformPreviewTabsProps {
-  caption: string;
-  title: string;
-  hashtags: string;
-  media: MediaItem[];
-  selectedPlatforms: string[];
-  authorName?: string;
+  caption: string
+  title: string
+  hashtags: string
+  media: MediaItem[]
+  selectedPlatforms: string[]
+  authorName?: string
 }
 
 const PLATFORM_LABELS: Record<string, string> = {
-  instagram: "اینستاگرام",
-  telegram: "تلگرام",
-  linkedin: "لینکدین",
-  rubika: "روبیکا",
-  bale: "بله",
-  eitaa: "ایتا",
-};
+  instagram: 'اینستاگرام',
+  telegram: 'تلگرام',
+  linkedin: 'لینکدین',
+  rubika: 'روبیکا',
+  bale: 'بله',
+  eitaa: 'ایتا',
+}
 
 const PLATFORM_LIMITS: Record<string, number> = {
   instagram: 2200,
@@ -39,7 +48,7 @@ const PLATFORM_LIMITS: Record<string, number> = {
   rubika: 4096,
   bale: 4096,
   eitaa: 4096,
-};
+}
 
 /**
  * PlatformPreviewTabs — multi-platform live preview (Planable/Buffer style).
@@ -56,56 +65,56 @@ export function PlatformPreviewTabs({
   hashtags,
   media,
   selectedPlatforms,
-  authorName = "نشرینو",
+  authorName = 'نشرینو',
 }: PlatformPreviewTabsProps) {
-  const platforms = selectedPlatforms.length > 0 ? selectedPlatforms : ["instagram"];
+  const platforms = selectedPlatforms.length > 0 ? selectedPlatforms : ['instagram']
 
   // Track active tab — reset to first platform when the platform list changes.
-  const [active, setActive] = useState(platforms[0]);
-  const platformsKey = platforms.join(",");
+  const [active, setActive] = useState(platforms[0])
+  const platformsKey = platforms.join(',')
   useEffect(() => {
     if (!platforms.includes(active)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActive(platforms[0]);
+      setActive(platforms[0])
     }
-  }, [platformsKey]);
+  }, [platformsKey])
 
-  const fullText = [caption, hashtags].filter(Boolean).join("\n\n");
+  const fullText = [caption, hashtags].filter(Boolean).join('\n\n')
 
   return (
     <div className="n-card overflow-hidden">
       {/* Tab bar */}
       <div className="flex items-center gap-1 border-b border-border bg-surface-subtle px-2 py-1.5 overflow-x-auto thin-scrollbar">
         {platforms.map((p) => {
-          const limit = PLATFORM_LIMITS[p] ?? 2200;
-          const len = fullText.length;
-          const status = len > limit ? "over" : len > limit * 0.9 ? "warn" : "ok";
+          const limit = PLATFORM_LIMITS[p] ?? 2200
+          const len = fullText.length
+          const status = len > limit ? 'over' : len > limit * 0.9 ? 'warn' : 'ok'
           return (
             <button
               key={p}
               onClick={() => setActive(p)}
               aria-pressed={active === p}
               className={cn(
-                "n-focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-[600] transition-colors shrink-0",
+                'n-focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-[600] transition-colors shrink-0',
                 active === p
-                  ? "bg-surface text-ink-primary shadow-sm"
-                  : "text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary",
+                  ? 'bg-surface text-ink-primary shadow-sm'
+                  : 'text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary'
               )}
             >
               <PlatformLogo platform={p as any} className="size-3.5" />
               <span>{PLATFORM_LABELS[p] ?? p}</span>
               <span
                 className={cn(
-                  "ms-1 rounded px-1 text-[9px] num-tabular font-[700]",
-                  status === "ok" && "bg-success/10 text-success",
-                  status === "warn" && "bg-warning/10 text-warning",
-                  status === "over" && "bg-danger/10 text-danger",
+                  'ms-1 rounded px-1 text-[9px] num-tabular font-[700]',
+                  status === 'ok' && 'bg-success/10 text-success',
+                  status === 'warn' && 'bg-warning/10 text-warning',
+                  status === 'over' && 'bg-danger/10 text-danger'
                 )}
               >
                 {toPersianDigits(len)}
               </span>
             </button>
-          );
+          )
         })}
       </div>
 
@@ -119,30 +128,51 @@ export function PlatformPreviewTabs({
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.18, ease: [0, 0, 0.2, 1] }}
           >
-            {active === "instagram" && (
-              <InstagramPreview caption={fullText} title={title} media={media} author={authorName} />
+            {active === 'instagram' && (
+              <InstagramPreview
+                caption={fullText}
+                title={title}
+                media={media}
+                author={authorName}
+              />
             )}
-            {active === "telegram" && (
+            {active === 'telegram' && (
               <TelegramPreview caption={fullText} title={title} media={media} author={authorName} />
             )}
-            {active === "linkedin" && (
+            {active === 'linkedin' && (
               <LinkedInPreview caption={fullText} title={title} media={media} author={authorName} />
             )}
-            {(active === "rubika" || active === "bale" || active === "eitaa") && (
-              <TelegramPreview caption={fullText} title={title} media={media} author={authorName} platformName={PLATFORM_LABELS[active]} />
+            {(active === 'rubika' || active === 'bale' || active === 'eitaa') && (
+              <TelegramPreview
+                caption={fullText}
+                title={title}
+                media={media}
+                author={authorName}
+                platformName={PLATFORM_LABELS[active]}
+              />
             )}
           </motion.div>
         </AnimatePresence>
       </div>
     </div>
-  );
+  )
 }
 
 /* ── Instagram Preview ──────────────────────────────────────────────── */
-function InstagramPreview({ caption, title, media, author }: { caption: string; title: string; media: MediaItem[]; author: string }) {
-  const truncateAt = 125;
-  const isLong = caption.length > truncateAt;
-  const displayCaption = isLong ? caption.slice(0, truncateAt) : caption;
+function InstagramPreview({
+  caption,
+  title,
+  media,
+  author,
+}: {
+  caption: string
+  title: string
+  media: MediaItem[]
+  author: string
+}) {
+  const truncateAt = 125
+  const isLong = caption.length > truncateAt
+  const displayCaption = isLong ? caption.slice(0, truncateAt) : caption
 
   return (
     <div className="mx-auto max-w-[320px] bg-surface rounded-xl overflow-hidden border border-border">
@@ -166,7 +196,9 @@ function InstagramPreview({ caption, title, media, author }: { caption: string; 
           <img src={media[0].thumbnail} alt="" className="w-full h-full object-cover" />
           {media.length > 1 && (
             <span className="absolute top-2 left-2 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
-              <svg viewBox="0 0 24 24" className="size-2.5 fill-current"><path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm8.5 6l-4-5-2 2-3-4-3 7h12z"/></svg>
+              <svg viewBox="0 0 24 24" className="size-2.5 fill-current">
+                <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm8.5 6l-4-5-2 2-3-4-3 7h12z" />
+              </svg>
               {toPersianDigits(media.length)}
             </span>
           )}
@@ -193,17 +225,28 @@ function InstagramPreview({ caption, title, media, author }: { caption: string; 
       {/* Caption */}
       <div className="px-3 pb-3 pt-1">
         <p className="text-[11px] text-ink-primary leading-relaxed whitespace-pre-wrap">
-          <span className="font-[700]">{author}</span>{" "}
-          {displayCaption}
+          <span className="font-[700]">{author}</span> {displayCaption}
           {isLong && <span className="text-ink-tertiary"> … بیشتر</span>}
         </p>
       </div>
     </div>
-  );
+  )
 }
 
 /* ── Telegram Preview (channel message) ─────────────────────────────── */
-function TelegramPreview({ caption, title, media, author, platformName = "تلگرام" }: { caption: string; title: string; media: MediaItem[]; author: string; platformName?: string }) {
+function TelegramPreview({
+  caption,
+  title,
+  media,
+  author,
+  platformName = 'تلگرام',
+}: {
+  caption: string
+  title: string
+  media: MediaItem[]
+  author: string
+  platformName?: string
+}) {
   return (
     <div className="mx-auto max-w-[380px]">
       {/* Channel header */}
@@ -224,11 +267,9 @@ function TelegramPreview({ caption, title, media, author, platformName = "تلگ
             <img src={media[0].thumbnail} alt="" className="w-full max-h-[200px] object-cover" />
           </div>
         )}
-        {title && (
-          <p className="text-[12px] font-[700] text-ink-primary mb-1">{title}</p>
-        )}
+        {title && <p className="text-[12px] font-[700] text-ink-primary mb-1">{title}</p>}
         <p className="text-[11.5px] text-ink-primary leading-relaxed whitespace-pre-wrap">
-          {caption || "متن پیام…"}
+          {caption || 'متن پیام…'}
         </p>
         {/* Time + views */}
         <div className="flex items-center justify-end gap-1 mt-1.5">
@@ -238,14 +279,24 @@ function TelegramPreview({ caption, title, media, author, platformName = "تلگ
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /* ── LinkedIn Preview (article card) ────────────────────────────────── */
-function LinkedInPreview({ caption, title, media, author }: { caption: string; title: string; media: MediaItem[]; author: string }) {
-  const truncateAt = 700;
-  const isLong = caption.length > truncateAt;
-  const displayCaption = isLong ? caption.slice(0, truncateAt) : caption;
+function LinkedInPreview({
+  caption,
+  title,
+  media,
+  author,
+}: {
+  caption: string
+  title: string
+  media: MediaItem[]
+  author: string
+}) {
+  const truncateAt = 700
+  const isLong = caption.length > truncateAt
+  const displayCaption = isLong ? caption.slice(0, truncateAt) : caption
 
   return (
     <div className="mx-auto max-w-[400px] bg-surface rounded-lg overflow-hidden border border-border">
@@ -281,10 +332,12 @@ function LinkedInPreview({ caption, title, media, author }: { caption: string; t
         <div className="flex items-center gap-1">
           <ThumbsUp className="size-3.5 text-[#0a66c2] fill-[#0a66c2]" />
           <Repeat2 className="size-3.5 text-[#5cb85c]" />
-          <span className="text-[9px] text-ink-tertiary num-tabular ms-1">{toPersianDigits(42)}</span>
+          <span className="text-[9px] text-ink-tertiary num-tabular ms-1">
+            {toPersianDigits(42)}
+          </span>
         </div>
         <span className="text-[9px] text-ink-tertiary">{toPersianDigits(7)} نظر</span>
       </div>
     </div>
-  );
+  )
 }

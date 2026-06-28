@@ -10,15 +10,15 @@ decision, and every design token referenced in code traces back to a document he
 
 ## 0. How to read this folder
 
-| # | Document | Audience | Purpose |
-|---|----------|----------|---------|
-| 00 | [Executive Summary](./00_EXECUTIVE_SUMMARY.md) | Everyone | Vision, problem, market, product scope, success metrics |
-| 01 | [Benchmark Analysis](./01_BENCHMARK_ANALYSIS.md) | Product, Leadership | Deep-dive on 16 world-class competitors + best-practice synthesis |
-| 02 | [Request for Proposal (RFP)](./02_RFP.md) | Vendors, Engineering leads | Full statement of work, scope, requirements, evaluation criteria |
-| 03 | [Product Backlog](./03_PRODUCT_BACKLOG.md) | Product, Engineering | Epics → user stories → acceptance criteria, sized & prioritized |
-| 04 | [Roadmap](./04_ROADMAP.md) | Everyone | Phased release plan, milestones, exit criteria |
-| 05 | [Technical Architecture](./05_TECHNICAL_ARCHITECTURE.md) | Engineering | System design, data model, APIs, infra, security |
-| 06 | [Design System](./06_DESIGN_SYSTEM.md) | Design, Frontend | Tokens, components, RTL/Jalali patterns, accessibility |
+| #   | Document                                                 | Audience                   | Purpose                                                           |
+| --- | -------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| 00  | [Executive Summary](./00_EXECUTIVE_SUMMARY.md)           | Everyone                   | Vision, problem, market, product scope, success metrics           |
+| 01  | [Benchmark Analysis](./01_BENCHMARK_ANALYSIS.md)         | Product, Leadership        | Deep-dive on 16 world-class competitors + best-practice synthesis |
+| 02  | [Request for Proposal (RFP)](./02_RFP.md)                | Vendors, Engineering leads | Full statement of work, scope, requirements, evaluation criteria  |
+| 03  | [Product Backlog](./03_PRODUCT_BACKLOG.md)               | Product, Engineering       | Epics → user stories → acceptance criteria, sized & prioritized   |
+| 04  | [Roadmap](./04_ROADMAP.md)                               | Everyone                   | Phased release plan, milestones, exit criteria                    |
+| 05  | [Technical Architecture](./05_TECHNICAL_ARCHITECTURE.md) | Engineering                | System design, data model, APIs, infra, security                  |
+| 06  | [Design System](./06_DESIGN_SYSTEM.md)                   | Design, Frontend           | Tokens, components, RTL/Jalali patterns, accessibility            |
 
 ---
 
@@ -52,18 +52,18 @@ tools were never designed for.
 
 ## 3. Navigation model (canonical, 10 primary items)
 
-| # | Persian label | Route | View key |
-|---|---------------|-------|----------|
-| 1 | داشبورد | `/` | `dashboard` |
-| 2 | ساخت | `/compose` | `compose` |
-| 3 | برنامه‌ریزی | `/calendar` | `calendar` |
-| 4 | کمپین‌ها | `/campaigns` | `campaigns` |
-| 5 | محتوا | `/content` | `content` |
-| 6 | رسانه | `/media` | `media` |
-| 7 | پیام‌ها | `/inbox` | `inbox` |
-| 8 | گزارش‌ها | `/analytics` | `analytics` |
-| 9 | کانال‌ها | `/channels` | `channels` |
-| 10 | تنظیمات | `/store` | `settings` |
+| #   | Persian label | Route        | View key    |
+| --- | ------------- | ------------ | ----------- |
+| 1   | داشبورد       | `/`          | `dashboard` |
+| 2   | ساخت          | `/compose`   | `compose`   |
+| 3   | برنامه‌ریزی   | `/calendar`  | `calendar`  |
+| 4   | کمپین‌ها      | `/campaigns` | `campaigns` |
+| 5   | محتوا         | `/content`   | `content`   |
+| 6   | رسانه         | `/media`     | `media`     |
+| 7   | پیام‌ها       | `/inbox`     | `inbox`     |
+| 8   | گزارش‌ها      | `/analytics` | `analytics` |
+| 9   | کانال‌ها      | `/channels`  | `channels`  |
+| 10  | تنظیمات       | `/store`     | `settings`  |
 
 Secondary operational views (`/queue`, `/logs`) are reachable as sub-tabs inside
 `/calendar` and `/analytics` respectively — they are **not** permanent primary nav.

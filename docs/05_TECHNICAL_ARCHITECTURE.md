@@ -83,6 +83,7 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
 ```
 
 ### Design principles
+
 1. **Tenant isolation first** — every query is `workspace_id`-scoped at the data layer.
 2. **Stateless adapters** — all state lives in Postgres; channel adapters are pure
    functions over (account, content) → result.
@@ -96,24 +97,25 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
 
 ## 2. Component Responsibilities
 
-| Component | Tech | Responsibility |
-|-----------|------|----------------|
-| **Frontend** | Next.js 16, TS, Tailwind 4, shadcn/ui | UI rendering, optimistic updates, RTL/Jalali, PWA shell. No secrets. |
-| **Caddy gateway** | Caddy | TLS, routing, port-transform (`XTransformPort`), static assets. |
-| **Backend API** | FastAPI, Pydantic v2 | REST endpoints, auth, RBAC, validation, orchestration, OpenAPI. |
-| **Realtime service** | socket.io (mini-service, port 3003) | Push job/inbox/notification events to clients; subscribes to Redis pubsub. |
-| **Workers** | Celery 5 | Per-channel publishing, webhook ingest, analytics ingestion, scheduled dispatch (beat). |
-| **Redis** | Redis 7 | Celery broker + result backend + pubsub + short-lived cache. |
-| **PostgreSQL** | PostgreSQL 16 | Source of truth; tenant-scoped schema. |
-| **Object storage** | S3-compatible / local volume | Media files (originals + processed variants). |
-| **Secrets manager** | env + encrypted DB fields (AES-256) | OAuth/bot tokens at rest. |
-| **CI** | GitHub Actions | lint/typecheck/test/build/migrate/audit gates. |
+| Component            | Tech                                  | Responsibility                                                                          |
+| -------------------- | ------------------------------------- | --------------------------------------------------------------------------------------- |
+| **Frontend**         | Next.js 16, TS, Tailwind 4, shadcn/ui | UI rendering, optimistic updates, RTL/Jalali, PWA shell. No secrets.                    |
+| **Caddy gateway**    | Caddy                                 | TLS, routing, port-transform (`XTransformPort`), static assets.                         |
+| **Backend API**      | FastAPI, Pydantic v2                  | REST endpoints, auth, RBAC, validation, orchestration, OpenAPI.                         |
+| **Realtime service** | socket.io (mini-service, port 3003)   | Push job/inbox/notification events to clients; subscribes to Redis pubsub.              |
+| **Workers**          | Celery 5                              | Per-channel publishing, webhook ingest, analytics ingestion, scheduled dispatch (beat). |
+| **Redis**            | Redis 7                               | Celery broker + result backend + pubsub + short-lived cache.                            |
+| **PostgreSQL**       | PostgreSQL 16                         | Source of truth; tenant-scoped schema.                                                  |
+| **Object storage**   | S3-compatible / local volume          | Media files (originals + processed variants).                                           |
+| **Secrets manager**  | env + encrypted DB fields (AES-256)   | OAuth/bot tokens at rest.                                                               |
+| **CI**               | GitHub Actions                        | lint/typecheck/test/build/migrate/audit gates.                                          |
 
 ---
 
 ## 3. Request & Data Flow
 
 ### 3.1 Compose → Schedule → Publish (happy path)
+
 1. User composes in Next.js; on "Schedule", `POST /api/contents` creates a `content`
    row, then `POST /api/publish-jobs` creates one `publish_job` per selected platform
    (status `pending`, `scheduled_at` set, `idempotency_key` generated).
@@ -121,7 +123,7 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
    returns 201 with job IDs.
 3. Celery beat (every 30s) selects `pending` jobs where `scheduled_at ≤ now` and routes
    each to its channel queue (`instagram_queue`, etc.).
-4. Worker picks the job, sets status `processing` (persisted *before* the API call),
+4. Worker picks the job, sets status `processing` (persisted _before_ the API call),
    calls the adapter's `publish()`.
 5. Adapter executes the channel-specific flow (e.g., IG two-step), returns
    `PublishResult(external_id, raw_response)`.
@@ -131,6 +133,7 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
    updates live.
 
 ### 3.2 Failure path
+
 1. Adapter returns a transient error (5xx, 429, network) → worker schedules a retry
    with exponential backoff + jitter; records a `publish_attempt` with status `retry`.
 2. After max attempts → status `failed`, job → DLQ; Action Center event raised; user
@@ -140,6 +143,7 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
    held jobs released.
 
 ### 3.3 Webhook ingest (Phase 2 — IG comments/DMs)
+
 1. Meta posts to `/webhooks/instagram` (verified via `hub.challenge` + app secret HMAC).
 2. FastAPI verifies signature, idempotently inserts `inbox_messages`, enqueues an
    `ingest_queue` task.
@@ -147,6 +151,7 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
    window) → publishes `inbox.new` + `automation.event` to Redis pubsub.
 
 ### 3.4 Analytics ingestion
+
 1. Nightly Celery beat job pulls IG/LinkedIn insights per connected account → upserts
    `analytics_snapshots` (unique on `workspace_id, date, platform, metric_type`).
 2. Analytics endpoints read snapshots (and live counters) → served to dashboard.
@@ -158,7 +163,9 @@ External APIs: Meta Graph API · Rubika Bot API · Telegram Bot API · LinkedIn 
 This is the heart of the system and the source of the ≥98% success-rate NFR.
 
 ### 4.1 Queue topology
+
 One Celery queue **per channel adapter** + utility queues:
+
 - `instagram_queue`, `rubika_queue`, `telegram_queue`, `linkedin_queue`, `eitaa_queue`
 - `ingest_queue` (webhook → inbox/automation)
 - `analytics_queue` (insight pulls, report generation)
@@ -169,6 +176,7 @@ per-bot). A shared queue would let a rate-limited channel block others. Per-chan
 queues isolate backpressure.
 
 ### 4.2 Job state machine
+
 ```
             ┌──────────┐  beat dispatch (scheduled_at≤now)
             │ pending  │─────────────────────────────┐
@@ -193,12 +201,14 @@ queues isolate backpressure.
                                                     │  action  │
                                                     └──────────┘
 ```
+
 - Transitions are persisted **before** the side effect (outbox pattern) so a crash
   mid-publish resumes correctly.
 - `processing` jobs have a visibility timeout; if a worker dies, the job returns to
   `pending` (Celery `acks_late=True` + `task_reject_on_worker_lost`).
 
 ### 4.3 Idempotency
+
 - Every `publish_job` has `idempotency_key = uuid4()`.
 - Before retry, the adapter checks downstream for an existing publish (e.g., IG: query
   recent media; Rubika: optional message-id check). If found, mark `success` without
@@ -207,6 +217,7 @@ queues isolate backpressure.
   duplicate job creation on client retry.
 
 ### 4.4 Retry policy
+
 - Backoff: base 1s, factor 2, cap 5 min, jitter ±20%.
 - Max attempts per channel (configurable): IG=5, Rubika=5, TG=5, LI=4.
 - Retryable: 5xx, 429, network timeouts, container-creation 4xx that are transient.
@@ -214,6 +225,7 @@ queues isolate backpressure.
   if still 401 → `action`), 403 (permission — `action`).
 
 ### 4.5 Circuit breaker
+
 - Per `(workspace_id, platform)` trip: 5 consecutive `failed` in 60s → `OPEN`.
 - OPEN: new jobs for that channel held in `pending` (not dispatched); a health-check
   task runs every 60s.
@@ -222,11 +234,13 @@ queues isolate backpressure.
 - State stored in Redis (TTL) + mirrored to `platforms.status` for UI.
 
 ### 4.6 Dead-letter queue
+
 - Jobs exhausting retries move to `dlq` (a dedicated DB state + a Celery DLQ).
 - UI: Queue sub-tab → "Failed" filter shows DLQ jobs with last error + "Retry" /
   "Discard" actions. Retry re-arms `idempotency_key` (new key) and resets attempts.
 
 ### 4.7 Scheduled-time accuracy
+
 - Celery beat runs every 30s, selects due jobs, dispatches.
 - Workers are sized so queue depth stays near 0 under normal load; an autoscaler
   (or fixed sizing from capacity planning) prevents lag.
@@ -281,6 +295,7 @@ class ChannelAdapter(ABC):
 ```
 
 ### Adapter implementations
+
 - **InstagramAdapter**: two-step publish (`/media` → `/media_publish`); carousel children;
   Reels via resumable upload (`rupload.facebook.com`); Stories; reads
   `/content_publishing_limit`; sets `is_ai_generated`; token refresh (long-lived →
@@ -294,6 +309,7 @@ class ChannelAdapter(ABC):
 - **EitaaAdapter** (P3): bot-token pattern like Rubika.
 
 ### Adapter cross-cutting
+
 - Every call wrapped in a retry decorator (channel-specific policy).
 - Every call emits a metric (`adapter.<platform>.<call>.{success,latency}`).
 - Every call logged with `trace_id`, `job_id`, `workspace_id` (never logs secrets).
@@ -306,12 +322,14 @@ Per the gateway rules, realtime uses a **socket.io mini-service on port 3003**; 
 frontend connects via `io("/?XTransformPort=3003")`.
 
 ### Flow
+
 1. Frontend authenticates the socket with its JWT (cookie).
 2. Service validates the JWT, resolves `workspace_id`, joins a room `ws:<workspace_id>`.
 3. Backend (workers / API) publish events to Redis pubsub channel `events:<workspace_id>`.
 4. Realtime service subscribes, fans out to the room.
 
 ### Event types
+
 - `job.updated` — { jobId, status, progress, error }
 - `inbox.new` — { messageId, channel, type }
 - `notification.new` — { id, type, title }
@@ -319,6 +337,7 @@ frontend connects via `io("/?XTransformPort=3003")`.
 - `platform.status` — { platformId, status }
 
 ### Resilience
+
 - Socket reconnection with backoff; missed events backfilled via REST on reconnect
   (client sends `lastEventId`).
 - Service is stateless (rooms derived from JWT); horizontally scalable behind Caddy
@@ -566,6 +585,7 @@ subscription_events (
 ```
 
 ### 7.12 Migration strategy
+
 - New migration `0004_unified_schema` reconciles the prototype's Prisma models and the
   existing `0001/0002/0003` Alembic migrations into the above.
 - Data-migration script ports existing `posts` → `contents` + `publish_jobs`,
@@ -577,6 +597,7 @@ subscription_events (
 ## 8. API Design
 
 ### 8.1 Conventions
+
 - REST; JSON; versioned prefix `/api/v1`.
 - Auth: JWT in `HttpOnly` cookie (`nashrino_session`); CSRF token for mutations.
 - RBAC: FastAPI dependency `require_role(*roles)` on every route.
@@ -696,6 +717,7 @@ GET    /api/v1/billing/portal
 ```
 
 ### 8.3 Webhook security
+
 - Meta webhooks: verify `X-Hub-Signature-256` HMAC with app secret; idempotent by
   `external_id` on `inbox_messages`.
 - All webhooks behind rate limiting + IP allowlist (Meta ranges) where feasible.
@@ -788,7 +810,7 @@ GET    /api/v1/billing/portal
   expansion (for automation), idea generation (P3).
 - **Pattern**: API route calls the SDK with a Persian system prompt conditioned on the
   workspace brand kit; returns structured JSON (variants array); cached per request.
-- **Safety**: AI output is a *suggestion*; user edits before publish; `is_ai_generated`
+- **Safety**: AI output is a _suggestion_; user edits before publish; `is_ai_generated`
   flag set on media where applicable (Meta compliance).
 - **Cost control**: per-workspace daily AI quota; rate-limited.
 
@@ -825,5 +847,5 @@ GET    /api/v1/billing/portal
 
 ---
 
-*End of technical architecture. Implementation detail beyond this lives in code + ADRs
-(Architecture Decision Records) committed alongside the relevant change.*
+_End of technical architecture. Implementation detail beyond this lives in code + ADRs
+(Architecture Decision Records) committed alongside the relevant change._

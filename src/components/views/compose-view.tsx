@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "sonner";
-import { CaptionAssistant } from "@/components/ai/caption-assistant";
-import { AIAssistantSheet } from "@/components/ai/ai-assistant-sheet";
-import { NashrinoEditor } from "@/components/editor/nashrino-editor";
-import { PlatformPreviewTabs } from "@/components/editor/platform-preview-tabs";
-import { MediaUploader } from "@/components/editor/media-uploader";
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
+import { CaptionAssistant } from '@/components/ai/caption-assistant'
+import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
+import { NashrinoEditor } from '@/components/editor/nashrino-editor'
+import { PlatformPreviewTabs } from '@/components/editor/platform-preview-tabs'
+import { MediaUploader } from '@/components/editor/media-uploader'
 import {
   PenLine,
   Image as ImageIcon,
@@ -24,139 +24,146 @@ import {
   UploadCloud,
   X,
   Plus,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
-import { toPersianDigits, formatJalali, formatJalaliTime } from "@/lib/jalali";
-import { announce } from "@/lib/aria-live";
-import { SectionTitle, PlatformIcon, PlatformBadge, Skeleton, LoadingState, EmptyState } from "@/components/dashboard/shared";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { JalaliDatePicker } from "@/components/ui/jalali-picker";
+import { api } from '@/lib/api'
+import { toPersianDigits, formatJalali, formatJalaliTime } from '@/lib/jalali'
+import { announce } from '@/lib/aria-live'
+import {
+  SectionTitle,
+  PlatformIcon,
+  PlatformBadge,
+  Skeleton,
+  LoadingState,
+  EmptyState,
+} from '@/components/dashboard/shared'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { JalaliDatePicker } from '@/components/ui/jalali-picker'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 interface Campaign {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 interface MediaItem {
-  id: string;
-  name: string;
-  thumbnail: string;
-  fileType: string;
-  fileSize: number;
+  id: string
+  name: string
+  thumbnail: string
+  fileType: string
+  fileSize: number
 }
 interface Platform {
-  id: string;
-  name: string;
-  type: string;
-  state: string;
-  stateColor: string;
-  username: string;
+  id: string
+  name: string
+  type: string
+  state: string
+  stateColor: string
+  username: string
 }
 
 /** Shape of an item in the ["content"] query cache. Kept in sync with content-view. */
 interface ContentItem {
-  id: string;
-  title: string;
-  body: string | null;
-  hashtags: string | null;
-  status: string;
-  authorName: string | null;
-  thumbnail: string | null;
-  campaign: string;
-  platforms: string[];
-  scheduledAt: string | null;
-  publishedAt: string | null;
-  updatedAt: string;
+  id: string
+  title: string
+  body: string | null
+  hashtags: string | null
+  status: string
+  authorName: string | null
+  thumbnail: string | null
+  campaign: string
+  platforms: string[]
+  scheduledAt: string | null
+  publishedAt: string | null
+  updatedAt: string
 }
 
 interface PublishPayload {
-  title: string;
-  caption: string;
-  hashtags: string;
-  note: string;
-  campaignId?: string;
-  campaignName: string;
-  mediaIds: string[];
-  platformTypes: string[];
-  platformCaptions: Record<string, string>;
-  scheduleMode: "now" | "schedule" | "queue";
-  scheduleDate?: string; // ISO yyyy-mm-dd (gregorian, for API contract)
-  scheduleTime?: string; // HH:mm
-  scheduledAt?: string | null; // full ISO
-  thumbnail: string | null;
+  title: string
+  caption: string
+  hashtags: string
+  note: string
+  campaignId?: string
+  campaignName: string
+  mediaIds: string[]
+  platformTypes: string[]
+  platformCaptions: Record<string, string>
+  scheduleMode: 'now' | 'schedule' | 'queue'
+  scheduleDate?: string // ISO yyyy-mm-dd (gregorian, for API contract)
+  scheduleTime?: string // HH:mm
+  scheduledAt?: string | null // full ISO
+  thumbnail: string | null
 }
 
-const IG_LIMIT = 2200;
+const IG_LIMIT = 2200
 
 export function ComposeView() {
-  const [title, setTitle] = useState("");
-  const [caption, setCaption] = useState("");
-  const [hashtags, setHashtags] = useState("");
-  const [note, setNote] = useState("");
-  const [campaignId, setCampaignId] = useState<string>("");
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
-  const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({});
-  const [scheduleMode, setScheduleMode] = useState<"now" | "schedule" | "queue">("now");
+  const [title, setTitle] = useState('')
+  const [caption, setCaption] = useState('')
+  const [hashtags, setHashtags] = useState('')
+  const [note, setNote] = useState('')
+  const [campaignId, setCampaignId] = useState<string>('')
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem[]>([])
+  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
+  const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({})
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule' | 'queue'>('now')
   // Single source of truth — a real Date object from the Jalali picker
-  const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
+  const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
 
   // AI sheet state
-  const [aiSheetOpen, setAiSheetOpen] = useState(false);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false)
 
   // ⌘J shortcut to open AI sheet
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
-        e.preventDefault();
-        setAiSheetOpen(true);
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault()
+        setAiSheetOpen(true)
       }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const { data: campaigns } = useQuery<Campaign[]>({
-    queryKey: ["campaigns"],
-    queryFn: () => api.get<Campaign[]>("/api/campaigns"),
-  });
+    queryKey: ['campaigns'],
+    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+  })
   const { data: media, isLoading: mediaIsLoading } = useQuery<MediaItem[]>({
-    queryKey: ["media"],
-    queryFn: () => api.getPaginated<MediaItem>("/api/media"),
-  });
+    queryKey: ['media'],
+    queryFn: () => api.getPaginated<MediaItem>('/api/media'),
+  })
   const { data: platforms } = useQuery<Platform[]>({
-    queryKey: ["platforms"],
-    queryFn: () => api.get<Platform[]>("/api/platforms"),
-  });
+    queryKey: ['platforms'],
+    queryFn: () => api.get<Platform[]>('/api/platforms'),
+  })
 
   const toggleMedia = (m: MediaItem) => {
     setSelectedMedia((cur) =>
       cur.some((x) => x.id === m.id) ? cur.filter((x) => x.id !== m.id) : [...cur, m]
-    );
-  };
+    )
+  }
 
   const togglePlatform = (type: string) => {
     setSelectedPlatforms((cur) =>
       cur.includes(type) ? cur.filter((x) => x !== type) : [...cur, type]
-    );
-  };
+    )
+  }
 
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient()
 
   const canPublish =
-    title.trim().length > 0 && selectedPlatforms.length > 0 && selectedMedia.length > 0;
+    title.trim().length > 0 && selectedPlatforms.length > 0 && selectedMedia.length > 0
 
   // Optimistic publish: append the new content to the ["content"] cache before the
   // API resolves so it appears in the content library in <100ms (Linear feel).
@@ -167,67 +174,60 @@ export function ComposeView() {
   >({
     mutationFn: (payload) =>
       api.post<{ message: string; jobs: { id: string; platform: string }[]; contentId: string }>(
-        "/api/publish",
+        '/api/publish',
         payload
       ),
     onMutate: async (payload) => {
-      await queryClient.cancelQueries({ queryKey: ["content"] });
-      const previous = queryClient.getQueryData<ContentItem[]>(["content"]);
+      await queryClient.cancelQueries({ queryKey: ['content'] })
+      const previous = queryClient.getQueryData<ContentItem[]>(['content'])
       const optimistic: ContentItem = {
         id: `optimistic-${Date.now()}`,
         title: payload.title,
         body: payload.caption || null,
         hashtags: payload.hashtags || null,
         status:
-          payload.scheduleMode === "now"
-            ? "published"
-            : payload.scheduleMode === "schedule"
-              ? "scheduled"
-              : "draft",
+          payload.scheduleMode === 'now'
+            ? 'published'
+            : payload.scheduleMode === 'schedule'
+              ? 'scheduled'
+              : 'draft',
         authorName: null,
         thumbnail: payload.thumbnail,
         campaign: payload.campaignName,
         platforms: payload.platformTypes,
         scheduledAt:
-          payload.scheduleMode === "schedule" && payload.scheduledAt
-            ? payload.scheduledAt
-            : null,
-        publishedAt:
-          payload.scheduleMode === "now" ? new Date().toISOString() : null,
+          payload.scheduleMode === 'schedule' && payload.scheduledAt ? payload.scheduledAt : null,
+        publishedAt: payload.scheduleMode === 'now' ? new Date().toISOString() : null,
         updatedAt: new Date().toISOString(),
-      };
-      queryClient.setQueryData<ContentItem[]>(["content"], (old) => [
-        optimistic,
-        ...(old ?? []),
-      ]);
-      return { previous };
+      }
+      queryClient.setQueryData<ContentItem[]>(['content'], (old) => [optimistic, ...(old ?? [])])
+      return { previous }
     },
     onError: (err, _payload, context: any) => {
-      if (context?.previous) queryClient.setQueryData(["content"], context.previous);
-      toast.error(err.message || "انتشار محتوا ناموفق بود. تغییرات برگردانده شد.");
+      if (context?.previous) queryClient.setQueryData(['content'], context.previous)
+      toast.error(err.message || 'انتشار محتوا ناموفق بود. تغییرات برگردانده شد.')
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["content"] });
-      queryClient.invalidateQueries({ queryKey: ["publish-jobs"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-pulse"] });
+      queryClient.invalidateQueries({ queryKey: ['content'] })
+      queryClient.invalidateQueries({ queryKey: ['publish-jobs'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-pulse'] })
     },
-  });
+  })
 
-  const submit = (action: "draft" | "review" | "publish") => {
-    if (action === "publish" && !canPublish) {
-      toast.error("برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.");
-      return;
+  const submit = (action: 'draft' | 'review' | 'publish') => {
+    if (action === 'publish' && !canPublish) {
+      toast.error('برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.')
+      return
     }
 
-    if (action === "draft") {
-      toast.success("پیش‌نویس ذخیره شد.");
-      return;
+    if (action === 'draft') {
+      toast.success('پیش‌نویس ذخیره شد.')
+      return
     }
-    if (action === "review") {
+    if (action === 'review') {
       // Submit for review — creates content with status="review" (no publish jobs)
-      const campaignName =
-        campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین";
+      const campaignName = campaigns?.find((c) => c.id === campaignId)?.name ?? 'بدون کمپین'
       const payload: PublishPayload = {
         title,
         caption,
@@ -239,29 +239,35 @@ export function ComposeView() {
         platformTypes: selectedPlatforms,
         platformCaptions,
         scheduleMode,
-        scheduledAt: scheduleMode === "schedule" ? scheduledAt?.toISOString() ?? null : null,
+        scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
         thumbnail: selectedMedia[0]?.thumbnail ?? null,
-      } as PublishPayload & { mode: string };
-      (payload as any).mode = "review";
+      } as PublishPayload & { mode: string }
+      ;(payload as any).mode = 'review'
 
-      const toastId = toast.loading("در حال ارسال برای بررسی…");
+      const toastId = toast.loading('در حال ارسال برای بررسی…')
       publishMutation.mutate(payload, {
         onSuccess: (res) => {
-          toast.success("محتوا برای تأیید ارسال شد", { id: toastId });
-          setTitle(""); setCaption(""); setHashtags(""); setNote("");
-          setCampaignId(""); setSelectedMedia([]); setSelectedPlatforms([]);
-          setPlatformCaptions({}); setScheduleMode("now"); setScheduledAt(null);
+          toast.success('محتوا برای تأیید ارسال شد', { id: toastId })
+          setTitle('')
+          setCaption('')
+          setHashtags('')
+          setNote('')
+          setCampaignId('')
+          setSelectedMedia([])
+          setSelectedPlatforms([])
+          setPlatformCaptions({})
+          setScheduleMode('now')
+          setScheduledAt(null)
         },
         onError: (err) => {
-          toast.error(err.message || "خطا در ارسال", { id: toastId });
+          toast.error(err.message || 'خطا در ارسال', { id: toastId })
         },
-      });
-      return;
+      })
+      return
     }
 
     // action === "publish" — fire the optimistic mutation
-    const campaignName =
-      campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین";
+    const campaignName = campaigns?.find((c) => c.id === campaignId)?.name ?? 'بدون کمپین'
     const payload: PublishPayload = {
       title,
       caption,
@@ -273,33 +279,34 @@ export function ComposeView() {
       platformTypes: selectedPlatforms,
       platformCaptions,
       scheduleMode,
-      scheduledAt: scheduleMode === "schedule" ? scheduledAt?.toISOString() ?? null : null,
+      scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
       thumbnail: selectedMedia[0]?.thumbnail ?? null,
-    };
+    }
 
-    const toastId = toast.loading("در حال ایجاد محتوا و ارسال به صف انتشار…");
-    announce("در حال انتشار...");
+    const toastId = toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…')
+    announce('در حال انتشار...')
     publishMutation.mutate(payload, {
       onSuccess: (res) => {
-        toast.success(res.message, { id: toastId });
-        announce("محتوا با موفقیت منتشر شد");
+        toast.success(res.message, { id: toastId })
+        announce('محتوا با موفقیت منتشر شد')
         // Reset form
-        setTitle("");
-        setCaption("");
-        setHashtags("");
-        setNote("");
-        setCampaignId("");
-        setSelectedMedia([]);
-        setSelectedPlatforms([]);
-        setPlatformCaptions({});
-        setScheduleMode("now"); setScheduledAt(null);
+        setTitle('')
+        setCaption('')
+        setHashtags('')
+        setNote('')
+        setCampaignId('')
+        setSelectedMedia([])
+        setSelectedPlatforms([])
+        setPlatformCaptions({})
+        setScheduleMode('now')
+        setScheduledAt(null)
       },
       onError: (err) => {
-        toast.error(err.message || "خطا در انتشار محتوا", { id: toastId });
-        announce("خطا در انتشار", "assertive");
+        toast.error(err.message || 'خطا در انتشار محتوا', { id: toastId })
+        announce('خطا در انتشار', 'assertive')
       },
-    });
-  };
+    })
+  }
 
   return (
     <motion.div
@@ -308,7 +315,10 @@ export function ComposeView() {
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="space-y-4"
     >
-      <SectionTitle icon={PenLine} badge={<span className="text-[11px] text-ink-tertiary">پیش‌نویس خودکار ذخیره می‌شود</span>}>
+      <SectionTitle
+        icon={PenLine}
+        badge={<span className="text-[11px] text-ink-tertiary">پیش‌نویس خودکار ذخیره می‌شود</span>}
+      >
         ساخت محتوای جدید
       </SectionTitle>
 
@@ -320,29 +330,37 @@ export function ComposeView() {
           <span className="text-[10px] text-ink-tertiary ms-auto">
             {selectedPlatforms.length > 0
               ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم انتخاب شده`
-              : "حداقل یک پلتفرم انتخاب کنید"}
+              : 'حداقل یک پلتفرم انتخاب کنید'}
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {["instagram", "telegram", "linkedin", "rubika"].map((type) => {
-            const isSelected = selectedPlatforms.includes(type);
+          {['instagram', 'telegram', 'linkedin', 'rubika'].map((type) => {
+            const isSelected = selectedPlatforms.includes(type)
             return (
               <button
                 key={type}
                 onClick={() => togglePlatform(type)}
                 className={cn(
-                  "n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all",
+                  'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all',
                   isSelected
-                    ? "border-accent/30 bg-accent-soft text-accent"
-                    : "border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover",
+                    ? 'border-accent/30 bg-accent-soft text-accent'
+                    : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
                 )}
                 aria-pressed={isSelected}
               >
                 <PlatformIcon platform={type} className="size-4" />
-                <span>{type === "instagram" ? "اینستاگرام" : type === "telegram" ? "تلگرام" : type === "linkedin" ? "لینکدین" : "روبیکا"}</span>
+                <span>
+                  {type === 'instagram'
+                    ? 'اینستاگرام'
+                    : type === 'telegram'
+                      ? 'تلگرام'
+                      : type === 'linkedin'
+                        ? 'لینکدین'
+                        : 'روبیکا'}
+                </span>
                 {isSelected && <Check className="size-3.5" strokeWidth={2.5} />}
               </button>
-            );
+            )
           })}
         </div>
       </div>
@@ -375,12 +393,14 @@ export function ComposeView() {
               >
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: "easeInOut" }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
                 >
                   <Sparkles className="size-3.5" strokeWidth={2.5} />
                 </motion.span>
                 دستیار هوش مصنوعی
-                <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">⌘J</kbd>
+                <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">
+                  ⌘J
+                </kbd>
               </motion.button>
             </div>
 
@@ -422,9 +442,17 @@ export function ComposeView() {
               </Label>
               <MediaUploader
                 onUploaded={() => {}}
-                selectedMedia={selectedMedia.map((m) => ({ id: m.id, name: m.name, thumbnail: m.thumbnail }))}
+                selectedMedia={selectedMedia.map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  thumbnail: m.thumbnail,
+                }))}
                 onToggle={(m) => toggleMedia(m as any)}
-                existingMedia={(media ?? []).map((m) => ({ id: m.id, name: m.name, thumbnail: m.thumbnail }))}
+                existingMedia={(media ?? []).map((m) => ({
+                  id: m.id,
+                  name: m.name,
+                  thumbnail: m.thumbnail,
+                }))}
               />
             </div>
 
@@ -438,7 +466,9 @@ export function ComposeView() {
                   </SelectTrigger>
                   <SelectContent>
                     {(campaigns ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -464,24 +494,24 @@ export function ComposeView() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {[
-                { id: "now" as const, label: "اکنون" },
-                { id: "schedule" as const, label: "زمان‌بندی" },
-                { id: "queue" as const, label: "صف انتشار" },
+                { id: 'now' as const, label: 'اکنون' },
+                { id: 'schedule' as const, label: 'زمان‌بندی' },
+                { id: 'queue' as const, label: 'صف انتشار' },
               ].map((opt) => (
                 <button
                   key={opt.id}
                   onClick={() => setScheduleMode(opt.id)}
                   className={cn(
-                    "n-focus-ring rounded-lg border px-3 py-1.5 text-[11.5px] font-[600] transition-colors",
+                    'n-focus-ring rounded-lg border px-3 py-1.5 text-[11.5px] font-[600] transition-colors',
                     scheduleMode === opt.id
-                      ? "border-accent/30 bg-accent-soft text-accent"
-                      : "border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover",
+                      ? 'border-accent/30 bg-accent-soft text-accent'
+                      : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
                   )}
                 >
                   {opt.label}
                 </button>
               ))}
-              {scheduleMode === "schedule" && (
+              {scheduleMode === 'schedule' && (
                 <div className="flex items-center gap-2 ms-2 min-w-[220px]">
                   <JalaliDatePicker
                     value={scheduledAt}
@@ -507,7 +537,7 @@ export function ComposeView() {
               <span className="text-[10px] text-ink-tertiary ms-auto">
                 {selectedPlatforms.length > 0
                   ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
-                  : "پلتفرمی انتخاب نشده"}
+                  : 'پلتفرمی انتخاب نشده'}
               </span>
             </div>
             <PlatformPreviewTabs
@@ -520,17 +550,15 @@ export function ComposeView() {
 
             {/* Schedule info (always visible below tabs) */}
             <div className="n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
+              <span>{campaigns?.find((c) => c.id === campaignId)?.name ?? 'بدون کمپین'}</span>
               <span>
-                {campaigns?.find((c) => c.id === campaignId)?.name ?? "بدون کمپین"}
-              </span>
-              <span>
-                {scheduleMode === "now"
-                  ? "اکنون"
-                  : scheduleMode === "schedule"
+                {scheduleMode === 'now'
+                  ? 'اکنون'
+                  : scheduleMode === 'schedule'
                     ? scheduledAt
                       ? `${formatJalali(scheduledAt, true)} • ${formatJalaliTime(scheduledAt)}`
-                      : "زمان‌بندی نشده"
-                    : "در صف انتشار"}
+                      : 'زمان‌بندی نشده'
+                    : 'در صف انتشار'}
               </span>
             </div>
           </div>
@@ -554,22 +582,32 @@ export function ComposeView() {
             <span>{toPersianDigits(caption.length)} کاراکتر</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" className="n-focus-ring" onClick={() => submit("draft")}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="n-focus-ring"
+              onClick={() => submit('draft')}
+            >
               <FileText className="size-4" />
               ذخیره پیش‌نویس
             </Button>
-            <Button variant="outline" size="sm" className="n-focus-ring" onClick={() => submit("review")}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="n-focus-ring"
+              onClick={() => submit('review')}
+            >
               <Send className="size-4" />
               ارسال برای تأیید
             </Button>
             <Button
               size="sm"
               className="n-focus-ring bg-accent text-white hover:bg-accent-hover"
-              onClick={() => submit("publish")}
+              onClick={() => submit('publish')}
               disabled={publishMutation.isPending || !canPublish}
             >
               <Send className="size-4" />
-              {publishMutation.isPending ? "در حال ارسال…" : "انتشار"}
+              {publishMutation.isPending ? 'در حال ارسال…' : 'انتشار'}
             </Button>
           </div>
         </div>
@@ -579,28 +617,28 @@ export function ComposeView() {
       <AIAssistantSheet
         open={aiSheetOpen}
         onClose={() => setAiSheetOpen(false)}
-        platform={(selectedPlatforms[0] as any) || "instagram"}
+        platform={(selectedPlatforms[0] as any) || 'instagram'}
         topic={title}
         onInsert={(text) => setCaption(text)}
-        onHashtags={(tags) => setHashtags(tags.join(" "))}
+        onHashtags={(tags) => setHashtags(tags.join(' '))}
       />
     </motion.div>
-  );
+  )
 }
 
 /* ── Step 1: Content ── */
 function StepContent(props: {
-  title: string;
-  setTitle: (v: string) => void;
-  caption: string;
-  setCaption: (v: string) => void;
-  hashtags: string;
-  setHashtags: (v: string) => void;
-  note: string;
-  setNote: (v: string) => void;
-  campaignId: string;
-  setCampaignId: (v: string) => void;
-  campaigns: Campaign[];
+  title: string
+  setTitle: (v: string) => void
+  caption: string
+  setCaption: (v: string) => void
+  hashtags: string
+  setHashtags: (v: string) => void
+  note: string
+  setNote: (v: string) => void
+  campaignId: string
+  setCampaignId: (v: string) => void
+  campaigns: Campaign[]
 }) {
   return (
     <div className="space-y-4">
@@ -621,7 +659,7 @@ function StepContent(props: {
           platform="instagram"
           topic={props.title}
           onInsert={(text) => props.setCaption(text)}
-          onHashtags={(tags) => props.setHashtags(tags.join(" "))}
+          onHashtags={(tags) => props.setHashtags(tags.join(' '))}
         />
       )}
 
@@ -676,7 +714,7 @@ function StepContent(props: {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /* ── Step 2: Media ── */
@@ -686,18 +724,25 @@ function StepMedia({
   selected,
   toggle,
 }: {
-  media: MediaItem[];
-  isLoading: boolean;
-  selected: MediaItem[];
-  toggle: (m: MediaItem) => void;
+  media: MediaItem[]
+  isLoading: boolean
+  selected: MediaItem[]
+  toggle: (m: MediaItem) => void
 }) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border-2 border-dashed border-border p-6 text-center bg-surface-subtle">
         <UploadCloud className="size-8 text-ink-tertiary mx-auto mb-2" />
         <p className="text-[13px] font-[600] text-ink-primary">رسانه را اینجا بکشید یا کلیک کنید</p>
-        <p className="text-[11px] text-ink-tertiary mt-1">پشتیبانی از JPG، PNG، MP4 (حداکثر ۵۰ مگابایت)</p>
-        <Button variant="outline" size="sm" className="mt-3 n-focus-ring" onClick={() => toast.info("آپلود فایل به‌زودی فعال خواهد شد.")}>
+        <p className="text-[11px] text-ink-tertiary mt-1">
+          پشتیبانی از JPG، PNG، MP4 (حداکثر ۵۰ مگابایت)
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 n-focus-ring"
+          onClick={() => toast.info('آپلود فایل به‌زودی فعال خواهد شد.')}
+        >
           <Plus className="size-4" />
           انتخاب فایل
         </Button>
@@ -747,14 +792,16 @@ function StepMedia({
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-72 overflow-y-auto thin-scrollbar p-1">
               {media.map((m) => {
-                const isSel = selected.some((x) => x.id === m.id);
+                const isSel = selected.some((x) => x.id === m.id)
                 return (
                   <button
                     key={m.id}
                     onClick={() => toggle(m)}
                     className={cn(
-                      "n-focus-ring relative aspect-square rounded-xl overflow-hidden border-2 transition-all",
-                      isSel ? "border-accent ring-2 ring-accent/30" : "border-transparent hover:border-border"
+                      'n-focus-ring relative aspect-square rounded-xl overflow-hidden border-2 transition-all',
+                      isSel
+                        ? 'border-accent ring-2 ring-accent/30'
+                        : 'border-transparent hover:border-border'
                     )}
                   >
                     <img src={m.thumbnail} alt={m.name} className="w-full h-full object-cover" />
@@ -767,14 +814,14 @@ function StepMedia({
                       {m.name}
                     </span>
                   </button>
-                );
+                )
               })}
             </div>
           )}
         </LoadingState>
       </div>
     </div>
-  );
+  )
 }
 
 /* ── Step 3: Platforms ── */
@@ -785,28 +832,30 @@ function StepPlatform({
   captions,
   setCaptions,
 }: {
-  platforms: Platform[];
-  selected: string[];
-  toggle: (type: string) => void;
-  captions: Record<string, string>;
-  setCaptions: (updater: (cur: Record<string, string>) => Record<string, string>) => void;
+  platforms: Platform[]
+  selected: string[]
+  toggle: (type: string) => void
+  captions: Record<string, string>
+  setCaptions: (updater: (cur: Record<string, string>) => Record<string, string>) => void
 }) {
   // Ensure all 4 platform types are shown even if not connected
-  const allTypes = ["instagram", "telegram", "linkedin", "rubika"];
-  const merged = allTypes.map((t) => platforms.find((p) => p.type === t) ?? null);
+  const allTypes = ['instagram', 'telegram', 'linkedin', 'rubika']
+  const merged = allTypes.map((t) => platforms.find((p) => p.type === t) ?? null)
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-ink-tertiary">انتخاب کنید محتوا در کدام پلتفرم‌ها منتشر شود.</p>
+      <p className="text-[11px] text-ink-tertiary">
+        انتخاب کنید محتوا در کدام پلتفرم‌ها منتشر شود.
+      </p>
       {merged.map((p) => {
-        const type = p?.type ?? "";
-        const isSelected = selected.includes(type);
+        const type = p?.type ?? ''
+        const isSelected = selected.includes(type)
         return (
           <div
             key={type}
             className={cn(
-              "rounded-2xl border p-4 transition-all",
-              isSelected ? "border-accent/30 bg-accent-soft" : "border-border bg-surface-subtle"
+              'rounded-2xl border p-4 transition-all',
+              isSelected ? 'border-accent/30 bg-accent-soft' : 'border-border bg-surface-subtle'
             )}
           >
             <div className="flex items-center gap-3">
@@ -814,12 +863,15 @@ function StepPlatform({
               <PlatformIcon platform={type} className="size-8" />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-[600] text-ink-primary">{p?.name ?? type}</p>
-                <p className="text-[11px] text-ink-tertiary">
-                  @{p?.username || "—"}
-                </p>
+                <p className="text-[11px] text-ink-tertiary">@{p?.username || '—'}</p>
               </div>
               {p && (
-                <span className={cn("text-[10px] font-[600] px-2 py-0.5 rounded-full border", p.stateColor)}>
+                <span
+                  className={cn(
+                    'text-[10px] font-[600] px-2 py-0.5 rounded-full border',
+                    p.stateColor
+                  )}
+                >
                   {p.state}
                 </span>
               )}
@@ -830,17 +882,17 @@ function StepPlatform({
                   dir="rtl"
                   rows={2}
                   placeholder={`کپشن اختصاصی ${p?.name ?? type} (اختیاری)`}
-                  value={captions[type] ?? ""}
+                  value={captions[type] ?? ''}
                   onChange={(e) => setCaptions((cur) => ({ ...cur, [type]: e.target.value }))}
                   className="resize-none text-[12px]"
                 />
               </div>
             )}
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 /* (Legacy StepSchedule removed — replaced by inline JalaliDatePicker in schedule section) */

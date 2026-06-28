@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { Command as CommandPrimitive } from "cmdk";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect } from 'react'
+import { Command as CommandPrimitive } from 'cmdk'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
   Calendar,
@@ -18,68 +18,139 @@ import {
   Plus,
   Sparkles,
   Bell,
-} from "lucide-react";
-import { useAppStore } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { toPersianDigits } from "@/lib/jalali";
-import { modalBackdrop, modalContent } from "@/lib/motion";
+} from 'lucide-react'
+import { useAppStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
+import { toPersianDigits } from '@/lib/jalali'
+import { modalBackdrop, modalContent } from '@/lib/motion'
 
 interface NavAction {
-  id: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  shortcut?: string;
-  group: "pages" | "actions";
-  onSelect: () => void;
+  id: string
+  label: string
+  icon: typeof LayoutDashboard
+  shortcut?: string
+  group: 'pages' | 'actions'
+  onSelect: () => void
 }
 
 export function CommandPalette() {
-  const router = useRouter();
-  const {
-    isCommandPaletteOpen,
-    setCommandPaletteOpen,
-    setMobileMenuOpen,
-  } = useAppStore();
+  const router = useRouter()
+  const { isCommandPaletteOpen, setCommandPaletteOpen, setMobileMenuOpen } = useAppStore()
 
   // Global Cmd+K / Ctrl+K listener
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setCommandPaletteOpen(!isCommandPaletteOpen);
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
       }
-      if (e.key === "Escape" && isCommandPaletteOpen) {
-        setCommandPaletteOpen(false);
+      if (e.key === 'Escape' && isCommandPaletteOpen) {
+        setCommandPaletteOpen(false)
       }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [isCommandPaletteOpen, setCommandPaletteOpen]);
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isCommandPaletteOpen, setCommandPaletteOpen])
 
   const go = (path: string) => {
-    router.push(path);
-    setMobileMenuOpen(false);
-    setCommandPaletteOpen(false);
-  };
+    router.push(path)
+    setMobileMenuOpen(false)
+    setCommandPaletteOpen(false)
+  }
 
   const actions: NavAction[] = [
     // Pages
-    { id: "dashboard", label: "داشبورد", icon: LayoutDashboard, shortcut: "G D", group: "pages", onSelect: () => go("/") },
-    { id: "compose", label: "انتشار جدید", icon: Send, shortcut: "C", group: "pages", onSelect: () => go("/compose") },
-    { id: "calendar", label: "تقویم محتوا", icon: Calendar, group: "pages", onSelect: () => go("/calendar") },
-    { id: "campaigns", label: "کمپین‌ها", icon: Flag, group: "pages", onSelect: () => go("/campaigns") },
-    { id: "content", label: "کتابخانه محتوا", icon: Folder, group: "pages", onSelect: () => go("/content") },
-    { id: "media", label: "رسانه", icon: ImageIcon, group: "pages", onSelect: () => go("/media") },
-    { id: "inbox", label: "صندوق ورودی", icon: Mail, group: "pages", onSelect: () => go("/inbox") },
-    { id: "analytics", label: "تحلیل و گزارش‌ها", icon: BarChart3, group: "pages", onSelect: () => go("/analytics") },
-    { id: "channels", label: "پلتفرم‌ها و اتصال‌ها", icon: Link2, group: "pages", onSelect: () => go("/channels") },
-    { id: "settings", label: "تنظیمات", icon: Settings, group: "pages", onSelect: () => go("/settings") },
+    {
+      id: 'dashboard',
+      label: 'داشبورد',
+      icon: LayoutDashboard,
+      shortcut: 'G D',
+      group: 'pages',
+      onSelect: () => go('/'),
+    },
+    {
+      id: 'compose',
+      label: 'انتشار جدید',
+      icon: Send,
+      shortcut: 'C',
+      group: 'pages',
+      onSelect: () => go('/compose'),
+    },
+    {
+      id: 'calendar',
+      label: 'تقویم محتوا',
+      icon: Calendar,
+      group: 'pages',
+      onSelect: () => go('/calendar'),
+    },
+    {
+      id: 'campaigns',
+      label: 'کمپین‌ها',
+      icon: Flag,
+      group: 'pages',
+      onSelect: () => go('/campaigns'),
+    },
+    {
+      id: 'content',
+      label: 'کتابخانه محتوا',
+      icon: Folder,
+      group: 'pages',
+      onSelect: () => go('/content'),
+    },
+    { id: 'media', label: 'رسانه', icon: ImageIcon, group: 'pages', onSelect: () => go('/media') },
+    { id: 'inbox', label: 'صندوق ورودی', icon: Mail, group: 'pages', onSelect: () => go('/inbox') },
+    {
+      id: 'analytics',
+      label: 'تحلیل و گزارش‌ها',
+      icon: BarChart3,
+      group: 'pages',
+      onSelect: () => go('/analytics'),
+    },
+    {
+      id: 'channels',
+      label: 'پلتفرم‌ها و اتصال‌ها',
+      icon: Link2,
+      group: 'pages',
+      onSelect: () => go('/channels'),
+    },
+    {
+      id: 'settings',
+      label: 'تنظیمات',
+      icon: Settings,
+      group: 'pages',
+      onSelect: () => go('/settings'),
+    },
     // Actions
-    { id: "new-publish", label: "انتشار محتوای جدید", icon: Plus, shortcut: "C", group: "actions", onSelect: () => go("/compose") },
-    { id: "ai-assistant", label: "باز کردن دستیار هوش مصنوعی", icon: Sparkles, group: "actions", onSelect: () => go("/compose") },
-    { id: "search-content", label: "جستجوی محتوا…", icon: Search, group: "actions", onSelect: () => go("/content") },
-    { id: "view-notifications", label: "مشاهده اعلان‌ها", icon: Bell, group: "actions", onSelect: () => go("/inbox") },
-  ];
+    {
+      id: 'new-publish',
+      label: 'انتشار محتوای جدید',
+      icon: Plus,
+      shortcut: 'C',
+      group: 'actions',
+      onSelect: () => go('/compose'),
+    },
+    {
+      id: 'ai-assistant',
+      label: 'باز کردن دستیار هوش مصنوعی',
+      icon: Sparkles,
+      group: 'actions',
+      onSelect: () => go('/compose'),
+    },
+    {
+      id: 'search-content',
+      label: 'جستجوی محتوا…',
+      icon: Search,
+      group: 'actions',
+      onSelect: () => go('/content'),
+    },
+    {
+      id: 'view-notifications',
+      label: 'مشاهده اعلان‌ها',
+      icon: Bell,
+      group: 'actions',
+      onSelect: () => go('/inbox'),
+    },
+  ]
 
   return (
     <AnimatePresence>
@@ -91,7 +162,7 @@ export function CommandPalette() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.15, ease: "linear" }}
+            transition={{ duration: 0.15, ease: 'linear' }}
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setCommandPaletteOpen(false)}
           />
@@ -102,17 +173,13 @@ export function CommandPalette() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ type: "spring", stiffness: 300, damping: 26, mass: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 26, mass: 1 }}
             className="relative w-full max-w-[560px] mx-4 n-glass-popover overflow-hidden"
-            style={{ transformOrigin: "top center" }}
+            style={{ transformOrigin: 'top center' }}
             role="dialog"
             aria-label="پنل فرمان"
           >
-            <CommandPrimitive
-              className="flex flex-col"
-              shouldFilter
-              loop
-            >
+            <CommandPrimitive className="flex flex-col" shouldFilter loop>
               {/* Input row */}
               <div className="flex items-center gap-3 px-4 h-14 border-b border-border">
                 <Search className="size-[18px] text-ink-tertiary shrink-0" strokeWidth={2} />
@@ -130,9 +197,14 @@ export function CommandPalette() {
               <CommandPrimitive.List className="max-h-[400px] overflow-y-auto thin-scrollbar">
                 <CommandPrimitive.Empty>
                   <div className="py-12 text-center">
-                    <Search className="size-8 mx-auto text-ink-tertiary opacity-40 mb-2" strokeWidth={1.5} />
+                    <Search
+                      className="size-8 mx-auto text-ink-tertiary opacity-40 mb-2"
+                      strokeWidth={1.5}
+                    />
                     <p className="text-[13px] text-ink-secondary font-[500]">نتیجه‌ای پیدا نشد</p>
-                    <p className="text-[11px] text-ink-tertiary mt-1">برای دیدن همه فرمان‌ها، جستجو را خالی کنید</p>
+                    <p className="text-[11px] text-ink-tertiary mt-1">
+                      برای دیدن همه فرمان‌ها، جستجو را خالی کنید
+                    </p>
                   </div>
                 </CommandPrimitive.Empty>
 
@@ -141,9 +213,11 @@ export function CommandPalette() {
                   heading="مسیرها"
                   className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-[600] [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide"
                 >
-                  {actions.filter((a) => a.group === "pages").map((action) => (
-                    <CommandItem key={action.id} action={action} />
-                  ))}
+                  {actions
+                    .filter((a) => a.group === 'pages')
+                    .map((action) => (
+                      <CommandItem key={action.id} action={action} />
+                    ))}
                 </CommandPrimitive.Group>
 
                 {/* Actions group */}
@@ -151,9 +225,11 @@ export function CommandPalette() {
                   heading="عملیات"
                   className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-[600] [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide border-t border-border"
                 >
-                  {actions.filter((a) => a.group === "actions").map((action) => (
-                    <CommandItem key={action.id} action={action} />
-                  ))}
+                  {actions
+                    .filter((a) => a.group === 'actions')
+                    .map((action) => (
+                      <CommandItem key={action.id} action={action} />
+                    ))}
                 </CommandPrimitive.Group>
               </CommandPrimitive.List>
 
@@ -179,27 +255,33 @@ export function CommandPalette() {
         </div>
       )}
     </AnimatePresence>
-  );
+  )
 }
 
 function CommandItem({ action }: { action: NavAction }) {
-  const Icon = action.icon;
+  const Icon = action.icon
   return (
     <CommandPrimitive.Item
       onSelect={action.onSelect}
       className="flex items-center gap-3 px-4 py-2.5 cursor-pointer data-[selected=true]:bg-surface-hover transition-colors group"
     >
-      <Icon className="size-4 text-ink-tertiary group-data-[selected=true]:text-accent shrink-0" strokeWidth={2} />
+      <Icon
+        className="size-4 text-ink-tertiary group-data-[selected=true]:text-accent shrink-0"
+        strokeWidth={2}
+      />
       <span className="flex-1 text-[13px] text-ink-primary font-[500]">{action.label}</span>
       {action.shortcut && (
         <span className="flex items-center gap-1 text-[10px] text-ink-tertiary shrink-0">
-          {action.shortcut.split(" ").map((key, i) => (
-            <kbd key={i} className="px-1.5 py-0.5 rounded border border-border bg-surface-hover font-[600]">
+          {action.shortcut.split(' ').map((key, i) => (
+            <kbd
+              key={i}
+              className="px-1.5 py-0.5 rounded border border-border bg-surface-hover font-[600]"
+            >
               {key}
             </kbd>
           ))}
         </span>
       )}
     </CommandPrimitive.Item>
-  );
+  )
 }

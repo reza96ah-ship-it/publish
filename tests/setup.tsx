@@ -17,7 +17,5 @@ export function renderWithProviders(ui: ReactElement) {
       mutations: { retry: false },
     },
   })
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }

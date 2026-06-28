@@ -17,7 +17,7 @@ function getSocket(authToken?: string | null): Socket {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     auth: {
-      token: authToken || undefined,  // undefined = dev bypass (no token)
+      token: authToken || undefined, // undefined = dev bypass (no token)
     },
   })
   return socket
@@ -64,7 +64,11 @@ export function usePublishStream(workspaceId: string | null | undefined): void {
       queryClient.invalidateQueries({ queryKey: ['dashboard-pulse'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       // If the job succeeded or failed, also refresh content + metrics
-      if (_payload.status === 'success' || _payload.status === 'failed' || _payload.status === 'action') {
+      if (
+        _payload.status === 'success' ||
+        _payload.status === 'failed' ||
+        _payload.status === 'action'
+      ) {
         queryClient.invalidateQueries({ queryKey: ['content'] })
         queryClient.invalidateQueries({ queryKey: ['dashboard-metrics'] })
       }

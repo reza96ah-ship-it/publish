@@ -1,57 +1,57 @@
-"use client";
+'use client'
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Keyboard, X } from "lucide-react";
-import { useAppStore } from "@/lib/store";
-import { modalBackdrop, modalContent } from "@/lib/motion";
+import { motion, AnimatePresence } from 'framer-motion'
+import { Keyboard, X } from 'lucide-react'
+import { useAppStore } from '@/lib/store'
+import { modalBackdrop, modalContent } from '@/lib/motion'
 
 interface ShortcutGroup {
-  title: string;
-  items: { keys: string[]; label: string }[];
+  title: string
+  items: { keys: string[]; label: string }[]
 }
 
 const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
-    title: "عمومی",
+    title: 'عمومی',
     items: [
-      { keys: ["⌘", "K"], label: "باز کردن پنل فرمان" },
-      { keys: ["?"], label: "نمایش راهنمای میانبرها" },
-      { keys: ["Esc"], label: "بستن پنجره باز" },
-      { keys: ["⌘", "/"], label: "جستجوی سریع" },
+      { keys: ['⌘', 'K'], label: 'باز کردن پنل فرمان' },
+      { keys: ['?'], label: 'نمایش راهنمای میانبرها' },
+      { keys: ['Esc'], label: 'بستن پنجره باز' },
+      { keys: ['⌘', '/'], label: 'جستجوی سریع' },
     ],
   },
   {
-    title: "مسیرها",
+    title: 'مسیرها',
     items: [
-      { keys: ["G", "D"], label: "داشبورد" },
-      { keys: ["G", "C"], label: "تقویم محتوا" },
-      { keys: ["G", "I"], label: "صندوق ورودی" },
-      { keys: ["G", "A"], label: "تحلیل و گزارش‌ها" },
-      { keys: ["G", "S"], label: "تنظیمات" },
+      { keys: ['G', 'D'], label: 'داشبورد' },
+      { keys: ['G', 'C'], label: 'تقویم محتوا' },
+      { keys: ['G', 'I'], label: 'صندوق ورودی' },
+      { keys: ['G', 'A'], label: 'تحلیل و گزارش‌ها' },
+      { keys: ['G', 'S'], label: 'تنظیمات' },
     ],
   },
   {
-    title: "عملیات",
+    title: 'عملیات',
     items: [
-      { keys: ["C"], label: "انتشار محتوای جدید" },
-      { keys: ["N"], label: "ساخت کمپین جدید" },
-      { keys: ["R"], label: "بررسی صندوق ورودی" },
-      { keys: ["⌘", "↵"], label: "تأیید و ارسال" },
+      { keys: ['C'], label: 'انتشار محتوای جدید' },
+      { keys: ['N'], label: 'ساخت کمپین جدید' },
+      { keys: ['R'], label: 'بررسی صندوق ورودی' },
+      { keys: ['⌘', '↵'], label: 'تأیید و ارسال' },
     ],
   },
   {
-    title: "مسیریابی",
+    title: 'مسیریابی',
     items: [
-      { keys: ["↑", "↓"], label: "انتخاب آیتم" },
-      { keys: ["↵"], label: "اجرا کردن آیتم" },
-      { keys: ["Tab"], label: "جابه‌جایی بین فیلدها" },
-      { keys: ["⌘", "B"], label: "بستن/باز کردن منو" },
+      { keys: ['↑', '↓'], label: 'انتخاب آیتم' },
+      { keys: ['↵'], label: 'اجرا کردن آیتم' },
+      { keys: ['Tab'], label: 'جابه‌جایی بین فیلدها' },
+      { keys: ['⌘', 'B'], label: 'بستن/باز کردن منو' },
     ],
   },
-];
+]
 
 export function ShortcutsModal() {
-  const { isShortcutsOpen, setShortcutsOpen } = useAppStore();
+  const { isShortcutsOpen, setShortcutsOpen } = useAppStore()
 
   // Note: `?` to open and `Esc` to close are handled globally by
   // useKeyboardShortcuts() in AppShell. This component only renders the UI.
@@ -66,7 +66,7 @@ export function ShortcutsModal() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ duration: 0.15, ease: "linear" }}
+            transition={{ duration: 0.15, ease: 'linear' }}
             className="absolute inset-0 bg-black/30 backdrop-blur-sm"
             onClick={() => setShortcutsOpen(false)}
           />
@@ -77,9 +77,9 @@ export function ShortcutsModal() {
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={{ type: "spring", stiffness: 300, damping: 26, mass: 1 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 26, mass: 1 }}
             className="relative w-full max-w-[640px] mx-4 n-glass-popover overflow-hidden"
-            style={{ transformOrigin: "top center" }}
+            style={{ transformOrigin: 'top center' }}
             role="dialog"
             aria-label="میانبرهای صفحه‌کلید"
           >
@@ -89,7 +89,9 @@ export function ShortcutsModal() {
                 <div className="flex size-7 items-center justify-center rounded-md bg-accent-soft">
                   <Keyboard className="size-4 text-accent" strokeWidth={2} />
                 </div>
-                <h2 className="text-[14px] font-[700] text-ink-primary tracking-tight">میانبرهای صفحه‌کلید</h2>
+                <h2 className="text-[14px] font-[700] text-ink-primary tracking-tight">
+                  میانبرهای صفحه‌کلید
+                </h2>
               </div>
               <button
                 onClick={() => setShortcutsOpen(false)}
@@ -142,5 +144,5 @@ export function ShortcutsModal() {
         </div>
       )}
     </AnimatePresence>
-  );
+  )
 }

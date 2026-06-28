@@ -48,12 +48,14 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** The CSS had a complete dark theme (`.dark` class with all OKLCH tokens), but `forcedTheme="light"` in the ThemeProvider locked it. Users couldn't switch to dark mode.
 
 **Fix:**
+
 - Removed `forcedTheme="light"` from `src/app/layout.tsx`
 - Added `enableSystem` so it respects OS preference
 - Created `src/components/shell/theme-toggle.tsx` — a glass-control button with animated Sun/Moon icon crossfade (framer-motion AnimatePresence)
 - Mounted in CommandBar next to notifications
 
 **Files:**
+
 - `src/app/layout.tsx` — removed `forcedTheme`, added `enableSystem`
 - `src/components/shell/theme-toggle.tsx` — new (ThemeToggle component)
 - `src/components/shell/command-bar.tsx` — mounted ThemeToggle
@@ -67,11 +69,13 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** No skip-to-main-content link. WCAG 2.4.1 Level A violation (bypass blocks).
 
 **Fix:**
+
 - Added skip link `<a href="#main-content">` with `sr-only focus:not-sr-only` styling
 - Wrapped Sidebar in `<nav aria-label="ناوبری اصلی">`
 - Added `id="main-content"` + `tabIndex={-1}` to `<main>` for focus management
 
 **Files:**
+
 - `src/components/shell/app-shell.tsx`
 
 ---
@@ -81,6 +85,7 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** Zero error-state patterns. Failed queries showed empty states or infinite skeletons.
 
 **Fix:**
+
 - Created `src/app/error.tsx` — route-level error boundary with retry CTA
 - Created `src/app/global-error.tsx` — root-level boundary (renders own `<html>`)
 - Created `src/app/not-found.tsx` — 404 page
@@ -88,6 +93,7 @@ This document chronicles all changes made to نشرینو during the audit → i
 - Added `ErrorState` component (alert icon + label + retry button)
 
 **Files:**
+
 - `src/app/error.tsx` — new
 - `src/app/global-error.tsx` — new
 - `src/app/not-found.tsx` — new
@@ -100,6 +106,7 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** ShortcutsModal advertised 14 shortcuts but none worked (only `⌘K` and `?` were wired).
 
 **Fix:**
+
 - Created `src/hooks/use-keyboard-shortcuts.ts` — global hook wiring all shortcuts:
   - `G+D/C/I/A/S` — two-step view navigation (600ms prefix window)
   - `C` — compose
@@ -113,6 +120,7 @@ This document chronicles all changes made to نشرینو during the audit → i
 - Removed duplicate keydown handler from ShortcutsModal
 
 **Files:**
+
 - `src/hooks/use-keyboard-shortcuts.ts` — new
 - `src/components/shell/app-shell.tsx` — wired hook
 - `src/components/shell/shortcuts-modal.tsx` — removed duplicate handler
@@ -124,12 +132,14 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** No global `prefers-reduced-motion` gate for framer-motion animations (WCAG 2.3.3).
 
 **Fix:**
+
 - Documented that `duration`/`ease` constants in `src/lib/motion.tsx` mirror CSS custom properties
 - Added `useReducedMotionTransition()` hook
 - Added `useShouldAnimate()` flag
 - Added `MotionProvider` wrapping the app in `<MotionConfig reducedMotion="user">` — globally gates ALL framer-motion animations
 
 **Files:**
+
 - `src/lib/motion.tsx` — enhanced
 - `src/app/layout.tsx` — mounted MotionProvider
 
@@ -140,9 +150,11 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** Settings → Brand tab color pickers only updated form state, never applied to the DOM.
 
 **Fix:**
+
 - Added `useEffect` to `BrandForm` that sets `--brand-accent` and `--brand-primary` CSS custom properties on `document.documentElement` when colors change
 
 **Files:**
+
 - `src/components/views/settings-view.tsx`
 
 ---
@@ -152,6 +164,7 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** Both Sonner AND radix toast were mounted. All views used Sonner; radix was dead code.
 
 **Fix:**
+
 - Removed `<Toaster />` (radix) from `src/app/layout.tsx`
 - Verified zero `useToast` consumers in app code
 
@@ -162,9 +175,11 @@ This document chronicles all changes made to نشرینو during the audit → i
 **Problem:** Zero `@@index` declarations. Every `where: { workspaceId }` was a full scan.
 
 **Fix:**
+
 - Added `@@index` to all FK columns + compound indexes across 9 models (20+ indexes total)
 
 **Files:**
+
 - `prisma/schema.prisma`
 
 ---
@@ -237,10 +252,10 @@ All 5 channel adapters in `mini-services/publish-worker/adapters/` were rewritte
 
 ```typescript
 export interface ChannelAdapter {
-  readonly platform: PlatformType;
-  healthCheck(account: AdapterAccount): Promise<HealthResult>;
-  validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult>;
-  publish(job: AdapterJob): Promise<PublishResult>;
+  readonly platform: PlatformType
+  healthCheck(account: AdapterAccount): Promise<HealthResult>
+  validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult>
+  publish(job: AdapterJob): Promise<PublishResult>
 }
 ```
 
@@ -251,6 +266,7 @@ export interface ChannelAdapter {
 - Error categorization: 429/5xx/network = retryable, 401/400 = permanent
 
 **Files:**
+
 - `mini-services/publish-worker/adapters/{telegram,bale,rubika,instagram,linkedin}.ts` — rewritten
 - `mini-services/publish-worker/adapters/types.ts` — extended (token, targetId, mediaItems)
 - `mini-services/publish-worker/adapters/index.ts` — registered BaleAdapter
@@ -264,34 +280,36 @@ export interface ChannelAdapter {
 ### Architecture
 
 3-provider fallback chain:
+
 1. **GapGPT** (gpt-4o-mini) — primary, works globally (OpenAI-compatible gateway)
 2. **Google Gemini** (gemini-2.0-flash) — fallback (region-limited)
 3. **z-ai-web-dev-sdk** (glm-4-plus) — last resort (shared sandbox quota)
 
 ### API Endpoints
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/ai/caption` | POST | SSE streaming caption generation |
-| `/api/ai/hashtags` | POST | Returns 10 Persian + English hashtags |
+| Endpoint           | Method | Description                           |
+| ------------------ | ------ | ------------------------------------- |
+| `/api/ai/caption`  | POST   | SSE streaming caption generation      |
+| `/api/ai/hashtags` | POST   | Returns 10 Persian + English hashtags |
 
 ### 7 Differentiated Tones
 
 Each tone has **detailed linguistic rules** (verb forms, pronouns, vocabulary, sentence length, emoji density, hook style, CTA style) — not just a label:
 
-| Tone | Emoji | Verb Style | Vocabulary | Example Hook |
-|---|---|---|---|---|
-| صمیمی (friendly) | 😊 | محاوره‌ای (می‌رم، می‌تونه) | روزمره (گرفتن، عالی) | "تا حالا دقت کردی...؟" |
-| رسمی (formal) | 🎩 | معیار اداری (گردیده است، فرمایید) | ادبی (بهره‌مندی، دلپذیر) | "مطالعات نشان می‌دهد..." |
-| حرفه‌ای (professional) | 💼 | معیار روان + تخصصی | دامنه (کافئین، آنتی‌اکسیدان) | "آیا می‌دانستید...؟" |
-| داستانی (storytelling) | 📖 | گذشته محاوره‌ای (رفتم، دیدم) | حسی (عطر، خاطره) | "یادم میاد..." |
-| فروش (sales) | 🛒 | امری (بیا، بخر، کلیک کن) | فروش (تخفیف، فرصت محدود) | "فقط تا امشب!" |
-| آموزشی (educational) | 💡 | امری گام‌به‌گام (بریز، بگذار) | آموزشی (مرحله، نکته) | "آموزش: چطور..." |
-| احساسی (poetic) | 🌙 | ادبی (می‌رقصند، می‌جوشد) | شاعرانه (نغمه، سکوت) | "قهوه، بوی خاطره است." |
+| Tone                   | Emoji | Verb Style                        | Vocabulary                   | Example Hook             |
+| ---------------------- | ----- | --------------------------------- | ---------------------------- | ------------------------ |
+| صمیمی (friendly)       | 😊    | محاوره‌ای (می‌رم، می‌تونه)        | روزمره (گرفتن، عالی)         | "تا حالا دقت کردی...؟"   |
+| رسمی (formal)          | 🎩    | معیار اداری (گردیده است، فرمایید) | ادبی (بهره‌مندی، دلپذیر)     | "مطالعات نشان می‌دهد..." |
+| حرفه‌ای (professional) | 💼    | معیار روان + تخصصی                | دامنه (کافئین، آنتی‌اکسیدان) | "آیا می‌دانستید...؟"     |
+| داستانی (storytelling) | 📖    | گذشته محاوره‌ای (رفتم، دیدم)      | حسی (عطر، خاطره)             | "یادم میاد..."           |
+| فروش (sales)           | 🛒    | امری (بیا، بخر، کلیک کن)          | فروش (تخفیف، فرصت محدود)     | "فقط تا امشب!"           |
+| آموزشی (educational)   | 💡    | امری گام‌به‌گام (بریز، بگذار)     | آموزشی (مرحله، نکته)         | "آموزش: چطور..."         |
+| احساسی (poetic)        | 🌙    | ادبی (می‌رقصند، می‌جوشد)          | شاعرانه (نغمه، سکوت)         | "قهوه، بوی خاطره است."   |
 
 ### Persian Prompt Engineering
 
 The system prompt enforces:
+
 - Persian digits (۰۱۲۳۴۵۶۷۸۹)
 - ZWNJ (نیم‌فاصله) in verb prefixes/suffixes
 - No skin-tone emoji
@@ -299,6 +317,7 @@ The system prompt enforces:
 - Platform-specific rules (IG: 150-400 chars, TG: up to 1024, LinkedIn: 300-800)
 
 ### Files
+
 - `src/lib/ai/gemini.ts` — 3-provider fallback + Persian prompts + 7 tone instructions
 - `src/app/api/ai/caption/route.ts` — SSE streaming endpoint
 - `src/app/api/ai/hashtags/route.ts` — hashtag suggestion endpoint
@@ -358,6 +377,7 @@ The system prompt enforces:
 Auth middleware **disabled** for preview (Z.ai iframe CSRF cookie issues). To re-enable, uncomment matcher in `src/middleware.ts`.
 
 ### Files
+
 - `prisma/schema.prisma` — 5 new models
 - `src/lib/auth.ts` — NextAuth config
 - `src/lib/auth-guards.ts` — guards + RBAC
@@ -385,6 +405,7 @@ Installed **Tiptap v2** (ProseMirror-based) — headless, React-friendly, excell
 ### NashrinoEditor Component
 
 **Features:**
+
 - RTL Persian support (`dir="rtl"`, `lang="fa"`)
 - Formatting toolbar: Bold, Italic, H2, Bullet List, Ordered List, Blockquote, Code, Link, Undo/Redo (10 buttons)
 - Character count with limit warning (green → yellow at 90% → red over limit)
@@ -407,12 +428,14 @@ Installed **Tiptap v2** (ProseMirror-based) — headless, React-friendly, excell
 ### CSS Styles
 
 Added `.ProseMirror` styles to `globals.css`:
+
 - Paragraph, heading, list, blockquote, code, link styling
 - RTL-aware (border-right for blockquotes, padding-right for lists)
 - Placeholder (::before pseudo-element)
 - Selection color
 
 ### Files
+
 - `src/components/editor/nashrino-editor.tsx` — new
 - `src/app/globals.css` — Tiptap content styles
 - `src/components/views/compose-view.tsx` — replaced Textarea with NashrinoEditor
@@ -429,15 +452,15 @@ draft → review → approved → scheduled → published
              rejected → draft
 ```
 
-| State | Who can set it | Meaning |
-|---|---|---|
-| `draft` | editor, admin | Being edited |
-| `review` | editor, admin | Submitted for approval (locked) |
-| `approved` | approver, admin | Approved, ready to schedule |
-| `rejected` | approver, admin | Rejected with reason (back to draft) |
-| `scheduled` | editor, admin | Scheduled for future publish |
-| `published` | system (publish-worker) | Live on platforms |
-| `failed` | system | Publish attempt failed |
+| State       | Who can set it          | Meaning                              |
+| ----------- | ----------------------- | ------------------------------------ |
+| `draft`     | editor, admin           | Being edited                         |
+| `review`    | editor, admin           | Submitted for approval (locked)      |
+| `approved`  | approver, admin         | Approved, ready to schedule          |
+| `rejected`  | approver, admin         | Rejected with reason (back to draft) |
+| `scheduled` | editor, admin           | Scheduled for future publish         |
+| `published` | system (publish-worker) | Live on platforms                    |
+| `failed`    | system                  | Publish attempt failed               |
 
 ### Prisma Models
 
@@ -447,18 +470,19 @@ draft → review → approved → scheduled → published
 
 ### API Routes
 
-| Route | Method | Transition |
-|---|---|---|
-| `/api/content/[id]/submit-review` | POST | draft/rejected → review |
-| `/api/content/[id]/approve` | POST | review → approved |
-| `/api/content/[id]/reject` | POST | review → rejected (with reason) |
-| `/api/content/[id]/comments` | GET/POST | List/add comments |
+| Route                             | Method   | Transition                      |
+| --------------------------------- | -------- | ------------------------------- |
+| `/api/content/[id]/submit-review` | POST     | draft/rejected → review         |
+| `/api/content/[id]/approve`       | POST     | review → approved               |
+| `/api/content/[id]/reject`        | POST     | review → rejected (with reason) |
+| `/api/content/[id]/comments`      | GET/POST | List/add comments               |
 
 **Next.js 16 note:** All routes use `params: Promise<{ id: string }>` + `const { id } = await params` (Next.js 16 makes params a Promise).
 
 ### Publish API Extension
 
 `/api/publish` now supports `mode: "review"`:
+
 - `mode: "publish"` (default) — creates content + publish jobs
 - `mode: "review"` — creates content with `status: "review"` (no jobs, notifies approvers)
 
@@ -470,6 +494,7 @@ draft → review → approved → scheduled → published
 - Status filter includes "ردشده" (rejected) option
 
 ### Files
+
 - `prisma/schema.prisma` — ContentComment, ContentVersion, Content approval fields
 - `src/app/api/content/[id]/{submit-review,approve,reject,comments}/route.ts` — 4 new routes
 - `src/app/api/publish/route.ts` — mode="review" support
@@ -484,6 +509,7 @@ draft → review → approved → scheduled → published
 ### Problem
 
 Old flow was a 4-step wizard:
+
 1. محتوا (content + preview) ← preview showed but no platforms selected!
 2. رسانه (media)
 3. پلتفرم (platform selection) ← too late
@@ -515,29 +541,30 @@ Redesigned to **single-view layout** (Buffer/Planable style):
 
 ### Changes
 
-| Before | After |
-|---|---|
-| 4-step wizard | Single view, everything visible |
-| Platform in step 3 | Platform at top (first) |
+| Before                   | After                                   |
+| ------------------------ | --------------------------------------- |
+| 4-step wizard            | Single view, everything visible         |
+| Platform in step 3       | Platform at top (first)                 |
 | Preview before platforms | Preview always shows selected platforms |
-| Media separate step | Media grid inline in editor |
-| Schedule separate step | Schedule inline below editor |
-| Step navigation buttons | Removed |
+| Media separate step      | Media grid inline in editor             |
+| Schedule separate step   | Schedule inline below editor            |
+| Step navigation buttons  | Removed                                 |
 
 ### Multi-Platform Preview
 
 `PlatformPreviewTabs` shows how the post will look on each selected platform:
 
-| Platform | Preview Style |
-|---|---|
-| Instagram | Gradient avatar, square media (1:1), action bar (❤️💬➤🔖), likes, "… بیشتر" truncation at 125 chars |
-| Telegram | Channel message bubble, media, view count, time |
-| LinkedIn | Article card, text-above-media, 16:9, reactions (👍🔁), "…دیدن بیشتر" at 700 chars |
-| Rubika/Bale/Eitaa | TG-style bubble (shared renderer) |
+| Platform          | Preview Style                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Instagram         | Gradient avatar, square media (1:1), action bar (❤️💬➤🔖), likes, "… بیشتر" truncation at 125 chars |
+| Telegram          | Channel message bubble, media, view count, time                                                     |
+| LinkedIn          | Article card, text-above-media, 16:9, reactions (👍🔁), "…دیدن بیشتر" at 700 chars                  |
+| Rubika/Bale/Eitaa | TG-style bubble (shared renderer)                                                                   |
 
 Per-platform char count chips: green (ok) / yellow (90%+) / red (over limit).
 
 ### Files
+
 - `src/components/editor/platform-preview-tabs.tsx` — new
 - `src/components/views/compose-view.tsx` — complete return rewrite (removed STEPS, activeStep, step components)
 
@@ -556,6 +583,7 @@ Per-platform char count chips: green (ok) / yellow (90%+) / red (over limit).
    - `.dark` — dark theme tokens (override)
 
 2. **ThemeProvider** (next-themes) in `layout.tsx`:
+
    ```tsx
    <ThemeProvider
      attribute="class"
@@ -572,13 +600,13 @@ Per-platform char count chips: green (ok) / yellow (90%+) / red (over limit).
 
 ### Dark Theme Token Values
 
-| Token | Light | Dark |
-|---|---|---|
-| `--n-canvas` | `oklch(0.975 0.004 280)` | `oklch(0.145 0.008 280)` |
-| `--n-surface` | `#ffffff` | `oklch(0.19 0.011 280)` |
-| `--n-text-primary` | `oklch(0.18 0.014 280)` | `oklch(0.96 0.004 280)` |
-| `--n-accent` | `oklch(0.52 0.20 295)` | `oklch(0.68 0.18 295)` |
-| `--n-border` | `oklch(0.915 0.004 280)` | `oklch(0.27 0.011 280)` |
+| Token              | Light                    | Dark                     |
+| ------------------ | ------------------------ | ------------------------ |
+| `--n-canvas`       | `oklch(0.975 0.004 280)` | `oklch(0.145 0.008 280)` |
+| `--n-surface`      | `#ffffff`                | `oklch(0.19 0.011 280)`  |
+| `--n-text-primary` | `oklch(0.18 0.014 280)`  | `oklch(0.96 0.004 280)`  |
+| `--n-accent`       | `oklch(0.52 0.20 295)`   | `oklch(0.68 0.18 295)`   |
+| `--n-border`       | `oklch(0.915 0.004 280)` | `oklch(0.27 0.011 280)`  |
 
 ### Design Principles
 
@@ -589,6 +617,7 @@ Per-platform char count chips: green (ok) / yellow (90%+) / red (over limit).
 - **Skeleton shimmer** adjusts gradient for dark backgrounds
 
 ### Files
+
 - `src/app/globals.css` — `.dark` class tokens
 - `src/app/layout.tsx` — ThemeProvider config
 - `src/components/shell/theme-toggle.tsx` — toggle button
@@ -607,6 +636,7 @@ The dev server was in an **infinite recompile/reload loop** — 120+ requests pe
 The dev script piped output to `tee dev.log` **inside the project root**. Next.js's file watcher saw `dev.log` change → triggered a recompile → which wrote more logs to `dev.log` → recompile → infinite loop.
 
 Additional log files inside the project root:
+
 - `realtime.log` + `publish-worker.log` (mini-service logs)
 - `.zscripts/*.log` (sandbox boot logs — 2.8MB publish-worker log)
 
@@ -621,38 +651,38 @@ Moved ALL logs to `/tmp/nashrino-logs/` (outside the project root):
 
 ### Verification
 
-| Metric | Before | After |
-|---|---|---|
-| `GET /` per 10s | 120 (12/sec loop) | 5 (normal API polling) |
-| Page reloads in 5s | continuous | 0 |
-| Compile warnings | invalid config | 0 |
-| `.log` files in project | 4+ growing files | 0 |
-| Page load time | 16s (recompile spam) | 0.97s (cached) |
+| Metric                  | Before               | After                  |
+| ----------------------- | -------------------- | ---------------------- |
+| `GET /` per 10s         | 120 (12/sec loop)    | 5 (normal API polling) |
+| Page reloads in 5s      | continuous           | 0                      |
+| Compile warnings        | invalid config       | 0                      |
+| `.log` files in project | 4+ growing files     | 0                      |
+| Page load time          | 16s (recompile spam) | 0.97s (cached)         |
 
 ---
 
 ## 11. Feature Completeness Scorecard
 
-| Feature | Before | After | Change |
-|---|---|---|---|
-| **Auth & Identity** | 0% | 55% | +55% (login, sessions, RBAC guards built; API migration + OAuth pending) |
-| **AI Assistant** | 0% | 70% | +70% (caption streaming, hashtags, 7 tones; smart-reply/ideas/image pending) |
-| **Compose/Editor** | 28% | 60% | +32% (Tiptap, toolbar, char count, multi-platform preview, single-view flow; media upload + autosave pending) |
-| **Publishing Adapters** | 18% | 65% | +47% (5 real APIs; needs real bot tokens for production) |
-| **Approvals** | 5% | 35% | +30% (state machine + API + UI; comments UI + versions + presence pending) |
-| **Design System** | 72% | 82% | +10% (dark mode unlocked, brand colors wired, motion gate) |
-| **Accessibility** | 78% | 85% | +7% (skip link, nav semantics, error states) |
-| **Interactive & Motion** | 66% | 75% | +9% (shortcuts wired, motion tokens, reduced-motion gate) |
+| Feature                  | Before | After | Change                                                                                                        |
+| ------------------------ | ------ | ----- | ------------------------------------------------------------------------------------------------------------- |
+| **Auth & Identity**      | 0%     | 55%   | +55% (login, sessions, RBAC guards built; API migration + OAuth pending)                                      |
+| **AI Assistant**         | 0%     | 70%   | +70% (caption streaming, hashtags, 7 tones; smart-reply/ideas/image pending)                                  |
+| **Compose/Editor**       | 28%    | 60%   | +32% (Tiptap, toolbar, char count, multi-platform preview, single-view flow; media upload + autosave pending) |
+| **Publishing Adapters**  | 18%    | 65%   | +47% (5 real APIs; needs real bot tokens for production)                                                      |
+| **Approvals**            | 5%     | 35%   | +30% (state machine + API + UI; comments UI + versions + presence pending)                                    |
+| **Design System**        | 72%    | 82%   | +10% (dark mode unlocked, brand colors wired, motion gate)                                                    |
+| **Accessibility**        | 78%    | 85%   | +7% (skip link, nav semantics, error states)                                                                  |
+| **Interactive & Motion** | 66%    | 75%   | +9% (shortcuts wired, motion tokens, reduced-motion gate)                                                     |
 
 ### Overall
 
-| Metric | Before | After |
-|---|---|---|
+| Metric                   | Before       | After        |
+| ------------------------ | ------------ | ------------ |
 | **Overall نشرینو score** | ~55/100 (D+) | ~68/100 (C+) |
-| **Feature completeness** | 43% | ~58% |
-| **Engineering** | 48/100 (F) | ~58/100 (D) |
-| **Design & UX** | 79/100 (B) | ~85/100 (B+) |
-| **Lint** | 0 errors | 0 errors |
+| **Feature completeness** | 43%          | ~58%         |
+| **Engineering**          | 48/100 (F)   | ~58/100 (D)  |
+| **Design & UX**          | 79/100 (B)   | ~85/100 (B+) |
+| **Lint**                 | 0 errors     | 0 errors     |
 
 ---
 
@@ -661,6 +691,7 @@ Moved ALL logs to `/tmp/nashrino-logs/` (outside the project root):
 ### New Files (25)
 
 **Auth:**
+
 - `src/lib/auth.ts`
 - `src/lib/auth-guards.ts`
 - `src/lib/password.ts`
@@ -673,16 +704,19 @@ Moved ALL logs to `/tmp/nashrino-logs/` (outside the project root):
 - `prisma/seed-auth.ts`
 
 **AI:**
+
 - `src/lib/ai/gemini.ts`
 - `src/app/api/ai/caption/route.ts`
 - `src/app/api/ai/hashtags/route.ts`
 - `src/components/ai/caption-assistant.tsx`
 
 **Editor:**
+
 - `src/components/editor/nashrino-editor.tsx`
 - `src/components/editor/platform-preview-tabs.tsx`
 
 **Approvals:**
+
 - `src/components/approval/approval-bar.tsx`
 - `src/app/api/content/[id]/submit-review/route.ts`
 - `src/app/api/content/[id]/approve/route.ts`
@@ -690,6 +724,7 @@ Moved ALL logs to `/tmp/nashrino-logs/` (outside the project root):
 - `src/app/api/content/[id]/comments/route.ts`
 
 **Shell/Quick Wins:**
+
 - `src/components/shell/theme-toggle.tsx`
 - `src/hooks/use-keyboard-shortcuts.ts`
 - `src/app/error.tsx`
@@ -722,4 +757,4 @@ Moved ALL logs to `/tmp/nashrino-logs/` (outside the project root):
 
 ---
 
-*End of document. For audit details, see `/home/z/my-project/audit/AUDIT-2-MASTER-SYNTHESIS.md`.*
+_End of document. For audit details, see `/home/z/my-project/audit/AUDIT-2-MASTER-SYNTHESIS.md`._

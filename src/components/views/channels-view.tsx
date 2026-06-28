@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import {
   Link2,
   Plus,
@@ -15,15 +15,22 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronLeft,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
-import { toPersianDigits, relativeTime } from "@/lib/jalali";
-import { useAnnounceValue, announce } from "@/lib/aria-live";
-import { SectionTitle, PlatformIcon, EmptyState, SkeletonCard, LoadingState, AnimatedTabs } from "@/components/dashboard/shared";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { api } from '@/lib/api'
+import { toPersianDigits, relativeTime } from '@/lib/jalali'
+import { useAnnounceValue, announce } from '@/lib/aria-live'
+import {
+  SectionTitle,
+  PlatformIcon,
+  EmptyState,
+  SkeletonCard,
+  LoadingState,
+  AnimatedTabs,
+} from '@/components/dashboard/shared'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -31,7 +38,7 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+} from '@/components/ui/breadcrumb'
 import {
   Dialog,
   DialogContent,
@@ -39,7 +46,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogContent,
@@ -50,72 +57,73 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from '@/components/ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 interface Platform {
-  id: string;
-  name: string;
-  type: string;
-  logo: string;
-  state: string;
-  stateColor: string;
-  accounts: number;
-  primaryIssue: string | null;
-  lastSuccess: string | null;
-  accountKind: string;
-  circuitState: string;
-  username: string;
+  id: string
+  name: string
+  type: string
+  logo: string
+  state: string
+  stateColor: string
+  accounts: number
+  primaryIssue: string | null
+  lastSuccess: string | null
+  accountKind: string
+  circuitState: string
+  username: string
 }
 
 const AVAILABLE_PLATFORMS = [
-  { id: "instagram", label: "اینستاگرام", method: "oauth" },
-  { id: "telegram", label: "تلگرام", method: "bot" },
-  { id: "linkedin", label: "لینکدین", method: "oauth" },
-  { id: "rubika", label: "روبیکا", method: "bot" },
-  { id: "eitaa", label: "ایتا", method: "bot" },
-] as const;
+  { id: 'instagram', label: 'اینستاگرام', method: 'oauth' },
+  { id: 'telegram', label: 'تلگرام', method: 'bot' },
+  { id: 'linkedin', label: 'لینکدین', method: 'oauth' },
+  { id: 'rubika', label: 'روبیکا', method: 'bot' },
+  { id: 'eitaa', label: 'ایتا', method: 'bot' },
+] as const
 
 export function ChannelsView() {
   const { data: platforms, isLoading } = useQuery<Platform[]>({
-    queryKey: ["platforms"],
-    queryFn: () => api.get<Platform[]>("/api/platforms"),
-  });
+    queryKey: ['platforms'],
+    queryFn: () => api.get<Platform[]>('/api/platforms'),
+  })
 
-  const [connectOpen, setConnectOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<string>("instagram");
-  const [statusFilter, setStatusFilter] = useState<"all" | "connected" | "issues">("all");
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [selectedType, setSelectedType] = useState<string>('instagram')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'connected' | 'issues'>('all')
 
   const healthyCount = useMemo(
-    () => platforms?.filter((p) => p.state.includes("متصل") || p.state.includes("پایدار")).length ?? 0,
+    () =>
+      platforms?.filter((p) => p.state.includes('متصل') || p.state.includes('پایدار')).length ?? 0,
     [platforms]
-  );
+  )
   // Announce connected-platform count to screen readers when it changes.
-  useAnnounceValue(healthyCount, "پلتفرم متصل");
+  useAnnounceValue(healthyCount, 'پلتفرم متصل')
   const issuesCount = useMemo(
     () =>
       platforms?.filter((p) => {
-        const healthy = p.state.includes("متصل") || p.state.includes("پایدار");
-        return !healthy || !!p.primaryIssue;
+        const healthy = p.state.includes('متصل') || p.state.includes('پایدار')
+        return !healthy || !!p.primaryIssue
       }).length ?? 0,
     [platforms]
-  );
+  )
   const filteredPlatforms = useMemo(() => {
-    if (!platforms) return [];
+    if (!platforms) return []
     return platforms.filter((p) => {
-      const healthy = p.state.includes("متصل") || p.state.includes("پایدار");
-      if (statusFilter === "connected") return healthy;
-      if (statusFilter === "issues") return !healthy || !!p.primaryIssue;
-      return true;
-    });
-  }, [platforms, statusFilter]);
+      const healthy = p.state.includes('متصل') || p.state.includes('پایدار')
+      if (statusFilter === 'connected') return healthy
+      if (statusFilter === 'issues') return !healthy || !!p.primaryIssue
+      return true
+    })
+  }, [platforms, statusFilter])
 
   return (
     <motion.div
@@ -185,19 +193,24 @@ export function ChannelsView() {
                   <div>
                     <p className="text-[11px] text-ink-tertiary">وضعیت اتصال پلتفرم‌ها</p>
                     <p className="text-[18px] font-[700] text-ink-primary num-tabular leading-tight mt-0.5">
-                      {toPersianDigits(healthyCount)} از {toPersianDigits(platforms.length)} پلتفرم فعال
+                      {toPersianDigits(healthyCount)} از {toPersianDigits(platforms.length)} پلتفرم
+                      فعال
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-[11px]">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-success" />
-                    <span className="text-ink-secondary num-tabular">{toPersianDigits(healthyCount)} متصل</span>
+                    <span className="text-ink-secondary num-tabular">
+                      {toPersianDigits(healthyCount)} متصل
+                    </span>
                   </div>
                   {issuesCount > 0 && (
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-warning" />
-                      <span className="text-ink-secondary num-tabular">{toPersianDigits(issuesCount)} نیازمند توجه</span>
+                      <span className="text-ink-secondary num-tabular">
+                        {toPersianDigits(issuesCount)} نیازمند توجه
+                      </span>
                     </div>
                   )}
                 </div>
@@ -209,9 +222,9 @@ export function ChannelsView() {
               value={statusFilter}
               onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
               tabs={[
-                { value: "all", label: "همه" },
-                { value: "connected", label: "متصل", count: healthyCount },
-                { value: "issues", label: "نیازمند توجه", count: issuesCount },
+                { value: 'all', label: 'همه' },
+                { value: 'connected', label: 'متصل', count: healthyCount },
+                { value: 'issues', label: 'نیازمند توجه', count: issuesCount },
               ]}
             />
 
@@ -224,7 +237,7 @@ export function ChannelsView() {
                   message="با تغییر فیلتر، سایر پلتفرم‌ها را مشاهده کنید."
                   size="compact"
                   action={
-                    <Button size="sm" variant="outline" onClick={() => setStatusFilter("all")}>
+                    <Button size="sm" variant="outline" onClick={() => setStatusFilter('all')}>
                       نمایش همه
                     </Button>
                   }
@@ -248,33 +261,35 @@ export function ChannelsView() {
         onSelectType={setSelectedType}
       />
     </motion.div>
-  );
+  )
 }
 
 function PlatformCard({ platform }: { platform: Platform }) {
-  const queryClient = useQueryClient();
-  const [isValidating, setIsValidating] = useState(false);
-  const healthy =
-    platform.state.includes("متصل") || platform.state.includes("پایدار");
+  const queryClient = useQueryClient()
+  const [isValidating, setIsValidating] = useState(false)
+  const healthy = platform.state.includes('متصل') || platform.state.includes('پایدار')
 
   const handleValidate = async () => {
-    setIsValidating(true);
+    setIsValidating(true)
     try {
-      const res = await api.post<{ valid: boolean; botInfo?: any }>(`/api/platforms/${platform.id}/validate`, {});
+      const res = await api.post<{ valid: boolean; botInfo?: any }>(
+        `/api/platforms/${platform.id}/validate`,
+        {}
+      )
       if (res.valid) {
-        toast.success("اتصال تأیید شد ✓", {
+        toast.success('اتصال تأیید شد ✓', {
           description: res.botInfo ? `ربات: @${res.botInfo.username}` : undefined,
-        });
+        })
       } else {
-        toast.error("اتصال نامعتبر است");
+        toast.error('اتصال نامعتبر است')
       }
-      queryClient.invalidateQueries({ queryKey: ["platforms"] });
+      queryClient.invalidateQueries({ queryKey: ['platforms'] })
     } catch (err: any) {
-      toast.error(err.message || "خطا در تست اتصال");
+      toast.error(err.message || 'خطا در تست اتصال')
     } finally {
-      setIsValidating(false);
+      setIsValidating(false)
     }
-  };
+  }
 
   return (
     <div className="n-card p-5 flex flex-col">
@@ -283,7 +298,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
           <PlatformIcon platform={platform.type} className="size-11 shrink-0" />
           <div className="min-w-0">
             <p className="text-[14px] font-[600] text-ink-primary truncate">{platform.name}</p>
-            <p className="text-[11px] text-ink-tertiary truncate">@{platform.username || "—"}</p>
+            <p className="text-[11px] text-ink-tertiary truncate">@{platform.username || '—'}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -293,7 +308,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => toast.info("ویرایش پلتفرم به‌زودی فعال خواهد شد.")}>
+            <DropdownMenuItem onClick={() => toast.info('ویرایش پلتفرم به‌زودی فعال خواهد شد.')}>
               <Pencil className="size-3.5" />
               ویرایش
             </DropdownMenuItem>
@@ -308,7 +323,12 @@ function PlatformCard({ platform }: { platform: Platform }) {
       </div>
 
       <div className="flex items-center gap-2 mb-3">
-        <span className={cn("text-[10px] font-[700] px-2 py-0.5 rounded-full border inline-flex items-center gap-1", platform.stateColor)}>
+        <span
+          className={cn(
+            'text-[10px] font-[700] px-2 py-0.5 rounded-full border inline-flex items-center gap-1',
+            platform.stateColor
+          )}
+        >
           {healthy ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
           {platform.state}
         </span>
@@ -321,26 +341,36 @@ function PlatformCard({ platform }: { platform: Platform }) {
         <div className="flex items-center justify-between">
           <span className="text-ink-tertiary">آخرین موفقیت</span>
           <span className="text-ink-secondary">
-            {platform.lastSuccess ? relativeTime(new Date(platform.lastSuccess)) : "—"}
+            {platform.lastSuccess ? relativeTime(new Date(platform.lastSuccess)) : '—'}
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-ink-tertiary">نوع حساب</span>
-          <span className="text-ink-secondary">{platform.accountKind === "professional" ? "حرفه‌ای" : platform.accountKind === "personal" ? "شخصی" : platform.accountKind}</span>
+          <span className="text-ink-secondary">
+            {platform.accountKind === 'professional'
+              ? 'حرفه‌ای'
+              : platform.accountKind === 'personal'
+                ? 'شخصی'
+                : platform.accountKind}
+          </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-ink-tertiary">وضعیت مدار</span>
           <span
             className={cn(
-              "font-[600]",
-              platform.circuitState === "closed"
-                ? "text-success"
-                : platform.circuitState === "half_open"
-                  ? "text-warning"
-                  : "text-danger"
+              'font-[600]',
+              platform.circuitState === 'closed'
+                ? 'text-success'
+                : platform.circuitState === 'half_open'
+                  ? 'text-warning'
+                  : 'text-danger'
             )}
           >
-            {platform.circuitState === "closed" ? "بسته (سالم)" : platform.circuitState === "half_open" ? "نیمه‌باز" : "باز (قطع)"}
+            {platform.circuitState === 'closed'
+              ? 'بسته (سالم)'
+              : platform.circuitState === 'half_open'
+                ? 'نیمه‌باز'
+                : 'باز (قطع)'}
           </span>
         </div>
       </div>
@@ -361,20 +391,20 @@ function PlatformCard({ platform }: { platform: Platform }) {
           disabled={isValidating}
         >
           <PlugZap className="size-3.5" />
-          {isValidating ? "در حال تست..." : "تست اتصال"}
+          {isValidating ? 'در حال تست...' : 'تست اتصال'}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           className="flex-1"
-          onClick={() => toast.info("ویرایش پلتفرم به‌زودی فعال خواهد شد.")}
+          onClick={() => toast.info('ویرایش پلتفرم به‌زودی فعال خواهد شد.')}
         >
           <Pencil className="size-3.5" />
           ویرایش
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 function DisconnectItem({ platformName }: { platformName: string }) {
@@ -390,7 +420,8 @@ function DisconnectItem({ platformName }: { platformName: string }) {
         <AlertDialogHeader>
           <AlertDialogTitle className="text-right">قطع اتصال پلتفرم</AlertDialogTitle>
           <AlertDialogDescription className="text-right">
-            آیا از قطع اتصال «{platformName}» مطمئن هستید؟ پس از قطع، انتشار به این پلتفرم متوقف می‌شود. این عملیات قابل بازگشت نیست.
+            آیا از قطع اتصال «{platformName}» مطمئن هستید؟ پس از قطع، انتشار به این پلتفرم متوقف
+            می‌شود. این عملیات قابل بازگشت نیست.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -398,8 +429,8 @@ function DisconnectItem({ platformName }: { platformName: string }) {
           <AlertDialogAction
             className="bg-danger hover:bg-danger"
             onClick={() => {
-              toast.success("پلتفرم با موفقیت قطع شد.");
-              announce("پلتفرم با موفقیت قطع شد");
+              toast.success('پلتفرم با موفقیت قطع شد.')
+              announce('پلتفرم با موفقیت قطع شد')
             }}
           >
             قطع اتصال
@@ -407,7 +438,7 @@ function DisconnectItem({ platformName }: { platformName: string }) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  );
+  )
 }
 
 function ConnectDialog({
@@ -416,55 +447,58 @@ function ConnectDialog({
   selectedType,
   onSelectType,
 }: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-  selectedType: string;
-  onSelectType: (t: string) => void;
+  open: boolean
+  onOpenChange: (o: boolean) => void
+  selectedType: string
+  onSelectType: (t: string) => void
 }) {
-  const queryClient = useQueryClient();
-  const platformDef = AVAILABLE_PLATFORMS.find((p) => p.id === selectedType);
-  const isOAuth = platformDef?.method === "oauth";
-  const [botToken, setBotToken] = useState("");
-  const [chatId, setChatId] = useState("");
-  const [connecting, setConnecting] = useState(false);
+  const queryClient = useQueryClient()
+  const platformDef = AVAILABLE_PLATFORMS.find((p) => p.id === selectedType)
+  const isOAuth = platformDef?.method === 'oauth'
+  const [botToken, setBotToken] = useState('')
+  const [chatId, setChatId] = useState('')
+  const [connecting, setConnecting] = useState(false)
 
   const handleConnect = async () => {
     if (!botToken) {
-      toast.error("توکن را وارد کنید");
-      return;
+      toast.error('توکن را وارد کنید')
+      return
     }
-    setConnecting(true);
+    setConnecting(true)
     try {
       // Find existing platform of this type or create new
-      const platforms = await api.get<Platform[]>("/api/platforms");
-      const existing = platforms.find((p) => p.type === selectedType);
+      const platforms = await api.get<Platform[]>('/api/platforms')
+      const existing = platforms.find((p) => p.type === selectedType)
 
       if (existing) {
         // Update existing platform with token
-        const res = await api.post<{ ok: boolean; botInfo?: any }>(`/api/platforms/${existing.id}/connect`, {
-          token: botToken,
-          targetId: chatId || undefined,
-        });
+        const res = await api.post<{ ok: boolean; botInfo?: any }>(
+          `/api/platforms/${existing.id}/connect`,
+          {
+            token: botToken,
+            targetId: chatId || undefined,
+          }
+        )
         if (res.ok) {
-          toast.success("پلتفرم متصل شد ✓", {
+          toast.success('پلتفرم متصل شد ✓', {
             description: res.botInfo ? `ربات: @${res.botInfo.username}` : undefined,
-          });
+          })
         }
       } else {
-        toast.info("ابتدا پلتفرم را در تنظیمات اضافه کنید");
+        toast.info('ابتدا پلتفرم را در تنظیمات اضافه کنید')
       }
 
-      queryClient.invalidateQueries({ queryKey: ["platforms"] });
-      setBotToken("");
-      setChatId("");
-      onOpenChange(false);
+      queryClient.invalidateQueries({ queryKey: ['platforms'] })
+      setBotToken('')
+      setChatId('')
+      onOpenChange(false)
     } catch (err: any) {
-      const msg = err.message || "خطا در اتصال";
-      toast.error(msg);
+      const msg = err.message || 'خطا در اتصال'
+      toast.error(msg)
     } finally {
-      setConnecting(false);
+      setConnecting(false)
     }
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -485,10 +519,10 @@ function ConnectDialog({
                   key={p.id}
                   onClick={() => onSelectType(p.id)}
                   className={cn(
-                    "n-focus-ring flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all",
+                    'n-focus-ring flex flex-col items-center gap-1.5 rounded-xl border p-3 transition-all',
                     selectedType === p.id
-                      ? "border-accent/30 bg-accent-soft"
-                      : "border-border bg-surface-subtle hover:bg-surface-hover"
+                      ? 'border-accent/30 bg-accent-soft'
+                      : 'border-border bg-surface-subtle hover:bg-surface-hover'
                   )}
                 >
                   <PlatformIcon platform={p.id} className="size-7" />
@@ -507,14 +541,16 @@ function ConnectDialog({
                   برای اینستاگرام و لینکدین، اتصال از طریق OAuth انجام می‌شود.
                 </p>
               </div>
-              <Button className="w-full" onClick={() => toast.info("OAuth به‌زودی فعال خواهد شد")}>
+              <Button className="w-full" onClick={() => toast.info('OAuth به‌زودی فعال خواهد شد')}>
                 اتصال با OAuth
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">توکن ربات (Bot Token)</Label>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                  توکن ربات (Bot Token)
+                </Label>
                 <Input
                   dir="ltr"
                   placeholder="123456:ABC-DEF..."
@@ -523,14 +559,16 @@ function ConnectDialog({
                   className="text-left"
                 />
                 <p className="text-[10px] text-ink-tertiary mt-1">
-                  {selectedType === "telegram" && "از @BotFather در تلگرام دریافت کنید"}
-                  {selectedType === "bale" && "از @botfather در بله دریافت کنید"}
-                  {selectedType === "rubika" && "از @BotFather در روبیکا دریافت کنید"}
-                  {selectedType === "eitaa" && "از پنل ایتا دریافت کنید"}
+                  {selectedType === 'telegram' && 'از @BotFather در تلگرام دریافت کنید'}
+                  {selectedType === 'bale' && 'از @botfather در بله دریافت کنید'}
+                  {selectedType === 'rubika' && 'از @BotFather در روبیکا دریافت کنید'}
+                  {selectedType === 'eitaa' && 'از پنل ایتا دریافت کنید'}
                 </p>
               </div>
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">شناسه چت / کانال (اختیاری)</Label>
+                <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                  شناسه چت / کانال (اختیاری)
+                </Label>
                 <Input
                   dir="ltr"
                   placeholder="@channel_username یا -1001234567890"
@@ -544,12 +582,12 @@ function ConnectDialog({
               </div>
               <Button className="w-full" onClick={handleConnect} disabled={connecting || !botToken}>
                 <Plug className="size-4" />
-                {connecting ? "در حال اتصال..." : "اتصال و بررسی"}
+                {connecting ? 'در حال اتصال...' : 'اتصال و بررسی'}
               </Button>
             </div>
           )}
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

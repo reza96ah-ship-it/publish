@@ -2,12 +2,28 @@
 // Algorithm: astronomy-based conversion well-known in the Persian dev community.
 
 export const JALALI_MONTHS = [
-  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
-  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+  'فروردین',
+  'اردیبهشت',
+  'خرداد',
+  'تیر',
+  'مرداد',
+  'شهریور',
+  'مهر',
+  'آبان',
+  'آذر',
+  'دی',
+  'بهمن',
+  'اسفند',
 ] as const
 
 export const JALALI_WEEKDAYS = [
-  'شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه',
+  'شنبه',
+  'یکشنبه',
+  'دوشنبه',
+  'سه‌شنبه',
+  'چهارشنبه',
+  'پنجشنبه',
+  'جمعه',
 ] as const
 
 export const JALALI_WEEKDAYS_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] as const
@@ -27,13 +43,20 @@ export const IRAN_HOLIDAYS: Record<string, string> = {
   '12-29': 'ملی شدن صنعت نفت',
 }
 
-function div(a: number, b: number) { return Math.floor(a / b) }
-function mod(a: number, b: number) { return a - Math.floor(a / b) * b }
+function div(a: number, b: number) {
+  return Math.floor(a / b)
+}
+function mod(a: number, b: number) {
+  return a - Math.floor(a / b) * b
+}
 
 function jalaliToGregorianHelper(jy: number, jm: number, jd: number): [number, number, number] {
   const sal_a = jy <= 979 ? 0 : -1595
   const gy_a = jy <= 979 ? 621 + jy : 1600 + jy - 979
-  const days_a = jy <= 979 ? 365 * jy + div(8 + jy, 33) * 8 + div(mod(8 + jy, 33) + 3, 4) + sal_a : 365 * (jy - 979) + div(jy, 33) * 8 + div(mod(jy, 33) + 3, 4) + 1081
+  const days_a =
+    jy <= 979
+      ? 365 * jy + div(8 + jy, 33) * 8 + div(mod(8 + jy, 33) + 3, 4) + sal_a
+      : 365 * (jy - 979) + div(jy, 33) * 8 + div(mod(jy, 33) + 3, 4) + 1081
   let days_b = days_a + 179 + (jm <= 7 ? (jm - 1) * 31 : (jm - 1) * 30 + 186) + jd
 
   let gy = gy_a + 400 * div(days_b, 146097)
@@ -68,7 +91,20 @@ function jalaliToGregorianHelper(jy: number, jm: number, jd: number): [number, n
 
   const sal_b = -1
   const v = 0
-  const md = [31, (gy % 4 === 0 && (gy % 100 !== 0 || gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  const md = [
+    31,
+    gy % 4 === 0 && (gy % 100 !== 0 || gy % 400 === 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ]
   let gm = 0
   let gd = 0
   for (let i = 0; i < md.length; i++) {
@@ -85,7 +121,14 @@ function jalaliToGregorianHelper(jy: number, jm: number, jd: number): [number, n
 function gregorianToJalaliHelper(gy: number, gm: number, gd: number): [number, number, number] {
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const gy2 = gm > 2 ? gy + 1 : gy
-  let days = 355666 + 365 * gy + div(gy2 + 3, 4) - div(gy2 + 99, 100) + div(gy2 + 399, 400) + gd + g_d_m[gm - 1]
+  let days =
+    355666 +
+    365 * gy +
+    div(gy2 + 3, 4) -
+    div(gy2 + 99, 100) +
+    div(gy2 + 399, 400) +
+    gd +
+    g_d_m[gm - 1]
   let jy = -1595 + 33 * div(days, 12053)
   days = mod(days, 12053)
   jy += 4 * div(days, 1461)
@@ -109,7 +152,11 @@ export interface JalaliDate {
 }
 
 export function toJalali(date: Date): JalaliDate {
-  const [jy, jm, jd] = gregorianToJalaliHelper(date.getFullYear(), date.getMonth() + 1, date.getDate())
+  const [jy, jm, jd] = gregorianToJalaliHelper(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate()
+  )
   // weekday: JS getDay() returns 0=Sunday..6=Saturday; convert to 0=Saturday..6=Friday
   const jsDay = date.getDay()
   const weekday = (jsDay + 1) % 7 // Sat=0, Sun=1, ..., Fri=6
@@ -130,29 +177,27 @@ export function jalaliToDate(jy: number, jm: number, jd: number): Date {
   // (jm-1) months + (jd-1) days of Persian-calendar offsets. Persian months 1-6
   // have 31 days, 7-11 have 30 days, 12 has 29 or 30 (we don't need to know Esfand's
   // length unless jm === 13, which is invalid).
-  const date = new Date(jy + 621, 2, 20); // March 20 of (jy + 621) — around Persian new year
+  const date = new Date(jy + 621, 2, 20) // March 20 of (jy + 621) — around Persian new year
 
   // Move forward until toJalali(date).year === jy (handles leap-year drift)
-  let guard = 0;
+  let guard = 0
   while (toJalali(date).year < jy && guard < 10) {
-    date.setDate(date.getDate() + 1);
-    guard++;
+    date.setDate(date.getDate() + 1)
+    guard++
   }
-  guard = 0;
+  guard = 0
   while (toJalali(date).year > jy && guard < 10) {
-    date.setDate(date.getDate() - 1);
-    guard++;
+    date.setDate(date.getDate() - 1)
+    guard++
   }
   // Now `date` is Persian 1/1 of year jy.
 
   // Add (jm - 1) Persian months + (jd - 1) days.
   // Months 1-6 = 31 days, 7-11 = 30 days. (We don't touch month 12's length here.)
-  const daysFromStart = jm <= 6
-    ? 31 * (jm - 1) + (jd - 1)
-    : 31 * 6 + 30 * (jm - 7) + (jd - 1);
+  const daysFromStart = jm <= 6 ? 31 * (jm - 1) + (jd - 1) : 31 * 6 + 30 * (jm - 7) + (jd - 1)
 
-  date.setDate(date.getDate() + daysFromStart);
-  return date;
+  date.setDate(date.getDate() + daysFromStart)
+  return date
 }
 
 export function formatJalali(date: Date, withWeekday = false): string {
@@ -232,8 +277,11 @@ export function getJalaliMonthGrid(year: number, month: number): CalendarCell[] 
   const firstWeekday = (firstGreg.getDay() + 1) % 7 // 0=Sat
   // days in jalali month
   const daysInMonth =
-    month <= 6 ? 31 : month <= 11 ? 30 : // Esfand: 29 or 30
-    (jalaliToDate(year + 1, 1, 1).getTime() - firstGreg.getTime()) / 86400_000
+    month <= 6
+      ? 31
+      : month <= 11
+        ? 30 // Esfand: 29 or 30
+        : (jalaliToDate(year + 1, 1, 1).getTime() - firstGreg.getTime()) / 86400_000
 
   const cells: CalendarCell[] = []
   const today = new Date()
@@ -243,20 +291,39 @@ export function getJalaliMonthGrid(year: number, month: number): CalendarCell[] 
   const prevMonth = month === 1 ? 12 : month - 1
   const prevYear = month === 1 ? year - 1 : year
   const prevFirst = jalaliToDate(prevYear, prevMonth, 1)
-  const daysInPrev = prevMonth <= 6 ? 31 : prevMonth <= 11 ? 30 : (prevFirst.getTime() - jalaliToDate(prevYear - 1, prevMonth, 1).getTime()) / 86400_000
+  const daysInPrev =
+    prevMonth <= 6
+      ? 31
+      : prevMonth <= 11
+        ? 30
+        : (prevFirst.getTime() - jalaliToDate(prevYear - 1, prevMonth, 1).getTime()) / 86400_000
 
   for (let i = firstWeekday - 1; i >= 0; i--) {
     const d = new Date(prevFirst)
     d.setDate(d.getDate() + (daysInPrev - 1 - i))
     const j = toJalali(d)
-    cells.push({ date: d, jalali: j, inMonth: false, isToday: false, holiday: isHoliday(j), isWeekend: j.weekday >= 5 })
+    cells.push({
+      date: d,
+      jalali: j,
+      inMonth: false,
+      isToday: false,
+      holiday: isHoliday(j),
+      isWeekend: j.weekday >= 5,
+    })
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
     const d = jalaliToDate(year, month, day)
     const j = toJalali(d)
     const isToday = j.year === todayJ.year && j.month === todayJ.month && j.day === todayJ.day
-    cells.push({ date: d, jalali: j, inMonth: true, isToday, holiday: isHoliday(j), isWeekend: j.weekday >= 5 })
+    cells.push({
+      date: d,
+      jalali: j,
+      inMonth: true,
+      isToday,
+      holiday: isHoliday(j),
+      isWeekend: j.weekday >= 5,
+    })
   }
 
   // trailing days to fill 42 cells
@@ -266,7 +333,14 @@ export function getJalaliMonthGrid(year: number, month: number): CalendarCell[] 
   while (cells.length < 42) {
     const d = jalaliToDate(nextYear, nextMonth, nextDay)
     const j = toJalali(d)
-    cells.push({ date: d, jalali: j, inMonth: false, isToday: false, holiday: isHoliday(j), isWeekend: j.weekday >= 5 })
+    cells.push({
+      date: d,
+      jalali: j,
+      inMonth: false,
+      isToday: false,
+      holiday: isHoliday(j),
+      isWeekend: j.weekday >= 5,
+    })
     nextDay++
   }
 

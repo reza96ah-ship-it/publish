@@ -95,7 +95,9 @@ const worker = new Worker(
         username: job.platform.username,
         status: job.platform.status,
         circuitState: job.platform.circuitState as 'closed' | 'open' | 'half_open',
-        token: (job.platform as any).tokenSecret ? decrypt((job.platform as any).tokenSecret) : undefined,
+        token: (job.platform as any).tokenSecret
+          ? decrypt((job.platform as any).tokenSecret)
+          : undefined,
         targetId: (job.platform as any).targetId ?? undefined,
       },
     }
@@ -137,7 +139,10 @@ const worker = new Worker(
     // Failure — throw so BullMQ retries with backoff
     circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
 
-    const needsAction = result.error?.includes('احراز') || result.error?.includes('توکن') || result.error?.includes('مجوز')
+    const needsAction =
+      result.error?.includes('احراز') ||
+      result.error?.includes('توکن') ||
+      result.error?.includes('مجوز')
 
     if (needsAction) {
       // Non-retryable — mark as action needed and stop BullMQ from retrying
@@ -146,8 +151,20 @@ const worker = new Worker(
     }
 
     // Retryable — BullMQ will retry with exponential backoff
-    await updateJobStatus(job, 'processing', 0, `تلاش مجدد (${bullJob.attemptsMade + 1})`, result.error)
-    await emit(job, 'job:progress', 0, `تلاش مجدد در ${Math.pow(2, bullJob.attemptsMade)}ث`, result.error)
+    await updateJobStatus(
+      job,
+      'processing',
+      0,
+      `تلاش مجدد (${bullJob.attemptsMade + 1})`,
+      result.error
+    )
+    await emit(
+      job,
+      'job:progress',
+      0,
+      `تلاش مجدد در ${Math.pow(2, bullJob.attemptsMade)}ث`,
+      result.error
+    )
     console.log(`[worker] job ${job.id} → retry ${bullJob.attemptsMade + 1}/5: ${result.error}`)
     throw new Error(result.error ?? 'خطای نامشخص')
   },
@@ -155,10 +172,10 @@ const worker = new Worker(
     connection,
     concurrency: CONCURRENCY,
     limiter: {
-      max: 10,       // max 10 jobs per second
+      max: 10, // max 10 jobs per second
       duration: 1000,
     },
-  },
+  }
 )
 
 // ── BullMQ event listeners (update DB audit log) ───────────────
@@ -179,7 +196,10 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       include: { platform: true },
     })
     if (dbJob && dbJob.status !== 'success' && dbJob.status !== 'action') {
-      const needsAction = err.message.includes('احراز') || err.message.includes('توکن') || err.message.includes('مجوز')
+      const needsAction =
+        err.message.includes('احراز') ||
+        err.message.includes('توکن') ||
+        err.message.includes('مجوز')
       await markFailed(dbJob, err.message, false, needsAction)
     }
   } catch (dbErr) {
@@ -199,7 +219,7 @@ async function updateJobStatus(
   progress: number,
   processLabel: string,
   error: string | null,
-  externalId?: string,
+  externalId?: string
 ): Promise<void> {
   await db.publishJob.update({
     where: { id: job.id },
@@ -219,7 +239,7 @@ async function markFailed(
   job: any,
   error: string,
   _retryable: boolean,
-  needsAction = false,
+  needsAction = false
 ): Promise<void> {
   const breakerState = circuitBreakers.getState(job.workspaceId, job.platform.type)
   const status = needsAction ? 'action' : 'failed'
@@ -236,7 +256,11 @@ async function markFailed(
 
   await db.platform.update({
     where: { id: job.platform.id },
-    data: { circuitState: breakerState, lastError: error, primaryIssue: breakerState === 'open' ? 'اختلال API' : null },
+    data: {
+      circuitState: breakerState,
+      lastError: error,
+      primaryIssue: breakerState === 'open' ? 'اختلال API' : null,
+    },
   })
 
   await emit(job, status, 100, label, error)
@@ -265,7 +289,7 @@ async function emit(
   status: string,
   progress: number,
   processLabel: string,
-  error: string | null,
+  error: string | null
 ): Promise<void> {
   await emitJobStatus({
     workspaceId: job.workspaceId,
@@ -285,9 +309,15 @@ async function emit(
 // ── Health HTTP server + Bull Board ────────────────────────────
 
 let inFlightJobs = 0
-worker.on('active', () => { inFlightJobs++ })
-worker.on('completed', () => { inFlightJobs-- })
-worker.on('failed', () => { inFlightJobs-- })
+worker.on('active', () => {
+  inFlightJobs++
+})
+worker.on('completed', () => {
+  inFlightJobs--
+})
+worker.on('failed', () => {
+  inFlightJobs--
+})
 
 function startHealthServer() {
   const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -306,15 +336,17 @@ function startHealthServer() {
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({
-        ok: true,
-        status: 'running',
-        uptime: Math.floor((Date.now() - startTime) / 1000),
-        inFlightJobs,
-        queueDepth,
-        failedCount,
-        timestamp: new Date().toISOString(),
-      }))
+      res.end(
+        JSON.stringify({
+          ok: true,
+          status: 'running',
+          uptime: Math.floor((Date.now() - startTime) / 1000),
+          inFlightJobs,
+          queueDepth,
+          failedCount,
+          timestamp: new Date().toISOString(),
+        })
+      )
       return
     }
 
@@ -365,14 +397,18 @@ function startHealthServer() {
 </div>
 <h2>Recent Jobs</h2>
 <table><tr><th>ID</th><th>Status</th><th>Attempts</th><th>Error</th></tr>
-${jobs.map(j => `<tr>
+${jobs
+  .map(
+    (j) => `<tr>
   <td>${j.id?.slice(0, 12) ?? '—'}</td>
   <td class="status-${j.finishedOn ? (j.failedReason ? 'failed' : 'success') : 'active'}">
-    ${j.finishedOn ? (j.failedReason ? 'failed' : 'completed') : (j.processedOn ? 'active' : 'waiting')}
+    ${j.finishedOn ? (j.failedReason ? 'failed' : 'completed') : j.processedOn ? 'active' : 'waiting'}
   </td>
   <td>${j.attemptsMade}</td>
   <td>${j.failedReason ? j.failedReason.slice(0, 80) : '—'}</td>
-</tr>`).join('')}
+</tr>`
+  )
+  .join('')}
 </table>
 </body></html>`
 
@@ -391,7 +427,9 @@ ${jobs.map(j => `<tr>
 
   server.listen(HEALTH_PORT, () => {
     console.log(`[worker] health on http://localhost:${HEALTH_PORT}/health`)
-    console.log(`[worker] bull board on http://localhost:${HEALTH_PORT}/board (password: ${BOARD_PASSWORD === 'nashrino' ? 'default' : 'custom'})`)
+    console.log(
+      `[worker] bull board on http://localhost:${HEALTH_PORT}/board (password: ${BOARD_PASSWORD === 'nashrino' ? 'default' : 'custom'})`
+    )
   })
 }
 

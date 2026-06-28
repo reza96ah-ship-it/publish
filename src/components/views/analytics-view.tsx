@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import { useQuery, useQueries } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { useMemo, useState } from 'react'
+import { useQuery, useQueries } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import {
   BarChart3,
   TrendingUp,
@@ -12,7 +12,7 @@ import {
   Heart,
   Activity,
   FileText,
-} from "lucide-react";
+} from 'lucide-react'
 import {
   AreaChart,
   Area,
@@ -23,140 +23,201 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-} from "recharts";
+} from 'recharts'
 
-import { api } from "@/lib/api";
-import { toPersianDigits, formatCompact, formatJalaliShort, formatJalali, formatJalaliTime } from "@/lib/jalali";
-import { SectionTitle, PlatformIcon, StatusBadge, EmptyState, Skeleton, LoadingState, AnimatedTabs, KpiCard } from "@/components/dashboard/shared";
-import { ChartTooltip, BarChartTooltip } from "@/components/dashboard/chart-tooltip";
-import { announce } from "@/lib/aria-live";
-import { Button } from "@/components/ui/button";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { api } from '@/lib/api'
+import {
+  toPersianDigits,
+  formatCompact,
+  formatJalaliShort,
+  formatJalali,
+  formatJalaliTime,
+} from '@/lib/jalali'
+import {
+  SectionTitle,
+  PlatformIcon,
+  StatusBadge,
+  EmptyState,
+  Skeleton,
+  LoadingState,
+  AnimatedTabs,
+  KpiCard,
+} from '@/components/dashboard/shared'
+import { ChartTooltip, BarChartTooltip } from '@/components/dashboard/chart-tooltip'
+import { announce } from '@/lib/aria-live'
+import { Button } from '@/components/ui/button'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 
 interface AnalyticsData {
-  dates: string[];
-  reach: number[];
-  engagement: number[];
-  followers: number[];
-  clicks: number[];
+  dates: string[]
+  reach: number[]
+  engagement: number[]
+  followers: number[]
+  clicks: number[]
 }
 
 interface PublishJob {
-  id: string;
-  title: string;
-  thumbnail: string;
-  platform: string;
-  platformName: string;
-  status: string;
-  statusLabel: string;
-  progress: number;
-  scheduledAt: string | null;
-  completedAt: string | null;
-  error: string | null;
-  retryCount: number;
-  assignee: string;
-  assigneeAvatar: string;
-  campaign: string;
+  id: string
+  title: string
+  thumbnail: string
+  platform: string
+  platformName: string
+  status: string
+  statusLabel: string
+  progress: number
+  scheduledAt: string | null
+  completedAt: string | null
+  error: string | null
+  retryCount: number
+  assignee: string
+  assigneeAvatar: string
+  campaign: string
 }
 
 const PLATFORMS = [
-  { id: "instagram", label: "اینستاگرام", color: "#ec4899" },
-  { id: "telegram", label: "تلگرام", color: "#0ea5e9" },
-  { id: "linkedin", label: "لینکدین", color: "#2563eb" },
-  { id: "rubika", label: "روبیکا", color: "#a855f7" },
-];
+  { id: 'instagram', label: 'اینستاگرام', color: '#ec4899' },
+  { id: 'telegram', label: 'تلگرام', color: '#0ea5e9' },
+  { id: 'linkedin', label: 'لینکدین', color: '#2563eb' },
+  { id: 'rubika', label: 'روبیکا', color: '#a855f7' },
+]
 
 export function AnalyticsView() {
-  const [period, setPeriod] = useState<"7" | "30">("7");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [period, setPeriod] = useState<'7' | '30'>('7')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
 
   const { data, isLoading } = useQuery<AnalyticsData>({
-    queryKey: ["analytics", "all"],
-    queryFn: () => api.get<AnalyticsData>("/api/analytics?platform=all"),
-  });
+    queryKey: ['analytics', 'all'],
+    queryFn: () => api.get<AnalyticsData>('/api/analytics?platform=all'),
+  })
 
   const { data: publishJobs } = useQuery<PublishJob[]>({
-    queryKey: ["publish-jobs"],
-    queryFn: () => api.getPaginated<PublishJob>("/api/publish-jobs"),
-  });
+    queryKey: ['publish-jobs'],
+    queryFn: () => api.getPaginated<PublishJob>('/api/publish-jobs'),
+  })
 
   // Per-platform analytics (parallel)
   const platformQueries = useQueries({
     queries: PLATFORMS.map((p) => ({
-      queryKey: ["analytics", p.id],
+      queryKey: ['analytics', p.id],
       queryFn: () => api.get<AnalyticsData>(`/api/analytics?platform=${p.id}`),
       staleTime: 60_000,
     })),
-  });
+  })
 
   const chartData = useMemo(() => {
-    if (!data) return [];
+    if (!data) return []
     return data.dates.map((d, i) => ({
       date: formatJalaliShort(new Date(d)),
       reach: data.reach[i] ?? 0,
       engagement: data.engagement[i] ?? 0,
       followers: data.followers[i] ?? 0,
       clicks: data.clicks[i] ?? 0,
-    }));
-  }, [data]);
+    }))
+  }, [data])
 
   const periodSlice = useMemo(() => {
-    if (period === "7") return chartData.slice(-7);
-    return chartData;
-  }, [chartData, period]);
+    if (period === '7') return chartData.slice(-7)
+    return chartData
+  }, [chartData, period])
 
   const kpis = useMemo(() => {
     if (!data || data.dates.length === 0) {
-      return { reach: 0, engagement: 0, followers: 0, clicks: 0 };
+      return { reach: 0, engagement: 0, followers: 0, clicks: 0 }
     }
-    const last = data.dates.length - 1;
+    const last = data.dates.length - 1
     return {
       reach: data.reach[last] ?? 0,
       engagement: data.engagement[last] ?? 0,
       followers: data.followers[last] ?? 0,
       clicks: data.clicks[last] ?? 0,
-    };
-  }, [data]);
+    }
+  }, [data])
 
   // KPI card dataset — each card carries its own sliced series, trend,
   // previous-period value, and date labeler for the interactive chart tooltip.
   const kpiCards = useMemo(() => {
-    const slice = <T,>(arr: T[] | undefined): T[] =>
-      (arr ?? []).slice(period === "7" ? -7 : -30);
-    const reach = slice(data?.reach);
-    const engagement = slice(data?.engagement);
-    const followers = slice(data?.followers);
-    const clicks = slice(data?.clicks);
-    const dates = slice(data?.dates);
+    const slice = <T,>(arr: T[] | undefined): T[] => (arr ?? []).slice(period === '7' ? -7 : -30)
+    const reach = slice(data?.reach)
+    const engagement = slice(data?.engagement)
+    const followers = slice(data?.followers)
+    const clicks = slice(data?.clicks)
+    const dates = slice(data?.dates)
     const trend = (arr: number[]) =>
-      arr.length >= 2 && arr[0] > 0
-        ? ((arr[arr.length - 1] - arr[0]) / arr[0]) * 100
-        : 0;
-    const prev = (arr: number[]) =>
-      arr.length >= 2 ? arr[0] : undefined;
-    const labelFor = (i: number) =>
-      dates[i] ? formatJalaliShort(new Date(dates[i])) : "";
+      arr.length >= 2 && arr[0] > 0 ? ((arr[arr.length - 1] - arr[0]) / arr[0]) * 100 : 0
+    const prev = (arr: number[]) => (arr.length >= 2 ? arr[0] : undefined)
+    const labelFor = (i: number) => (dates[i] ? formatJalaliShort(new Date(dates[i])) : '')
     return [
-      { key: "reach", label: "دسترسی", value: kpis.reach, icon: Eye, iconColor: "text-violet-600", sparkColor: "var(--color-accent)", spark: reach, trend: trend(reach), prev: prev(reach), labelFor },
-      { key: "engagement", label: "تعامل", value: kpis.engagement, icon: Heart, iconColor: "text-pink-600", sparkColor: "#ec4899", spark: engagement, trend: trend(engagement), prev: prev(engagement), labelFor },
-      { key: "followers", label: "رشد مخاطبان", value: kpis.followers, icon: Users, iconColor: "text-emerald-600", sparkColor: "#10b981", spark: followers, trend: trend(followers), prev: prev(followers), labelFor },
-      { key: "clicks", label: "کلیک", value: kpis.clicks, icon: MousePointerClick, iconColor: "text-amber-600", sparkColor: "#f59e0b", spark: clicks, trend: trend(clicks), prev: prev(clicks), labelFor },
-    ];
-  }, [data, kpis, period]);
+      {
+        key: 'reach',
+        label: 'دسترسی',
+        value: kpis.reach,
+        icon: Eye,
+        iconColor: 'text-violet-600',
+        sparkColor: 'var(--color-accent)',
+        spark: reach,
+        trend: trend(reach),
+        prev: prev(reach),
+        labelFor,
+      },
+      {
+        key: 'engagement',
+        label: 'تعامل',
+        value: kpis.engagement,
+        icon: Heart,
+        iconColor: 'text-pink-600',
+        sparkColor: '#ec4899',
+        spark: engagement,
+        trend: trend(engagement),
+        prev: prev(engagement),
+        labelFor,
+      },
+      {
+        key: 'followers',
+        label: 'رشد مخاطبان',
+        value: kpis.followers,
+        icon: Users,
+        iconColor: 'text-emerald-600',
+        sparkColor: '#10b981',
+        spark: followers,
+        trend: trend(followers),
+        prev: prev(followers),
+        labelFor,
+      },
+      {
+        key: 'clicks',
+        label: 'کلیک',
+        value: kpis.clicks,
+        icon: MousePointerClick,
+        iconColor: 'text-amber-600',
+        sparkColor: '#f59e0b',
+        spark: clicks,
+        trend: trend(clicks),
+        prev: prev(clicks),
+        labelFor,
+      },
+    ]
+  }, [data, kpis, period])
 
   const filteredJobs = useMemo(() => {
-    if (!publishJobs) return [];
-    if (statusFilter === "all") return publishJobs;
-    return publishJobs.filter((j) => j.status === statusFilter);
-  }, [publishJobs, statusFilter]);
+    if (!publishJobs) return []
+    if (statusFilter === 'all') return publishJobs
+    return publishJobs.filter((j) => j.status === statusFilter)
+  }, [publishJobs, statusFilter])
 
   return (
     <motion.div
@@ -171,12 +232,12 @@ export function AnalyticsView() {
           <AnimatedTabs
             value={period}
             onValueChange={(v) => {
-              setPeriod(v as "7" | "30");
-              announce(`${v === "7" ? "۷" : "۳۰"} روز انتخاب شد`);
+              setPeriod(v as '7' | '30')
+              announce(`${v === '7' ? '۷' : '۳۰'} روز انتخاب شد`)
             }}
             tabs={[
-              { value: "7", label: "۷ روز" },
-              { value: "30", label: "۳۰ روز" },
+              { value: '7', label: '۷ روز' },
+              { value: '30', label: '۳۰ روز' },
             ]}
           />
         }
@@ -199,7 +260,7 @@ export function AnalyticsView() {
             previousValue={k.prev}
             formatSparkLabel={k.labelFor}
             loading={isLoading}
-            timeLabel={period === "7" ? "۷ روز پیش" : "۳۰ روز پیش"}
+            timeLabel={period === '7' ? '۷ روز پیش' : '۳۰ روز پیش'}
           />
         ))}
       </div>
@@ -211,7 +272,9 @@ export function AnalyticsView() {
             <TrendingUp className="size-4 text-accent" />
             <h2 className="text-sm font-[600] text-ink-primary">روند دسترسی</h2>
           </div>
-          <span className="text-[11px] text-ink-tertiary num-tabular">{toPersianDigits(periodSlice.length)} روز</span>
+          <span className="text-[11px] text-ink-tertiary num-tabular">
+            {toPersianDigits(periodSlice.length)} روز
+          </span>
         </div>
         <LoadingState
           isLoading={isLoading}
@@ -229,13 +292,13 @@ export function AnalyticsView() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: "rgb(148 163 184 / 0.7)" }}
+                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
                   tickFormatter={(v) => toPersianDigits(v)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgb(148 163 184 / 0.7)" }}
+                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
@@ -267,21 +330,21 @@ export function AnalyticsView() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={PLATFORMS.map((p, i) => {
-                  const pd = platformQueries[i]?.data;
-                  const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0;
-                  return { name: p.label, value: total, fill: p.color };
+                  const pd = platformQueries[i]?.data
+                  const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
+                  return { name: p.label, value: total, fill: p.color }
                 })}
                 margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: "rgb(148 163 184 / 0.7)" }}
+                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgb(148 163 184 / 0.7)" }}
+                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
@@ -294,8 +357,8 @@ export function AnalyticsView() {
           </div>
           <div className="grid grid-cols-2 gap-2 mt-3">
             {PLATFORMS.map((p, i) => {
-              const pd = platformQueries[i]?.data;
-              const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0;
+              const pd = platformQueries[i]?.data
+              const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
               return (
                 <div key={p.id} className="flex items-center gap-2 text-[11px]">
                   <PlatformIcon platform={p.id} className="size-5" />
@@ -304,7 +367,7 @@ export function AnalyticsView() {
                     {toPersianDigits(formatCompact(total))}
                   </span>
                 </div>
-              );
+              )
             })}
           </div>
         </div>
@@ -317,18 +380,35 @@ export function AnalyticsView() {
           </div>
           <div className="space-y-3">
             {[
-              { label: "میانگین نرخ تعامل", value: `${toPersianDigits(4.8)}٪`, trend: `+${toPersianDigits(0.6)}٪` },
-              { label: "میانگین دسترسی روزانه", value: toPersianDigits(formatCompact(kpis.reach)), trend: `+${toPersianDigits(12)}٪` },
-              { label: "رشد فالوور (۳۰ روز)", value: toPersianDigits(formatCompact(data?.followers.reduce((s, v) => s + v, 0) ?? 0)), trend: `+${toPersianDigits(8)}٪` },
-              { label: "کل کلیک‌ها", value: toPersianDigits(formatCompact(data?.clicks.reduce((s, v) => s + v, 0) ?? 0)), trend: `+${toPersianDigits(3)}٪` },
+              {
+                label: 'میانگین نرخ تعامل',
+                value: `${toPersianDigits(4.8)}٪`,
+                trend: `+${toPersianDigits(0.6)}٪`,
+              },
+              {
+                label: 'میانگین دسترسی روزانه',
+                value: toPersianDigits(formatCompact(kpis.reach)),
+                trend: `+${toPersianDigits(12)}٪`,
+              },
+              {
+                label: 'رشد فالوور (۳۰ روز)',
+                value: toPersianDigits(
+                  formatCompact(data?.followers.reduce((s, v) => s + v, 0) ?? 0)
+                ),
+                trend: `+${toPersianDigits(8)}٪`,
+              },
+              {
+                label: 'کل کلیک‌ها',
+                value: toPersianDigits(formatCompact(data?.clicks.reduce((s, v) => s + v, 0) ?? 0)),
+                trend: `+${toPersianDigits(3)}٪`,
+              },
             ].map((row) => (
-              <div
-                key={row.label}
-                className="n-card-compact flex items-center justify-between p-3"
-              >
+              <div key={row.label} className="n-card-compact flex items-center justify-between p-3">
                 <span className="text-[12px] text-ink-secondary">{row.label}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-[700] text-ink-primary num-tabular">{row.value}</span>
+                  <span className="text-[13px] font-[700] text-ink-primary num-tabular">
+                    {row.value}
+                  </span>
                   <span className="text-[10px] font-[700] text-success bg-success-soft rounded-full px-1.5 py-0.5">
                     {row.trend}
                   </span>
@@ -368,13 +448,27 @@ export function AnalyticsView() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">عنوان</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">پلتفرم</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">وضعیت</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">زمان انتشار</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">تکمیل</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">تلاش مجدد</TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden lg:table-cell">خطا</TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                  عنوان
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                  پلتفرم
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                  وضعیت
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                  زمان انتشار
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                  تکمیل
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                  تلاش مجدد
+                </TableHead>
+                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden lg:table-cell">
+                  خطا
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -388,7 +482,7 @@ export function AnalyticsView() {
                       illustration="search"
                       size="compact"
                       action={
-                        <Button size="sm" variant="outline" onClick={() => setStatusFilter("all")}>
+                        <Button size="sm" variant="outline" onClick={() => setStatusFilter('all')}>
                           نمایش همه وضعیت‌ها
                         </Button>
                       }
@@ -401,33 +495,59 @@ export function AnalyticsView() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {j.thumbnail ? (
-                          <img src={j.thumbnail} alt="" className="size-8 rounded-lg object-cover shrink-0" />
+                          <img
+                            src={j.thumbnail}
+                            alt=""
+                            className="size-8 rounded-lg object-cover shrink-0"
+                          />
                         ) : (
                           <div className="size-8 rounded-lg bg-border flex items-center justify-center shrink-0">
                             <PlatformIcon platform={j.platform} className="size-4" />
                           </div>
                         )}
-                        <span className="text-[12px] font-[600] text-ink-primary truncate max-w-40">{j.title}</span>
+                        <span className="text-[12px] font-[600] text-ink-primary truncate max-w-40">
+                          {j.title}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <PlatformIcon platform={j.platform} className="size-4" />
-                        <span className="text-[11px] text-ink-secondary hidden sm:inline">{j.platformName}</span>
+                        <span className="text-[11px] text-ink-secondary hidden sm:inline">
+                          {j.platformName}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <StatusBadge label={j.statusLabel} variant={j.status === "success" ? "published" : j.status === "failed" ? "high" : j.status === "action" ? "review" : "scheduled"} />
+                      <StatusBadge
+                        label={j.statusLabel}
+                        variant={
+                          j.status === 'success'
+                            ? 'published'
+                            : j.status === 'failed'
+                              ? 'high'
+                              : j.status === 'action'
+                                ? 'review'
+                                : 'scheduled'
+                        }
+                      />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-[11px] text-ink-secondary">
-                      {j.scheduledAt ? `${formatJalali(new Date(j.scheduledAt))} ${formatJalaliTime(new Date(j.scheduledAt))}` : "—"}
+                      {j.scheduledAt
+                        ? `${formatJalali(new Date(j.scheduledAt))} ${formatJalaliTime(new Date(j.scheduledAt))}`
+                        : '—'}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-[11px] text-ink-secondary">
-                      {j.completedAt ? formatJalaliTime(new Date(j.completedAt)) : "—"}
+                      {j.completedAt ? formatJalaliTime(new Date(j.completedAt)) : '—'}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-[11px] num-tabular">
                       {j.retryCount > 0 ? (
-                        <span className={cn("font-[700]", j.retryCount > 2 ? "text-danger" : "text-warning")}>
+                        <span
+                          className={cn(
+                            'font-[700]',
+                            j.retryCount > 2 ? 'text-danger' : 'text-warning'
+                          )}
+                        >
                           {toPersianDigits(j.retryCount)}
                         </span>
                       ) : (
@@ -435,7 +555,7 @@ export function AnalyticsView() {
                       )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-[11px] text-danger max-w-48 truncate">
-                      {j.error ?? "—"}
+                      {j.error ?? '—'}
                     </TableCell>
                   </TableRow>
                 ))
@@ -445,5 +565,5 @@ export function AnalyticsView() {
         </div>
       </div>
     </motion.div>
-  );
+  )
 }

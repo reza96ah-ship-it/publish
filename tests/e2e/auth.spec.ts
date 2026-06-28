@@ -7,7 +7,9 @@ test.describe('Auth flow', () => {
     await page.goto('/auth/signin')
 
     // Verify signin form is visible
-    const emailInput = page.locator('input[type="email"], input[name="email"], input[autocomplete="email"]').first()
+    const emailInput = page
+      .locator('input[type="email"], input[name="email"], input[autocomplete="email"]')
+      .first()
     const passwordInput = page.locator('input[type="password"], input[name="password"]').first()
     await expect(emailInput).toBeVisible()
     await expect(passwordInput).toBeVisible()
@@ -28,7 +30,9 @@ test.describe('Auth flow', () => {
   test('can fill signin form', async ({ page }) => {
     await page.goto('/auth/signin')
 
-    const emailInput = page.locator('input[type="email"], input[name="email"], input[autocomplete="email"]').first()
+    const emailInput = page
+      .locator('input[type="email"], input[name="email"], input[autocomplete="email"]')
+      .first()
     const passwordInput = page.locator('input[type="password"], input[name="password"]').first()
 
     await emailInput.fill('demo@nashrino.ir')

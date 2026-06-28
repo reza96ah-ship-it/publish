@@ -1,9 +1,9 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useMemo, useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,7 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
-} from "@dnd-kit/core";
+} from '@dnd-kit/core'
 import {
   CalendarDays,
   ChevronRight,
@@ -24,9 +24,9 @@ import {
   ListChecks,
   Plus,
   CalendarClock,
-} from "lucide-react";
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
+import { api } from '@/lib/api'
 import {
   JALALI_MONTHS,
   JALALI_WEEKDAYS_SHORT,
@@ -36,187 +36,206 @@ import {
   relativeTime,
   getJalaliMonthGrid,
   type CalendarCell,
-} from "@/lib/jalali";
-import { useAppStore } from "@/lib/store";
-import { useRouter } from "next/navigation";
-import { announce } from "@/lib/aria-live";
-import { SectionTitle, PlatformIcon, StatusBadge, EmptyState, AnimatedTabs } from "@/components/dashboard/shared";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { JalaliDatePicker } from "@/components/ui/jalali-picker";
-import { cn } from "@/lib/utils";
+} from '@/lib/jalali'
+import { useAppStore } from '@/lib/store'
+import { useRouter } from 'next/navigation'
+import { announce } from '@/lib/aria-live'
+import {
+  SectionTitle,
+  PlatformIcon,
+  StatusBadge,
+  EmptyState,
+  AnimatedTabs,
+} from '@/components/dashboard/shared'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { JalaliDatePicker } from '@/components/ui/jalali-picker'
+import { cn } from '@/lib/utils'
 
 interface CalendarJob {
-  id: string;
-  title: string;
-  thumbnail: string;
-  platform: string;
-  status: string;
-  scheduledAt: string;
-  progress: number;
+  id: string
+  title: string
+  thumbnail: string
+  platform: string
+  status: string
+  scheduledAt: string
+  progress: number
 }
 
 interface PublishJob {
-  id: string;
-  title: string;
-  thumbnail: string;
-  platform: string;
-  platformName: string;
-  status: string;
-  statusLabel: string;
-  progress: number;
-  processLabel: string;
-  scheduledAt: string | null;
-  completedAt: string | null;
-  error: string | null;
-  retryCount: number;
-  assignee: string;
-  assigneeAvatar: string;
-  campaign: string;
+  id: string
+  title: string
+  thumbnail: string
+  platform: string
+  platformName: string
+  status: string
+  statusLabel: string
+  progress: number
+  processLabel: string
+  scheduledAt: string | null
+  completedAt: string | null
+  error: string | null
+  retryCount: number
+  assignee: string
+  assigneeAvatar: string
+  campaign: string
 }
 
 const PLATFORM_CHIP: Record<string, string> = {
-  instagram: "bg-pink-100 text-pink-700 border-pink-200",
-  telegram: "bg-sky-100 text-sky-700 border-sky-200",
-  linkedin: "bg-blue-100 text-blue-700 border-blue-200",
-  rubika: "bg-purple-100 text-purple-700 border-purple-200",
-  eitaa: "bg-orange-100 text-orange-700 border-orange-200",
-};
+  instagram: 'bg-pink-100 text-pink-700 border-pink-200',
+  telegram: 'bg-sky-100 text-sky-700 border-sky-200',
+  linkedin: 'bg-blue-100 text-blue-700 border-blue-200',
+  rubika: 'bg-purple-100 text-purple-700 border-purple-200',
+  eitaa: 'bg-orange-100 text-orange-700 border-orange-200',
+}
 
 const STATUS_LABEL: Record<string, string> = {
-  success: "منتشر شد",
-  failed: "ناموفق",
-  scheduled: "برنامه‌ریزی‌شده",
-  pending: "در انتظار",
-  processing: "در حال پردازش",
-  action: "نیازمند اقدام",
-  live: "در حال انتشار",
-};
+  success: 'منتشر شد',
+  failed: 'ناموفق',
+  scheduled: 'برنامه‌ریزی‌شده',
+  pending: 'در انتظار',
+  processing: 'در حال پردازش',
+  action: 'نیازمند اقدام',
+  live: 'در حال انتشار',
+}
 
 export function CalendarView() {
-  const { calendarCursor, setCalendarCursor } = useAppStore();
-  const router = useRouter();
-  const navigateTo = (path: string) => router.push(path);
-  const [view, setView] = useState<"month" | "week" | "agenda">("month");
-  const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState<Date | null>(null);
-  const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null);
-  const queryClient = useQueryClient();
+  const { calendarCursor, setCalendarCursor } = useAppStore()
+  const router = useRouter()
+  const navigateTo = (path: string) => router.push(path)
+  const [view, setView] = useState<'month' | 'week' | 'agenda'>('month')
+  const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
+  const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
+  const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
+  const queryClient = useQueryClient()
 
   // DnD sensors — distance:6 lets pure clicks (open sheet) through while enabling drag
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 6 },
     })
-  );
+  )
 
   // Reschedule mutation — PATCH /api/publish-jobs/[id] { action: 'reschedule', scheduledAt }
   const rescheduleMutation = useMutation({
     mutationFn: async ({ jobId, scheduledAt }: { jobId: string; scheduledAt: Date }) => {
       return api.patch(`/api/publish-jobs/${jobId}`, {
-        action: "reschedule",
+        action: 'reschedule',
         scheduledAt: scheduledAt.toISOString(),
-      });
+      })
     },
     onSuccess: () => {
-      toast.success("زمان‌بندی به‌روزرسانی شد");
-      queryClient.invalidateQueries({ queryKey: ["calendar"] });
-      queryClient.invalidateQueries({ queryKey: ["publish-jobs"] });
-      setEditingSchedule(null);
-      setSelectedJob(null);
-      announce("زمان‌بندی به‌روزرسانی شد");
+      toast.success('زمان‌بندی به‌روزرسانی شد')
+      queryClient.invalidateQueries({ queryKey: ['calendar'] })
+      queryClient.invalidateQueries({ queryKey: ['publish-jobs'] })
+      setEditingSchedule(null)
+      setSelectedJob(null)
+      announce('زمان‌بندی به‌روزرسانی شد')
     },
     onError: (err: Error) => {
-      toast.error(err.message || "خطا در به‌روزرسانی زمان‌بندی");
+      toast.error(err.message || 'خطا در به‌روزرسانی زمان‌بندی')
     },
-  });
+  })
 
   const { data: jobs, isLoading } = useQuery<CalendarJob[]>({
-    queryKey: ["calendar", calendarCursor.year, calendarCursor.month],
+    queryKey: ['calendar', calendarCursor.year, calendarCursor.month],
     queryFn: () =>
       api.get<CalendarJob[]>(
         `/api/calendar?year=${calendarCursor.year}&month=${calendarCursor.month}`
       ),
-  });
+  })
 
   const { data: queue } = useQuery<PublishJob[]>({
-    queryKey: ["publish-jobs"],
-    queryFn: () => api.getPaginated<PublishJob>("/api/publish-jobs"),
-  });
+    queryKey: ['publish-jobs'],
+    queryFn: () => api.getPaginated<PublishJob>('/api/publish-jobs'),
+  })
 
   const cells = useMemo(
     () => getJalaliMonthGrid(calendarCursor.year, calendarCursor.month),
     [calendarCursor]
-  );
+  )
 
   // Group jobs by their jalali day
   const jobsByDay = useMemo(() => {
-    const map = new Map<string, CalendarJob[]>();
+    const map = new Map<string, CalendarJob[]>()
     for (const job of jobs ?? []) {
-      const d = new Date(job.scheduledAt);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const arr = map.get(key) ?? [];
-      arr.push(job);
-      map.set(key, arr);
+      const d = new Date(job.scheduledAt)
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      const arr = map.get(key) ?? []
+      arr.push(job)
+      map.set(key, arr)
     }
-    return map;
-  }, [jobs]);
+    return map
+  }, [jobs])
 
   const goPrev = () => {
-    const newMonth = calendarCursor.month === 1 ? 12 : calendarCursor.month - 1;
-    const newYear = calendarCursor.month === 1 ? calendarCursor.year - 1 : calendarCursor.year;
-    setCalendarCursor(newYear, newMonth);
-    announce(`${JALALI_MONTHS[newMonth - 1]} ${toPersianDigits(newYear)}`);
-  };
+    const newMonth = calendarCursor.month === 1 ? 12 : calendarCursor.month - 1
+    const newYear = calendarCursor.month === 1 ? calendarCursor.year - 1 : calendarCursor.year
+    setCalendarCursor(newYear, newMonth)
+    announce(`${JALALI_MONTHS[newMonth - 1]} ${toPersianDigits(newYear)}`)
+  }
   const goNext = () => {
-    const newMonth = calendarCursor.month === 12 ? 1 : calendarCursor.month + 1;
-    const newYear = calendarCursor.month === 12 ? calendarCursor.year + 1 : calendarCursor.year;
-    setCalendarCursor(newYear, newMonth);
-    announce(`${JALALI_MONTHS[newMonth - 1]} ${toPersianDigits(newYear)}`);
-  };
+    const newMonth = calendarCursor.month === 12 ? 1 : calendarCursor.month + 1
+    const newYear = calendarCursor.month === 12 ? calendarCursor.year + 1 : calendarCursor.year
+    setCalendarCursor(newYear, newMonth)
+    announce(`${JALALI_MONTHS[newMonth - 1]} ${toPersianDigits(newYear)}`)
+  }
   const goToday = () => {
-    const now = new Date();
-    const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
-    const gy2 = now.getMonth() > 1 ? now.getFullYear() + 1 : now.getFullYear();
-    let days = 355666 + 365 * now.getFullYear() + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + now.getDate() + g_d_m[now.getMonth()];
-    let jy = -1595 + 33 * Math.floor(days / 12053);
-    days = days - Math.floor(days / 12053) * 12053;
-    jy += 4 * Math.floor(days / 1461);
-    days = days - Math.floor(days / 1461) * 1461;
+    const now = new Date()
+    const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+    const gy2 = now.getMonth() > 1 ? now.getFullYear() + 1 : now.getFullYear()
+    let days =
+      355666 +
+      365 * now.getFullYear() +
+      Math.floor((gy2 + 3) / 4) -
+      Math.floor((gy2 + 99) / 100) +
+      Math.floor((gy2 + 399) / 400) +
+      now.getDate() +
+      g_d_m[now.getMonth()]
+    let jy = -1595 + 33 * Math.floor(days / 12053)
+    days = days - Math.floor(days / 12053) * 12053
+    jy += 4 * Math.floor(days / 1461)
+    days = days - Math.floor(days / 1461) * 1461
     if (days > 365) {
-      jy += Math.floor((days - 1) / 365);
-      days = (days - 1) % 365;
+      jy += Math.floor((days - 1) / 365)
+      days = (days - 1) % 365
     }
-    const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30);
-    setCalendarCursor(jy, jm);
-    announce(`امروز — ${JALALI_MONTHS[jm - 1]} ${toPersianDigits(jy)}`);
-  };
+    const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30)
+    setCalendarCursor(jy, jm)
+    announce(`امروز — ${JALALI_MONTHS[jm - 1]} ${toPersianDigits(jy)}`)
+  }
 
-  const monthName = JALALI_MONTHS[calendarCursor.month - 1];
+  const monthName = JALALI_MONTHS[calendarCursor.month - 1]
 
   const handleDragStart = (event: DragStartEvent) => {
-    const jobId = event.active.id as string;
-    const job = (jobs ?? []).find((j) => j.id === jobId);
+    const jobId = event.active.id as string
+    const job = (jobs ?? []).find((j) => j.id === jobId)
     if (job) {
-      setActiveDrag({ id: jobId, title: job.title });
+      setActiveDrag({ id: jobId, title: job.title })
     }
-  };
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveDrag(null);
-    if (!over) return;
-    const jobId = active.id as string;
-    const dropId = String(over.id);
-    if (!dropId.startsWith("day-")) return;
-    const dropDateIso = dropId.replace("day-", "");
-    const dropDate = new Date(dropDateIso);
-    if (Number.isNaN(dropDate.getTime())) return;
-    dropDate.setHours(12, 0, 0, 0); // noon local time
-    rescheduleMutation.mutate({ jobId, scheduledAt: dropDate });
-  };
+    const { active, over } = event
+    setActiveDrag(null)
+    if (!over) return
+    const jobId = active.id as string
+    const dropId = String(over.id)
+    if (!dropId.startsWith('day-')) return
+    const dropDateIso = dropId.replace('day-', '')
+    const dropDate = new Date(dropDateIso)
+    if (Number.isNaN(dropDate.getTime())) return
+    dropDate.setHours(12, 0, 0, 0) // noon local time
+    rescheduleMutation.mutate({ jobId, scheduledAt: dropDate })
+  }
 
   return (
     <motion.div
@@ -232,9 +251,9 @@ export function CalendarView() {
             value={view}
             onValueChange={(v) => setView(v as typeof view)}
             tabs={[
-              { value: "month", label: "ماه" },
-              { value: "week", label: "هفته" },
-              { value: "agenda", label: "برنامه" },
+              { value: 'month', label: 'ماه' },
+              { value: 'week', label: 'هفته' },
+              { value: 'agenda', label: 'برنامه' },
             ]}
           />
         }
@@ -255,7 +274,9 @@ export function CalendarView() {
                 <p className="text-sm font-[700] text-ink-primary num-tabular">
                   {monthName} {toPersianDigits(calendarCursor.year)}
                 </p>
-                <p className="text-[10px] text-ink-tertiary num-tabular">ماه {toPersianDigits(calendarCursor.month)}</p>
+                <p className="text-[10px] text-ink-tertiary num-tabular">
+                  ماه {toPersianDigits(calendarCursor.month)}
+                </p>
               </div>
               <Button variant="ghost" size="icon" onClick={goNext} aria-label="ماه بعد">
                 <ChevronLeft className="size-4" />
@@ -274,8 +295,8 @@ export function CalendarView() {
                 <div
                   key={d}
                   className={cn(
-                    "text-center text-[11px] font-[700] py-1.5",
-                    i >= 5 ? "text-rose-500" : "text-ink-tertiary"
+                    'text-center text-[11px] font-[700] py-1.5',
+                    i >= 5 ? 'text-rose-500' : 'text-ink-tertiary'
                   )}
                 >
                   {d}
@@ -295,7 +316,11 @@ export function CalendarView() {
                   <DayCell
                     key={idx}
                     cell={cell}
-                    jobs={jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []}
+                    jobs={
+                      jobsByDay.get(
+                        `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                      ) ?? []
+                    }
                     onSelectJob={setSelectedJob}
                     activeDragId={activeDrag?.id ?? null}
                   />
@@ -321,7 +346,11 @@ export function CalendarView() {
                 <DayCell
                   key={i}
                   cell={cell}
-                  jobs={jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []}
+                  jobs={
+                    jobsByDay.get(
+                      `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                    ) ?? []
+                  }
                   onSelectJob={setSelectedJob}
                   tall
                 />
@@ -344,7 +373,7 @@ export function CalendarView() {
                 message="با ایجاد اولین رویداد، برنامه انتشار این ماه را آغاز کنید."
                 illustration="calendar"
                 action={
-                  <Button size="sm" onClick={() => navigateTo("/compose")}>
+                  <Button size="sm" onClick={() => navigateTo('/compose')}>
                     <Plus className="size-4" />
                     ایجاد محتوا
                   </Button>
@@ -354,7 +383,9 @@ export function CalendarView() {
               <div className="space-y-2 max-h-96 overflow-y-auto thin-scrollbar">
                 {(jobs ?? [])
                   .slice()
-                  .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+                  .sort(
+                    (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+                  )
                   .map((job) => (
                     <button
                       key={job.id}
@@ -363,12 +394,18 @@ export function CalendarView() {
                     >
                       <PlatformIcon platform={job.platform} className="size-8 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-[600] text-ink-primary truncate">{job.title}</p>
+                        <p className="text-[13px] font-[600] text-ink-primary truncate">
+                          {job.title}
+                        </p>
                         <p className="text-[11px] text-ink-tertiary mt-0.5">
-                          {formatJalali(new Date(job.scheduledAt), true)} • {formatJalaliTime(new Date(job.scheduledAt))}
+                          {formatJalali(new Date(job.scheduledAt), true)} •{' '}
+                          {formatJalaliTime(new Date(job.scheduledAt))}
                         </p>
                       </div>
-                      <StatusBadge label={STATUS_LABEL[job.status] ?? job.status} variant={job.status} />
+                      <StatusBadge
+                        label={STATUS_LABEL[job.status] ?? job.status}
+                        variant={job.status}
+                      />
                     </button>
                   ))}
               </div>
@@ -409,7 +446,9 @@ export function CalendarView() {
             <>
               <SheetHeader>
                 <SheetTitle className="text-right">{selectedJob.title}</SheetTitle>
-                <SheetDescription className="text-right">جزئیات انتشار برنامه‌ریزی‌شده</SheetDescription>
+                <SheetDescription className="text-right">
+                  جزئیات انتشار برنامه‌ریزی‌شده
+                </SheetDescription>
               </SheetHeader>
               <div className="px-4 pb-4 space-y-4 mt-4">
                 {selectedJob.thumbnail && (
@@ -422,8 +461,13 @@ export function CalendarView() {
                 <div className="flex items-center gap-3">
                   <PlatformIcon platform={selectedJob.platform} className="size-10" />
                   <div className="flex-1">
-                    <p className="text-[13px] font-[600] text-ink-primary">{selectedJob.platform}</p>
-                    <StatusBadge label={STATUS_LABEL[selectedJob.status] ?? selectedJob.status} variant={selectedJob.status} />
+                    <p className="text-[13px] font-[600] text-ink-primary">
+                      {selectedJob.platform}
+                    </p>
+                    <StatusBadge
+                      label={STATUS_LABEL[selectedJob.status] ?? selectedJob.status}
+                      variant={selectedJob.status}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-[12px]">
@@ -432,18 +476,18 @@ export function CalendarView() {
                     <p className="font-[700] text-ink-primary">
                       {formatJalali(new Date(selectedJob.scheduledAt), true)}
                     </p>
-                    <p className="text-ink-secondary">{formatJalaliTime(new Date(selectedJob.scheduledAt))}</p>
+                    <p className="text-ink-secondary">
+                      {formatJalaliTime(new Date(selectedJob.scheduledAt))}
+                    </p>
                   </div>
                   <div className="rounded-xl bg-surface-subtle p-3">
                     <p className="text-[10px] text-ink-tertiary mb-1">پیشرفت</p>
-                    <p className="font-[700] text-ink-primary num-tabular">{toPersianDigits(selectedJob.progress)}٪</p>
+                    <p className="font-[700] text-ink-primary num-tabular">
+                      {toPersianDigits(selectedJob.progress)}٪
+                    </p>
                   </div>
                 </div>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => navigateTo("/compose")}
-                >
+                <Button className="w-full" variant="outline" onClick={() => navigateTo('/compose')}>
                   ایجاد محتوای جدید
                 </Button>
               </div>
@@ -457,7 +501,7 @@ export function CalendarView() {
                 <JalaliDatePicker
                   value={editingSchedule ?? new Date(selectedJob.scheduledAt)}
                   onChange={(d) => {
-                    if (d) setEditingSchedule(d);
+                    if (d) setEditingSchedule(d)
                   }}
                   showTime
                   inline
@@ -467,7 +511,8 @@ export function CalendarView() {
                 {editingSchedule && (
                   <div className="flex items-center justify-between gap-2 text-[11px]">
                     <span className="text-ink-tertiary">
-                      جدید: {formatJalali(editingSchedule, true)} • {formatJalaliTime(editingSchedule)}
+                      جدید: {formatJalali(editingSchedule, true)} •{' '}
+                      {formatJalaliTime(editingSchedule)}
                     </span>
                     <Button
                       size="sm"
@@ -480,7 +525,7 @@ export function CalendarView() {
                         })
                       }
                     >
-                      {rescheduleMutation.isPending ? "در حال ذخیره..." : "ذخیره زمان جدید"}
+                      {rescheduleMutation.isPending ? 'در حال ذخیره...' : 'ذخیره زمان جدید'}
                     </Button>
                   </div>
                 )}
@@ -490,7 +535,7 @@ export function CalendarView() {
         </SheetContent>
       </Sheet>
     </motion.div>
-  );
+  )
 }
 
 function DayCell({
@@ -500,47 +545,47 @@ function DayCell({
   activeDragId,
   tall = false,
 }: {
-  cell: CalendarCell;
-  jobs: CalendarJob[];
-  onSelectJob: (j: CalendarJob) => void;
-  activeDragId?: string | null;
-  tall?: boolean;
+  cell: CalendarCell
+  jobs: CalendarJob[]
+  onSelectJob: (j: CalendarJob) => void
+  activeDragId?: string | null
+  tall?: boolean
 }) {
-  const day = toPersianDigits(cell.jalali.day);
-  const dropId = `day-${cell.date.toISOString()}`;
+  const day = toPersianDigits(cell.jalali.day)
+  const dropId = `day-${cell.date.toISOString()}`
   const { setNodeRef, isOver } = useDroppable({
     id: dropId,
     data: { date: cell.date },
-  });
+  })
   return (
     <div
       ref={setNodeRef}
       aria-label={`انتقال به ${day} ${JALALI_MONTHS[cell.jalali.month - 1]}`}
       className={cn(
-        "rounded-xl border p-1.5 transition-colors relative",
-        tall ? "min-h-32" : "min-h-20 sm:min-h-24",
-        isOver && "ring-2 ring-accent ring-offset-1",
+        'rounded-xl border p-1.5 transition-colors relative',
+        tall ? 'min-h-32' : 'min-h-20 sm:min-h-24',
+        isOver && 'ring-2 ring-accent ring-offset-1',
         cell.isToday
-          ? "border-accent ring-1 ring-accent/30 bg-accent-soft"
+          ? 'border-accent ring-1 ring-accent/30 bg-accent-soft'
           : cell.holiday
-            ? "border-rose-200 bg-rose-50/40"
+            ? 'border-rose-200 bg-rose-50/40'
             : cell.isWeekend && cell.inMonth
-              ? "border-border bg-surface-hover"
-              : "border-border",
-        !cell.inMonth && "opacity-40"
+              ? 'border-border bg-surface-hover'
+              : 'border-border',
+        !cell.inMonth && 'opacity-40'
       )}
     >
       <div className="flex items-center justify-between mb-1">
         <span
           className={cn(
-            "text-[11px] font-[700] leading-none",
+            'text-[11px] font-[700] leading-none',
             cell.isToday
-              ? "bg-accent text-white rounded-full size-5 inline-flex items-center justify-center"
+              ? 'bg-accent text-white rounded-full size-5 inline-flex items-center justify-center'
               : cell.holiday
-                ? "text-rose-600"
+                ? 'text-rose-600'
                 : cell.isWeekend
-                  ? "text-rose-500"
-                  : "text-ink-secondary"
+                  ? 'text-rose-500'
+                  : 'text-ink-secondary'
           )}
         >
           {day}
@@ -567,7 +612,7 @@ function DayCell({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function JobChip({
@@ -575,14 +620,14 @@ function JobChip({
   onSelectJob,
   isDimmed,
 }: {
-  job: CalendarJob;
-  onSelectJob: (j: CalendarJob) => void;
-  isDimmed: boolean;
+  job: CalendarJob
+  onSelectJob: (j: CalendarJob) => void
+  isDimmed: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: job.id,
     data: { jobId: job.id, scheduledAt: job.scheduledAt },
-  });
+  })
   return (
     <button
       ref={setNodeRef}
@@ -592,15 +637,15 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        "n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing",
-        PLATFORM_CHIP[job.platform] ?? "bg-slate-100 text-slate-700 border-slate-200",
-        (isDragging || isDimmed) && "opacity-30"
+        'n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
+        (isDragging || isDimmed) && 'opacity-30'
       )}
     >
       <Clock3 className="size-2.5 shrink-0" />
       <span className="truncate">{job.title}</span>
     </button>
-  );
+  )
 }
 
 function QueueRow({ job }: { job: PublishJob }) {
@@ -633,13 +678,11 @@ function QueueRow({ job }: { job: PublishJob }) {
         </div>
       </div>
       <Avatar className="size-7 shrink-0 ring-2 ring-background">
-        {job.assigneeAvatar ? (
-          <AvatarImage src={job.assigneeAvatar} alt={job.assignee} />
-        ) : null}
+        {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
         <AvatarFallback className="text-[10px]">
-          {job.assignee === "—" ? "؟" : job.assignee.slice(0, 1)}
+          {job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
         </AvatarFallback>
       </Avatar>
     </div>
-  );
+  )
 }

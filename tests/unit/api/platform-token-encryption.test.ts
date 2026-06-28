@@ -38,9 +38,15 @@ describe('platform token storage', () => {
       username: null,
     } as never)
     mockedDb.platform.update.mockResolvedValue({ id: 'platform_1' } as never)
-    vi.stubGlobal('fetch', vi.fn(async () => ({
-      json: async () => ({ ok: true, result: { username: 'nashrino_bot', first_name: 'Nashrino' } }),
-    })))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        json: async () => ({
+          ok: true,
+          result: { username: 'nashrino_bot', first_name: 'Nashrino' },
+        }),
+      }))
+    )
   })
 
   it('encrypts tokenSecret before saving a connected platform', async () => {

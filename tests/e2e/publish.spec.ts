@@ -15,7 +15,9 @@ test.describe('Publish flow', () => {
     await page.waitForTimeout(1000)
 
     // Verify the compose view rendered — look for title input or editor area
-    const editorArea = page.locator('textarea, [contenteditable], input[placeholder*="عنوان"], .n-card').first()
+    const editorArea = page
+      .locator('textarea, [contenteditable], input[placeholder*="عنوان"], .n-card')
+      .first()
     await expect(editorArea).toBeVisible({ timeout: 5000 })
   })
 

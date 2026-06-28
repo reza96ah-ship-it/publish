@@ -7,13 +7,13 @@
 
 ## Roadmap at a glance
 
-| Phase | Name | Target window | Theme | Exit criteria |
-|-------|------|---------------|-------|---------------|
-| **P0** | Foundations & Stabilization | Weeks 1–3 | Unify prototype + backend; ship real infra | Staging stack live; schema unified; CI green; fixtures removed from dashboard |
-| **P1** | MVP — Multi-Channel Publishing Core | Weeks 4–10 | Connect → Compose → Schedule → Publish (resilient) | End-to-end publish to IG + Rubika; ≥98% success rate on staging |
-| **P2** | Collaboration & Engagement | Weeks 11–18 | Inbox, approvals, automation, AI, RBAC | Comment-to-DM live + compliant; approvals flow; AI captions |
-| **P3** | Scale & Harden (GA) | Weeks 19–24 | Eitaa, listening, PWA, reports, billing GA | Production GA with paying customers |
-| **P4+** | Expand | Weeks 25+ | Listening depth, attribution, more channels, mobile native | Per-quarter releases |
+| Phase   | Name                                | Target window | Theme                                                      | Exit criteria                                                                 |
+| ------- | ----------------------------------- | ------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **P0**  | Foundations & Stabilization         | Weeks 1–3     | Unify prototype + backend; ship real infra                 | Staging stack live; schema unified; CI green; fixtures removed from dashboard |
+| **P1**  | MVP — Multi-Channel Publishing Core | Weeks 4–10    | Connect → Compose → Schedule → Publish (resilient)         | End-to-end publish to IG + Rubika; ≥98% success rate on staging               |
+| **P2**  | Collaboration & Engagement          | Weeks 11–18   | Inbox, approvals, automation, AI, RBAC                     | Comment-to-DM live + compliant; approvals flow; AI captions                   |
+| **P3**  | Scale & Harden (GA)                 | Weeks 19–24   | Eitaa, listening, PWA, reports, billing GA                 | Production GA with paying customers                                           |
+| **P4+** | Expand                              | Weeks 25+     | Listening depth, attribution, more channels, mobile native | Per-quarter releases                                                          |
 
 ---
 
@@ -23,6 +23,7 @@
 CI-gated system. No new user-facing features — just the runway.
 
 ### In scope
+
 - **S-FOUND-01** Provision production stack (Postgres, Redis, Celery, FastAPI, Next.js)
 - **S-FOUND-02** Unify database schema (prototype Prisma + Alembic → one PostgreSQL schema)
 - **S-FOUND-03** Multi-tenant data-access layer
@@ -35,6 +36,7 @@ CI-gated system. No new user-facing features — just the runway.
 - **S-AUTH-01/02/03/04** Admin auth + password reset + session + workspace membership (minimal, to unblock P1)
 
 ### Exit criteria (Definition of Phase Done)
+
 1. `docker compose up -d --build` runs all services; `/health` + `/health/db` green.
 2. `alembic upgrade head` / `downgrade -1` / `upgrade head` clean in CI.
 3. Dashboard renders from backend data (zero fixture imports in `page.tsx`/dashboard
@@ -45,11 +47,13 @@ CI-gated system. No new user-facing features — just the runway.
 7. Jalali + Persian-digit utilities unit-tested.
 
 ### Deliverables
+
 - Staging environment URL (internal).
 - OpenAPI spec skeleton for P1 endpoints.
 - E2E smoke test: login → see dashboard with backend data.
 
 ### Risks this phase de-risks
+
 - Schema drift between prototype and backend → unified early.
 - Multi-tenant leaks → enforced in data layer before any feature code.
 - RTL/Jalali quality → utilities + token audit gate established now.
@@ -63,6 +67,7 @@ calendar, and publish resiliently — and see a real dashboard, media library, c
 library, campaigns, and analytics foundations.
 
 ### In scope (by epic)
+
 - **E-CH** (partial): `S-CH-01/02/03/04/07/08/09` — Channel hub, IG OAuth (pro +
   reminder mode), Rubika connect, token warnings, adapter interface + IG + Rubika
   adapters.
@@ -85,12 +90,14 @@ library, campaigns, and analytics foundations.
 - **E-A11Y** (partial): `S-A11Y-01/02/03` — RTL audit, keyboard/ARIA, contrast.
 
 ### Key milestone: M1 — MVP Staging (end of Week 10)
+
 **Demoable golden path**: Admin logs in → connects Instagram (pro) + Rubika → composes
 a post with media → previews per platform → schedules on the Jalali calendar → the
 worker publishes to both channels → dashboard shows success → analytics updates → a
 failed publish retries and surfaces in the Action Center.
 
 ### Exit criteria
+
 1. End-to-end publish to Instagram + Rubika succeeds on staging; Telegram + LinkedIn
    adapters code-complete but behind a flag (P2 activation).
 2. Publish success rate ≥ 98% over a 24h soak test (synthetic load).
@@ -105,26 +112,29 @@ failed publish retries and surfaces in the Action Center.
    channel for determinism), dashboard, calendar drag-reschedule.
 
 ### P1.5 — Billing GA mini-phase (Week 10, parallel)
+
 - **S-BILL-02** Local payment gateway (Zarinpal) integration.
 - Paid plans go live for invited beta cohort.
 
 ### Risks & mitigations (P1)
-| Risk | Mitigation |
-|------|------------|
-| Meta App Review delays IG publishing | Start review Week 1; develop against test app; reminder mode as fallback. |
-| Rubika API instability | Adapter resilience + manual fallback; health checks. |
-| Persian-first image editor scope creep | Ship crop+rotate+text+filters; defer advanced effects. |
-| Publish under-load reliability | Soak test in CI; queue-depth + lag alerts. |
+
+| Risk                                   | Mitigation                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------- |
+| Meta App Review delays IG publishing   | Start review Week 1; develop against test app; reminder mode as fallback. |
+| Rubika API instability                 | Adapter resilience + manual fallback; health checks.                      |
+| Persian-first image editor scope creep | Ship crop+rotate+text+filters; defer advanced effects.                    |
+| Publish under-load reliability         | Soak test in CI; queue-depth + lag alerts.                                |
 
 ---
 
 ## Phase 2 — Collaboration & Engagement (Weeks 11–18)
 
-**Goal**: Turn the MVP into a *team* tool — unified inbox, approvals, Instagram
+**Goal**: Turn the MVP into a _team_ tool — unified inbox, approvals, Instagram
 comment-to-DM automation, Persian AI assistant, RBAC, realtime notifications. Activate
 Telegram + LinkedIn publishing.
 
 ### In scope (by epic)
+
 - **E-CH** (complete): `S-CH-05/06/10` — Telegram + LinkedIn connect + adapters (activate).
 - **E-INBOX**: `S-INBOX-01–09` — Unified stream, thread/reply, assign+SLA, saved
   replies, auto-tagging, automation log, mailbox actions, response-time analytics, IG
@@ -142,7 +152,9 @@ Telegram + LinkedIn publishing.
 - **E-A11Y**: `S-A11Y-04` — Screen-reader test + fixes.
 
 ### Key milestone: M2 — Collaboration & Engagement live (end of Week 18)
+
 **Demoable golden paths**:
+
 1. **Comment-to-DM**: A test user comments "کد" on an IG post → Nashrino sends a DM
    with the catalog within the 24h window → event logged → user replies "توقف" → future
    DMs suppressed.
@@ -154,8 +166,9 @@ Telegram + LinkedIn publishing.
    schedule.
 
 ### Exit criteria
+
 1. Comment-to-DM compliant (24h window enforced; HUMAN_AGENT only for support; opt-out
-  works; full audit log; personal accounts disabled).
+   works; full audit log; personal accounts disabled).
 2. Inbox aggregates IG + TG + Rubika + LI; inline reply publishes to source.
 3. Single-level approval flow works end-to-end with notifications.
 4. RBAC enforced server-side; UI hides disallowed actions.
@@ -165,12 +178,13 @@ Telegram + LinkedIn publishing.
 8. Compliance review sign-off on the automation engine.
 
 ### Risks & mitigations (P2)
-| Risk | Mitigation |
-|------|------------|
-| Meta Messaging API policy change | Stay 24h-window-only by default; monitor tag deprecation; compliance review. |
-| Webhook reliability under Iranian network | Idempotent ingest + retry; webhook signature verification; DLQ. |
-| AI Persian quality | Brand-voice conditioning + human review prompt; collect feedback for tuning. |
-| Inbox scale | Pagination + background ingest; read-replica for inbox reads. |
+
+| Risk                                      | Mitigation                                                                   |
+| ----------------------------------------- | ---------------------------------------------------------------------------- |
+| Meta Messaging API policy change          | Stay 24h-window-only by default; monitor tag deprecation; compliance review. |
+| Webhook reliability under Iranian network | Idempotent ingest + retry; webhook signature verification; DLQ.              |
+| AI Persian quality                        | Brand-voice conditioning + human review prompt; collect feedback for tuning. |
+| Inbox scale                               | Pagination + background ingest; read-replica for inbox reads.                |
 
 ---
 
@@ -180,6 +194,7 @@ Telegram + LinkedIn publishing.
 listening foundations, PWA, and hardened operations.
 
 ### In scope
+
 - **S-SCALE-01** Eitaa adapter.
 - **S-SCALE-02** Multi-level approvals (Planable-style, in-context comments).
 - **S-SCALE-03** Advanced analytics + scheduled PDF/CSV reports.
@@ -192,10 +207,12 @@ listening foundations, PWA, and hardened operations.
 - Documentation: help center (Persian), API docs public, status page.
 
 ### Key milestone: M3 — GA Launch (end of Week 24)
+
 - Public launch with paid plans; onboarding flow; ~50 paying beta → first 500 target.
 - 99.9% uptime target; publish success ≥ 98%; NPS measured.
 
 ### Exit criteria
+
 1. Load test passes 10k workspaces / 100k jobs/day on target infra.
 2. Third-party security review: zero criticals, highs remediated.
 3. Backup/restore drill successful; RPO ≤ 15 min, RTO ≤ 1 h.
@@ -208,6 +225,7 @@ listening foundations, PWA, and hardened operations.
 ## Phase 4+ — Expand (Weeks 25+, quarterly releases)
 
 Themes (research/spike first, then build):
+
 - **Listening depth**: sentiment, share-of-voice, crisis alerts (Brandwatch-inspired).
 - **Revenue attribution**: e-commerce integrations (Persian D2C platforms), UTM-based
   conversion tracking, ROI reporting.
@@ -225,15 +243,15 @@ Themes (research/spike first, then build):
 
 These run continuously across phases, not gated to a single phase:
 
-| Workstream | Cadence | Owner |
-|------------|---------|-------|
-| **Accessibility & RTL** | Every sprint; a11y checklist per PR | Frontend eng + Designer |
-| **Observability** | Every sprint; metric/alert per new feature | SRE/Lead |
-| **Security** | Monthly review; dependency scan in CI | Lead |
-| **Performance budgets** | Per phase; Lighthouse gate in CI | Frontend eng |
-| **Persian language QA** | Per feature; native review of copy | Designer/PM |
-| **E2E test maintenance** | Per sprint; golden paths green | QA |
-| **Compliance (Meta policy)** | Quarterly review; automation engine audit | PM + Lead |
+| Workstream                   | Cadence                                    | Owner                   |
+| ---------------------------- | ------------------------------------------ | ----------------------- |
+| **Accessibility & RTL**      | Every sprint; a11y checklist per PR        | Frontend eng + Designer |
+| **Observability**            | Every sprint; metric/alert per new feature | SRE/Lead                |
+| **Security**                 | Monthly review; dependency scan in CI      | Lead                    |
+| **Performance budgets**      | Per phase; Lighthouse gate in CI           | Frontend eng            |
+| **Persian language QA**      | Per feature; native review of copy         | Designer/PM             |
+| **E2E test maintenance**     | Per sprint; golden paths green             | QA                      |
+| **Compliance (Meta policy)** | Quarterly review; automation engine audit  | PM + Lead               |
 
 ---
 
@@ -249,6 +267,7 @@ P0 Foundations ──► P1 MVP (publish core) ──► P2 Collaboration (inbox
 Any slip on the publish worker or Meta App Review slips everything downstream.
 
 **Long-lead items to start Day 1**:
+
 1. Meta App Review (scopes: `instagram_content_publish`,
    `instagram_manage_comments`, `instagram_manage_messages`, `pages_show_list`,
    `pages_read_engagement`).
@@ -276,16 +295,16 @@ Any slip on the publish worker or Meta App Review slips everything downstream.
 
 ## Measuring roadmap success (tie to [00 §6](./00_EXECUTIVE_SUMMARY.md))
 
-| Roadmap phase | Primary KPI gate to proceed |
-|---------------|------------------------------|
-| P0 → P1 | CI green; multi-tenant isolation verified |
-| P1 → P2 | Publish success ≥ 98% on staging soak |
-| P2 → P3 | Compliance sign-off on automation; E2E golden paths green |
-| P3 → GA | Security review clean; load test passed |
-| GA + 3 mo | WAW ≥ 2,000; NPS ≥ 40 (per [00 §6](./00_EXECUTIVE_SUMMARY.md)) |
+| Roadmap phase | Primary KPI gate to proceed                                    |
+| ------------- | -------------------------------------------------------------- |
+| P0 → P1       | CI green; multi-tenant isolation verified                      |
+| P1 → P2       | Publish success ≥ 98% on staging soak                          |
+| P2 → P3       | Compliance sign-off on automation; E2E golden paths green      |
+| P3 → GA       | Security review clean; load test passed                        |
+| GA + 3 mo     | WAW ≥ 2,000; NPS ≥ 40 (per [00 §6](./00_EXECUTIVE_SUMMARY.md)) |
 
 Each phase gate is a go/no-go review with the PM, engineering lead, and designer.
 
 ---
 
-*End of roadmap. This is a living document; re-baseline at each phase gate.*
+_End of roadmap. This is a living document; re-baseline at each phase gate._

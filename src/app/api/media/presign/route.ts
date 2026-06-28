@@ -21,9 +21,21 @@ import { randomUUID } from 'crypto'
 export const dynamic = 'force-dynamic'
 
 const presignSchema = z.object({
-  fileName: z.string().min(1, 'ظ†ط§ظ… ظپط§غŒظ„ ط§ظ„ط²ط§ظ…غŒ ط§ط³طھ').max(200, 'ظ†ط§ظ… ظپط§غŒظ„ ط®غŒظ„غŒ ط·ظˆظ„ط§ظ†غŒ ط§ط³طھ'),
-  fileType: z.string().regex(/^image\/(jpeg|png|webp|gif)$/, 'ظپط±ظ…طھ ظپط§غŒظ„ ط¨ط§غŒط¯ jpeg, png, webp غŒط§ gif ط¨ط§ط´ط¯'),
-  fileSize: z.number().int().positive().max(10_485_760, 'ط­ط¯ط§ع©ط«ط± ط­ط¬ظ… ظپط§غŒظ„ غ±غ° ظ…ع¯ط§ط¨ط§غŒطھ ط§ط³طھ'), // 10MB
+  fileName: z
+    .string()
+    .min(1, 'ظ†ط§ظ… ظپط§غŒظ„ ط§ظ„ط²ط§ظ…غŒ ط§ط³طھ')
+    .max(200, 'ظ†ط§ظ… ظپط§غŒظ„ ط®غŒظ„غŒ ط·ظˆظ„ط§ظ†غŒ ط§ط³طھ'),
+  fileType: z
+    .string()
+    .regex(
+      /^image\/(jpeg|png|webp|gif)$/,
+      'ظپط±ظ…طھ ظپط§غŒظ„ ط¨ط§غŒط¯ jpeg, png, webp غŒط§ gif ط¨ط§ط´ط¯'
+    ),
+  fileSize: z
+    .number()
+    .int()
+    .positive()
+    .max(10_485_760, 'ط­ط¯ط§ع©ط«ط± ط­ط¬ظ… ظپط§غŒظ„ غ±غ° ظ…ع¯ط§ط¨ط§غŒطھ ط§ط³طھ'), // 10MB
 })
 
 const STORAGE_QUOTA_BYTES = 500 * 1024 * 1024 // 500MB per workspace
@@ -48,9 +60,12 @@ export async function POST(req: NextRequest) {
   const usedBytes = existingMedia._sum.fileSize ?? 0
   if (usedBytes + fileSize > STORAGE_QUOTA_BYTES) {
     const remaining = Math.max(0, STORAGE_QUOTA_BYTES - usedBytes)
-    return NextResponse.json({
-      error: `ط³ظ‚ظپ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ طھع©ظ…غŒظ„ ط§ط³طھ. ظپط¶ط§غŒ ط¨ط§ظ‚غŒظ…ط§ظ†ط¯ظ‡: ${Math.round(remaining / 1024 / 1024)} ظ…ع¯ط§ط¨ط§غŒطھ`,
-    }, { status: 413 })
+    return NextResponse.json(
+      {
+        error: `ط³ظ‚ظپ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ طھع©ظ…غŒظ„ ط§ط³طھ. ظپط¶ط§غŒ ط¨ط§ظ‚غŒظ…ط§ظ†ط¯ظ‡: ${Math.round(remaining / 1024 / 1024)} ظ…ع¯ط§ط¨ط§غŒطھ`,
+      },
+      { status: 413 }
+    )
   }
 
   // Generate presigned URL

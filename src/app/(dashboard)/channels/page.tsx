@@ -1,5 +1,5 @@
-import { ChannelsView } from "@/components/views/channels-view";
+import { ChannelsView } from '@/components/views/channels-view'
 
 export default function ChannelsPage() {
-  return <ChannelsView />;
+  return <ChannelsView />
 }

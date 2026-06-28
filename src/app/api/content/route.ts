@@ -21,14 +21,14 @@ export async function GET(req: NextRequest) {
       workspaceId,
       ...(status ? { status } : {}),
       ...(campaignId ? { campaignId } : {}),
-      ...(cursor ? { id: { lt: cursor } } : {}),  // cursor pagination
+      ...(cursor ? { id: { lt: cursor } } : {}), // cursor pagination
     },
     include: {
       platforms: { include: { platform: { select: { type: true } } } },
       campaign: { select: { name: true } },
     },
     orderBy: { id: 'desc' },
-    take: limit + 1,  // fetch 1 extra to check if there's a next page
+    take: limit + 1, // fetch 1 extra to check if there's a next page
   })
 
   const hasMore = items.length > limit

@@ -1,11 +1,11 @@
-"use client";
+'use client'
 
-import { useEditor, EditorContent, type Editor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import Placeholder from "@tiptap/extension-placeholder";
-import CharacterCount from "@tiptap/extension-character-count";
-import { useCallback } from "react";
+import { useEditor, EditorContent, type Editor } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import Link from '@tiptap/extension-link'
+import Placeholder from '@tiptap/extension-placeholder'
+import CharacterCount from '@tiptap/extension-character-count'
+import { useCallback } from 'react'
 import {
   Bold,
   Italic,
@@ -17,15 +17,15 @@ import {
   Undo,
   Redo,
   Code,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface NashrinoEditorProps {
-  content?: string;
-  onChange?: (html: string, text: string) => void;
-  placeholder?: string;
-  maxLength?: number;
-  className?: string;
+  content?: string
+  onChange?: (html: string, text: string) => void
+  placeholder?: string
+  maxLength?: number
+  className?: string
 }
 
 /**
@@ -44,9 +44,9 @@ interface NashrinoEditorProps {
  * excellent RTL support, extensible). Replaces the plain <Textarea>.
  */
 export function NashrinoEditor({
-  content = "",
+  content = '',
   onChange,
-  placeholder = "متن کپشن…",
+  placeholder = 'متن کپشن…',
   maxLength = 2200,
   className,
 }: NashrinoEditorProps) {
@@ -60,13 +60,13 @@ export function NashrinoEditor({
         openOnClick: false,
         autolink: true,
         HTMLAttributes: {
-          class: "text-accent underline underline-offset-2",
+          class: 'text-accent underline underline-offset-2',
         },
       }),
       Placeholder.configure({
         placeholder,
         emptyEditorClass:
-          "cursor-text before:content-[attr(data-placeholder)] before:text-ink-tertiary before:float-right before:h-0",
+          'cursor-text before:content-[attr(data-placeholder)] before:text-ink-tertiary before:float-right before:h-0',
       }),
       CharacterCount.configure({
         limit: maxLength,
@@ -76,60 +76,60 @@ export function NashrinoEditor({
     immediatelyRender: false, // SSR-safe for Next.js
     editorProps: {
       attributes: {
-        dir: "rtl",
-        lang: "fa",
+        dir: 'rtl',
+        lang: 'fa',
         class: cn(
-          "prose prose-sm dark:prose-invert max-w-none",
-          "min-h-[200px] px-4 py-3",
-          "focus:outline-none",
-          "text-[13.5px] leading-relaxed text-ink-primary",
+          'prose prose-sm dark:prose-invert max-w-none',
+          'min-h-[200px] px-4 py-3',
+          'focus:outline-none',
+          'text-[13.5px] leading-relaxed text-ink-primary'
         ),
       },
     },
     onUpdate: ({ editor }) => {
-      const html = editor.getHTML();
-      const text = editor.getText();
-      onChange?.(html, text);
+      const html = editor.getHTML()
+      const text = editor.getText()
+      onChange?.(html, text)
     },
-  });
+  })
 
   const setLink = useCallback(() => {
-    if (!editor) return;
-    const previousUrl = editor.getAttributes("link").href;
-    const url = window.prompt("لینک را وارد کنید:", previousUrl ?? "https://");
+    if (!editor) return
+    const previousUrl = editor.getAttributes('link').href
+    const url = window.prompt('لینک را وارد کنید:', previousUrl ?? 'https://')
 
-    if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      return;
+    if (url === null) return
+    if (url === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+      return
     }
 
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
-  }, [editor]);
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+  }, [editor])
 
   if (!editor) {
     return (
-      <div className={cn("n-control min-h-[240px] p-4", className)}>
+      <div className={cn('n-control min-h-[240px] p-4', className)}>
         <div className="animate-pulse space-y-2">
           <div className="h-3 w-3/4 bg-surface-hover rounded" />
           <div className="h-3 w-1/2 bg-surface-hover rounded" />
         </div>
       </div>
-    );
+    )
   }
 
-  const charCount = editor.storage.characterCount?.characters() ?? 0;
-  const wordCount = editor.storage.characterCount?.words() ?? 0;
-  const isOverLimit = charCount > maxLength;
-  const isNearLimit = charCount > maxLength * 0.9 && !isOverLimit;
+  const charCount = editor.storage.characterCount?.characters() ?? 0
+  const wordCount = editor.storage.characterCount?.words() ?? 0
+  const isOverLimit = charCount > maxLength
+  const isNearLimit = charCount > maxLength * 0.9 && !isOverLimit
 
   return (
-    <div className={cn("n-control overflow-hidden", className)}>
+    <div className={cn('n-control overflow-hidden', className)}>
       {/* Toolbar */}
       <div className="flex items-center gap-0.5 border-b border-border px-2 py-1.5 bg-surface-subtle">
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive("bold")}
+          active={editor.isActive('bold')}
           label="ضخیم"
         >
           <Bold className="size-3.5" strokeWidth={2.5} />
@@ -137,7 +137,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive("italic")}
+          active={editor.isActive('italic')}
           label="کج"
         >
           <Italic className="size-3.5" strokeWidth={2.5} />
@@ -145,7 +145,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={editor.isActive("heading", { level: 2 })}
+          active={editor.isActive('heading', { level: 2 })}
           label="عنوان"
         >
           <Heading2 className="size-3.5" strokeWidth={2.5} />
@@ -155,7 +155,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={editor.isActive("bulletList")}
+          active={editor.isActive('bulletList')}
           label="لیست نقطه‌ای"
         >
           <List className="size-3.5" strokeWidth={2.5} />
@@ -163,7 +163,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={editor.isActive("orderedList")}
+          active={editor.isActive('orderedList')}
           label="لیست شماره‌دار"
         >
           <ListOrdered className="size-3.5" strokeWidth={2.5} />
@@ -171,7 +171,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          active={editor.isActive("blockquote")}
+          active={editor.isActive('blockquote')}
           label="نقل قول"
         >
           <Quote className="size-3.5" strokeWidth={2.5} />
@@ -179,7 +179,7 @@ export function NashrinoEditor({
 
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleCode().run()}
-          active={editor.isActive("code")}
+          active={editor.isActive('code')}
           label="کد"
         >
           <Code className="size-3.5" strokeWidth={2.5} />
@@ -187,7 +187,7 @@ export function NashrinoEditor({
 
         <div className="w-px h-5 bg-border mx-1" />
 
-        <ToolbarButton onClick={setLink} active={editor.isActive("link")} label="لینک">
+        <ToolbarButton onClick={setLink} active={editor.isActive('link')} label="لینک">
           <LinkIcon className="size-3.5" strokeWidth={2.5} />
         </ToolbarButton>
 
@@ -215,20 +215,18 @@ export function NashrinoEditor({
 
       {/* Footer: character count */}
       <div className="flex items-center justify-between border-t border-border px-3 py-1.5 bg-surface-subtle">
-        <span className="text-[10px] text-ink-tertiary">
-          {wordCount} واژه
-        </span>
+        <span className="text-[10px] text-ink-tertiary">{wordCount} واژه</span>
         <span
           className={cn(
-            "text-[10px] num-tabular font-[600]",
-            isOverLimit ? "text-danger" : isNearLimit ? "text-warning" : "text-ink-tertiary",
+            'text-[10px] num-tabular font-[600]',
+            isOverLimit ? 'text-danger' : isNearLimit ? 'text-warning' : 'text-ink-tertiary'
           )}
         >
-          {charCount.toLocaleString("fa-IR")} / {maxLength.toLocaleString("fa-IR")}
+          {charCount.toLocaleString('fa-IR')} / {maxLength.toLocaleString('fa-IR')}
         </span>
       </div>
     </div>
-  );
+  )
 }
 
 function ToolbarButton({
@@ -238,11 +236,11 @@ function ToolbarButton({
   disabled,
   label,
 }: {
-  children: React.ReactNode;
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  label: string;
+  children: React.ReactNode
+  onClick: () => void
+  active?: boolean
+  disabled?: boolean
+  label: string
 }) {
   return (
     <button
@@ -252,14 +250,14 @@ function ToolbarButton({
       aria-label={label}
       title={label}
       className={cn(
-        "n-focus-ring flex size-7 items-center justify-center rounded-md transition-colors",
+        'n-focus-ring flex size-7 items-center justify-center rounded-md transition-colors',
         active
-          ? "bg-accent-soft text-accent"
-          : "text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary",
-        disabled && "opacity-40 cursor-not-allowed hover:bg-transparent",
+          ? 'bg-accent-soft text-accent'
+          : 'text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary',
+        disabled && 'opacity-40 cursor-not-allowed hover:bg-transparent'
       )}
     >
       {children}
     </button>
-  );
+  )
 }

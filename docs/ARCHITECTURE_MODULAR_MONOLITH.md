@@ -153,19 +153,19 @@ src/modules/{module-name}/
 
 ### Module inventory (11 modules)
 
-| Module | Responsibility | Key tables |
-|---|---|---|
-| **accounts** | User, Workspace, WorkspaceMember, RBAC, session | User, Workspace, WorkspaceMember |
-| **channels** | Platform connections, token encryption, validation, circuit breaker state | Platform |
-| **content** | Posts, drafts, approvals, rejections, versions, comments | Content, ContentVersion, ContentComment, ContentPlatform |
-| **media** | Uploads (S3 presigned), processing (sharp), library, quotas | Media |
-| **campaigns** | Campaign CRUD, grouping, status | Campaign |
-| **calendar** | Scheduling, Jalali month grid, drag-drop reschedule | PublishJob (read), Content (read) |
-| **analytics** | Real stats ingestion, snapshots, metrics aggregation | AnalyticsSnapshot |
-| **automations** | IG comment-to-DM, rules engine, execution log | AutomationRule, AutomationEvent (new) |
-| **notifications** | In-app, email (future), push (future), read state | Notification |
-| **billing** | Plans, quotas, usage tracking (future) | Subscription, Invoice (new) |
-| **team** | Invites, roles, permissions, audit | WorkspaceMember, AuditLog |
+| Module            | Responsibility                                                            | Key tables                                               |
+| ----------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **accounts**      | User, Workspace, WorkspaceMember, RBAC, session                           | User, Workspace, WorkspaceMember                         |
+| **channels**      | Platform connections, token encryption, validation, circuit breaker state | Platform                                                 |
+| **content**       | Posts, drafts, approvals, rejections, versions, comments                  | Content, ContentVersion, ContentComment, ContentPlatform |
+| **media**         | Uploads (S3 presigned), processing (sharp), library, quotas               | Media                                                    |
+| **campaigns**     | Campaign CRUD, grouping, status                                           | Campaign                                                 |
+| **calendar**      | Scheduling, Jalali month grid, drag-drop reschedule                       | PublishJob (read), Content (read)                        |
+| **analytics**     | Real stats ingestion, snapshots, metrics aggregation                      | AnalyticsSnapshot                                        |
+| **automations**   | IG comment-to-DM, rules engine, execution log                             | AutomationRule, AutomationEvent (new)                    |
+| **notifications** | In-app, email (future), push (future), read state                         | Notification                                             |
+| **billing**       | Plans, quotas, usage tracking (future)                                    | Subscription, Invoice (new)                              |
+| **team**          | Invites, roles, permissions, audit                                        | WorkspaceMember, AuditLog                                |
 
 ### Module communication rules
 
@@ -205,7 +205,10 @@ import { db } from '@/lib/db'
 import type { Content } from './types'
 
 export const contentRepository = {
-  async list(workspaceId: string, opts: { cursor?: string; limit: number }): Promise<{ data: Content[]; nextCursor: string | null }> {
+  async list(
+    workspaceId: string,
+    opts: { cursor?: string; limit: number }
+  ): Promise<{ data: Content[]; nextCursor: string | null }> {
     // Prisma query with cursor pagination
   },
   async create(workspaceId: string, data: ContentCreateInput, authorId: string): Promise<Content> {
@@ -249,14 +252,14 @@ export const contentService = {
 
 ### BullMQ queues
 
-| Queue | Concurrency | Purpose |
-|---|---|---|
-| `publish-jobs` | 5 per platform | Telegram, Bale, Rubika, Instagram, LinkedIn publishing |
-| `media-processing` | 3 | Sharp thumbnails, S3 upload, ClamAV scan |
-| `analytics-sync` | 1 | Periodic platform stats fetch (hourly) |
-| `webhook-process` | 5 | Inbound events from platforms |
-| `notifications` | 10 | Email, push, in-app notification dispatch |
-| `automations` | 3 | IG comment-to-DM rule execution |
+| Queue              | Concurrency    | Purpose                                                |
+| ------------------ | -------------- | ------------------------------------------------------ |
+| `publish-jobs`     | 5 per platform | Telegram, Bale, Rubika, Instagram, LinkedIn publishing |
+| `media-processing` | 3              | Sharp thumbnails, S3 upload, ClamAV scan               |
+| `analytics-sync`   | 1              | Periodic platform stats fetch (hourly)                 |
+| `webhook-process`  | 5              | Inbound events from platforms                          |
+| `notifications`    | 10             | Email, push, in-app notification dispatch              |
+| `automations`      | 3              | IG comment-to-DM rule execution                        |
 
 ### Worker process
 
@@ -278,26 +281,23 @@ const mediaWorker = new Worker('media-processing', processMediaJob, {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   logger.info({ msg: 'SIGTERM received, closing workers...' })
-  await Promise.all([
-    publishWorker.close(),
-    mediaWorker.close(),
-  ])
+  await Promise.all([publishWorker.close(), mediaWorker.close()])
   process.exit(0)
 })
 ```
 
 ### Why BullMQ over DB-polling
 
-| Feature | DB-polling (current) | BullMQ (target) |
-|---|---|---|
-| Latency | 2s (poll interval) | <100ms (event-driven) |
-| Concurrency control | None (fires 10 at once) | Per-queue, per-worker |
-| Dead-letter queue | No | Yes (failed jobs after N retries) |
-| Rate limiting | No | Per-queue rate limiter |
-| Prioritization | No | Job priority |
-| Delayed jobs | No | `job.opts.delay` |
-| Observability | No | BullMQ dashboard (`bullboard`) |
-| Graceful shutdown | No (in-flight lost) | Yes (awaits in-flight) |
+| Feature             | DB-polling (current)    | BullMQ (target)                   |
+| ------------------- | ----------------------- | --------------------------------- |
+| Latency             | 2s (poll interval)      | <100ms (event-driven)             |
+| Concurrency control | None (fires 10 at once) | Per-queue, per-worker             |
+| Dead-letter queue   | No                      | Yes (failed jobs after N retries) |
+| Rate limiting       | No                      | Per-queue rate limiter            |
+| Prioritization      | No                      | Job priority                      |
+| Delayed jobs        | No                      | `job.opts.delay`                  |
+| Observability       | No                      | BullMQ dashboard (`bullboard`)    |
+| Graceful shutdown   | No (in-flight lost)     | Yes (awaits in-flight)            |
 
 ---
 
@@ -329,6 +329,7 @@ Instagram must be done **properly** via the official Meta API. No scraping, no p
 3. Check status: `GET /{media_id}?fields=status_code` → `FINISHED` / `IN_PROGRESS` / `ERROR`.
 
 **Limitations:**
+
 - Personal accounts: manual/reminder mode only (no API publish).
 - Business/Creator accounts: API publish supported.
 - Carousel: up to 10 images/videos per post.
@@ -343,6 +344,7 @@ Instagram must be done **properly** via the official Meta API. No scraping, no p
 5. Send DM via `POST /{ig-user-id}/messages` with `recipient: {comment_id: ...}`.
 
 **Safety:**
+
 - Must respond within 7 days of the comment (Meta policy).
 - Must not send promotional content first (24h window rule).
 - Rate limit: 1 message per second per user.
@@ -350,6 +352,7 @@ Instagram must be done **properly** via the official Meta API. No scraping, no p
 ### Manual fallback
 
 For personal accounts or API limitations:
+
 - UI shows "Manual publish required" reminder.
 - Content is prepared (caption + media ready to copy).
 - User publishes manually on the Instagram app.
@@ -386,10 +389,10 @@ For personal accounts or API limitations:
   --glass-blur-lg: 24px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-  --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 
   /* Typography */
   --font-sans: 'Vazirmatn', system-ui, sans-serif;
@@ -414,6 +417,7 @@ For personal accounts or API limitations:
 ### Component states
 
 Every interactive component must define:
+
 - Default
 - Hover
 - Focus-visible (keyboard)
@@ -436,20 +440,20 @@ Every interactive component must define:
 
 ## Performance Budgets
 
-| Metric | Budget | Enforcement |
-|---|---|---|
-| Initial JS (gzipped) | <350KB | `@next/bundle-analyzer` in CI |
+| Metric                    | Budget | Enforcement                   |
+| ------------------------- | ------ | ----------------------------- |
+| Initial JS (gzipped)      | <350KB | `@next/bundle-analyzer` in CI |
 | Per-route chunk (gzipped) | <200KB | `@next/bundle-analyzer` in CI |
-| LCP (dashboard) | <2.5s | Lighthouse CI |
-| INP | <200ms | Lighthouse CI |
-| CLS | <0.1 | Lighthouse CI |
-| Lighthouse Performance | ≥90 | Lighthouse CI (blocks merge) |
-| Lighthouse Accessibility | ≥95 | Lighthouse CI (blocks merge) |
-| API p95 (read) | <200ms | Sentry performance |
-| API p95 (write) | <500ms | Sentry performance |
-| Worker queue delay (p95) | <10s | BullMQ metrics |
-| Image (thumbnail) | <50KB | sharp WebP |
-| Image (original) | <500KB | client-side resize |
+| LCP (dashboard)           | <2.5s  | Lighthouse CI                 |
+| INP                       | <200ms | Lighthouse CI                 |
+| CLS                       | <0.1   | Lighthouse CI                 |
+| Lighthouse Performance    | ≥90    | Lighthouse CI (blocks merge)  |
+| Lighthouse Accessibility  | ≥95    | Lighthouse CI (blocks merge)  |
+| API p95 (read)            | <200ms | Sentry performance            |
+| API p95 (write)           | <500ms | Sentry performance            |
+| Worker queue delay (p95)  | <10s   | BullMQ metrics                |
+| Image (thumbnail)         | <50KB  | sharp WebP                    |
+| Image (original)          | <500KB | client-side resize            |
 
 ---
 
@@ -458,26 +462,32 @@ Every interactive component must define:
 This is a **gradual** migration. Do NOT rewrite all at once.
 
 ### Phase 1 (Week 1) — P0 fixes
+
 - No module extraction yet. Fix blockers in existing structure.
 
 ### Phase 2-3 (Weeks 2-3) — Observability + Docker
+
 - Add pino, Sentry, health endpoint.
 - Containerize the current structure.
 
 ### Phase 4-5 (Weeks 4-5) — Postgres + Security
+
 - Migrate to Postgres.
 - Encrypt tokens, enforce RBAC.
 
 ### Phase 6-7 (Weeks 6-7) — Worker + Realtime
+
 - Migrate to BullMQ.
 - Add realtime auth.
 
 ### Phase 8 (Week 8) — Start module extraction
+
 - Extract `media` module first (it's self-contained).
 - Then `content`, `channels`, `accounts`.
 - Each extraction is a separate PR.
 
 ### Phase 9-10 (Weeks 9-10) — Complete modules + testing
+
 - Finish all 11 modules.
 - Add comprehensive tests.
 - Performance budgets.

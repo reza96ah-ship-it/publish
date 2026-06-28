@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAppStore } from "@/lib/store";
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAppStore } from '@/lib/store'
 
 /**
  * useKeyboardShortcuts — global keyboard navigation.
@@ -25,106 +25,113 @@ import { useAppStore } from "@/lib/store";
 
 // Maps keyboard keys to URL paths for G-prefix shortcuts
 const G_PREFIX_MAP: Record<string, string> = {
-  d: "/",
-  c: "/calendar",
-  i: "/inbox",
-  a: "/analytics",
-  s: "/settings",
-};
+  d: '/',
+  c: '/calendar',
+  i: '/inbox',
+  a: '/analytics',
+  s: '/settings',
+}
 
 // Maps single-key shortcuts to URL paths (no prefix)
 const VIEW_DIRECT_MAP: Record<string, string> = {
-  c: "/compose",
-  n: "/campaigns",
-};
+  c: '/compose',
+  n: '/campaigns',
+}
 
 export function useKeyboardShortcuts() {
-  const router = useRouter();
-  const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen);
-  const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen);
-  const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen);
-  const isCommandPaletteOpen = useAppStore((s) => s.isCommandPaletteOpen);
-  const isShortcutsOpen = useAppStore((s) => s.isShortcutsOpen);
+  const router = useRouter()
+  const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen)
+  const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen)
+  const setMobileMenuOpen = useAppStore((s) => s.setMobileMenuOpen)
+  const isCommandPaletteOpen = useAppStore((s) => s.isCommandPaletteOpen)
+  const isShortcutsOpen = useAppStore((s) => s.isShortcutsOpen)
 
   useEffect(() => {
-    let gPressed = false;
-    let gTimer: ReturnType<typeof setTimeout> | null = null;
+    let gPressed = false
+    let gTimer: ReturnType<typeof setTimeout> | null = null
 
     const isTyping = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false;
-      const tag = target.tagName.toLowerCase();
-      return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
-    };
+      if (!(target instanceof HTMLElement)) return false
+      const tag = target.tagName.toLowerCase()
+      return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable
+    }
 
     const clearG = () => {
-      gPressed = false;
+      gPressed = false
       if (gTimer) {
-        clearTimeout(gTimer);
-        gTimer = null;
+        clearTimeout(gTimer)
+        gTimer = null
       }
-    };
+    }
 
     const handler = (e: KeyboardEvent) => {
       // ⌘K / Ctrl+K — always works (even in some inputs, but not in contentEditable)
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setCommandPaletteOpen(!isCommandPaletteOpen);
-        return;
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setCommandPaletteOpen(!isCommandPaletteOpen)
+        return
       }
 
       // Escape — close any open modal
-      if (e.key === "Escape") {
-        if (isCommandPaletteOpen) setCommandPaletteOpen(false);
-        else if (isShortcutsOpen) setShortcutsOpen(false);
-        else if (typeof document !== "undefined") {
-          const open = document.querySelector("[data-state='open']");
-          if (open) (open as HTMLElement).click();
+      if (e.key === 'Escape') {
+        if (isCommandPaletteOpen) setCommandPaletteOpen(false)
+        else if (isShortcutsOpen) setShortcutsOpen(false)
+        else if (typeof document !== 'undefined') {
+          const open = document.querySelector("[data-state='open']")
+          if (open) (open as HTMLElement).click()
         }
-        return;
+        return
       }
 
       // ? — show shortcuts modal (shift+/ = ?)
-      if (e.key === "?" && !isTyping(e.target)) {
-        e.preventDefault();
-        setShortcutsOpen(!isShortcutsOpen);
-        return;
+      if (e.key === '?' && !isTyping(e.target)) {
+        e.preventDefault()
+        setShortcutsOpen(!isShortcutsOpen)
+        return
       }
 
       // Don't process shortcuts while typing
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target)) return
 
-      const key = e.key.toLowerCase();
+      const key = e.key.toLowerCase()
 
       // G-prefix sequences (G then D/C/I/A/S)
-      if (key === "g") {
+      if (key === 'g') {
         if (!gPressed) {
-          gPressed = true;
-          gTimer = setTimeout(clearG, 600);
+          gPressed = true
+          gTimer = setTimeout(clearG, 600)
         }
-        return;
+        return
       }
 
       if (gPressed) {
-        const target = G_PREFIX_MAP[key];
+        const target = G_PREFIX_MAP[key]
         if (target) {
-          e.preventDefault();
-          router.push(target);
-          setMobileMenuOpen(false);
+          e.preventDefault()
+          router.push(target)
+          setMobileMenuOpen(false)
         }
-        clearG();
-        return;
+        clearG()
+        return
       }
 
       // Direct shortcuts (single key)
-      const directTarget = VIEW_DIRECT_MAP[key];
+      const directTarget = VIEW_DIRECT_MAP[key]
       if (directTarget) {
-        e.preventDefault();
-        router.push(directTarget);
-        setMobileMenuOpen(false);
+        e.preventDefault()
+        router.push(directTarget)
+        setMobileMenuOpen(false)
       }
-    };
+    }
 
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [router, setCommandPaletteOpen, setShortcutsOpen, setMobileMenuOpen, isCommandPaletteOpen, isShortcutsOpen]);
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [
+    router,
+    setCommandPaletteOpen,
+    setShortcutsOpen,
+    setMobileMenuOpen,
+    isCommandPaletteOpen,
+    isShortcutsOpen,
+  ])
 }
