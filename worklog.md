@@ -2649,6 +2649,42 @@ Stage Summary:
 - Ready for human review and commit to `fix/p0-2-remove-demo-mode`.
 
 ---
+Task ID: 5-research
+Agent: Main (Z.ai Code)
+Task: Phase 5 (Milestone #25 — Security Hardening) deep research — read all 5 GitHub issues (#118-#122), study current source, research best-practice solutions.
+
+Work Log:
+- Fetched all 5 Phase 5 issues from GitHub milestone #25 via authenticated gh CLI.
+- Read current source: src/lib/password.ts (scrypt N=2^14, sync — blocks event loop), src/lib/crypto.ts (single AES-256-GCM key, format enc:v1:iv:ct:tag), src/lib/auth.ts (NextAuth credentials provider, account lockout, no MFA), src/middleware.ts (auth gate), next.config.ts (CSP with unsafe-inline in script-src), .github/workflows/ci.yml (security job has no continue-on-error but is minimal — only bun audit + gitleaks), src/lib/auth-guards.ts (RBAC matrix + can() helper).
+- Web-searched authoritative sources:
+  - OWASP Password Storage Cheat Sheet: Argon2id min 19 MiB memory, 2 iterations, 1 parallelism. Issue #118 spec says memoryCost=65536 (64MB), timeCost=3, parallelism=4 — stronger than OWASP minimum, acceptable.
+  - OWASP Argon2 recommendation confirms memoryCost=65536 (64MB) is the standard.
+  - Next.js CSP nonce: must generate fresh nonce per request via middleware, use dynamic rendering, add nonce to script-src 'nonce-{nonce}' 'strict-dynamic'.
+  - TOTP MFA: otplib + qrcode packages, generate secret → QR data URL → verify 6-digit code → store secret encrypted → generate 10 backup codes.
+  - AES-GCM key rotation: versioned key-id prefix in ciphertext, multiple keys for decryption during rotation, active key for encryption, background re-encryption job.
+
+Stage Summary:
+Phase 5 scope (5 issues, all security hardening):
+
+ISSUE #118 (Argon2id): Replace sync scrypt (N=2^14, blocks event loop) with argon2id (memoryCost=65536=64MB, timeCost=3, parallelism=4). Detect legacy scrypt hashes (prefix "scrypt:") and rehash on successful login. Install argon2 package.
+
+ISSUE #120 (Key rotation): Current crypto.ts format "enc:v1:iv:ct:tag" uses single key. Add key-id prefix: "enc:<keyId>:iv:ct:tag". Support ENCRYPTION_KEY_V1/V2 env vars + ACTIVE_ENCRYPTION_KEY_ID. Decryption checks key-id prefix → selects correct key. Background re-encryption job.
+
+ISSUE #119 (CSP nonce): Current CSP has 'unsafe-inline' in script-src. Generate nonce per request in middleware, use script-src 'nonce-{nonce}' 'strict-dynamic'. Keep style-src 'unsafe-inline' for Tailwind (per issue). Full CSP with frame-ancestors 'none', base-uri 'self', form-action 'self'.
+
+ISSUE #121 (MFA TOTP): Add mfaSecretPending/mfaSecret (encrypted) + mfaBackupCodes to User model. POST /api/auth/mfa/setup (generate secret, return QR), POST /api/auth/mfa/verify (verify code, activate), POST /api/auth/mfa/disable. Enforce MFA in auth flow for admin role. Install otplib + qrcode.
+
+ISSUE #122 (CI gates): Remove any continue-on-error. Add trufflehog (secret scan, pinned SHA), codeql-action (static analysis), license-checker (failOn GPL-3.0), trivy-action (container scan HIGH/CRITICAL → exit 1). All must be blocking.
+
+Implementation order (by dependency):
+  1. #118 Argon2id (foundation — auth depends on it)
+  2. #120 Key rotation (crypto.ts refactor — MFA + token encryption depend on it)
+  3. #119 CSP nonce (middleware change)
+  4. #121 MFA TOTP (depends on #118 password + #120 encryption)
+  5. #122 CI gates (independent — workflow file only)
+  6. Unit tests for all 5
+
+---
 Task ID: 4-research
 Agent: Main (Z.ai Code)
 Task: Phase 4 (Milestone #24 — Provider Integration Quality) deep research — read all 4 GitHub issues (#114-117), study current adapter/UI/schema source, research correct LinkedIn/Telegram/Instagram APIs, and define implementation strategy.

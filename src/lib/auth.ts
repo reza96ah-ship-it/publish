@@ -15,6 +15,7 @@ import type { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { db } from '@/lib/db'
 import { verifyPassword } from '@/lib/password'
+import { verifyTotpCode, decryptMfaSecret, parseBackupCodes, consumeBackupCode, serializeBackupCodes } from '@/lib/mfa'
 
 export const authOptions: NextAuthOptions = {
   // JWT strategy is REQUIRED for Credentials provider in v4
@@ -29,6 +30,8 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'ایمیل', type: 'email' },
         password: { label: 'رمز عبور', type: 'password' },
+        // Issue #121: optional TOTP code for MFA-enforced admin accounts
+        totpCode: { label: 'کد تأیید (اختیاری)', type: 'text' },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -51,8 +54,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const valid = verifyPassword(credentials.password, user.passwordHash)
-        if (!valid) {
+        const verifyResult = await verifyPassword(credentials.password, user.passwordHash)
+        if (!verifyResult.valid) {
           // Increment failed attempts; lock after 5
           const attempts = user.failedAttempts + 1
           await db.user.update({
@@ -65,17 +68,53 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Issue #121: MFA enforcement.
+        // If the user has an active MFA secret, require a valid TOTP code
+        // (or backup code) before completing login. Non-admin users are not
+        // required to use MFA, but if they've enrolled, they must use it.
+        const primaryMembership = user.memberships[0]
+
+        if (user.mfaSecret) {
+          const totpCode = (credentials as any).totpCode as string | undefined
+          if (!totpCode) {
+            // Password valid but MFA code missing — signal the client to show MFA step
+            return null
+          }
+
+          const secret = decryptMfaSecret(user.mfaSecret)
+          const isValidTotp = verifyTotpCode(totpCode, secret)
+
+          if (!isValidTotp) {
+            // Try backup code
+            const stored = parseBackupCodes(user.mfaBackupCodes)
+            const { valid, remaining } = consumeBackupCode(totpCode, stored)
+            if (!valid) {
+              return null
+            }
+            // Consume the backup code (single-use)
+            await db.user.update({
+              where: { id: user.id },
+              data: { mfaBackupCodes: serializeBackupCodes(remaining) },
+            })
+          }
+        }
+
+        // Issue #118: if the stored hash was legacy scrypt, upgrade to Argon2id
+        // on successful login (gradual migration, no forced password reset).
+        const updateData: any = {
+          failedAttempts: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+        }
+        if (verifyResult.rehash) {
+          updateData.passwordHash = verifyResult.rehash
+        }
+
         // Reset failed attempts + update last login
         await db.user.update({
           where: { id: user.id },
-          data: {
-            failedAttempts: 0,
-            lockedUntil: null,
-            lastLoginAt: new Date(),
-          },
+          data: updateData,
         })
-
-        const primaryMembership = user.memberships[0]
 
         return {
           id: user.id,
@@ -84,6 +123,7 @@ export const authOptions: NextAuthOptions = {
           image: user.image,
           role: primaryMembership?.role ?? 'viewer',
           activeWorkspaceId: primaryMembership?.workspaceId ?? null,
+          mfaEnabled: !!user.mfaSecret,
         } as any
       },
     }),

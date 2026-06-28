@@ -1,35 +1,100 @@
 /**
- * Next.js middleware — NextAuth route protection.
+ * Next.js middleware — NextAuth route protection + nonce-based CSP (Issue #119).
  *
- * Production: redirects unauthenticated users to /auth/signin.
- * Development: bypasses auth so the Z.ai preview iframe works (CSRF/cookie
- * issues in cross-origin iframes).
+ * Auth:
+ *   Production: redirects unauthenticated users to /auth/signin.
+ *   Development: bypasses auth (DISABLE_AUTH=1) for the Z.ai preview iframe.
  *
- * The bypass is gated by NODE_ENV — it is IMPOSSIBLE to accidentally run
- * without auth in production because the check is `!== 'production'`.
+ * CSP (Issue #119):
+ *   Generates a fresh nonce per request (Web Crypto API — Edge Runtime compatible)
+ *   and sets a strict Content-Security-Policy header. Replaces 'unsafe-inline'
+ *   in script-src with 'nonce-{nonce}' + 'strict-dynamic'.
  *
- * Protected: all pages + all API routes (except auth, webhooks, static).
- * Note: api/ai routes are now protected (previously excluded for demo mode).
+ * We can't use withAuth()'s default export because it wraps the request in a way
+ * that prevents us from setting response headers. Instead we import getToken
+ * and do the auth check manually, then set both the nonce and CSP on the response.
  */
 
-import withAuth from 'next-auth/middleware'
+import { NextResponse, type NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-export default withAuth({
-  pages: {
-    signIn: '/auth/signin',
-  },
-  callbacks: {
-    authorized: ({ token }) => {
-      // BUG-15: explicit opt-in via DISABLE_AUTH=1 instead of NODE_ENV check.
-      // NODE_ENV !== 'production' is true in every test/staging/preview env,
-      // making it impossible to test auth flows outside production.
-      if (process.env.DISABLE_AUTH === '1') {
-        return true
+/**
+ * Generate a cryptographically random nonce (base64, 18 bytes → 24 chars).
+ * Uses the Web Crypto API (Edge Runtime compatible — Node.js 'crypto' is not).
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(18)
+  crypto.getRandomValues(bytes)
+  return btoa(String.fromCharCode(...bytes))
+}
+
+/**
+ * Issue #119: Build the strict CSP header with a per-request nonce.
+ * - script-src uses 'nonce-{nonce}' + 'strict-dynamic' (no unsafe-inline)
+ * - style-src keeps 'unsafe-inline' for Tailwind (per issue spec)
+ * - frame-ancestors 'none' in production (clickjacking protection)
+ */
+function buildCsp(nonce: string, isProd: boolean): string {
+  return [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:",
+    "media-src 'self' data:",
+    isProd ? "frame-ancestors 'none'" : 'frame-ancestors *',
+    "base-uri 'self'",
+    "form-action 'self'",
+    isProd ? "object-src 'none'" : "object-src 'self'",
+  ].join('; ')
+}
+
+export async function middleware(req: NextRequest) {
+  const nonce = generateNonce()
+  const isProd = process.env.NODE_ENV === 'production'
+
+  // Auth check: skip for public paths (NextAuth callbacks, health, etc.)
+  const { pathname } = req.nextUrl
+  const isPublicPath =
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/health') ||
+    pathname.startsWith('/api/readyz') ||
+    pathname.startsWith('/api/metrics') ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/logo.svg'
+
+  if (!isPublicPath) {
+    // Explicit opt-in bypass via DISABLE_AUTH=1 (dev/preview only)
+    if (process.env.DISABLE_AUTH !== '1') {
+      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+      if (!token) {
+        const signInUrl = new URL('/auth/signin', req.url)
+        signInUrl.searchParams.set('callbackUrl', pathname)
+        const redirect = NextResponse.redirect(signInUrl)
+        redirect.headers.set('Content-Security-Policy', buildCsp(nonce, isProd))
+        return redirect
       }
-      return !!token
-    },
-  },
-})
+    }
+  }
+
+  // Inject nonce into request headers so Next.js can add it to script tags
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set('x-nonce', nonce)
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  })
+
+  // Set CSP + nonce on the response
+  response.headers.set('Content-Security-Policy', buildCsp(nonce, isProd))
+  response.headers.set('x-nonce', nonce)
+
+  return response
+}
 
 export const config = {
   matcher: [

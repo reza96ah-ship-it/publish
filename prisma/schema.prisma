@@ -21,6 +21,16 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Issue #121: MFA (TOTP) for administrator accounts.
+  // mfaSecretPending: encrypted secret awaiting verification (setup flow)
+  // mfaSecret:        encrypted active secret (null = MFA not enabled)
+  // mfaBackupCodes:   JSON array of hashed backup codes for account recovery
+  // mfaEnabledAt:     when MFA was activated (null = not enabled)
+  mfaSecretPending String?
+  mfaSecret        String?
+  mfaBackupCodes   String?
+  mfaEnabledAt     DateTime?
+
   memberships   WorkspaceMember[]
   auditLogs     AuditLog[]
   accounts      Account[]

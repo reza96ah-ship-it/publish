@@ -75,19 +75,62 @@ jobs:
           retention-days: 7
 
   security:
-    name: Security Audit
+    name: Security Audit (Blocking)
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
+    # Issue #122: all security gates must be blocking — no continue-on-error.
+    # If any step fails, the entire pipeline fails.
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history for secret scanning
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
-      - run: bun audit --level high
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1. Dependency CVE audit — fail on high/critical
+      - name: Dependency audit (bun audit --level high)
+        run: bun audit --level high
+
+      # 2. Secret scan — trufflehog pinned to commit SHA (supply-chain protection)
+      - name: Secret scan (trufflehog)
+        uses: trufflesecurity/trufflehog@7e57ca7e4c8c8c2d7c894df0e0576c0ce1b85b9f # v3.88.0
+        with:
+          path: .
+          extra_args: --results=verified,unknown
+
+      # 3. License compliance — fail on GPL-3.0 (incompatible with proprietary)
+      # Bug fix: use bunx (picks up the installed version from package.json devDeps)
+      # instead of npx which downloads an unpinned version at runtime.
+      - name: License check (no GPL-3.0)
+        run: bunx license-checker --failOn "GPL-3.0;GPL-3.0-only;GPL-3.0-or-later;AGPL-3.0"
+
+      # 4. Static analysis — CodeQL
+      - name: CodeQL init
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+      - name: CodeQL analyze
+        uses: github/codeql-action/analyze@v3
+
+      # 5. Container scan — trivy on the built Docker image
+      - name: Build image for scan
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: app
+          push: false
+          tags: nashrino:scan
+          load: true
+      - name: Container scan (trivy — HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: nashrino:scan
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
 
   docker:
     name: Docker Build

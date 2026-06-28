@@ -1,39 +1,131 @@
 /**
- * Token encryption helpers for the publish worker.
+ * Token encryption helpers for the publish worker — AES-256-GCM with key rotation (Issue #120).
  *
- * Keep this compatible with src/lib/crypto.ts. The worker Docker image copies
+ * KEEP IN SYNC with src/lib/crypto.ts (canonical). The worker Docker image copies
  * mini-services/publish-worker but not src/, so it needs its own runtime helper.
+ *
+ * The worker only needs DECRYPTION (to read platform tokens before publishing).
+ * Encryption is done by the app (src/lib/crypto.ts) when platforms connect.
+ * We include encrypt() for completeness and testing parity.
  */
 
-import { createDecipheriv, scryptSync } from 'crypto'
+import { createCipheriv, createDecipheriv, scryptSync, randomBytes } from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
-const SALT = 'nashrino-token-encryption-salt'
+const IV_LENGTH = 12
+const SALT_PREFIX = 'nashrino-token-encryption-salt-'
 
-function getKey(): Buffer {
-  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
-  if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('AUTH_SECRET is required for token decryption in production')
+interface EncryptionKey {
+  id: string
+  key: Buffer
+}
+
+const keyCache = new Map<string, EncryptionKey>()
+
+function deriveKey(keyId: string, secret: string): Buffer {
+  return scryptSync(secret, SALT_PREFIX + keyId, 32)
+}
+
+function loadKeys(): Map<string, EncryptionKey> {
+  if (keyCache.size > 0) return keyCache
+
+  const keys = new Map<string, EncryptionKey>()
+
+  for (let v = 1; v <= 10; v++) {
+    const envVal = process.env[`ENCRYPTION_KEY_V${v}`]
+    if (envVal) {
+      const keyId = `v${v}`
+      keys.set(keyId, { id: keyId, key: deriveKey(keyId, envVal) })
     }
-    return scryptSync('nashrino-dev-secret', SALT, 32)
   }
-  return scryptSync(secret, SALT, 32)
+
+  if (keys.size === 0) {
+    const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+    if (secret) {
+      keys.set('v1', { id: 'v1', key: deriveKey('v1', secret) })
+    } else if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'ENCRYPTION_KEY_V1 or AUTH_SECRET is required for token decryption in production'
+      )
+    } else {
+      keys.set('v1', { id: 'v1', key: deriveKey('v1', 'nashrino-dev-secret') })
+    }
+  }
+
+  for (const [id, k] of keys) keyCache.set(id, k)
+  return keys
+}
+
+function getActiveKey(): EncryptionKey {
+  const keys = loadKeys()
+  const activeId = process.env.ACTIVE_ENCRYPTION_KEY_ID
+  if (activeId && keys.has(activeId)) {
+    return keys.get(activeId)!
+  }
+  const first = keys.values().next()
+  if (first.done) throw new Error('No encryption keys configured')
+  return first.value
+}
+
+function getKey(keyId: string): EncryptionKey | undefined {
+  return loadKeys().get(keyId)
 }
 
 export function isEncrypted(value: string): boolean {
-  return value?.startsWith('enc:v1:') ?? false
+  return value?.startsWith('enc:') ?? false
+}
+
+export function encrypt(plaintext: string): string {
+  const activeKey = getActiveKey()
+  const iv = randomBytes(IV_LENGTH)
+  const cipher = createCipheriv(ALGORITHM, activeKey.key, iv)
+  let ciphertext = cipher.update(plaintext, 'utf8', 'hex')
+  ciphertext += cipher.final('hex')
+  const tag = cipher.getAuthTag()
+  return `enc:${activeKey.id}:${iv.toString('hex')}:${ciphertext}:${tag.toString('hex')}`
 }
 
 export function decrypt(value: string): string {
   if (!isEncrypted(value)) return value
-  const key = getKey()
   const parts = value.split(':')
   if (parts.length !== 5) throw new Error('Invalid encrypted token format')
+  const keyId = parts[1]
   const iv = Buffer.from(parts[2], 'hex')
   const ciphertext = Buffer.from(parts[3], 'hex')
   const tag = Buffer.from(parts[4], 'hex')
-  const decipher = createDecipheriv(ALGORITHM, key, iv)
+
+  const encryptionKey = getKey(keyId)
+  if (!encryptionKey) {
+    throw new Error(
+      `Encryption key "${keyId}" not found — set ENCRYPTION_KEY_${keyId.toUpperCase()} to decrypt this value`
+    )
+  }
+
+  const decipher = createDecipheriv(ALGORITHM, encryptionKey.key, iv)
   decipher.setAuthTag(tag)
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8')
+}
+
+export function ensureEncrypted(value: string): string {
+  if (isEncrypted(value)) return value
+  return encrypt(value)
+}
+
+export function wasEncryptedWithOldKey(value: string): boolean {
+  if (!isEncrypted(value)) return false
+  const parts = value.split(':')
+  if (parts.length !== 5) return false
+  const keyId = parts[1]
+  return keyId !== getActiveKey().id
+}
+
+export function reencryptWithActiveKey(value: string): string {
+  if (!isEncrypted(value)) return encrypt(value)
+  if (!wasEncryptedWithOldKey(value)) return value
+  const plaintext = decrypt(value)
+  return encrypt(plaintext)
+}
+
+export function getActiveKeyId(): string {
+  return getActiveKey().id
 }
