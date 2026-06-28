@@ -118,7 +118,7 @@ describe('God-node: publishSchema integration', () => {
   it('accepts valid publish payload', () => {
     const result = validateBody(publishSchema, {
       title: 'تست انتشار',
-      platformTypes: ['telegram'],
+      channelIds: ['550e8400-e29b-41d4-a716-446655440000'],
       scheduleMode: 'now',
     })
     expect(result.success).toBe(true)
@@ -129,10 +129,10 @@ describe('God-node: publishSchema integration', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects invalid platform type', () => {
+  it('rejects invalid channelId (non-UUID)', () => {
     const result = validateBody(publishSchema, {
       title: 'test',
-      platformTypes: ['facebook'],
+      channelIds: ['not-a-uuid'],
     })
     expect(result.success).toBe(false)
   })

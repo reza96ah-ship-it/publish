@@ -19,16 +19,16 @@ describe('API Validation — publishSchema', () => {
   it('accepts valid publish payload', () => {
     const r = validateBody(publishSchema, {
       title: '测试标题',
-      platformTypes: ['instagram'],
+      channelIds: ['550e8400-e29b-41d4-a716-446655440000'],
       scheduleMode: 'now',
     })
     expect(r.success).toBe(true)
   })
 
-  it('rejects invalid platform type', () => {
+  it('rejects invalid channelId (non-UUID)', () => {
     const r = validateBody(publishSchema, {
       title: 'test',
-      platformTypes: ['facebook'],
+      channelIds: ['not-a-uuid'],
     })
     expect(r.success).toBe(false)
   })
