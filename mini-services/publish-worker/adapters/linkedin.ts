@@ -1,17 +1,32 @@
 /**
- * LinkedIn Posts API adapter — REAL implementation.
+ * LinkedIn Posts API adapter — REAL implementation (Issue #114 fix).
  *
- * Official docs: https://learn.microsoft.com/linkedin/marketing/integrations/community-management/posts/api/create-post
+ * Official docs: https://learn.microsoft.com/linkedin/marketing/community-management/shares/posts-api
  * Auth docs: https://learn.microsoft.com/linkedin/shared/authentication/authorization-code-flow
  *
  * Auth: OAuth 2.0 (3-legged). Access token (60 days, must refresh).
  * Permissions: w_member_social (post as member), r_organization_social + w_organization_social (post as org)
- * URL: https://api.linkedin.com/v2/{endpoint}
+ *
+ * Issue #114 fixes (all verified against official docs 2025-06):
+ *   1. Endpoint moved from deprecated /v2/posts → /rest/posts
+ *      (docs: "POST https://api.linkedin.com/rest/posts")
+ *   2. Added required LinkedIn-Version header (YYYYMM format).
+ *      202506 was sunset; 202505 is current valid.
+ *   3. X-Restli-Protocol-Version: 2.0.0 header (already present, kept).
+ *   4. 201 Created response has an EMPTY body — the post URN is in the
+ *      `x-restli-id` response header, NOT in JSON. Previous code called
+ *      res.json() on the empty body which threw silently.
+ *   5. Body schema fixed: visibility must be "PUBLIC" (not an object),
+ *      and distribution.feedDistribution = "MAIN_FEED" is required for
+ *      the post to appear on the feed.
+ *   6. Added normalizeLinkedInError covering 401/403 (auth), 429 (rate limit),
+ *      5xx (retryable). Returns typed errorCategory so the worker never
+ *      retries auth failures (BUG-05).
  *
  * Two-step image upload:
- *   1. POST /v2/assets?action=registerUpload → get uploadUrl + asset URN
+ *   1. POST /rest/assets?action=registerUpload → get uploadUrl + asset URN
  *   2. PUT <uploadUrl> with binary image data
- *   3. POST /v2/posts with content.media.id = asset URN
+ *   3. POST /rest/posts with content.media.id = asset URN
  *
  * Rate limits: 100K calls/day app-level, ~90 posts/day per member.
  * Token refresh: POST /oauth/v2/accessToken with refresh_token (60-day cycle).
@@ -26,10 +41,16 @@ import type {
   ReadinessResult,
   AdapterContent,
   AdapterAccount,
+  ErrorCategory,
 } from './types'
+import { getCapabilities } from '../lib/provider-capabilities'
 
-const LI_TEXT_LIMIT = 3000
-const LI_API = 'https://api.linkedin.com/v2'
+// Issue #114: named constants — LinkedIn-Version in YYYYMM format.
+// Update this when LinkedIn sunsets the current version (check Microsoft Learn).
+// 202506 (June 2025) was sunset; 202505 remains valid as of 2025-06.
+const LI_VERSION = '202505'
+const LI_REST_API = 'https://api.linkedin.com/rest'
+const LI_V2_API = 'https://api.linkedin.com/v2' // userinfo + assets still on v2
 
 export class LinkedInAdapter implements ChannelAdapter {
   readonly platform: PlatformType = 'linkedin'
@@ -40,7 +61,7 @@ export class LinkedInAdapter implements ChannelAdapter {
       return { healthy: false, status: 'disconnected', lastError: 'توکن لینکدین تنظیم نشده است' }
     }
     try {
-      const res = await fetch(`${LI_API}/userinfo`, {
+      const res = await fetch(`${LI_V2_API}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.status === 401) {
@@ -61,10 +82,12 @@ export class LinkedInAdapter implements ChannelAdapter {
   ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
-    if (text.length > LI_TEXT_LIMIT) {
+    // Issue #117: use capability registry as single source of truth
+    const cap = getCapabilities('linkedin')
+    if (text.length > cap.maxTextLength) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پست لینکدین نباید از ${LI_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
+        message: `متن پست لینکدین نباید از ${cap.maxTextLength} کاراکتر بیشتر باشد.`,
         platform: 'linkedin',
       })
     }
@@ -98,6 +121,7 @@ export class LinkedInAdapter implements ChannelAdapter {
         status: 'action',
         error: 'توکن لینکدین تنظیم نشده است. لطفاً حساب را مجدداً متصل کنید.',
         retryable: false,
+        errorCategory: 'auth',
         steps: [{ label: 'بررسی توکن', at: now }],
       }
     }
@@ -120,23 +144,38 @@ export class LinkedInAdapter implements ChannelAdapter {
       let postBody: any
 
       if (mediaItems.length === 0) {
-        // Text-only post
+        // Text-only post — Issue #114: visibility must be "PUBLIC" + distribution
         postBody = {
           author: authorUrn,
-          lifecycleState: 'PUBLISHED',
-          visibility: { publicVisibility: false, memberVisibility: 'ALL' },
           commentary: text,
+          visibility: 'PUBLIC',
+          distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+          },
+          lifecycleState: 'PUBLISHED',
+          isReshareDisabledByAuthor: false,
         }
       } else if (mediaItems.length === 1) {
         // Single image
         const assetUrn = await this.uploadImage(token, authorUrn, mediaItems[0])
         postBody = {
           author: authorUrn,
-          lifecycleState: 'PUBLISHED',
-          visibility: { publicVisibility: false, memberVisibility: 'ALL' },
           commentary: text,
+          visibility: 'PUBLIC',
+          distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+          },
+          lifecycleState: 'PUBLISHED',
+          isReshareDisabledByAuthor: false,
           content: {
-            media: { id: assetUrn, title: content.title || 'Image' },
+            media: {
+              id: assetUrn,
+              title: content.title || 'Image',
+            },
           },
         }
       } else {
@@ -146,46 +185,70 @@ export class LinkedInAdapter implements ChannelAdapter {
         )
         postBody = {
           author: authorUrn,
-          lifecycleState: 'PUBLISHED',
-          visibility: { publicVisibility: false, memberVisibility: 'ALL' },
           commentary: text,
+          visibility: 'PUBLIC',
+          distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+          },
+          lifecycleState: 'PUBLISHED',
+          isReshareDisabledByAuthor: false,
           content: {
             multiImage: { images: assetUrns.map((urn) => ({ id: urn })) },
           },
         }
       }
 
-      // Create post
-      const res = await fetch(`${LI_API}/posts`, {
+      // Issue #114: use /rest/posts (not deprecated /v2/posts)
+      const res = await fetch(`${LI_REST_API}/posts`, {
         method: 'POST',
         headers: this.headers(token),
         body: JSON.stringify(postBody),
       })
-      const data = await res.json()
 
-      if (data.status && data.code) throw this.makeError(data)
-
-      // Post ID is in the response or Location header
-      const postId = data.id || res.headers.get('x-linkedin-id') || ''
-      return {
-        externalId: postId,
-        rawResponse: data,
-        status: 'success',
-        error: null,
-        retryable: false,
-        steps: [
-          { label: 'ایجاد پست لینکدین', at: now },
-          { label: 'منتشر شد', at: Date.now() },
-        ],
+      // Issue #114: 201 Created has an EMPTY body — the post URN is in the
+      // `x-restli-id` response header. Previous code called res.json() on
+      // the empty body which threw "Unexpected end of JSON input" silently.
+      if (res.status === 201) {
+        const postId = res.headers.get('x-restli-id') || ''
+        return {
+          externalId: postId,
+          rawResponse: { status: 201, postId, header: 'x-restli-id' },
+          status: 'success',
+          error: null,
+          retryable: false,
+          steps: [
+            { label: 'ایجاد پست لینکدین', at: now },
+            { label: 'منتشر شد', at: Date.now() },
+          ],
+        }
       }
+
+      // Non-201 response — parse error body
+      let errorBody: any = {}
+      try {
+        errorBody = await res.json()
+      } catch {
+        // body may be empty or non-JSON
+        errorBody = { message: res.statusText }
+      }
+
+      const normalized = this.normalizeLinkedInError(res.status, errorBody)
+      throw normalized
     } catch (err: any) {
-      const retryable = err.code === 429 || (err.code && err.code >= 500)
+      // Issue #114: typed errorCategory so the worker knows whether to retry.
+      // Auth errors (401/403) are never retried; 429/5xx are retried.
+      const errorCategory: ErrorCategory = err.errorCategory || 'unknown'
+      const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
+
       return {
         externalId: null,
-        rawResponse: { error: err.message, code: err.code },
+        rawResponse: { error: err.message, code: err.code, errorCategory },
         status: retryable ? 'failed' : 'action',
         error: err.message,
         retryable,
+        errorCategory,
         steps: [
           { label: 'انتشار در لینکدین', at: now },
           { label: 'خطا', at: Date.now() },
@@ -204,8 +267,8 @@ export class LinkedInAdapter implements ChannelAdapter {
     authorUrn: string,
     media: { url: string; type?: string }
   ): Promise<string> {
-    // Step 1: Register upload
-    const registerRes = await fetch(`${LI_API}/assets?action=registerUpload`, {
+    // Step 1: Register upload (still on v2/assets)
+    const registerRes = await fetch(`${LI_V2_API}/assets?action=registerUpload`, {
       method: 'POST',
       headers: this.headers(token),
       body: JSON.stringify({
@@ -219,7 +282,9 @@ export class LinkedInAdapter implements ChannelAdapter {
       }),
     })
     const register = await registerRes.json()
-    if (register.status && register.code) throw this.makeError(register)
+    if (register.status && register.code) {
+      throw this.normalizeLinkedInError(registerRes.status, register)
+    }
 
     const uploadUrl =
       register.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']
@@ -240,17 +305,61 @@ export class LinkedInAdapter implements ChannelAdapter {
     return asset
   }
 
+  /**
+   * Issue #114: headers now include the required LinkedIn-Version.
+   * All LinkedIn REST APIs require both:
+   *   - LinkedIn-Version: {YYYYMM}
+   *   - X-Restli-Protocol-Version: 2.0.0
+   */
   private headers(token: string) {
     return {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
       'X-Restli-Protocol-Version': '2.0.0',
+      'LinkedIn-Version': LI_VERSION,
     }
   }
 
-  private makeError(liError: any): Error {
-    const err = new Error(`لینکدین: ${liError.message}`) as any
-    err.code = liError.status
+  /**
+   * Issue #114: normalize LinkedIn error responses into typed categories.
+   * Covers 401/403 (auth), 429 (rate_limit), 5xx (retryable), 4xx (permanent).
+   *
+   * The worker uses `errorCategory` (BUG-05) to decide retry behavior:
+   *   - 'auth' → UnrecoverableError (never retried, user must reconnect)
+   *   - 'rate_limit' → retried with backoff
+   *   - 'network' → retried
+   *   - 'not_found' / 'unknown' → permanent failure
+   */
+  private normalizeLinkedInError(status: number, body: any): Error & {
+    code: number
+    errorCategory: ErrorCategory
+  } {
+    let errorCategory: ErrorCategory = 'unknown'
+    let message = 'خطای ناشناخته لینکدین'
+
+    if (status === 401 || status === 403) {
+      errorCategory = 'auth'
+      message = 'توکن لینکدین نامعتبر یا منقضی است. لطفاً حساب را مجدداً متصل کنید.'
+    } else if (status === 429) {
+      errorCategory = 'rate_limit'
+      message = 'محدودیت نرخ درخواست لینکدین. لطفاً بعداً تلاش کنید.'
+    } else if (status >= 500) {
+      errorCategory = 'network'
+      message = `خطای سرور لینکدین (${status}). لطفاً بعداً تلاش کنید.`
+    } else if (status === 404) {
+      errorCategory = 'not_found'
+      message = 'منبع لینکدین یافت نشد.'
+    } else if (status >= 400) {
+      errorCategory = 'unknown'
+      message = body?.message || `خطای لینکدین (${status})`
+    }
+
+    const err = new Error(`لینکدین: ${message}`) as Error & {
+      code: number
+      errorCategory: ErrorCategory
+    }
+    err.code = status
+    err.errorCategory = errorCategory
     return err
   }
 }

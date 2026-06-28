@@ -29,6 +29,7 @@ import { writeAuditLog } from './lib/audit'
 import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
+import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
 import {
   buildFingerprint,
   findPreviousSuccess,
@@ -96,6 +97,29 @@ const worker = new Worker(
       console.log(`[worker] circuit OPEN for ${job.platform.type}, deferring job ${job.id}`)
       await bullJob.moveToDelayed(Date.now() + 60_000)
       return
+    }
+
+    // Issue #116: expired OAuth token guard — never retry, surface as auth error.
+    // The token-expiry scanner sets Platform.status='expired' when a 60-day
+    // Instagram/LinkedIn token passes its expiry date. Retrying would waste
+    // quota and confuse the user; instead we mark the job as 'action' with
+    // errorCategory='auth' so the worker throws UnrecoverableError.
+    if (job.platform.status === 'expired') {
+      const authError = `توکن ${job.platform.type} منقضی شده است. لطفاً حساب را مجدداً متصل کنید.`
+      console.log(`[worker] job ${job.id} skipped — platform ${job.platform.type} token expired`)
+      const fingerprint = buildFingerprint(job.platform.id, job.content.id, bullJob.attemptsMade)
+      const attemptId = await startAttempt({
+        publishJobId: job.id,
+        attemptNumber: bullJob.attemptsMade,
+        requestFingerprint: fingerprint,
+      })
+      await markFailure(attemptId, {
+        outcome: 'permanent_failure',
+        errorCategory: 'auth',
+        safeUserMessage: authError,
+      })
+      await markFailed(job, authError, false, true)
+      throw new UnrecoverableError(authError)
     }
 
     // Update DB: processing
@@ -516,6 +540,7 @@ async function shutdown(signal: string) {
   // #112: log clearly so ops can confirm graceful drain in logs
   console.log(`\n[worker] ${signal} — graceful shutdown started (stopTimeout=30s)`)
   stopOutboxDispatcher()
+  stopTokenExpiryScanner()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   console.log('[worker] shutdown complete')
@@ -531,3 +556,6 @@ console.log(`[worker] BullMQ worker started (concurrency: ${CONCURRENCY}, health
 startHealthServer()
 // MISS-01: start outbox dispatcher — polls OutboxEvent → enqueues to BullMQ
 startOutboxDispatcher()
+// Issue #116: start token expiry scanner — daily check for Instagram/LinkedIn
+// OAuth tokens expiring within 7 days; creates in-app notifications.
+startTokenExpiryScanner()

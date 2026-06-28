@@ -24,6 +24,7 @@ import {
   UploadCloud,
   X,
   Plus,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -51,6 +52,12 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import {
+  PROVIDER_CAPABILITIES,
+  getCapabilities,
+  validateAgainstCapabilities,
+  type PlatformKey,
+} from '@/lib/provider-capabilities'
 
 interface Campaign {
   id: string
@@ -106,7 +113,8 @@ interface PublishPayload {
   mode?: 'publish' | 'review' | 'draft'
 }
 
-const IG_LIMIT = 2200
+// Issue #117: limits now come from the provider capability registry (single source of truth)
+const IG_LIMIT = PROVIDER_CAPABILITIES.instagram.maxCaptionLength
 
 export function ComposeView() {
   const [title, setTitle] = useState('')
@@ -203,8 +211,54 @@ export function ComposeView() {
 
   const queryClient = useQueryClient()
 
+  // Issue #117: capability-based validation — derived from the provider registry.
+  // Computes violations per selected platform so the UI can warn BEFORE submit.
+  const capabilityViolations = useMemo(() => {
+    const selected = (platforms ?? []).filter((p) => selectedPlatforms.includes(p.id))
+    const all: { platform: string; platformName: string; issues: ReturnType<typeof validateAgainstCapabilities> }[] = []
+    for (const p of selected) {
+      const issues = validateAgainstCapabilities(p.type, {
+        body: caption,
+        hashtags,
+        mediaCount: selectedMedia.length,
+      })
+      if (issues.length > 0) {
+        all.push({ platform: p.type, platformName: p.name, issues })
+      }
+    }
+    return all
+  }, [platforms, selectedPlatforms, caption, hashtags, selectedMedia])
+
+  // Whether any selected platform requires media (e.g. Instagram) — drives UI hints
+  const anyRequiresMedia = useMemo(
+    () =>
+      (platforms ?? [])
+        .filter((p) => selectedPlatforms.includes(p.id))
+        .some((p) => getCapabilities(p.type).requiresMedia),
+    [platforms, selectedPlatforms]
+  )
+
+  // The most restrictive caption limit across selected platforms (for the live counter)
+  const activeCaptionLimit = useMemo(() => {
+    const selected = (platforms ?? []).filter((p) => selectedPlatforms.includes(p.id))
+    if (selected.length === 0) return IG_LIMIT
+    const isMediaPost = selectedMedia.length > 0
+    return Math.min(
+      ...selected.map((p) => {
+        const cap = getCapabilities(p.type)
+        return isMediaPost ? cap.maxCaptionLength : cap.maxTextLength
+      })
+    )
+  }, [platforms, selectedPlatforms, selectedMedia])
+
+  const hasCapabilityViolations = capabilityViolations.length > 0
+
+  // Issue #117: canPublish now respects capability violations
   const canPublish =
-    title.trim().length > 0 && selectedPlatforms.length > 0 && selectedMedia.length > 0
+    title.trim().length > 0 &&
+    selectedPlatforms.length > 0 &&
+    selectedMedia.length > 0 &&
+    !hasCapabilityViolations
 
   // Optimistic publish: append the new content to the ["content"] cache before the
   // API resolves so it appears in the content library in <100ms (Linear feel).
@@ -256,7 +310,17 @@ export function ComposeView() {
 
   const submit = (action: 'draft' | 'review' | 'publish') => {
     if (action === 'publish' && !canPublish) {
-      toast.error('برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.')
+      // Issue #117: show capability-specific violation messages if present
+      if (hasCapabilityViolations) {
+        const first = capabilityViolations[0]
+        toast.error(`${first.platformName}: ${first.issues[0].message}`)
+      } else if (selectedPlatforms.length === 0) {
+        toast.error('حداقل یک پلتفرم انتخاب کنید.')
+      } else if (selectedMedia.length === 0) {
+        toast.error('برای انتشار، حداقل یک رسانه لازم است.')
+      } else {
+        toast.error('برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.')
+      }
       return
     }
 
@@ -443,6 +507,36 @@ export function ComposeView() {
             })
           )}
         </div>
+
+        {/* Issue #117: live capability violation warnings — block submit before queuing */}
+        {hasCapabilityViolations && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+          >
+            <div className="flex items-center gap-1.5 mb-1 font-[600]">
+              <AlertTriangle className="size-3.5" />
+              <span>هشدارهای تطبیق با پلتفرم</span>
+            </div>
+            <ul className="space-y-0.5 ms-5 list-disc">
+              {capabilityViolations.flatMap((pv) =>
+                pv.issues.map((iss, i) => (
+                  <li key={`${pv.platform}-${i}`}>
+                    <span className="font-[600]">{pv.platformName}:</span> {iss.message}
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        )}
+
+        {/* Issue #117: media-required hint (Instagram) when no media selected */}
+        {anyRequiresMedia && selectedMedia.length === 0 && !hasCapabilityViolations && (
+          <div className="mt-2 rounded-lg border border-border bg-surface-subtle p-2.5 text-[11px] text-ink-tertiary">
+            <span className="font-[600]">توجه:</span> یکی از پلتفرم‌های انتخابی (اینستاگرام) به حداقل یک رسانه نیاز دارد.
+          </div>
+        )}
       </div>
 
       {/* ── Main: Editor (left) + Preview (right) ── */}
@@ -659,7 +753,17 @@ export function ComposeView() {
             )}
             <span>{toPersianDigits(selectedMedia.length)} رسانه</span>
             <span>•</span>
-            <span>{toPersianDigits(caption.length)} کاراکتر</span>
+            <span
+              className={cn(
+                caption.length > activeCaptionLimit
+                  ? 'text-danger font-[600]'
+                  : caption.length > activeCaptionLimit * 0.9
+                    ? 'text-amber-600'
+                    : ''
+              )}
+            >
+              {toPersianDigits(caption.length)} / {toPersianDigits(activeCaptionLimit)} کاراکتر
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button

@@ -29,11 +29,12 @@ import type {
   ReadinessResult,
   AdapterContent,
   AdapterAccount,
+  ErrorCategory,
 } from './types'
+import { getCapabilities } from '../lib/provider-capabilities'
 
-const IG_CAPTION_LIMIT = 2200
-const IG_HASHTAG_LIMIT = 30
 const GRAPH_API = 'https://graph.facebook.com/v21.0'
+// Issue #117: limits now come from the capability registry (single source of truth)
 
 export class InstagramAdapter implements ChannelAdapter {
   readonly platform: PlatformType = 'instagram'
@@ -72,27 +73,28 @@ export class InstagramAdapter implements ChannelAdapter {
   ): Promise<ReadinessResult> {
     const issues = []
     const caption = this.buildCaption(content)
+    const cap = getCapabilities('instagram')
 
-    if (caption.length > IG_CAPTION_LIMIT) {
+    if (caption.length > cap.maxCaptionLength) {
       issues.push({
         code: 'caption_too_long',
-        message: `کپشن اینستاگرام نباید از ${IG_CAPTION_LIMIT} کاراکتر بیشتر باشد.`,
+        message: `کپشن اینستاگرام نباید از ${cap.maxCaptionLength} کاراکتر بیشتر باشد.`,
         platform: 'instagram',
       })
     }
 
     // Count hashtags
     const hashtagCount = (content.hashtags?.match(/#/g) || []).length
-    if (hashtagCount > IG_HASHTAG_LIMIT) {
+    if (cap.maxHashtags !== null && hashtagCount > cap.maxHashtags) {
       issues.push({
         code: 'too_many_hashtags',
-        message: `اینستاگرام حداکثر ${IG_HASHTAG_LIMIT} هشتگ مجاز است.`,
+        message: `اینستاگرام حداکثر ${cap.maxHashtags} هشتگ مجاز است.`,
         platform: 'instagram',
       })
     }
 
-    // Instagram REQUIRES media
-    if (!content.mediaItems || content.mediaItems.length === 0) {
+    // Instagram REQUIRES media (capability registry: requiresMedia = true)
+    if (cap.requiresMedia && (!content.mediaItems || content.mediaItems.length === 0)) {
       issues.push({
         code: 'media_missing',
         message: 'اینستاگرام به حداقل یک تصویر یا ویدیو نیاز دارد.',
@@ -124,6 +126,7 @@ export class InstagramAdapter implements ChannelAdapter {
         status: 'action',
         error: 'توکن یا شناسه کاربر اینستاگرام تنظیم نشده است. لطفاً حساب را مجدداً متصل کنید.',
         retryable: false,
+        errorCategory: 'auth' as ErrorCategory,
         steps: [{ label: 'بررسی توکن', at: now }],
       }
     }

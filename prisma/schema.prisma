@@ -157,6 +157,12 @@ model Platform {
   tokenSecret String?
   /** Platform-specific target: chat_id (TG/Bale/Rubika), ig-user-id (IG), author URN (LinkedIn) */
   targetId    String?
+  // Issue #116: Instagram token expiry lifecycle — 60-day long-lived tokens
+  // expire silently. Storing the expiry lets the worker warn users in advance
+  // and surface auth errors instead of retrying dead tokens.
+  tokenExpiresAt  DateTime?
+  tokenScopes     String?
+  lastValidatedAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
