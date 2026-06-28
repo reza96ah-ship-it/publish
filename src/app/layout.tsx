@@ -6,6 +6,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner'
 import { QueryProvider } from '@/lib/query-provider'
 import { MotionProvider } from '@/lib/motion'
 import { NextAuthSessionProvider } from '@/components/providers/session-provider'
+import { WebVitals } from '@/components/providers/web-vitals'
 
 const vazir = Vazirmatn({
   subsets: ['arabic', 'latin'],
@@ -55,6 +56,8 @@ export default function RootLayout({
             </MotionProvider>
           </QueryProvider>
           <Sonner position="top-center" dir="rtl" />
+          {/* Issue #127: collect Core Web Vitals (LCP/INP/CLS) → /api/vitals → Prometheus */}
+          <WebVitals />
         </ThemeProvider>
         <div id="portal-root" />
       </body>

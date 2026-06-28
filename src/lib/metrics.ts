@@ -116,3 +116,13 @@ export const aiRequestDuration = new Histogram({
   buckets: [0.5, 1, 2, 5, 10, 20, 30, 60],
   registers: [registry],
 })
+
+// Issue #127: Core Web Vitals histogram — observed by /api/vitals endpoint
+export const webVitalsHistogram = new Histogram({
+  name: 'nashrino_web_vitals_seconds',
+  help: 'Core Web Vitals (LCP, INP, CLS, FCP, TTFB) in seconds, by metric name and rating',
+  labelNames: ['metric', 'rating'] as const,
+  // CLS is unitless (0-1 range), others are ms → convert to seconds at observe time
+  buckets: [0.05, 0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1, 2, 3, 5],
+  registers: [registry],
+})

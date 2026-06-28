@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -128,6 +128,11 @@ export function ComposeView() {
   const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule' | 'queue'>('now')
   // Single source of truth — a real Date object from the Jalali picker
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
+
+  // Issue #127: useTransition for non-urgent state updates (caption/hashtags/note
+  // typing) so the main thread stays responsive → INP <200ms. Urgent updates
+  // (title, platform selection) stay synchronous for immediate feedback.
+  const [isPending, startTransition] = useTransition()
 
   // MISS-04: debounced autosave state
   type SaveState = 'idle' | 'saving' | 'saved' | 'error'
@@ -583,7 +588,7 @@ export function ComposeView() {
               <Label className="text-[12px] text-ink-secondary mb-1.5 block">کپشن</Label>
               <NashrinoEditor
                 content={caption}
-                onChange={(_html, text) => setCaption(text)}
+                onChange={(_html, text) => startTransition(() => setCaption(text))}
                 placeholder="متن کامل کپشن… (پشتیبانی از متن غنی)"
                 maxLength={IG_LIMIT}
               />
@@ -599,7 +604,7 @@ export function ComposeView() {
               <Input
                 dir="rtl"
                 value={hashtags}
-                onChange={(e) => setHashtags(e.target.value)}
+                onChange={(e) => startTransition(() => setHashtags(e.target.value))}
                 placeholder="#برند_من #محصول_جدید"
               />
             </div>
@@ -652,7 +657,7 @@ export function ComposeView() {
                 <Input
                   dir="rtl"
                   value={note}
-                  onChange={(e) => setNote(e.target.value)}
+                  onChange={(e) => startTransition(() => setNote(e.target.value))}
                   placeholder="یادداشت خصوصی تیم…"
                   className="h-9"
                 />
