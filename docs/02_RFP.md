@@ -39,6 +39,7 @@ scheduling, publishing, engaging, and analyzing social media content across **Ru
 Instagram, Telegram, and LinkedIn** (with Eitaa and others on the roadmap).
 
 The selected vendor / engineering team will be responsible for:
+
 1. Building the production frontend (Next.js 16) and backend (FastAPI) against the
    requirements herein.
 2. Implementing channel adapters with resilient publish workers.
@@ -46,6 +47,7 @@ The selected vendor / engineering team will be responsible for:
 4. Shipping an automated E2E test suite and CI pipeline.
 
 This RFP references the companion documents:
+
 - [01_BENCHMARK_ANALYSIS.md](./01_BENCHMARK_ANALYSIS.md) — competitive context.
 - [03_PRODUCT_BACKLOG.md](./03_PRODUCT_BACKLOG.md) — the granular work items.
 - [04_ROADMAP.md](./04_ROADMAP.md) — phased delivery sequence.
@@ -59,6 +61,7 @@ SocialOps platform inspired by the workflow maturity of Buffer, Hootsuite, Sprou
 Social, and Later, but purpose-built for Persian commerce and content teams.
 
 **Existing assets (provided to the vendor):**
+
 - A **Next.js 16 prototype workspace** (`src/`) implementing the UX shell and 11 views
   against fixture data — validates the design direction. (Vazirmatn font, Tailwind 4,
   shadcn/ui, dark/light, full RTL.)
@@ -74,6 +77,7 @@ channel adapters, workers, and missing features per the roadmap.
 ## 3. Project Objectives & Success Criteria
 
 ### 3.1 Objectives
+
 1. Deliver a **production** multi-tenant SaaS where a workspace can connect channels,
    compose, schedule, publish, engage, and analyze — in Persian, RTL, Jalali.
 2. Achieve a **publish success rate ≥ 98%** and **P95 scheduled-time accuracy ≤ 2 min**.
@@ -83,6 +87,7 @@ channel adapters, workers, and missing features per the roadmap.
 5. Launch with IRR pricing and local payment-gateway integration.
 
 ### 3.2 Success Criteria (measurable)
+
 - All Phase 1–2 acceptance criteria in [04_Roadmap](./04_ROADMAP.md) pass.
 - E2E test suite (Playwright) covers the golden paths and passes in CI.
 - Lighthouse mobile score ≥ 90 on the dashboard route (4G profile, Iran network).
@@ -94,6 +99,7 @@ channel adapters, workers, and missing features per the roadmap.
 The vendor shall deliver, per the phased roadmap:
 
 **Phase 1 (MVP — multi-channel publishing core)**
+
 - Multi-tenant auth (admin + workspace), brand-kit store profile.
 - Channel hub: Instagram (OAuth, professional-account publish flow), Rubika (bot token),
   Telegram (bot token), LinkedIn (OAuth).
@@ -110,6 +116,7 @@ The vendor shall deliver, per the phased roadmap:
 - Settings (brand kit, team members, roles).
 
 **Phase 2 (Collaboration & Engagement)**
+
 - Unified inbox (comments + DMs + mentions) with routing, saved replies, SLA tracking.
 - Approval workflows (single-level submit → approve/reject → schedule, with comments).
 - Roles & permissions (Admin / Editor / Approver / Viewer).
@@ -118,6 +125,7 @@ The vendor shall deliver, per the phased roadmap:
 - AI assistant (Persian caption generation, hashtags, best-time).
 
 **Phase 3 (Scale)**
+
 - Eitaa channel adapter.
 - Multi-level approvals (Planable-style, in-context comments).
 - Advanced analytics (benchmarks, exportable PDF/CSV reports, scheduled reports).
@@ -125,6 +133,7 @@ The vendor shall deliver, per the phased roadmap:
 - Mobile-responsive refinements + PWA.
 
 **Phase 4+ (Expand)** — out of immediate RFP scope but architecture must allow:
+
 - Listening, sentiment, share-of-voice.
 - E-commerce / revenue attribution.
 - Additional channels (X, Threads, YouTube Shorts).
@@ -149,160 +158,161 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
 
 ### 6.1 Authentication & Workspace (FR-AUTH)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-AUTH-01 | Admin login (email + password) with secure session management. | MUST |
-| FR-AUTH-02 | Multi-tenant workspace model: a workspace owns all its channels, content, media, campaigns, jobs, inbox, analytics. | MUST |
-| FR-AUTH-03 | Workspace members with roles: Admin, Editor, Approver, Viewer (RBAC enforced server-side). | MUST (P2) |
-| FR-AUTH-04 | Invite members by email; accept-flow with role assignment. | SHOULD (P2) |
-| FR-AUTH-05 | Password reset flow (email-token, expiry). | MUST |
-| FR-AUTH-06 | Session timeout & "remember me" (configurable). | SHOULD |
-| FR-AUTH-07 | Audit log of auth events (login, logout, failed login, role change). | SHOULD (P2) |
-| FR-AUTH-08 | Optional 2FA (TOTP) for admins. | NICE (P3) |
+| ID         | Requirement                                                                                                         | Priority    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- | ----------- |
+| FR-AUTH-01 | Admin login (email + password) with secure session management.                                                      | MUST        |
+| FR-AUTH-02 | Multi-tenant workspace model: a workspace owns all its channels, content, media, campaigns, jobs, inbox, analytics. | MUST        |
+| FR-AUTH-03 | Workspace members with roles: Admin, Editor, Approver, Viewer (RBAC enforced server-side).                          | MUST (P2)   |
+| FR-AUTH-04 | Invite members by email; accept-flow with role assignment.                                                          | SHOULD (P2) |
+| FR-AUTH-05 | Password reset flow (email-token, expiry).                                                                          | MUST        |
+| FR-AUTH-06 | Session timeout & "remember me" (configurable).                                                                     | SHOULD      |
+| FR-AUTH-07 | Audit log of auth events (login, logout, failed login, role change).                                                | SHOULD (P2) |
+| FR-AUTH-08 | Optional 2FA (TOTP) for admins.                                                                                     | NICE (P3)   |
 
 ### 6.2 Dashboard (FR-DASH)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-DASH-01 | Operational summary: overall health, posts today, queued, failed, pending approval, inbox unread, response SLA risk. | MUST |
-| FR-DASH-02 | Publishing pulse: live list of jobs in processing/queued/action-needed with progress, assignee, campaign, platform. | MUST |
-| FR-DASH-03 | Action center: surfaced critical items (failed publishes, expiring tokens, SLA-risk messages, disconnected channels) with one-tap action. | MUST |
-| FR-DASH-04 | Executive metrics: engagement, reach, audience growth, active campaigns — with sparklines and period comparison. | MUST |
-| FR-DASH-05 | Campaign health panel: per-campaign progress, goal completion, days remaining, top blocker, health label/color. | MUST |
-| FR-DASH-06 | Platform status panel: per-channel connection state, accounts, last success, primary issue. | MUST |
-| FR-DASH-07 | Period filter (7d / 30d / 90d) applied to metrics. | MUST |
-| FR-DASH-08 | Real-time updates via WebSocket for job status changes (no manual refresh). | SHOULD |
-| FR-DASH-09 | Personalizable widget arrangement (drag) — NICE. | NICE (P3) |
+| ID         | Requirement                                                                                                                               | Priority  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| FR-DASH-01 | Operational summary: overall health, posts today, queued, failed, pending approval, inbox unread, response SLA risk.                      | MUST      |
+| FR-DASH-02 | Publishing pulse: live list of jobs in processing/queued/action-needed with progress, assignee, campaign, platform.                       | MUST      |
+| FR-DASH-03 | Action center: surfaced critical items (failed publishes, expiring tokens, SLA-risk messages, disconnected channels) with one-tap action. | MUST      |
+| FR-DASH-04 | Executive metrics: engagement, reach, audience growth, active campaigns — with sparklines and period comparison.                          | MUST      |
+| FR-DASH-05 | Campaign health panel: per-campaign progress, goal completion, days remaining, top blocker, health label/color.                           | MUST      |
+| FR-DASH-06 | Platform status panel: per-channel connection state, accounts, last success, primary issue.                                               | MUST      |
+| FR-DASH-07 | Period filter (7d / 30d / 90d) applied to metrics.                                                                                        | MUST      |
+| FR-DASH-08 | Real-time updates via WebSocket for job status changes (no manual refresh).                                                               | SHOULD    |
+| FR-DASH-09 | Personalizable widget arrangement (drag) — NICE.                                                                                          | NICE (P3) |
 
 ### 6.3 Compose (FR-COMP)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-COMP-01 | Multi-step composer: Content → Media → Platforms → Schedule. | MUST |
-| FR-COMP-02 | Content step: title, caption (rich, bidi-safe), hashtags, internal note, campaign selector. | MUST |
-| FR-COMP-03 | Media step: upload from device or pick from media library; multi-asset; per-platform crop/aspect-ratio enforcement. | MUST |
-| FR-COMP-04 | Platforms step: multi-select channels; per-channel caption adaptation (override text, hashtags, CTA per channel). | MUST |
-| FR-COMP-05 | Schedule step: choose "Post now", "Schedule at" (Jalali date+time picker), or "Add to queue". | MUST |
-| FR-COMP-06 | Live preview per selected platform (pixel-accurate mock: IG feed, IG story, TG channel post, Rubika message, LI share). | MUST |
-| FR-COMP-07 | Readiness check: validates caption length per platform, media specs, token validity, hashtag limits; surfaces blocking issues. | MUST |
-| FR-COMP-08 | Save as draft / duplicate / schedule-on-behalf-of (assignee). | MUST |
-| FR-COMP-09 | AI assistant: generate caption variants (Persian, brand-voice aware), suggest hashtags, suggest best-time. | SHOULD (P2) |
-| FR-COMP-10 | Submit for approval (Phase 2): routes to approvers; locks edits. | MUST (P2) |
-| FR-COMP-11 | Bulk compose (CSV) — NICE. | NICE (P3) |
+| ID         | Requirement                                                                                                                    | Priority    |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| FR-COMP-01 | Multi-step composer: Content → Media → Platforms → Schedule.                                                                   | MUST        |
+| FR-COMP-02 | Content step: title, caption (rich, bidi-safe), hashtags, internal note, campaign selector.                                    | MUST        |
+| FR-COMP-03 | Media step: upload from device or pick from media library; multi-asset; per-platform crop/aspect-ratio enforcement.            | MUST        |
+| FR-COMP-04 | Platforms step: multi-select channels; per-channel caption adaptation (override text, hashtags, CTA per channel).              | MUST        |
+| FR-COMP-05 | Schedule step: choose "Post now", "Schedule at" (Jalali date+time picker), or "Add to queue".                                  | MUST        |
+| FR-COMP-06 | Live preview per selected platform (pixel-accurate mock: IG feed, IG story, TG channel post, Rubika message, LI share).        | MUST        |
+| FR-COMP-07 | Readiness check: validates caption length per platform, media specs, token validity, hashtag limits; surfaces blocking issues. | MUST        |
+| FR-COMP-08 | Save as draft / duplicate / schedule-on-behalf-of (assignee).                                                                  | MUST        |
+| FR-COMP-09 | AI assistant: generate caption variants (Persian, brand-voice aware), suggest hashtags, suggest best-time.                     | SHOULD (P2) |
+| FR-COMP-10 | Submit for approval (Phase 2): routes to approvers; locks edits.                                                               | MUST (P2)   |
+| FR-COMP-11 | Bulk compose (CSV) — NICE.                                                                                                     | NICE (P3)   |
 
 ### 6.4 Calendar / Planner (FR-CAL)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-CAL-01 | Month / Week / Day views, all Jalali, Persian weekday names, Iranian holidays overlaid, Sat–Wed work-week shading. | MUST |
-| FR-CAL-02 | Posts rendered as color-coded chips by platform/status; multi-post days show count + popover. | MUST |
-| FR-CAL-03 | Drag-and-drop reschedule (with confirm); snap to allowed time slots; respects queue. | MUST |
-| FR-CAL-04 | Per-channel swimlane toggle / "all channels" overlay. | MUST |
-| FR-CAL-05 | Click empty slot → quick-create (opens Compose pre-filled). | MUST |
-| FR-CAL-06 | Agenda (list) view for accessibility. | SHOULD |
-| FR-CAL-07 | Queue sub-tab: list of pending jobs with status, retry, cancel, reassign. | MUST |
-| FR-CAL-08 | Best-time suggestions per channel (AI). | SHOULD (P2) |
-| FR-CAL-09 | Export calendar (PDF/CSV) and iCal feed. | NICE (P3) |
+| ID        | Requirement                                                                                                        | Priority    |
+| --------- | ------------------------------------------------------------------------------------------------------------------ | ----------- |
+| FR-CAL-01 | Month / Week / Day views, all Jalali, Persian weekday names, Iranian holidays overlaid, Sat–Wed work-week shading. | MUST        |
+| FR-CAL-02 | Posts rendered as color-coded chips by platform/status; multi-post days show count + popover.                      | MUST        |
+| FR-CAL-03 | Drag-and-drop reschedule (with confirm); snap to allowed time slots; respects queue.                               | MUST        |
+| FR-CAL-04 | Per-channel swimlane toggle / "all channels" overlay.                                                              | MUST        |
+| FR-CAL-05 | Click empty slot → quick-create (opens Compose pre-filled).                                                        | MUST        |
+| FR-CAL-06 | Agenda (list) view for accessibility.                                                                              | SHOULD      |
+| FR-CAL-07 | Queue sub-tab: list of pending jobs with status, retry, cancel, reassign.                                          | MUST        |
+| FR-CAL-08 | Best-time suggestions per channel (AI).                                                                            | SHOULD (P2) |
+| FR-CAL-09 | Export calendar (PDF/CSV) and iCal feed.                                                                           | NICE (P3)   |
 
 ### 6.5 Campaigns (FR-CAMP)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-CAMP-01 | Campaign portfolio list with health label/color, owner, progress, goal completion, days remaining, top blocker. | MUST |
-| FR-CAMP-02 | Create/edit campaign: name, description, status (active/paused/completed/archived), start/end dates (Jalali), goal type & value, owner. | MUST |
-| FR-CAMP-03 | Per-campaign command center tabs: Overview, Calendar, Posts, Media, Report. | MUST |
-| FR-CAMP-04 | Overview: health summary, progress vs goal, blocker, recent activity. | MUST |
-| FR-CAMP-05 | Posts: all posts in the campaign with status; filter/sort. | MUST |
-| FR-CAMP-06 | Media: media assets attached to campaign posts. | MUST |
-| FR-CAMP-07 | Report: campaign-scoped analytics (reach, engagement, conversions vs goal). | SHOULD (P2) |
-| FR-CAMP-08 | Archive / duplicate / clone-with-new-dates. | SHOULD |
+| ID         | Requirement                                                                                                                             | Priority    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| FR-CAMP-01 | Campaign portfolio list with health label/color, owner, progress, goal completion, days remaining, top blocker.                         | MUST        |
+| FR-CAMP-02 | Create/edit campaign: name, description, status (active/paused/completed/archived), start/end dates (Jalali), goal type & value, owner. | MUST        |
+| FR-CAMP-03 | Per-campaign command center tabs: Overview, Calendar, Posts, Media, Report.                                                             | MUST        |
+| FR-CAMP-04 | Overview: health summary, progress vs goal, blocker, recent activity.                                                                   | MUST        |
+| FR-CAMP-05 | Posts: all posts in the campaign with status; filter/sort.                                                                              | MUST        |
+| FR-CAMP-06 | Media: media assets attached to campaign posts.                                                                                         | MUST        |
+| FR-CAMP-07 | Report: campaign-scoped analytics (reach, engagement, conversions vs goal).                                                             | SHOULD (P2) |
+| FR-CAMP-08 | Archive / duplicate / clone-with-new-dates.                                                                                             | SHOULD      |
 
 ### 6.6 Content Library (FR-CONT)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-CONT-01 | Reusable content items (title, body, hashtags, note) with status lifecycle (draft → review → approved → scheduled → published → failed). | MUST |
-| FR-CONT-02 | Search by text, filter by status/campaign/platform/tag. | MUST |
-| FR-CONT-03 | Create from scratch or "save from composed post". | MUST |
-| FR-CONT-04 | Duplicate / version history. | SHOULD (P2) |
-| FR-CONT-05 | Bulk actions (tag, archive, delete). | SHOULD |
+| ID         | Requirement                                                                                                                              | Priority    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| FR-CONT-01 | Reusable content items (title, body, hashtags, note) with status lifecycle (draft → review → approved → scheduled → published → failed). | MUST        |
+| FR-CONT-02 | Search by text, filter by status/campaign/platform/tag.                                                                                  | MUST        |
+| FR-CONT-03 | Create from scratch or "save from composed post".                                                                                        | MUST        |
+| FR-CONT-04 | Duplicate / version history.                                                                                                             | SHOULD (P2) |
+| FR-CONT-05 | Bulk actions (tag, archive, delete).                                                                                                     | SHOULD      |
 
 ### 6.7 Media Library & Editor (FR-MEDIA)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-MEDIA-01 | Upload (image/video), store with metadata (name, type, size, dims, folder, tags). | MUST |
-| FR-MEDIA-02 | Folder organization (default: عمومی); tags; search; filter. | MUST |
-| FR-MEDIA-03 | Grid + list views; preview; reuse in Compose. | MUST |
-| FR-MEDIA-04 | Persian-first image editor: crop (per aspect ratio: 1:1, 4:5, 9:16, 16:9, 1.91:1), rotate, filters, text overlay (Vazirmatn, RTL), stickers/shapes. | MUST |
-| FR-MEDIA-05 | Video trim + thumbnail select (basic). | SHOULD (P3) |
-| FR-MEDIA-06 | Storage quota per plan; quota indicator. | MUST |
-| FR-MEDIA-07 | Media processing server-side (Sharp for images; ffmpeg for video thumbnails) with size/resolution enforcement per platform. | MUST |
+| ID          | Requirement                                                                                                                                         | Priority    |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| FR-MEDIA-01 | Upload (image/video), store with metadata (name, type, size, dims, folder, tags).                                                                   | MUST        |
+| FR-MEDIA-02 | Folder organization (default: عمومی); tags; search; filter.                                                                                         | MUST        |
+| FR-MEDIA-03 | Grid + list views; preview; reuse in Compose.                                                                                                       | MUST        |
+| FR-MEDIA-04 | Persian-first image editor: crop (per aspect ratio: 1:1, 4:5, 9:16, 16:9, 1.91:1), rotate, filters, text overlay (Vazirmatn, RTL), stickers/shapes. | MUST        |
+| FR-MEDIA-05 | Video trim + thumbnail select (basic).                                                                                                              | SHOULD (P3) |
+| FR-MEDIA-06 | Storage quota per plan; quota indicator.                                                                                                            | MUST        |
+| FR-MEDIA-07 | Media processing server-side (Sharp for images; ffmpeg for video thumbnails) with size/resolution enforcement per platform.                         | MUST        |
 
 ### 6.8 Inbox (FR-INBOX) — Phase 2
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-INBOX-01 | Unified stream of comments, DMs, mentions across connected channels; filter by channel/type/status/assignee. | MUST (P2) |
-| FR-INBOX-02 | Thread view; reply inline (publishes to the source channel via the appropriate API). | MUST (P2) |
-| FR-INBOX-03 | Assign a conversation to a member; SLA timer (first-response, resolution). | MUST (P2) |
-| FR-INBOX-04 | Saved replies (snippets) with variables (e.g., {name}). | MUST (P2) |
-| FR-INBOX-05 | Auto-tagging rules (keyword → tag). | SHOULD (P2) |
-| FR-INBOX-06 | Automation events log (comment-to-DM triggers fired, DMs sent, policy-window status). | MUST (P2) |
-| FR-INBOX-07 | Mark read/unread, archive, close. | MUST (P2) |
-| FR-INBOX-08 | Response-time analytics (median first-response, by channel/agent). | SHOULD (P2) |
+| ID          | Requirement                                                                                                  | Priority    |
+| ----------- | ------------------------------------------------------------------------------------------------------------ | ----------- |
+| FR-INBOX-01 | Unified stream of comments, DMs, mentions across connected channels; filter by channel/type/status/assignee. | MUST (P2)   |
+| FR-INBOX-02 | Thread view; reply inline (publishes to the source channel via the appropriate API).                         | MUST (P2)   |
+| FR-INBOX-03 | Assign a conversation to a member; SLA timer (first-response, resolution).                                   | MUST (P2)   |
+| FR-INBOX-04 | Saved replies (snippets) with variables (e.g., {name}).                                                      | MUST (P2)   |
+| FR-INBOX-05 | Auto-tagging rules (keyword → tag).                                                                          | SHOULD (P2) |
+| FR-INBOX-06 | Automation events log (comment-to-DM triggers fired, DMs sent, policy-window status).                        | MUST (P2)   |
+| FR-INBOX-07 | Mark read/unread, archive, close.                                                                            | MUST (P2)   |
+| FR-INBOX-08 | Response-time analytics (median first-response, by channel/agent).                                           | SHOULD (P2) |
 
 ### 6.9 Analytics & Reports (FR-ANL)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-ANL-01 | Executive metrics: engagement, reach, audience growth, active campaigns with period comparison and sparklines. | MUST |
-| FR-ANL-02 | Per-platform breakdown; per-campaign breakdown. | MUST |
-| FR-ANL-03 | Metrics taxonomy: reach, impressions, engagement rate, follower growth, link clicks, conversions (where measurable), publish success rate, inbox response time. | MUST |
-| FR-ANL-03a | Persian-digit formatting for all numbers; Jalali date axis on charts. | MUST |
-| FR-ANL-04 | Time-series charts (Recharts) with period selector. | MUST |
-| FR-ANL-05 | Exportable reports (PDF, CSV); scheduled email reports. | SHOULD (P3) |
-| FR-ANL-06 | Logs sub-tab: publishing audit log (attempts, payloads, errors) with filter/export. | MUST |
-| FR-ANL-07 | Best-time-to-post heatmap per channel. | SHOULD (P2) |
-| FR-ANL-08 | Competitor benchmarking / share of voice. | NICE (P4+) |
+| ID         | Requirement                                                                                                                                                     | Priority    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| FR-ANL-01  | Executive metrics: engagement, reach, audience growth, active campaigns with period comparison and sparklines.                                                  | MUST        |
+| FR-ANL-02  | Per-platform breakdown; per-campaign breakdown.                                                                                                                 | MUST        |
+| FR-ANL-03  | Metrics taxonomy: reach, impressions, engagement rate, follower growth, link clicks, conversions (where measurable), publish success rate, inbox response time. | MUST        |
+| FR-ANL-03a | Persian-digit formatting for all numbers; Jalali date axis on charts.                                                                                           | MUST        |
+| FR-ANL-04  | Time-series charts (Recharts) with period selector.                                                                                                             | MUST        |
+| FR-ANL-05  | Exportable reports (PDF, CSV); scheduled email reports.                                                                                                         | SHOULD (P3) |
+| FR-ANL-06  | Logs sub-tab: publishing audit log (attempts, payloads, errors) with filter/export.                                                                             | MUST        |
+| FR-ANL-07  | Best-time-to-post heatmap per channel.                                                                                                                          | SHOULD (P2) |
+| FR-ANL-08  | Competitor benchmarking / share of voice.                                                                                                                       | NICE (P4+)  |
 
 ### 6.10 Channels / Connections (FR-CH)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-CH-01 | Channel hub: list connected accounts per platform with status, last success, last error, token expiry. | MUST |
-| FR-CH-02 | Instagram: OAuth flow (Meta), connect professional account, store tokens (encrypted), refresh. | MUST |
-| FR-CH-03 | Rubika: add bot token + chat_id; health check (send test). | MUST |
-| FR-CH-04 | Telegram: add bot token; connect to channel as admin; health check. | MUST (P2) |
-| FR-CH-05 | LinkedIn: OAuth flow; connect member/page. | MUST (P2) |
-| FR-CH-06 | Token expiry warnings (Action Center + email). | MUST |
-| FR-CH-07 | Disconnect / reconnect; per-account enable/disable. | MUST |
-| FR-CH-08 | Channel detail page with breadcrumbs; per-account analytics link. | SHOULD |
+| ID       | Requirement                                                                                            | Priority  |
+| -------- | ------------------------------------------------------------------------------------------------------ | --------- |
+| FR-CH-01 | Channel hub: list connected accounts per platform with status, last success, last error, token expiry. | MUST      |
+| FR-CH-02 | Instagram: OAuth flow (Meta), connect professional account, store tokens (encrypted), refresh.         | MUST      |
+| FR-CH-03 | Rubika: add bot token + chat_id; health check (send test).                                             | MUST      |
+| FR-CH-04 | Telegram: add bot token; connect to channel as admin; health check.                                    | MUST (P2) |
+| FR-CH-05 | LinkedIn: OAuth flow; connect member/page.                                                             | MUST (P2) |
+| FR-CH-06 | Token expiry warnings (Action Center + email).                                                         | MUST      |
+| FR-CH-07 | Disconnect / reconnect; per-account enable/disable.                                                    | MUST      |
+| FR-CH-08 | Channel detail page with breadcrumbs; per-account analytics link.                                      | SHOULD    |
 
 ### 6.11 Settings / Brand Kit (FR-SET)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-SET-01 | Store/workspace profile: name, category, phone, description, logo, avatar, timezone (default Asia/Tehran). | MUST |
-| FR-SET-02 | Brand kit: primary color, accent color, brand voice, default CTA, content guidelines, default hashtags, caption footer. | MUST |
-| FR-SET-03 | Brand kit consumed by Compose (default hashtags/footer appended) and AI assistant (brand-voice conditioning). | MUST |
-| FR-SET-04 | Team members list with roles; invite/remove. | MUST (P2) |
-| FR-SET-05 | Notification preferences (email, in-app). | SHOULD |
-| FR-SET-06 | Billing & plan (IRR, local gateway). | MUST (P1 launch) |
-| FR-SET-07 | Workspace export (content, media metadata, analytics CSV). | SHOULD (P3) |
+| ID        | Requirement                                                                                                             | Priority         |
+| --------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| FR-SET-01 | Store/workspace profile: name, category, phone, description, logo, avatar, timezone (default Asia/Tehran).              | MUST             |
+| FR-SET-02 | Brand kit: primary color, accent color, brand voice, default CTA, content guidelines, default hashtags, caption footer. | MUST             |
+| FR-SET-03 | Brand kit consumed by Compose (default hashtags/footer appended) and AI assistant (brand-voice conditioning).           | MUST             |
+| FR-SET-04 | Team members list with roles; invite/remove.                                                                            | MUST (P2)        |
+| FR-SET-05 | Notification preferences (email, in-app).                                                                               | SHOULD           |
+| FR-SET-06 | Billing & plan (IRR, local gateway).                                                                                    | MUST (P1 launch) |
+| FR-SET-07 | Workspace export (content, media metadata, analytics CSV).                                                              | SHOULD (P3)      |
 
 ### 6.12 Notifications (FR-NOTIF)
 
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| FR-NOTIF-01 | In-app notification center (bell) with unread badge. | MUST |
-| FR-NOTIF-02 | Events: publish success/failed, approval requested/approved/rejected, inbox new message, token expiring, channel disconnected. | MUST |
-| FR-NOTIF-03 | Email notifications (configurable). | SHOULD |
-| FR-NOTIF-04 | Real-time push via WebSocket. | SHOULD |
+| ID          | Requirement                                                                                                                    | Priority |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ | -------- |
+| FR-NOTIF-01 | In-app notification center (bell) with unread badge.                                                                           | MUST     |
+| FR-NOTIF-02 | Events: publish success/failed, approval requested/approved/rejected, inbox new message, token expiring, channel disconnected. | MUST     |
+| FR-NOTIF-03 | Email notifications (configurable).                                                                                            | SHOULD   |
+| FR-NOTIF-04 | Real-time push via WebSocket.                                                                                                  | SHOULD   |
 
 ## 7. Non-Functional Requirements (NFR)
 
 ### 7.1 Performance
+
 - **NFR-PERF-01**: First Contentful Paint ≤ 1.5s, Largest Contentful Paint ≤ 2.5s on the
   dashboard route (4G mobile profile, Iran network, P75).
 - **NFR-PERF-02**: API P95 response ≤ 300ms for read endpoints, ≤ 600ms for write
@@ -313,6 +323,7 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
   on the target infra.
 
 ### 7.2 Scalability
+
 - **NFR-SCALE-01**: Architecture supports 10,000 workspaces and 100,000 scheduled jobs/day
   at launch-target infra; horizontally scalable workers.
 - **NFR-SCALE-02**: Per-channel queue isolation prevents one channel's rate-limit from
@@ -321,6 +332,7 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
   primary.
 
 ### 7.3 Reliability & Resilience
+
 - **NFR-REL-01**: Publish success rate ≥ 98% (rolling 24h).
 - **NFR-REL-02**: Zero data loss on worker crash — durable state machine + idempotency.
 - **NFR-REL-03**: Retry with exponential backoff + jitter; circuit breaker per channel.
@@ -329,6 +341,7 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
   retry; other channels unaffected; UI surfaces the channel status.
 
 ### 7.4 Security
+
 - **NFR-SEC-01**: All secrets (OAuth tokens, bot tokens) encrypted at rest (AES-256);
   keys in a secrets manager, never in code/DB plaintext.
 - **NFR-SEC-02**: TLS 1.2+ everywhere; HSTS; secure cookies.
@@ -339,6 +352,7 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
 - **NFR-SEC-07**: Data residency: option to host in Iran for Iran customers (P3).
 
 ### 7.5 Observability
+
 - **NFR-OBS-01**: Structured logging (JSON) with request IDs; centralized log retention
   ≥ 90 days.
 - **NFR-OBS-02**: Metrics (Prometheus-style): publish success rate, queue depth, worker
@@ -348,20 +362,23 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
 - **NFR-OBS-04**: Distributed tracing across frontend → API → worker → channel adapter.
 
 ### 7.6 Maintainability
+
 - **NFR-MAINT-01**: TypeScript strict; Python type hints; ≥ 80% line coverage on
   business logic.
 - **NFR-MAINT-02**: E2E (Playwright) covering all golden paths; runs in CI.
 - **NFR-MAINT-03**: Lint + typecheck gates in CI; no merge on failure.
 - **NFR-MAINT-04**: migrations are reversible and tested; CI runs `alembic upgrade head`
-  + `alembic downgrade -1` + `upgrade head`.
+  - `alembic downgrade -1` + `upgrade head`.
 
 ### 7.7 Accessibility
+
 - **NFR-A11Y-01**: WCAG 2.1 AA: semantic HTML, ARIA, keyboard nav, focus management,
   color contrast ≥ 4.5:1 (3:1 for large text).
 - **NFR-A11Y-02**: Screen-reader tested (NVDA/VoiceOver) on key flows.
 - **NFR-A11Y-03**: RTL-correct focus order and mirroring; no LTR assumptions.
 
 ### 7.8 Localization & i18n
+
 - **NFR-I18N-01**: All UI strings externalized (Persian default); English fallback for
   vendor/dev.
 - **NFR-I18N-02**: Persian-digit formatting utility; applied to all numbers/dates in UI.
@@ -422,6 +439,7 @@ is in [04_Roadmap.md](./04_ROADMAP.md).
 ### 8.6 Adapter contract (all channels)
 
 Every channel adapter implements a common interface:
+
 ```
 class ChannelAdapter:
     async def health_check(account) -> HealthResult
@@ -431,6 +449,7 @@ class ChannelAdapter:
     async def fetch_inbox(account, since) -> list[InboundMessage]   # Phase 2
     async def reply(account, message, text) -> ReplyResult           # Phase 2
 ```
+
 - Adapters are **stateless** (all state in DB); safe to run in parallel workers.
 - Every adapter call is wrapped in retry+backoff with channel-specific policies.
 
@@ -483,11 +502,13 @@ schema (`Workspace`, `WorkspaceMember`, `Platform`, `Campaign`, `Content`,
 This flagship feature is specified in detail here because of its policy sensitivity.
 
 ### 11.1 Objective
+
 Allow a workspace to define rules: "when a user comments a specific keyword on a
 specific Instagram post (or all posts), automatically send them a DM with defined
 content" — compliant with Meta's Messaging API policy, tuned for Persian commerce.
 
 ### 11.2 Rule model
+
 ```
 AutomationRule {
   id, workspace_id, instagram_account_id,
@@ -502,6 +523,7 @@ AutomationRule {
 ```
 
 ### 11.3 Trigger flow
+
 1. Instagram webhook delivers a `comments` event to the backend.
 2. Automation engine evaluates enabled rules for that post + account.
 3. If a rule matches (keyword/regex, with Persian/Arabic-Indic digit normalization),
@@ -512,6 +534,7 @@ AutomationRule {
    status, sent_at, policy_window_expires_at).
 
 ### 11.4 Compliance rules (non-negotiable)
+
 - **24-hour window**: DMs only sent within 24h of the user's comment. If outside, log
   `skipped_window_expired` and surface in inbox for manual reply.
 - **`HUMAN_AGENT` tag**: used only for genuine support follow-up, extends to 7 days;
@@ -525,6 +548,7 @@ AutomationRule {
   review.
 
 ### 11.5 Persian-specific handling
+
 - **Digit normalization**: normalize Persian (۰-۹) and Arabic-Indic (٠-٩) digits to
   ASCII (0-9) before regex match, so "کد۱" and "کد1" both match rule "کد\d+".
 - **Keyword sets**: common Persian commerce triggers pre-seeded (کد, قیمت, لینک,
@@ -533,6 +557,7 @@ AutomationRule {
   directional marks.
 
 ### 11.6 Personal-account fallback
+
 Personal Instagram accounts cannot use the Messaging API → automation is **disabled**;
 the inbox surfaces triggering comments for manual reply (reminder mode).
 
@@ -563,17 +588,18 @@ spec. Headline requirements:
 The vendor shall deliver the phased milestones in [04_Roadmap.md](./04_ROADMAP.md). At
 each phase exit, the following are required:
 
-| Deliverable | Per phase |
-|-------------|-----------|
-| Working software deployed to staging | ✅ |
-| E2E test suite covering the phase's golden paths, passing in CI | ✅ |
-| Updated API documentation (OpenAPI) | ✅ |
-| Migration scripts (reversible, tested up/down/up) | ✅ |
-| Lighthouse + a11y audit report | ✅ |
-| Release notes (Persian + English) | ✅ |
-| Demo walkthrough (recorded) | ✅ |
+| Deliverable                                                     | Per phase |
+| --------------------------------------------------------------- | --------- |
+| Working software deployed to staging                            | ✅        |
+| E2E test suite covering the phase's golden paths, passing in CI | ✅        |
+| Updated API documentation (OpenAPI)                             | ✅        |
+| Migration scripts (reversible, tested up/down/up)               | ✅        |
+| Lighthouse + a11y audit report                                  | ✅        |
+| Release notes (Persian + English)                               | ✅        |
+| Demo walkthrough (recorded)                                     | ✅        |
 
 **Key milestones** (target dates in [04_Roadmap.md](./04_ROADMAP.md)):
+
 - M1 — MVP (Phase 1) staging: multi-channel publish live end-to-end.
 - M2 — Collaboration & Engagement (Phase 2): inbox + approvals + automation live.
 - M3 — GA launch (end of Phase 2 hardening): production, billing, onboarding.
@@ -582,6 +608,7 @@ each phase exit, the following are required:
 ## 14. Technical Constraints & Stack
 
 **Mandatory stack** (non-negotiable):
+
 - **Frontend**: Next.js 16 (App Router), TypeScript 5 strict, Tailwind CSS 4,
   shadcn/ui (New York), Vazirmatn font, next-themes, Zustand (client state),
   TanStack Query (server state), Recharts (charts), Framer Motion (motion).
@@ -593,6 +620,7 @@ each phase exit, the following are required:
   provided `.github/workflows/ci.yml` is the baseline.
 
 **Constraints**:
+
 - z-ai-web-dev-sdk (if used for AI features) runs **server-side only**.
 - No client-side secrets; all channel API calls go through the backend.
 - All API requests use relative paths (Caddy gateway in the sandbox; production uses
@@ -601,6 +629,7 @@ each phase exit, the following are required:
 ## 15. Acceptance Criteria & Definition of Done
 
 A feature is **Done** when **all** of the following hold:
+
 1. Functional requirements met and verified in the browser (Agent Browser or Playwright).
 2. E2E test(s) written and passing in CI.
 3. Lint + typecheck clean.
@@ -618,20 +647,21 @@ A feature is **Done** when **all** of the following hold:
 
 Proposals will be evaluated on:
 
-| Criterion | Weight |
-|-----------|--------|
-| Demonstrated understanding of Persian-first / RTL / Jalali challenges | 20% |
-| Proven experience with Next.js 16 + FastAPI + Celery + PostgreSQL at scale | 15% |
-| Proven experience with Meta Graph API (IG publishing + Messaging) | 15% |
-| Resilient systems design (queue/retry/idempotency/circuit breaker) | 15% |
-| UX/design quality (portfolio of RTL or Persian products a plus) | 10% |
-| Testing discipline (E2E, CI, coverage) | 10% |
-| Timeline realism & phased delivery plan | 10% |
-| Price / value | 5% |
+| Criterion                                                                  | Weight |
+| -------------------------------------------------------------------------- | ------ |
+| Demonstrated understanding of Persian-first / RTL / Jalali challenges      | 20%    |
+| Proven experience with Next.js 16 + FastAPI + Celery + PostgreSQL at scale | 15%    |
+| Proven experience with Meta Graph API (IG publishing + Messaging)          | 15%    |
+| Resilient systems design (queue/retry/idempotency/circuit breaker)         | 15%    |
+| UX/design quality (portfolio of RTL or Persian products a plus)            | 10%    |
+| Testing discipline (E2E, CI, coverage)                                     | 10%    |
+| Timeline realism & phased delivery plan                                    | 10%    |
+| Price / value                                                              | 5%     |
 
 ## 17. Response Format & Submission
 
 The vendor's proposal shall include:
+
 1. **Executive summary** (1–2 pages): understanding of the problem, proposed approach.
 2. **Team**: roles, experience, relevant past work (especially Persian/RTL + Meta API).
 3. **Technical approach**: architecture confirmation or proposed changes to
@@ -645,6 +675,7 @@ The vendor's proposal shall include:
 ## 18. Terms, Assumptions & Risks
 
 **Assumptions**:
+
 - The client provides Meta App credentials (App ID/secret, reviewed scopes) and a
   verified Instagram professional + Facebook Page for development.
 - The client provides Rubika/Telegram bot tokens for development.
@@ -653,6 +684,7 @@ The vendor's proposal shall include:
   contract signature.
 
 **Risks to price/schedule** (shared):
+
 - Meta App Review latency (can take weeks) — mitigation: begin review day one; develop
   against a test app in the meantime.
 - Rubika/Eitaa API instability — mitigation: adapter resilience + manual fallback.
@@ -665,4 +697,4 @@ change-request process signed by both parties.
 
 ---
 
-*End of RFP.*
+_End of RFP._

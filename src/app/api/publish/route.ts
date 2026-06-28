@@ -31,16 +31,23 @@ export async function POST(req: Request) {
 
   // Fetch the authenticated user's name (fallback to workspace member or 'â€”')
   const session = await getServerSession(authOptions)
-  const authorName = (session?.user as any)?.name
-    || (await db.workspaceMember.findFirst({
-         where: { userId: (session?.user as any)?.id },
-         select: { name: true },
-       }))?.name
-    || 'â€”'
+  const authorName =
+    (session?.user as any)?.name ||
+    (
+      await db.workspaceMember.findFirst({
+        where: { userId: (session?.user as any)?.id },
+        select: { name: true },
+      })
+    )?.name ||
+    'â€”'
 
   let body
   const raw = await req.json().catch(() => null)
-  if (!raw) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ط¯ط±ط®ظˆط§ط³طھ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ' }, { status: 400 })
+  if (!raw)
+    return NextResponse.json(
+      { error: 'ط¨ط¯ظ†ظ‡ ط¯ط±ط®ظˆط§ط³طھ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ' },
+      { status: 400 }
+    )
 
   const validation = validateBody(publishSchema, raw)
   if (!validation.success) {
@@ -51,7 +58,10 @@ export async function POST(req: Request) {
   const mode = body.mode ?? 'publish'
 
   if (mode === 'publish' && (!body.platformTypes || body.platformTypes.length === 0)) {
-    return NextResponse.json({ error: 'ط­ط¯ط§ظ‚ظ„ غŒع© ظ¾ظ„طھظپط±ظ… ط¨ط§غŒط¯ ط§ظ†طھط®ط§ط¨ ط´ظˆط¯' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'ط­ط¯ط§ظ‚ظ„ غŒع© ظ¾ظ„طھظپط±ظ… ط¨ط§غŒط¯ ط§ظ†طھط®ط§ط¨ ط´ظˆط¯' },
+      { status: 400 }
+    )
   }
 
   // Resolve platforms for the selected types (one job per connected platform)
@@ -65,15 +75,19 @@ export async function POST(req: Request) {
 
   if (platforms.length === 0) {
     return NextResponse.json(
-      { error: 'ظ‡غŒع† ظ¾ظ„طھظپط±ظ… ظ…طھطµظ„غŒ ط¨ط±ط§غŒ ظ¾ظ„طھظپط±ظ…â€Œظ‡ط§غŒ ط§ظ†طھط®ط§ط¨â€Œط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯' },
-      { status: 400 },
+      {
+        error:
+          'ظ‡غŒع† ظ¾ظ„طھظپط±ظ… ظ…طھطµظ„غŒ ط¨ط±ط§غŒ ظ¾ظ„طھظپط±ظ…â€Œظ‡ط§غŒ ط§ظ†طھط®ط§ط¨â€Œط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯',
+      },
+      { status: 400 }
     )
   }
 
   // Resolve media
-  const media = body.mediaIds && body.mediaIds.length > 0
-    ? await db.media.findMany({ where: { id: { in: body.mediaIds }, workspaceId } })
-    : []
+  const media =
+    body.mediaIds && body.mediaIds.length > 0
+      ? await db.media.findMany({ where: { id: { in: body.mediaIds }, workspaceId } })
+      : []
   const thumbnailUrl = media[0]?.thumbnailUrl ?? media[0]?.url ?? null
 
   // Compute scheduled time (only for publish mode)
@@ -146,7 +160,7 @@ export async function POST(req: Request) {
           jobId: job.id,
           idempotencyKey: job.idempotencyKey,
           contentId: result.content.id,
-          platformId: platforms.find(p => p.type === job.platform)?.id ?? '',
+          platformId: platforms.find((p) => p.type === job.platform)?.id ?? '',
           workspaceId,
           scheduledAt: scheduledAt ?? null,
         })
@@ -182,19 +196,22 @@ export async function POST(req: Request) {
     })
   }
 
-  return NextResponse.json({
-    contentId: result.content.id,
-    jobs: result.jobs,
-    scheduledAt: scheduledAt?.toISOString() ?? null,
-    message:
-      mode === 'review'
-        ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ طھط£غŒغŒط¯ ط§ط±ط³ط§ظ„ ط´ط¯'
-        : body.scheduleMode === 'now'
-          ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ ط§ظ†طھط´ط§ط± ط§ط±ط³ط§ظ„ ط´ط¯'
-          : body.scheduleMode === 'schedule'
-            ? 'ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ ط§ظ†طھط´ط§ط± ط«ط¨طھ ط´ط¯'
-            : 'ظ…ط­طھظˆط§ ط¨ظ‡ طµظپ ط§ظ†طھط´ط§ط± ط§ظپط²ظˆط¯ظ‡ ط´ط¯',
-  }, { status: 201 })
+  return NextResponse.json(
+    {
+      contentId: result.content.id,
+      jobs: result.jobs,
+      scheduledAt: scheduledAt?.toISOString() ?? null,
+      message:
+        mode === 'review'
+          ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ طھط£غŒغŒط¯ ط§ط±ط³ط§ظ„ ط´ط¯'
+          : body.scheduleMode === 'now'
+            ? 'ظ…ط­طھظˆط§ ط¨ط±ط§غŒ ط§ظ†طھط´ط§ط± ط§ط±ط³ط§ظ„ ط´ط¯'
+            : body.scheduleMode === 'schedule'
+              ? 'ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ ط§ظ†طھط´ط§ط± ط«ط¨طھ ط´ط¯'
+              : 'ظ…ط­طھظˆط§ ط¨ظ‡ طµظپ ط§ظ†طھط´ط§ط± ط§ظپط²ظˆط¯ظ‡ ط´ط¯',
+    },
+    { status: 201 }
+  )
 }
 
 /**
@@ -216,15 +233,24 @@ function computeScheduledAt(body: PublishRequest): Date | null {
 }
 
 /** Jalali â†’ Gregorian conversion (same algorithm as src/lib/jalali.ts) */
-function jalaliToGregorian(jy: number, jm: number, jd: number): { year: number; month: number; day: number } {
-  function div(a: number, b: number) { return Math.floor(a / b) }
-  function mod(a: number, b: number) { return a - Math.floor(a / b) * b }
+function jalaliToGregorian(
+  jy: number,
+  jm: number,
+  jd: number
+): { year: number; month: number; day: number } {
+  function div(a: number, b: number) {
+    return Math.floor(a / b)
+  }
+  function mod(a: number, b: number) {
+    return a - Math.floor(a / b) * b
+  }
 
   const sal_a = jy <= 979 ? 0 : -1595
   const gy_a = jy <= 979 ? 621 + jy : 1600 + jy - 979
-  const days_a = jy <= 979
-    ? 365 * jy + div(8 + jy, 33) * 8 + div(mod(8 + jy, 33) + 3, 4) + sal_a
-    : 365 * (jy - 979) + div(jy, 33) * 8 + div(mod(jy, 33) + 3, 4) + 1081
+  const days_a =
+    jy <= 979
+      ? 365 * jy + div(8 + jy, 33) * 8 + div(mod(8 + jy, 33) + 3, 4) + sal_a
+      : 365 * (jy - 979) + div(jy, 33) * 8 + div(mod(jy, 33) + 3, 4) + 1081
   let days_b = days_a + 179 + (jm <= 7 ? (jm - 1) * 31 : (jm - 1) * 30 + 186) + jd
 
   let gy = gy_a + 400 * div(days_b, 146097)
@@ -257,7 +283,20 @@ function jalaliToGregorian(jy: number, jm: number, jd: number): { year: number; 
     n += 1
   }
 
-  const md = [31, (gy % 4 === 0 && (gy % 100 !== 0 || gy % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  const md = [
+    31,
+    gy % 4 === 0 && (gy % 100 !== 0 || gy % 400 === 0) ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31,
+  ]
   let gm = 0
   let gd = 0
   for (let i = 0; i < md.length; i++) {

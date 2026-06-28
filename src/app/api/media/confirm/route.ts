@@ -47,7 +47,10 @@ export async function POST(req: NextRequest) {
   const buffer = await fetchObjectHead(key)
   if (!buffer) {
     await db.media.delete({ where: { id: mediaId } })
-    return NextResponse.json({ error: 'ظپط§غŒظ„ ط¢ظ¾ظ„ظˆط¯ط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯' }, { status: 404 })
+    return NextResponse.json(
+      { error: 'ظپط§غŒظ„ ط¢ظ¾ظ„ظˆط¯ط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯' },
+      { status: 404 }
+    )
   }
 
   const validation_result = validateMagicBytes(buffer)
@@ -55,9 +58,12 @@ export async function POST(req: NextRequest) {
     // Invalid file â€” delete from storage + DB
     await deleteObject(key)
     await db.media.delete({ where: { id: mediaId } })
-    return NextResponse.json({
-      error: 'ظپط§غŒظ„ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ â€” ظپط±ظ…طھ طھطµظˆغŒط± طھط£غŒغŒط¯ ظ†ط´ط¯',
-    }, { status: 400 })
+    return NextResponse.json(
+      {
+        error: 'ظپط§غŒظ„ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ â€” ظپط±ظ…طھ طھطµظˆغŒط± طھط£غŒغŒط¯ ظ†ط´ط¯',
+      },
+      { status: 400 }
+    )
   }
 
   // Generate thumbnail via sharp (400أ—400 WebP)

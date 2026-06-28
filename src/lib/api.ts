@@ -1,8 +1,8 @@
 // Typed API helpers for the Nashrino backend (Next.js route handlers).
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  nextCursor: string | null;
+  data: T[]
+  nextCursor: string | null
 }
 
 async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {

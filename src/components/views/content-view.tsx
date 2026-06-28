@@ -1,135 +1,158 @@
-"use client";
+'use client'
 
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
-import { FileText, Plus, Search, MoreHorizontal, Pencil, Copy, Trash2, Filter, Send, Check, X } from "lucide-react";
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
+import { toast } from 'sonner'
+import {
+  FileText,
+  Plus,
+  Search,
+  MoreHorizontal,
+  Pencil,
+  Copy,
+  Trash2,
+  Filter,
+  Send,
+  Check,
+  X,
+} from 'lucide-react'
 
-import { api } from "@/lib/api";
-import { relativeTime, toPersianDigits } from "@/lib/jalali";
-import { SectionTitle, StatusBadge, PlatformDot, EmptyState, Skeleton, LoadingState } from "@/components/dashboard/shared";
-import { announce } from "@/lib/aria-live";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
+import { api } from '@/lib/api'
+import { relativeTime, toPersianDigits } from '@/lib/jalali'
+import {
+  SectionTitle,
+  StatusBadge,
+  PlatformDot,
+  EmptyState,
+  Skeleton,
+  LoadingState,
+} from '@/components/dashboard/shared'
+import { announce } from '@/lib/aria-live'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from '@/components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+} from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 interface ContentItem {
-  id: string;
-  title: string;
-  body: string | null;
-  hashtags: string | null;
-  status: string;
-  authorName: string | null;
-  thumbnail: string | null;
-  campaign: string;
-  platforms: string[];
-  scheduledAt: string | null;
-  publishedAt: string | null;
-  updatedAt: string;
+  id: string
+  title: string
+  body: string | null
+  hashtags: string | null
+  status: string
+  authorName: string | null
+  thumbnail: string | null
+  campaign: string
+  platforms: string[]
+  scheduledAt: string | null
+  publishedAt: string | null
+  updatedAt: string
 }
 
 interface Campaign {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
 const STATUS_VARIANT_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  review: "در حال بررسی",
-  approved: "تأییدشده",
-  rejected: "ردشده",
-  scheduled: "برنامه‌ریزی‌شده",
-  published: "منتشرشده",
-  failed: "ناموفق",
-};
+  draft: 'پیش‌نویس',
+  review: 'در حال بررسی',
+  approved: 'تأییدشده',
+  rejected: 'ردشده',
+  scheduled: 'برنامه‌ریزی‌شده',
+  published: 'منتشرشده',
+  failed: 'ناموفق',
+}
 
 export function ContentView() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [campaignFilter, setCampaignFilter] = useState<string>("all");
-  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [campaignFilter, setCampaignFilter] = useState<string>('all')
+  const queryClient = useQueryClient()
 
   const { data: content, isLoading } = useQuery<ContentItem[]>({
-    queryKey: ["content"],
-    queryFn: () => api.getPaginated<ContentItem>("/api/content"),
-  });
+    queryKey: ['content'],
+    queryFn: () => api.getPaginated<ContentItem>('/api/content'),
+  })
   const { data: campaigns } = useQuery<Campaign[]>({
-    queryKey: ["campaigns"],
-    queryFn: () => api.get<Campaign[]>("/api/campaigns"),
-  });
+    queryKey: ['campaigns'],
+    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+  })
 
   const filtered = useMemo(() => {
-    if (!content) return [];
+    if (!content) return []
     return content.filter((c) => {
-      if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false;
-      if (statusFilter !== "all" && c.status !== statusFilter) return false;
-      if (campaignFilter !== "all" && c.campaign !== campaignFilter) return false;
-      return true;
-    });
-  }, [content, search, statusFilter, campaignFilter]);
+      if (search && !c.title.toLowerCase().includes(search.toLowerCase())) return false
+      if (statusFilter !== 'all' && c.status !== statusFilter) return false
+      if (campaignFilter !== 'all' && c.campaign !== campaignFilter) return false
+      return true
+    })
+  }, [content, search, statusFilter, campaignFilter])
 
   // Optimistic create: append a draft row to the ["content"] cache in <100ms.
   // The backend create endpoint is not implemented yet; the mutationFn resolves
   // immediately so the optimistic update remains visible.
   const createContentMutation = useMutation<ContentItem, Error, ContentItem>({
     mutationFn: async (newItem) => {
-      await new Promise((r) => setTimeout(r, 120));
-      return newItem;
+      await new Promise((r) => setTimeout(r, 120))
+      return newItem
     },
     onMutate: async (newItem) => {
-      await queryClient.cancelQueries({ queryKey: ["content"] });
-      const previous = queryClient.getQueryData<ContentItem[]>(["content"]);
-      queryClient.setQueryData<ContentItem[]>(["content"], (old) => [
-        newItem,
-        ...(old ?? []),
-      ]);
-      announce("محتوای جدید اضافه شد");
-      return { previous };
+      await queryClient.cancelQueries({ queryKey: ['content'] })
+      const previous = queryClient.getQueryData<ContentItem[]>(['content'])
+      queryClient.setQueryData<ContentItem[]>(['content'], (old) => [newItem, ...(old ?? [])])
+      announce('محتوای جدید اضافه شد')
+      return { previous }
     },
     onError: (_err, _newItem, context: any) => {
-      if (context?.previous) queryClient.setQueryData(["content"], context.previous);
-      toast.error("ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.");
-      announce("خطا در ایجاد محتوا", "assertive");
+      if (context?.previous) queryClient.setQueryData(['content'], context.previous)
+      toast.error('ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.')
+      announce('خطا در ایجاد محتوا', 'assertive')
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["content"] });
+      queryClient.invalidateQueries({ queryKey: ['content'] })
     },
-  });
+  })
 
   const handleCreateContent = () => {
     const newItem: ContentItem = {
       id: `optimistic-${Date.now()}`,
-      title: "محتوای بدون عنوان",
+      title: 'محتوای بدون عنوان',
       body: null,
       hashtags: null,
-      status: "draft",
+      status: 'draft',
       authorName: null,
       thumbnail: null,
-      campaign: "بدون کمپین",
+      campaign: 'بدون کمپین',
       platforms: [],
       scheduledAt: null,
       publishedAt: null,
       updatedAt: new Date().toISOString(),
-    };
-    createContentMutation.mutate(newItem);
-    toast.success("محتوای جدید ایجاد شد.");
-  };
+    }
+    createContentMutation.mutate(newItem)
+    toast.success('محتوای جدید ایجاد شد.')
+  }
 
   return (
     <motion.div
@@ -221,7 +244,12 @@ export function ContentView() {
               message="با فیلترهای دیگر امتحان کنید یا مستقیماً یک محتوای جدید بسازید."
               illustration="content"
               action={
-                <Button size="sm" className="n-focus-ring" onClick={handleCreateContent} disabled={createContentMutation.isPending}>
+                <Button
+                  size="sm"
+                  className="n-focus-ring"
+                  onClick={handleCreateContent}
+                  disabled={createContentMutation.isPending}
+                >
                   <Plus className="size-4" />
                   ساخت محتوا
                 </Button>
@@ -232,12 +260,24 @@ export function ContentView() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">محتوا</TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">وضعیت</TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">کمپین</TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">پلتفرم‌ها</TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">نویسنده</TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">به‌روزرسانی</TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                      محتوا
+                    </TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                      وضعیت
+                    </TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                      کمپین
+                    </TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                      پلتفرم‌ها
+                    </TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                      نویسنده
+                    </TableHead>
+                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                      به‌روزرسانی
+                    </TableHead>
                     <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -247,15 +287,23 @@ export function ContentView() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           {c.thumbnail ? (
-                            <img src={c.thumbnail} alt="" className="size-10 rounded-lg object-cover shrink-0" />
+                            <img
+                              src={c.thumbnail}
+                              alt=""
+                              className="size-10 rounded-lg object-cover shrink-0"
+                            />
                           ) : (
                             <div className="size-10 rounded-lg bg-border flex items-center justify-center shrink-0">
                               <FileText className="size-4 text-ink-tertiary" />
                             </div>
                           )}
                           <div className="min-w-0 max-w-48">
-                            <p className="text-[13px] font-[600] text-ink-primary truncate">{c.title}</p>
-                            <p className="text-[11px] text-ink-tertiary truncate line-clamp-1">{c.body ?? "—"}</p>
+                            <p className="text-[13px] font-[600] text-ink-primary truncate">
+                              {c.title}
+                            </p>
+                            <p className="text-[11px] text-ink-tertiary truncate line-clamp-1">
+                              {c.body ?? '—'}
+                            </p>
                           </div>
                         </div>
                       </TableCell>
@@ -273,12 +321,14 @@ export function ContentView() {
                           {c.platforms.length === 0 ? (
                             <span className="text-[11px] text-ink-tertiary">—</span>
                           ) : (
-                            c.platforms.map((p, i) => <PlatformDot key={`${p}-${i}`} platform={p} />)
+                            c.platforms.map((p, i) => (
+                              <PlatformDot key={`${p}-${i}`} platform={p} />
+                            ))
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-[12px] text-ink-secondary">
-                        {c.authorName ?? "—"}
+                        {c.authorName ?? '—'}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell text-[11px] text-ink-tertiary">
                         {relativeTime(new Date(c.updatedAt))}
@@ -292,55 +342,74 @@ export function ContentView() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {/* Approval actions */}
-                            {(c.status === "draft" || c.status === "rejected") && (
-                              <DropdownMenuItem onClick={async () => {
-                                try {
-                                  await api.post(`/api/content/${c.id}/submit-review`, {});
-                                  toast.success("برای بررسی ارسال شد");
-                                  queryClient.invalidateQueries({ queryKey: ["content"] });
-                                } catch { toast.error("خطا در ارسال"); }
-                              }}>
+                            {(c.status === 'draft' || c.status === 'rejected') && (
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  try {
+                                    await api.post(`/api/content/${c.id}/submit-review`, {})
+                                    toast.success('برای بررسی ارسال شد')
+                                    queryClient.invalidateQueries({ queryKey: ['content'] })
+                                  } catch {
+                                    toast.error('خطا در ارسال')
+                                  }
+                                }}
+                              >
                                 <Send className="size-3.5" />
                                 ارسال برای بررسی
                               </DropdownMenuItem>
                             )}
-                            {c.status === "review" && (
+                            {c.status === 'review' && (
                               <>
-                                <DropdownMenuItem onClick={async () => {
-                                  try {
-                                    await api.post(`/api/content/${c.id}/approve`, {});
-                                    toast.success("تأیید شد ✓");
-                                    queryClient.invalidateQueries({ queryKey: ["content"] });
-                                  } catch { toast.error("خطا در تأیید"); }
-                                }}>
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      await api.post(`/api/content/${c.id}/approve`, {})
+                                      toast.success('تأیید شد ✓')
+                                      queryClient.invalidateQueries({ queryKey: ['content'] })
+                                    } catch {
+                                      toast.error('خطا در تأیید')
+                                    }
+                                  }}
+                                >
                                   <Check className="size-3.5" />
                                   تأیید محتوا
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-danger focus:text-danger" onClick={async () => {
-                                  try {
-                                    await api.post(`/api/content/${c.id}/reject`, { reason: "نیاز به بازبینی" });
-                                    toast.success("رد شد");
-                                    queryClient.invalidateQueries({ queryKey: ["content"] });
-                                  } catch { toast.error("خطا در رد"); }
-                                }}>
+                                <DropdownMenuItem
+                                  className="text-danger focus:text-danger"
+                                  onClick={async () => {
+                                    try {
+                                      await api.post(`/api/content/${c.id}/reject`, {
+                                        reason: 'نیاز به بازبینی',
+                                      })
+                                      toast.success('رد شد')
+                                      queryClient.invalidateQueries({ queryKey: ['content'] })
+                                    } catch {
+                                      toast.error('خطا در رد')
+                                    }
+                                  }}
+                                >
                                   <X className="size-3.5" />
                                   رد محتوا
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                               </>
                             )}
-                            <DropdownMenuItem onClick={() => toast.info("ویرایش محتوا به‌زودی فعال خواهد شد.")}>
+                            <DropdownMenuItem
+                              onClick={() => toast.info('ویرایش محتوا به‌زودی فعال خواهد شد.')}
+                            >
                               <Pencil className="size-3.5" />
                               ویرایش
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => toast.success("محتوا با موفقیت کپی شد.")}>
+                            <DropdownMenuItem
+                              onClick={() => toast.success('محتوا با موفقیت کپی شد.')}
+                            >
                               <Copy className="size-3.5" />
                               ایجاد کپی
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-danger focus:text-danger"
-                              onClick={() => toast.error("حذف محتوا نیاز به تأیید دارد.")}
+                              onClick={() => toast.error('حذف محتوا نیاز به تأیید دارد.')}
                             >
                               <Trash2 className="size-3.5" />
                               حذف
@@ -363,5 +432,5 @@ export function ContentView() {
         </div>
       )}
     </motion.div>
-  );
+  )
 }

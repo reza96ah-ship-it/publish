@@ -23,13 +23,14 @@ export async function GET(req: Request) {
   const platform = queryCheck.data.platform
 
   const snapshots = await db.analyticsSnapshot.findMany({
-    where: { workspaceId, platform: platform === 'all' ? null : platform ?? null },
+    where: { workspaceId, platform: platform === 'all' ? null : (platform ?? null) },
     orderBy: { date: 'asc' },
     take: 30,
   })
 
   const dates = [...new Set(snapshots.map((s) => s.date))].sort()
-  const series = (metric: string) => dates.map((d) => snapshots.find((s) => s.date === d && s.metricType === metric)?.value ?? 0)
+  const series = (metric: string) =>
+    dates.map((d) => snapshots.find((s) => s.date === d && s.metricType === metric)?.value ?? 0)
 
   return NextResponse.json({
     dates,

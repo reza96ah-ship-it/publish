@@ -4,46 +4,48 @@ Agent: Benchmark Research Agent
 Task: Research top world social media management platform benchmarks for Nashrino SocialOps Studio
 
 Work Log:
-- Read worklog.md (file did not yet exist; this is the first entry)
-- Invoked `web-search` and `web-reader` skills to learn their CLI usage (`z-ai function -n web_search` / `page_reader`)
-- Ran 28 web searches covering all 16 platforms (12 Tier-1 + 4 Tier-2) plus 8 cross-cutting topics (IG Graph API, IG Messaging API policy, queue/retry architecture, analytics metrics taxonomy, AI features, RTL localization, Rubika, Telegram Bot API, Jalali calendar, Iran market, ManyChat pricing, Brandwatch pricing, best-time-to-post, calendar UX, Hootsuite streams)
-- Fetched full HTML for 15 critical pricing/docs pages (Buffer, Hootsuite, Sprout, Later, Loomly, Publer, Metricool, Agorapulse, Sendible, SocialPilot, ContentStudio, Planable, ManyChat, Meta's Instagram Content Publishing docs, Meta's Messenger Platform / IG Messaging API policy page) and converted them to readable text via a Python HTML-to-text parser
-- Cross-referenced G2/Capterra/Trustpilot review snippets to identify weaknesses / common complaints for each platform
-- Compiled comprehensive markdown benchmark report covering: executive snapshot comparison table, per-platform deep dives for 12 Tier-1 platforms, Tier-2 feature-angle notes (Agorapulse, Brandwatch, Canva/CapCut, ManyChat), cross-cutting best-practices sections (queue+retry, IG Graph API publishing, IG Messaging API compliance, approvals, analytics taxonomy, calendar UX, AI features, RTL/localization), world-class bar synthesis (18 capabilities), and strategic gaps Nashrino can exploit (RTL/Persian/Jalali/Rubika/Telegram-native, local commerce, Iranian market, price arbitrage, comment-to-DM for local sellers)
+  - Read worklog.md (file did not yet exist; this is the first entry)
+  - Invoked `web-search` and `web-reader` skills to learn their CLI usage (`z-ai function -n web_search` / `page_reader`)
+  - Ran 28 web searches covering all 16 platforms (12 Tier-1 + 4 Tier-2) plus 8 cross-cutting topics (IG Graph API, IG Messaging API policy, queue/retry architecture, analytics metrics taxonomy, AI features, RTL localization, Rubika, Telegram Bot API, Jalali calendar, Iran market, ManyChat pricing, Brandwatch pricing, best-time-to-post, calendar UX, Hootsuite streams)
+  - Fetched full HTML for 15 critical pricing/docs pages (Buffer, Hootsuite, Sprout, Later, Loomly, Publer, Metricool, Agorapulse, Sendible, SocialPilot, ContentStudio, Planable, ManyChat, Meta's Instagram Content Publishing docs, Meta's Messenger Platform / IG Messaging API policy page) and converted them to readable text via a Python HTML-to-text parser
+  - Cross-referenced G2/Capterra/Trustpilot review snippets to identify weaknesses / common complaints for each platform
+  - Compiled comprehensive markdown benchmark report covering: executive snapshot comparison table, per-platform deep dives for 12 Tier-1 platforms, Tier-2 feature-angle notes (Agorapulse, Brandwatch, Canva/CapCut, ManyChat), cross-cutting best-practices sections (queue+retry, IG Graph API publishing, IG Messaging API compliance, approvals, analytics taxonomy, calendar UX, AI features, RTL/localization), world-class bar synthesis (18 capabilities), and strategic gaps Nashrino can exploit (RTL/Persian/Jalali/Rubika/Telegram-native, local commerce, Iranian market, price arbitrage, comment-to-DM for local sellers)
 
 Stage Summary:
-- 12 Tier-1 platforms benchmarked with verified pricing, channels, features, differentiators, weaknesses, and notable UX patterns
-- 4 Tier-2 platforms documented for their specific feature angles (Agorapulse = inbox, Brandwatch = listening, Canva/CapCut = content creation, ManyChat = IG DM automation)
-- Instagram Graph API publishing flow documented with exact endpoints (/media, /media_publish, /content_publishing_limit), 100-posts/24h rate limit (50 for carousels), container expiry, resumable upload via rupload.facebook.com for Reels, PPA requirement, is_ai_generated self-disclosure field
-- Instagram Messaging API compliance documented: 24-hour standard messaging window, Message Tags (HUMAN_AGENT = 7-day extension), Meta deprecating Message Tags on Messenger Feb 9 2026 (still works on IG), One-Time Notification / Sponsored / News messaging all unavailable on IG, mandatory bot disclosure
-- Queue/retry best practices synthesized: separate task queue per rate-limited downstream API, exponential backoff with jitter (factor 2), DLQ for unrecoverable failures, idempotency keys, retry budgets/circuit breakers
-- Iran market data: Instagram = ~68% penetration (most popular), Rubika ~40M users, Eitaa ~30M, Telegram widely used; major Western platforms blocked; clear gap for Persian-first RTL-native tool
-- Nashrino's strategic gaps identified: RTL-native UX (no major competitor supports it), Jalali calendar (no competitor has it), Rubika+Eitaa native integration (zero competitors), Telegram-native scheduling with bot API, Persian AI captioning, Iranian Rial pricing arbitrage (10-20x cheaper than Hootsuite/Sprout), comment-to-DM tuned for Persian commerce
-- Final deliverable: a single comprehensive markdown report returned to the user, organized per the requested 6-section structure
-
+  - 12 Tier-1 platforms benchmarked with verified pricing, channels, features, differentiators, weaknesses, and notable UX patterns
+  - 4 Tier-2 platforms documented for their specific feature angles (Agorapulse = inbox, Brandwatch = listening, Canva/CapCut = content creation, ManyChat = IG DM automation)
+  - Instagram Graph API publishing flow documented with exact endpoints (/media, /media_publish, /content_publishing_limit), 100-posts/24h rate limit (50 for carousels), container expiry, resumable upload via rupload.facebook.com for Reels, PPA requirement, is_ai_generated self-disclosure field
+  - Instagram Messaging API compliance documented: 24-hour standard messaging window, Message Tags (HUMAN_AGENT = 7-day extension), Meta deprecating Message Tags on Messenger Feb 9 2026 (still works on IG), One-Time Notification / Sponsored / News messaging all unavailable on IG, mandatory bot disclosure
+  - Queue/retry best practices synthesized: separate task queue per rate-limited downstream API, exponential backoff with jitter (factor 2), DLQ for unrecoverable failures, idempotency keys, retry budgets/circuit breakers
+  - Iran market data: Instagram = ~68% penetration (most popular), Rubika ~40M users, Eitaa ~30M, Telegram widely used; major Western platforms blocked; clear gap for Persian-first RTL-native tool
+  - Nashrino's strategic gaps identified: RTL-native UX (no major competitor supports it), Jalali calendar (no competitor has it), Rubika+Eitaa native integration (zero competitors), Telegram-native scheduling with bot API, Persian AI captioning, Iranian Rial pricing arbitrage (10-20x cheaper than Hootsuite/Sprout), comment-to-DM tuned for Persian commerce
+  - Final deliverable: a single comprehensive markdown report returned to the user, organized per the requested 6-section structure
 ---
+
 Task ID: 1, 3, 4, 5, 6, 7, 8, 9, 10
 Agent: Main Agent (Documentation Lead)
 Task: Analyze uploaded project files, research world benchmarks, and write full detailed RFP + backlog + roadmap + all supporting specs for the Nashrino SocialOps Studio app
 
 Work Log:
+
 - Extracted both uploads: workspace tar (Next.js 16 prototype with fixtures, 11 views, RTL/Jalali, shadcn/ui, Vazirmatn, dark/light) and rubika-publisher-mvp-phase4b-publishing-worker zip (FastAPI + Alembic + Celery backend, 3 migrations, AGENTS.md, .env.example, CI)
 - Read README.md, AGENTS.md, full prisma/schema.prisma (214 lines), all 3 Alembic migrations, globals.css design tokens, sidebar.tsx, secondary-views.tsx (1168 lines), dashboard-fixtures.ts (443 lines), package.json, page.tsx, layout.tsx
 - Inventoried current state: prototype frontend on fixtures; backend partial; 10-item nav; channels = Instagram/Rubika/Telegram/LinkedIn; flagship = Instagram comment-to-DM automation
 - Ran 9 targeted web searches (Buffer/Hootsuite/Sprout/Later/Publer/ContentStudio/SocialPilot/Metricool/Sendible/Planable pricing+features; IG Graph API publishing limits + two-step flow; IG Messaging API 24h window + HUMAN_AGENT tag; queue/retry best practices; Rubika bot API; approval workflows) via z-ai web_search CLI
 - Incorporated research agent's synthesized findings (28 searches + 15 page fetches) from worklog Task ID 2
 - Wrote 8-document master set to /home/z/my-project/docs/:
-  * README.md (master index, 94 lines)
-  * 00_EXECUTIVE_SUMMARY.md (vision, problem, market, scope, success metrics, risks, 191 lines)
-  * 01_BENCHMARK_ANALYSIS.md (16 competitors deep-dive + 18-capability world-class bar + 5 strategic gaps, 549 lines)
-  * 02_RFP.md (full 18-section RFP: scope, 132 FRs, NFRs, channel integration, data model, security, comment-to-DM spec, evaluation criteria, 668 lines)
-  * 03_PRODUCT_BACKLOG.md (21 epics, 132 user stories with acceptance criteria + sizing + MoSCoW + phase, ~494 pts, 643 lines)
-  * 04_ROADMAP.md (P0-P4+ phased plan with windows, milestones M1-M3, exit criteria, critical path, 291 lines)
-  * 05_TECHNICAL_ARCHITECTURE.md (C4 container diagram, worker deep-dive, adapter contract, full SQL data model, API map, security, observability, infra, 829 lines)
-  * 06_DESIGN_SYSTEM.md (tokens, RTL/Jalali rules, component library, view specs, a11y, responsive, Persian UX writing, 473 lines)
+  - README.md (master index, 94 lines)
+  - 00_EXECUTIVE_SUMMARY.md (vision, problem, market, scope, success metrics, risks, 191 lines)
+  - 01_BENCHMARK_ANALYSIS.md (16 competitors deep-dive + 18-capability world-class bar + 5 strategic gaps, 549 lines)
+  - 02_RFP.md (full 18-section RFP: scope, 132 FRs, NFRs, channel integration, data model, security, comment-to-DM spec, evaluation criteria, 668 lines)
+  - 03_PRODUCT_BACKLOG.md (21 epics, 132 user stories with acceptance criteria + sizing + MoSCoW + phase, ~494 pts, 643 lines)
+  - 04_ROADMAP.md (P0-P4+ phased plan with windows, milestones M1-M3, exit criteria, critical path, 291 lines)
+  - 05_TECHNICAL_ARCHITECTURE.md (C4 container diagram, worker deep-dive, adapter contract, full SQL data model, API map, security, observability, infra, 829 lines)
+  - 06_DESIGN_SYSTEM.md (tokens, RTL/Jalali rules, component library, view specs, a11y, responsive, Persian UX writing, 473 lines)
 - Total: ~25,000 words / ~3,740 lines of production-grade planning documentation
 
 Stage Summary:
+
 - Deliverable complete: comprehensive RFP + backlog + roadmap + technical architecture + design system + benchmark analysis + executive summary, all cross-referenced and grounded in the actual project's existing code (globals.css tokens, prisma schema, Alembic migrations, sidebar nav, fixtures)
 - Key strategic findings encoded: Nashrino's moat = RTL + Jalali + Rubika/Eitaa + Persian AI + IRR pricing (zero competitors cover all five); publish worker architecture (per-channel queues, idempotency, retry+backoff+jitter, circuit breaker, DLQ); IG Graph API two-step publish + 100/24h limit; IG Messaging 24h window + HUMAN_AGENT 7-day tag
 - Roadmap: P0 (3wk foundations) -> P1 (7wk MVP publish core) -> P1.5 (billing) -> P2 (8wk collaboration/engagement/automation) -> P3 (6wk scale/GA) -> P4+ (expand)
@@ -51,11 +53,13 @@ Stage Summary:
 - All docs in /home/z/my-project/docs/, README.md is the entry point
 
 ---
+
 Task ID: 11
 Agent: Main Agent (P0 Implementation)
 Task: Wire the Nashrino prototype frontend to the real backend — restore the app shell, dashboard, and all 10 views in src/app/page.tsx (P0 foundations)
 
 Work Log:
+
 - Assessed current state: real Prisma schema (11 models), 11 API route handlers, seed data (1 workspace, 5 platforms, 9 publish jobs, 8 content, 6 media, 7 inbox messages, analytics snapshots, notifications), Jalali utils, 9 view components, 6 dashboard panels, AppShell/Sidebar/CommandBar all present. BUT src/app/page.tsx was the Z.ai placeholder logo — the app wasn't wired up.
 - Read all key files: prisma/schema.prisma, prisma/seed.ts, src/lib/db.ts, src/lib/server.ts, src/lib/api.ts, src/lib/jalali.ts, src/lib/store.ts, src/app/layout.tsx, src/components/shell/{app-shell,sidebar,command-bar}.tsx, all 9 view files, all 6 dashboard panels.
 - Wrote src/app/page.tsx: 'use client' Home component that renders <AppShell> wrapping a view router keyed on useAppStore.activeView. DashboardView composes the 6 panels (OperationalSummary, PublishingPulse, ActionCenter, ExecutiveMetrics, CampaignsPanel, PlatformsPanel) in a responsive grid. The other 9 views (compose/calendar/campaigns/content/media/inbox/analytics/channels/settings) are mapped via a Record<AppView, ComponentType>. Added AnimatePresence + motion.div for smooth view transitions.
@@ -65,6 +69,7 @@ Work Log:
 - Ran end-to-end verification with Agent Browser (chrome-error:// connection issues required: (1) use 127.0.0.1 not localhost — server binds IPv4 only; (2) use --session default explicitly so the browser context persists between agent-browser subcommands; (3) wait --load networkidle after open; (4) pre-compile the page with curl before opening because first compile takes ~19s).
 
 Stage Summary:
+
 - src/app/page.tsx: full app shell + 10-view router with Framer Motion transitions — DONE
 - Dashboard renders real backend data: operational summary (۲ منتشرشده، ۲ در صف، ۲ پردازش، ۱ ناموفق، ۵ ناخوانده، ۳ کمپین فعال), publishing pulse (real jobs with IG 65%, LinkedIn 40%, Rubika needs action), executive metrics (reach/engagement/audience/campaigns with sparklines), campaigns panel (4 campaigns with health labels), platforms panel (5 platforms with circuit states)
 - All 10 nav views verified working with real data via Agent Browser: dashboard, compose (4-step wizard, caption counter 0/2200, typing works), calendar (Jalali تیر ۱۴۰۵ month grid), campaigns (۴ کل، ۳ فعال، ۵۳٪ میانگین), content (۸ مورد table), media (۶ رسانه in 6 folders), inbox (۵ ناخوانده unified), analytics (۳۴۵.۱K دسترسی، ۱۹.۵K تعامل, Jalali date axis), channels (IG @nashrino_official متصل), settings (workspace profile form)
@@ -76,94 +81,100 @@ Stage Summary:
 - Modified files: src/app/page.tsx, src/components/shell/sidebar.tsx, src/components/views/compose-view.tsx, src/components/views/content-view.tsx
 
 ---
+
 Task ID: P1-2
 Agent: Realtime WebSocket Service Agent
 Task: Build a realtime WebSocket mini-service using socket.io that broadcasts publish-job status changes from the publish-worker to subscribed frontend clients, on port 3003.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md to understand prior agent work (P0 frontend wiring by Main Agent, plus benchmark/research docs).
 - Inspected /home/z/my-project/examples/websocket/server.ts (reference impl using path:'/' + bun), /home/z/my-project/Caddyfile (routes ?XTransformPort=3003 → localhost:3003), and mini-services/publish-worker/adapters/types.ts (JobStatus/PlatformType enums reused for wire types).
 - Created /home/z/my-project/mini-services/realtime/ directory with:
-  * package.json — standalone Bun project, "dev": "bun --hot index.ts", "start": "bun index.ts", "test": "bun run e2e_test.ts"
-  * tsconfig.json — strict TS with bun-types
-  * index.ts — full relay server (~210 lines, clean TypeScript)
-  * e2e_test.ts — socket.io-client smoke test (subscribed → /emit → broadcast received)
+  - package.json — standalone Bun project, "dev": "bun --hot index.ts", "start": "bun index.ts", "test": "bun run e2e_test.ts"
+  - tsconfig.json — strict TS with bun-types
+  - index.ts — full relay server (~210 lines, clean TypeScript)
+  - e2e_test.ts — socket.io-client smoke test (subscribed → /emit → broadcast received)
 - Ran `bun add socket.io` (resolved to socket.io@4.8.3) and `bun add socket.io-client --dev` (4.8.3) for the e2e test.
 - Typechecked with `bunx tsc --noEmit` — 0 errors, 0 warnings.
 - Started service in background: `(bun run dev > /tmp/realtime.log 2>&1 &)` from /home/z/my-project/mini-services/realtime. (Note: the spec's `setsid bash -c '...' & disown` pattern killed the child bun process via shell-exit SIGHUP; using a subshell with `&` reparents cleanly to init and persists.)
 - Verified service boot: log shows ` realtime service on :3003` (leading space preserved as spec'd); `ss -ltnp` confirms `bun --hot index.ts` (pid 15014) LISTEN on *:3003.
 - Endpoint verification via curl:
-  * GET /            → 200 {"ok":true,"service":"nashrino-realtime","port":3003,"sockets":0}
-  * POST /emit valid → 200 {"ok":true,"event":"job:status","room":"workspace:ws_test_1","subscribers":0}
-  * POST /emit job:progress → 200 (broadcasts accepted for both events)
-  * POST /emit invalid JSON → 400 {"ok":false,"error":"invalid JSON body"}
-  * POST /emit missing fields → 400 with schema hint
-  * POST /emit bad event name → 400
-  * GET /nope        → 404 {"ok":false,"error":"not found"}
-  * GET /socket.io/?EIO=4&transport=polling → 200 with proper engine.io handshake (sid, upgrades:["websocket"], pingInterval:25000, pingTimeout:60000)
+  - GET / → 200 {"ok":true,"service":"nashrino-realtime","port":3003,"sockets":0}
+  - POST /emit valid → 200 {"ok":true,"event":"job:status","room":"workspace:ws_test_1","subscribers":0}
+  - POST /emit job:progress → 200 (broadcasts accepted for both events)
+  - POST /emit invalid JSON → 400 {"ok":false,"error":"invalid JSON body"}
+  - POST /emit missing fields → 400 with schema hint
+  - POST /emit bad event name → 400
+  - GET /nope → 404 {"ok":false,"error":"not found"}
+  - GET /socket.io/?EIO=4&transport=polling → 200 with proper engine.io handshake (sid, upgrades:["websocket"], pingInterval:25000, pingTimeout:60000)
 - End-to-end test (`bun run e2e_test.ts`): socket.io-client connects → emits `subscribe` → server acks `subscribed` → client POSTs /emit → server broadcasts `job:status` to room `workspace:ws_e2e_test` (subs=1) → client receives payload with jobId/status/progress/platform/externalId matching exactly → exit 0 PASS.
 - Server log captured all expected events: client connect, room join, broadcast with subscriber count, clean disconnect.
 
 Stage Summary:
+
 - Deliverable: standalone socket.io relay mini-service at /home/z/my-project/mini-services/realtime/, port 3003 (hardcoded, no env PORT), default socket.io path `/socket.io/` so the frontend connects with `io("/?XTransformPort=3003")` and Caddy's @transform_port_query matcher forwards correctly.
 - Architecture: publish-worker → POST /emit {workspaceId, event:"job:status"|"job:progress", payload:JobPayload} → server broadcasts to room `workspace:{workspaceId}` → all subscribed frontend clients in that room receive the event.
 - Wire types: JobStatus = pending|processing|success|failed|action; Platform = instagram|rubika|telegram|linkedin; JobPayload = {jobId, status, progress:0-100, processLabel, error, platform, externalId}.
 - Socket events: client→server `subscribe`/`unsubscribe` with `{workspaceId}` (acks `subscribed`/`unsubscribed`); server→client `job:status`/`job:progress` with JobPayload.
 - Graceful shutdown via SIGTERM/SIGINT (closes io then http server, 5s hard-exit fallback). EADDRINUSE → exit(1).
 - Files produced:
-  * /home/z/my-project/mini-services/realtime/package.json
-  * /home/z/my-project/mini-services/realtime/tsconfig.json
-  * /home/z/my-project/mini-services/realtime/index.ts (entry — server + /emit + socket.io handlers)
-  * /home/z/my-project/mini-services/realtime/e2e_test.ts (integration test)
-  * /home/z/my-project/mini-services/realtime/bun.lock + node_modules/
+  - /home/z/my-project/mini-services/realtime/package.json
+  - /home/z/my-project/mini-services/realtime/tsconfig.json
+  - /home/z/my-project/mini-services/realtime/index.ts (entry — server + /emit + socket.io handlers)
+  - /home/z/my-project/mini-services/realtime/e2e_test.ts (integration test)
+  - /home/z/my-project/mini-services/realtime/bun.lock + node_modules/
 - Service is currently RUNNING and listening on :3003 (pid 15014, `bun --hot index.ts`); ready for the publish-worker to POST to http://127.0.0.1:3003/emit and the Next.js frontend to connect via socket.io-client at `http://127.0.0.1:3003` (or via Caddy at `/?XTransformPort=3003`).
 
 ---
+
 Task ID: P1-1 through P1-7
 Agent: Main Agent (P1 Publish Core Implementation)
 Task: Build the MVP multi-channel publish core — worker, adapters, API, realtime, frontend wiring
 
 Work Log:
+
 - Built publish worker mini-service (mini-services/publish-worker/, port 3001):
-  * Adapter contract (adapters/types.ts): HealthResult, ReadinessResult, PublishResult, ChannelAdapter interface, AdapterError
-  * 4 channel adapters with mock mode (realistic delays + failure rates):
+  - Adapter contract (adapters/types.ts): HealthResult, ReadinessResult, PublishResult, ChannelAdapter interface, AdapterError
+  - 4 channel adapters with mock mode (realistic delays + failure rates):
     - InstagramAdapter: two-step publish (create container 800ms → media_publish 1200ms), 5% transient failure, 2200 char limit
     - RubikaAdapter: single sendMessage, 10% failure (flakier API), 4096 char limit
     - TelegramAdapter: sendMessage, 2% failure (most reliable), 4096 char limit
     - LinkedInAdapter: two-step (image register + ugcPosts), 3% failure, 3000 char limit
-  * Retry policy (lib/retry.ts): exponential backoff base 1s, factor 2, cap 5min, jitter ±20%, per-channel max attempts (IG=5, Rubika=5, TG=5, LI=4)
-  * Circuit breaker (lib/circuit.ts): 5 consecutive failures → OPEN, health-check every 60s, HALF-OPEN probe, CLOSED after 5 successes
-  * Worker loop (index.ts): polls DB every 2s for pending/due jobs, processes through adapters, emits status via realtime service, requeues stuck processing jobs (5min visibility timeout), auto-marks content as published when all jobs complete
+  - Retry policy (lib/retry.ts): exponential backoff base 1s, factor 2, cap 5min, jitter ±20%, per-channel max attempts (IG=5, Rubika=5, TG=5, LI=4)
+  - Circuit breaker (lib/circuit.ts): 5 consecutive failures → OPEN, health-check every 60s, HALF-OPEN probe, CLOSED after 5 successes
+  - Worker loop (index.ts): polls DB every 2s for pending/due jobs, processes through adapters, emits status via realtime service, requeues stuck processing jobs (5min visibility timeout), auto-marks content as published when all jobs complete
 - Built realtime WebSocket mini-service (mini-services/realtime/, port 3003) — delegated to subagent:
-  * socket.io server, POST /emit endpoint for worker, subscribe/unsubscribe by workspaceId
-  * Verified: e2e test passed, job:status events broadcast to subscribed clients
+  - socket.io server, POST /emit endpoint for worker, subscribe/unsubscribe by workspaceId
+  - Verified: e2e test passed, job:status events broadcast to subscribed clients
 - Built POST /api/publish route (src/app/api/publish/route.ts):
-  * Creates Content + ContentPlatform links + PublishJobs (one per connected platform) with UUID idempotency keys
-  * Supports schedule modes: now (immediate), schedule (Jalali date+time → Gregorian), queue
-  * Transactional create, notification on publish
-  * Jalali→Gregorian conversion for scheduled posts
+  - Creates Content + ContentPlatform links + PublishJobs (one per connected platform) with UUID idempotency keys
+  - Supports schedule modes: now (immediate), schedule (Jalali date+time → Gregorian), queue
+  - Transactional create, notification on publish
+  - Jalali→Gregorian conversion for scheduled posts
 - Built PATCH /api/publish-jobs/[id] route (src/app/api/publish-jobs/[id]/route.ts):
-  * retry: new idempotency key, reset retryCount, status=pending
-  * discard: status=failed, clear scheduledAt
+  - retry: new idempotency key, reset retryCount, status=pending
+  - discard: status=failed, clear scheduledAt
 - Wired compose view (src/components/views/compose-view.tsx):
-  * submit("publish") now calls POST /api/publish with title/caption/hashtags/media/platforms/schedule
-  * Loading state on publish button, toast feedback (loading → success/error)
-  * Query invalidation: publish-jobs, dashboard-pulse, dashboard-summary, content
-  * Form reset after successful publish
+  - submit("publish") now calls POST /api/publish with title/caption/hashtags/media/platforms/schedule
+  - Loading state on publish button, toast feedback (loading → success/error)
+  - Query invalidation: publish-jobs, dashboard-pulse, dashboard-summary, content
+  - Form reset after successful publish
 - Built usePublishStream hook (src/hooks/use-publish-stream.ts):
-  * socket.io-client connecting to /?XTransformPort=3003
-  * Subscribes to workspace room on mount
-  * On job:status/job:progress events → invalidates dashboard-pulse, publish-jobs, dashboard-summary, content, dashboard-metrics
+  - socket.io-client connecting to /?XTransformPort=3003
+  - Subscribes to workspace room on mount
+  - On job:status/job:progress events → invalidates dashboard-pulse, publish-jobs, dashboard-summary, content, dashboard-metrics
 - Added RealtimeProvider to AppShell (fetches workspaceId, calls usePublishStream)
 - Installed socket.io-client in main project
 
 Stage Summary:
+
 - Full publish pipeline operational: compose → POST /api/publish → Content + PublishJobs created → worker polls → adapter.publish() → status updates → realtime broadcast → UI refreshes
 - E2E verified: POST /api/publish created 3 jobs (2 IG + 1 TG), worker processed all:
-  * IG job 1 → success (ig_media_...7203) in ~2s
-  * IG job 2 → success (ig_media_...7204) in ~2s
-  * TG job → failed (2% simulated) → retry 1/5 with 1679ms backoff → success (msgId 498219) on attempt 2
-  * Content auto-marked as "published" once all jobs completed
+  - IG job 1 → success (ig_media_...7203) in ~2s
+  - IG job 2 → success (ig_media_...7204) in ~2s
+  - TG job → failed (2% simulated) → retry 1/5 with 1679ms backoff → success (msgId 498219) on attempt 2
+  - Content auto-marked as "published" once all jobs completed
 - Realtime service broadcast every state transition to 1 connected browser subscriber
 - Agent Browser verified: new content "تست انتشار خودکار P1" appears in content library (۸→۹ مورد) with status "منتشرشده"
 - Zero page errors, zero console errors
@@ -172,49 +183,54 @@ Stage Summary:
 - Files modified: src/components/views/compose-view.tsx (real submit), src/components/shell/app-shell.tsx (RealtimeProvider), package.json (socket.io-client)
 
 ---
+
 Task ID: 7-views
 Agent: Frontend Styling Expert (View Files Cleanup)
 Task: Align 8 view component files (plus content-view) in src/components/views/ with the newly rebuilt professional light-mode design system
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md to understand prior agent work (P0 frontend wiring, P1 publish core, realtime service).
 - Read all 9 view files in full (compose, calendar, campaigns, media, inbox, analytics, channels, settings, content) to map every className pattern before editing.
 - Inspected /home/z/my-project/src/app/globals.css to verify which design tokens are actually defined in @theme inline: --color-surface, --color-surface-hover, --color-border, --color-ink-{primary,secondary,tertiary,disabled}, --color-accent, --color-accent-hover, --color-accent-soft are all present. Verified n-panel, n-control, n-popover, n-panel-subtle component classes exist in @layer components. (Note: --color-surface-subtle and --color-border-strong are referenced by rebuilt dashboard panels but not explicitly declared in @theme — they are inherited as-is from the rebuilt components' pattern so my edits stay consistent with the panels.)
 - Cross-checked rebuilt components (sidebar, command-bar, app-shell, dashboard/platforms-panel, publishing-pulse, campaigns-panel, operational-summary, shared) to confirm canonical light-mode patterns: `n-panel` for surfaces, `bg-surface-subtle border border-border rounded-[var(--radius-section)]` for nested cards, `hover:bg-surface-hover hover:border-border-strong` for hover, `bg-accent-soft` (no opacity) for accent-tinted backgrounds, `bg-border` for skeleton/progress tracks, `bg-ink-tertiary` for muted indicator dots, `text-ink-*` preserved for text.
 - Applied mechanical replacements per the task spec across all 9 view files:
-  * `bg-ink-primary/[0.02]`, `bg-ink-primary/[0.03]`, `bg-ink-primary/[0.01]` → `bg-surface-subtle` (the [0.01] variant in inbox-view was not in the explicit list but mapped to bg-surface-subtle as the closest semantic match — very subtle fill)
-  * `bg-ink-primary/[0.04]`, `bg-ink-primary/[0.05]` → `bg-surface-hover` (also catches `hover:bg-ink-primary/[0.04]` since the substring is replaced)
-  * `bg-ink-primary/5`, `bg-ink-primary/10` → `bg-border`
-  * `border-ink-primary/5`, `border-ink-primary/10` → `border-border`
-  * `ring-ink-primary/10` → `ring-border`
-  * `bg-accent/5`, `bg-accent/10`, `bg-accent/[0.03]` → `bg-accent-soft` (preferred over keeping opacity variants per spec)
-  * `bg-ink-primary/20` (inactive automation status dot in inbox-view) → `bg-ink-tertiary` (not in mechanical list; chose bg-ink-tertiary to match the rebuilt dashboard shared.tsx pattern for muted indicator dots — uses the existing ink-tertiary token which still resolves correctly in light mode)
+  - `bg-ink-primary/[0.02]`, `bg-ink-primary/[0.03]`, `bg-ink-primary/[0.01]` → `bg-surface-subtle` (the [0.01] variant in inbox-view was not in the explicit list but mapped to bg-surface-subtle as the closest semantic match — very subtle fill)
+  - `bg-ink-primary/[0.04]`, `bg-ink-primary/[0.05]` → `bg-surface-hover` (also catches `hover:bg-ink-primary/[0.04]` since the substring is replaced)
+  - `bg-ink-primary/5`, `bg-ink-primary/10` → `bg-border`
+  - `border-ink-primary/5`, `border-ink-primary/10` → `border-border`
+  - `ring-ink-primary/10` → `ring-border`
+  - `bg-accent/5`, `bg-accent/10`, `bg-accent/[0.03]` → `bg-accent-soft` (preferred over keeping opacity variants per spec)
+  - `bg-ink-primary/20` (inactive automation status dot in inbox-view) → `bg-ink-tertiary` (not in mechanical list; chose bg-ink-tertiary to match the rebuilt dashboard shared.tsx pattern for muted indicator dots — uses the existing ink-tertiary token which still resolves correctly in light mode)
 - Did NOT touch: text content (Persian labels preserved), component logic/state/hooks/data flow, framer-motion props, responsive classes (md:/lg:/sm:), `text-ink-primary`/`text-ink-secondary`/`text-ink-tertiary` text colors (per spec these tokens still exist), tailwind-palette semantic colors (text-rose-600, text-emerald-600, bg-amber-50, bg-rose-50, etc.), the `bg-gradient-to-l from-violet-500 to-fuchsia-500` publish-button gradient (uses tailwind palette colors, NOT the old indigo brand hex codes [#3445A8/#4757CD/#6366F1] covered by rule 25), `bg-gradient-to-t from-black/70 to-transparent` image overlays (image-overlay gradient, not a brand-color button gradient), border-accent/30 / ring-accent/30 / border-accent/20 (accent border/ring opacities not in the mechanical list — rebuilt sidebar uses ring-accent/40 with opacity, so opacity on accent borders is an accepted pattern).
 - Verified no n-glass-control / n-glass-popover / bg-[#1e2333] / from-[#...] / to-[#...] / text-white/{90,80,60,40} / border-white/* / bg-white/{10,[0.06]} patterns existed in any view file (grep returned empty) — these were already only in shell/sidebar/command-bar, not in views.
 - Ran final verification grep across all 9 view files: zero remaining `bg-ink-primary`, `border-ink-primary`, `hover:bg-ink-primary`, `ring-ink-primary` patterns; zero remaining `bg-accent/{5,10,[0.03]}` patterns; zero `n-glass-*` patterns. New tokens in place: content-view (4), campaigns-view (5), channels-view (5), analytics-view (7), calendar-view (9), media-view (10), inbox-view (12), compose-view (15), settings-view (19).
 - Ran `bun run lint 2>&1 | tail -30`: ONLY the pre-existing error in upload/extracted/examples/websocket/frontend.tsx (react-hooks/set-state-in-effect, line 45) — exactly the one the task spec said to ignore. ZERO new errors introduced by my changes. Zero warnings.
 
 Stage Summary:
+
 - 9 files edited (8 flagged + content-view verified): compose-view.tsx, calendar-view.tsx, campaigns-view.tsx, media-view.tsx, inbox-view.tsx, analytics-view.tsx, channels-view.tsx, settings-view.tsx, content-view.tsx
 - Per-file replacement counts (approximate, includes both first-pass MultiEdit applications and follow-up single edits):
-  * compose-view.tsx: 23 (6 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 3 bg-ink-primary/5→bg-border, 1 bg-ink-primary/10→bg-border, 7 border-ink-primary/5→border-border, 2 border-ink-primary/10→border-border, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring], 2 bg-accent/5→bg-accent-soft, 1 bg-accent/10→bg-accent-soft)
-  * calendar-view.tsx: 13 (4 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 4 border-ink-primary/5→border-border, 1 ring-ink-primary/10→ring-border, 1 bg-accent/5→bg-accent-soft, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring])
-  * campaigns-view.tsx: 7 (4 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/5→bg-border, 2 border-ink-primary/5→border-border)
-  * media-view.tsx: 12 (2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.03]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 3 bg-ink-primary/5→bg-border, 2 border-ink-primary/10→border-border, 3 bg-accent/10→bg-accent-soft)
-  * inbox-view.tsx: 14 (1 bg-ink-primary/[0.01]→bg-surface-subtle, 2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 6 border-ink-primary/5→border-border, 1 ring-ink-primary/10→ring-border, 1 bg-accent/5→bg-accent-soft, 1 bg-accent/10→bg-accent-soft, 1 bg-accent/[0.03]→bg-accent-soft, 1 bg-ink-primary/20→bg-ink-tertiary [semantic, not in mechanical list])
-  * analytics-view.tsx: 8 (1 bg-ink-primary/[0.02]→bg-surface-subtle, 3 bg-ink-primary/5→bg-border, 4 border-ink-primary/5→border-border)
-  * channels-view.tsx: 9 (2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 3 border-ink-primary/5→border-border, 1 bg-accent/5→bg-accent-soft, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring])
-  * settings-view.tsx: 20 (3 bg-ink-primary/[0.02]→bg-surface-subtle, 3 bg-ink-primary/5→bg-border, 12 border-ink-primary/5→border-border, 2 border-ink-primary/10→border-border, 2 bg-accent/10→bg-accent-soft)
-  * content-view.tsx: 4 (2 bg-ink-primary/5→bg-border, 2 border-ink-primary/5→border-border)
+  - compose-view.tsx: 23 (6 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 3 bg-ink-primary/5→bg-border, 1 bg-ink-primary/10→bg-border, 7 border-ink-primary/5→border-border, 2 border-ink-primary/10→border-border, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring], 2 bg-accent/5→bg-accent-soft, 1 bg-accent/10→bg-accent-soft)
+  - calendar-view.tsx: 13 (4 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 4 border-ink-primary/5→border-border, 1 ring-ink-primary/10→ring-border, 1 bg-accent/5→bg-accent-soft, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring])
+  - campaigns-view.tsx: 7 (4 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/5→bg-border, 2 border-ink-primary/5→border-border)
+  - media-view.tsx: 12 (2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.03]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 3 bg-ink-primary/5→bg-border, 2 border-ink-primary/10→border-border, 3 bg-accent/10→bg-accent-soft)
+  - inbox-view.tsx: 14 (1 bg-ink-primary/[0.01]→bg-surface-subtle, 2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 6 border-ink-primary/5→border-border, 1 ring-ink-primary/10→ring-border, 1 bg-accent/5→bg-accent-soft, 1 bg-accent/10→bg-accent-soft, 1 bg-accent/[0.03]→bg-accent-soft, 1 bg-ink-primary/20→bg-ink-tertiary [semantic, not in mechanical list])
+  - analytics-view.tsx: 8 (1 bg-ink-primary/[0.02]→bg-surface-subtle, 3 bg-ink-primary/5→bg-border, 4 border-ink-primary/5→border-border)
+  - channels-view.tsx: 9 (2 bg-ink-primary/[0.02]→bg-surface-subtle, 1 bg-ink-primary/[0.04]→bg-surface-hover, 1 bg-ink-primary/5→bg-border, 3 border-ink-primary/5→border-border, 1 bg-accent/5→bg-accent-soft, 1 hover:bg-ink-primary/[0.04]→hover:bg-surface-hover [via substring])
+  - settings-view.tsx: 20 (3 bg-ink-primary/[0.02]→bg-surface-subtle, 3 bg-ink-primary/5→bg-border, 12 border-ink-primary/5→border-border, 2 border-ink-primary/10→border-border, 2 bg-accent/10→bg-accent-soft)
+  - content-view.tsx: 4 (2 bg-ink-primary/5→bg-border, 2 border-ink-primary/5→border-border)
 - Lint: PASS (only the pre-existing upload/extracted/examples/websocket/frontend.tsx error remains, which the task spec instructed to ignore). Zero new errors. Zero warnings.
 - All view files now use the rebuilt design system tokens consistently with the dashboard panels, sidebar, and command-bar. Ready for visual verification.
 
 ---
+
 Task ID: dashboard-restyle
 Agent: main
 Task: Rebuild dashboard as a professional, high-contrast light-mode design (user reported text unreadable, dashboard too weak, wanted top-tier professional light mode)
 
 Work Log:
+
 - Rewrote `src/app/globals.css`: replaced glassmorphism system (translucent panels + backdrop-blur over colored gradient mesh) with solid opaque surfaces. New professional light palette: neutral slate canvas (oklch 0.978), opaque white surfaces, crisp single-tone borders, full-opacity high-contrast text scale (primary 0.20 / secondary 0.42 / tertiary 0.48), refined deep-violet accent (oklch 0.52 0.21 295 — distinct from indigo/blue). Tightened radii (28px→16px panel, 12px section). Subtle layered shadows. Kept `.dark` theme for completeness but app forces light.
 - Updated `src/app/layout.tsx`: `defaultTheme="light"`, `forcedTheme="light"` (was defaulting to dark).
 - Simplified `src/components/shell/ambient-mesh.tsx`: removed colorful blue/violet/mint/rose blobs, now a calm solid neutral canvas.
@@ -233,6 +249,7 @@ Work Log:
 - VLM evaluation: contrast 7/10 → 8/10 after tertiary text darkening; both dashboard + compose confirmed "clean, professional, readable, no visual bugs".
 
 Stage Summary:
+
 - Dashboard transformed from unreadable glassmorphism dark hybrid → professional high-contrast light-mode SaaS design.
 - All 10 views + shell + 6 dashboard panels restyled consistently to the new solid-surface design system.
 - App forced to light mode; sidebar no longer hardcoded dark.
@@ -240,27 +257,29 @@ Stage Summary:
 - Verified end-to-end in browser (desktop 1440 + mobile 390) with no errors.
 
 ---
+
 Task ID: glass-views-cleanup
 Agent: Frontend Styling Expert (Glass Theme Views Cleanup)
 Task: Update 9 view files for iOS 26 Liquid Glass theme consistency
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md (last entry: dashboard-restyle task by main agent that rebuilt globals.css into iOS 26 Liquid Glass system + previous 7-views task by frontend-styling-expert that converted all old `bg-ink-primary/[0.0X]` / `bg-accent/X` patterns in the 9 view files to solid surface tokens: `bg-surface-subtle`, `bg-surface-hover`, `bg-border`, `border-border`, `bg-accent-soft`).
 - Read /home/z/my-project/src/app/globals.css in full (455 lines) to confirm the new iOS 26 Liquid Glass utility classes are defined and what they target:
-  * `n-panel` (primary glass, 72% white + 32px blur + specular highlight + soft layered shadow) — for top-level cards
-  * `n-panel-thin` (nested glass, 55% white + 20px blur + inset highlight + hover→72%) — canonical replacement for `bg-white/45 border border-white/40` patterns
-  * `n-panel-veil` (42% white + 12px blur) — chip backgrounds/dividers
-  * `n-panel-strong` (86% white + 40px blur) — modals/emphasized cards
-  * `n-control` — glass inputs/buttons
-  * `.glass-hover` utility — smooth background+transform transition with -1px lift on hover
+  - `n-panel` (primary glass, 72% white + 32px blur + specular highlight + soft layered shadow) — for top-level cards
+  - `n-panel-thin` (nested glass, 55% white + 20px blur + inset highlight + hover→72%) — canonical replacement for `bg-white/45 border border-white/40` patterns
+  - `n-panel-veil` (42% white + 12px blur) — chip backgrounds/dividers
+  - `n-panel-strong` (86% white + 40px blur) — modals/emphasized cards
+  - `n-control` — glass inputs/buttons
+  - `.glass-hover` utility — smooth background+transform transition with -1px lift on hover
 - Audited all 9 view files in `/home/z/my-project/src/components/views/` for any pattern matching the mechanical replacement table. Ran:
-  * `rg "border border-white/40"` → ZERO matches (exit 1)
-  * `rg "bg-white/45|bg-white/55|bg-white/65|bg-white/40"` → ZERO matches (exit 1)
-  * `rg "bg-white/|border-white/|hover:bg-white/"` → only 3 matches, all `text-white hover:bg-white/20` on icon buttons overlaying images inside MediaCard (media-view.tsx lines 337, 340, 343). These sit on top of a `bg-black/0 group-hover:bg-black/40` overlay (image-overlay UI controls) — functionally equivalent to image overlays, preserved per rule 8. Also not in the mechanical table (table only covers `hover:bg-white/55`, `/65`, `/70`).
-  * `rg "backdrop-blur|backdrop-filter"` → ZERO matches (no manual blur utilities in views)
-  * `rg "n-glass"` → ZERO matches (no legacy glass classes)
-  * `rg "n-panel"` → already present in all 9 views (top-level panels already use the glass material)
-  * `rg "n-panel-thin|n-panel-veil|n-panel-strong|n-popover|n-control|glass-hover"` → ZERO matches (nested cards still use solid `bg-surface-subtle border border-border` tokens)
+  - `rg "border border-white/40"` → ZERO matches (exit 1)
+  - `rg "bg-white/45|bg-white/55|bg-white/65|bg-white/40"` → ZERO matches (exit 1)
+  - `rg "bg-white/|border-white/|hover:bg-white/"` → only 3 matches, all `text-white hover:bg-white/20` on icon buttons overlaying images inside MediaCard (media-view.tsx lines 337, 340, 343). These sit on top of a `bg-black/0 group-hover:bg-black/40` overlay (image-overlay UI controls) — functionally equivalent to image overlays, preserved per rule 8. Also not in the mechanical table (table only covers `hover:bg-white/55`, `/65`, `/70`).
+  - `rg "backdrop-blur|backdrop-filter"` → ZERO matches (no manual blur utilities in views)
+  - `rg "n-glass"` → ZERO matches (no legacy glass classes)
+  - `rg "n-panel"` → already present in all 9 views (top-level panels already use the glass material)
+  - `rg "n-panel-thin|n-panel-veil|n-panel-strong|n-popover|n-control|glass-hover"` → ZERO matches (nested cards still use solid `bg-surface-subtle border border-border` tokens)
 - Cross-referenced the previous 7-views worklog entry to confirm what had been done: the prior agent converted the OLD translucent ink-opacity patterns (`bg-ink-primary/[0.02]`, `bg-accent/5`, etc.) to solid surface tokens (`bg-surface-subtle`, `bg-border`, `bg-accent-soft`). This is the current state of the views.
 - Decision: applied the mechanical replacement table LITERALLY. The table targets `bg-white/45 border border-white/40` and related white-opacity glass patterns. NONE of these patterns exist in any of the 9 view files (they were already removed by the prior 7-views cleanup, which converted them to solid surface tokens). Therefore the mechanical table results in ZERO replacements.
 - Per rule 11, the solid surface tokens that ARE currently in use (`bg-surface-subtle`, `bg-surface-hover`, `bg-border`, `border-border`, `bg-accent-soft`) are explicitly listed as "correct" and must be PRESERVED. I therefore did NOT proactively convert `bg-surface-subtle border border-border` nested-card patterns to `n-panel-thin` — doing so would directly contradict rule 11.
@@ -274,13 +293,14 @@ Work Log:
 - Verified all 9 view files still export the same component name via `rg "^export function"` — each file exports its canonical `XView` function (AnalyticsView, CalendarView, CampaignsView, ChannelsView, ComposeView, ContentView, InboxView, MediaView, SettingsView). All imports intact (useMemo/useState/useQuery/motion top-of-file pattern preserved across all 9 files).
 
 Stage Summary:
+
 - Per-file edit counts: 0 / 0 / 0 / 0 / 0 / 0 / 0 / 0 / 0 across (compose / calendar / campaigns / content / media / inbox / analytics / channels / settings). Total: 0 edits.
 - Rationale: The mechanical replacement table in the task spec targets the OLD iOS glass patterns (`bg-white/45 border border-white/40`, `hover:bg-white/65`, etc.). NONE of these patterns exist in any of the 9 view files — the prior 7-views cleanup (worklog Task 7-views) had already removed them and converted them to solid surface tokens (`bg-surface-subtle border border-border` etc.). The current task's rule 11 explicitly states that those solid surface tokens (`bg-surface-subtle`, `bg-surface-hover`, `bg-border`, `border-border`, `bg-accent-soft`) are "correct" and must be PRESERVED. Following the rules literally, no replacements were applied.
 - Verification results:
-  * `bun run lint` → PASS. Only the pre-existing error in `upload/extracted/examples/websocket/frontend.tsx:45:5` (react-hooks/set-state-in-effect) remains, exactly the one the task spec instructed to ignore. ZERO new errors. ZERO warnings.
-  * `rg "border border-white/40" /home/z/my-project/src/components/views/` → ZERO matches (exit 1).
-  * `rg "bg-white/45|bg-white/55|bg-white/65|bg-white/40" /home/z/my-project/src/components/views/` → ZERO matches (exit 1).
-  * All 9 view files export the same component name as before; all imports intact.
+  - `bun run lint` → PASS. Only the pre-existing error in `upload/extracted/examples/websocket/frontend.tsx:45:5` (react-hooks/set-state-in-effect) remains, exactly the one the task spec instructed to ignore. ZERO new errors. ZERO warnings.
+  - `rg "border border-white/40" /home/z/my-project/src/components/views/` → ZERO matches (exit 1).
+  - `rg "bg-white/45|bg-white/55|bg-white/65|bg-white/40" /home/z/my-project/src/components/views/` → ZERO matches (exit 1).
+  - All 9 view files export the same component name as before; all imports intact.
 - Ambiguous-case decisions:
   1. The 3 `text-white hover:bg-white/20` instances on icon buttons in `media-view.tsx` (lines 337, 340, 343) were PRESERVED. They are image-overlay UI controls sitting on top of a `bg-black/0 group-hover:bg-black/40` overlay (rule 8 image-overlay pattern), not glass card patterns. Also not in the mechanical table (which only covers `hover:bg-white/55`, `/65`, `/70`).
   2. The nested-card pattern `border border-border bg-surface-subtle` (present in 8 of 9 views — analytics, campaigns, compose, channels, calendar, settings, plus inbox) was PRESERVED per rule 11, even though the spirit of the task ("glass theme consistency") might suggest converting these to `n-panel-thin`. Rule 11 is explicit and overrides that interpretation. If a future task wants the nested cards converted to glass, it must explicitly remove rule 11's preservation clause.
@@ -288,40 +308,43 @@ Stage Summary:
 - Conclusion: The 9 view files are already glass-theme-compliant at the level the mechanical table targets (no old `bg-white/X border border-white/40` glass patterns remain). Top-level panels already use `n-panel` (the new iOS 26 glass material). Nested cards remain on solid `bg-surface-subtle` tokens, which rule 11 designates as correct and preserved.
 
 ---
+
 Task ID: glass-theme-final
 Agent: Main Agent (iOS 26 Liquid Glass Final Polish)
 Task: Replace letter-placeholder PlatformBadge/PlatformDot with real brand SVGs, strengthen iOS 26 Liquid Glass material, apply consistent glass across all dashboard panels and view nested cards, polish shell components with micro-interactions.
 
 Work Log:
+
 - Verified current state: globals.css already had iOS 26 glass tokens, PlatformLogo component exists with real SVG assets (/logos/{instagram,telegram,linkedin}.svg + rubika.png + eitaa.jpg), shared.tsx PlatformIcon already delegated to PlatformLogo.
 - Identified gaps: (a) PlatformBadge in shared.tsx still used letter placeholders (IG/TG/LI/روبیکا/ایتا); (b) PlatformDot used colored dots; (c) dashboard panels used inconsistent bg-white/45 border-white/40 patterns instead of unified glass; (d) glass material needed stronger specular highlights and depth; (e) shell components needed refined micro-interactions.
 - Rewrote shared.tsx: PlatformBadge now renders real PlatformLogo + Persian label in glass pill; PlatformDot renders real mini-logo; SectionTitle/PanelHeader added ring-1 ring-accent/15 for depth; Sparkline upgraded with gradient area fill; Card title gets tracking-tight.
 - Strengthened globals.css iOS 26 Liquid Glass theme:
-  * Glass opacity tuned: 0.72 (default) / 0.86 (strong) / 0.55 (thin) / 0.42 (veil) — clearer depth hierarchy
-  * Backdrop blur increased: 32px (panel) / 40px (strong/popover) / 20px (thin/control) / 12px (veil)
-  * Saturation boost: 1.8-1.9 for proper glass refraction
-  * Added ::after outer dark edge (0.5px glass-border-outer) for crisp boundary
-  * Specular sheen ::before gradient strengthened (0.65 → 0.18 → 0)
-  * Shadow depth increased: 24px→48px outer ambient floor + 6px→16px mid layer
-  * Ambient mesh: 4 radial blooms (violet/peach/mint/rose) at higher chroma for glass to refract
-  * Added glass-hover utility (smooth background + transform -1px lift)
-  * Added n-panel-veil (most subtle glass for chips/dividers)
+  - Glass opacity tuned: 0.72 (default) / 0.86 (strong) / 0.55 (thin) / 0.42 (veil) — clearer depth hierarchy
+  - Backdrop blur increased: 32px (panel) / 40px (strong/popover) / 20px (thin/control) / 12px (veil)
+  - Saturation boost: 1.8-1.9 for proper glass refraction
+  - Added ::after outer dark edge (0.5px glass-border-outer) for crisp boundary
+  - Specular sheen ::before gradient strengthened (0.65 → 0.18 → 0)
+  - Shadow depth increased: 24px→48px outer ambient floor + 6px→16px mid layer
+  - Ambient mesh: 4 radial blooms (violet/peach/mint/rose) at higher chroma for glass to refract
+  - Added glass-hover utility (smooth background + transform -1px lift)
+  - Added n-panel-veil (most subtle glass for chips/dividers)
 - Updated dashboard panels for consistent glass material:
-  * operational-summary.tsx: Stat cards → n-panel-thin glass-hover
-  * publishing-pulse.tsx: PulseItem → n-panel-thin glass-hover
-  * platforms-panel.tsx: platform rows → n-panel-thin glass-hover (kept real PlatformLogo)
-  * campaigns-panel.tsx: campaign cards → n-panel-thin glass-hover
-  * action-center.tsx: secondary tasks → n-panel-thin glass-hover
-  * executive-metrics.tsx: metric cards → n-panel glass-hover (tracking-tight on big numbers)
+  - operational-summary.tsx: Stat cards → n-panel-thin glass-hover
+  - publishing-pulse.tsx: PulseItem → n-panel-thin glass-hover
+  - platforms-panel.tsx: platform rows → n-panel-thin glass-hover (kept real PlatformLogo)
+  - campaigns-panel.tsx: campaign cards → n-panel-thin glass-hover
+  - action-center.tsx: secondary tasks → n-panel-thin glass-hover
+  - executive-metrics.tsx: metric cards → n-panel glass-hover (tracking-tight on big numbers)
 - Polished shell components:
-  * sidebar.tsx: stronger active state shadow (4px 14px vs 2px 8px) + inset highlight; active indicator bar taller (h-6) with white glow shadow
-  * command-bar.tsx: glass-hover on search; stronger primary button shadow; active:scale-[0.96] on notifications
+  - sidebar.tsx: stronger active state shadow (4px 14px vs 2px 8px) + inset highlight; active indicator bar taller (h-6) with white glow shadow
+  - command-bar.tsx: glass-hover on search; stronger primary button shadow; active:scale-[0.96] on notifications
 - Updated 6 view files for nested card glass consistency (converted bg-surface-subtle border-border patterns to n-panel-thin / n-panel-thin glass-hover): analytics-view (1), campaigns-view (2), compose-view (2), channels-view (1), calendar-view (2), settings-view (3).
 - Delegated initial 9-view audit to frontend-styling-expert subagent (glass-views-cleanup) which confirmed no old bg-white/X border-white/40 patterns remained.
 - Lint: PASS (only pre-existing upload/extracted/examples/websocket/frontend.tsx error remains).
 - Agent Browser + VLM verification: real brand logos confirmed visible in Platforms panel (5/5: Instagram camera gradient, Telegram paper plane, LinkedIn "in", Rubika, Eitaa) and Publishing Pulse job rows. Glass material translucency visible against ambient mesh. Dashboard renders all 7 sections (operational summary, publishing pulse, action center, executive metrics, campaigns, platforms, command bar).
 
 Stage Summary:
+
 - PlatformBadge & PlatformDot: REAL brand SVG logos everywhere (no more IG/TG/LI letters)
 - iOS 26 Liquid Glass: 4-tier depth hierarchy (veil/thin/default/strong) with stronger specular highlights, outer edge, and layered shadows; 32px backdrop blur + 1.8x saturation for proper refraction
 - Ambient mesh: 4-color soft chromatic gradient (violet/peach/mint/rose) gives glass something to refract
@@ -330,23 +353,25 @@ Stage Summary:
 - Verified: zero new lint errors, zero page errors, real logos render in browser, glass material visible
 
 ---
+
 Task ID: production-refinement
 Agent: Main Agent (Production Refinement Pass)
 Task: User feedback: "still needs lots of refinement to become professional real production theme and ui ux". Comprehensive refinement to bring dashboard from amateur to Linear/Vercel/Stripe production quality.
 
 Work Log:
+
 - Conducted critical design audit via VLM: identified (1) ambient mesh too colorful (4 hues at 0.32-0.55 opacity), (2) shadow scale too heavy (24px/48px ambient floor), (3) glass translucency too high (72% unstable), (4) font weights inconsistent, (5) sidebar active state too heavy (4px shadow + glow), (6) border colors too light (0.89 loses definition), (7) accent too saturated (0.21 chroma playful).
 - Rewrote globals.css with production-grade design system:
-  * Canvas: near-neutral slate (oklch 0.978 0.004) — background disappears, professional B2B feel
-  * Ambient mesh: reduced from 4 colorful blooms to 2 barely-there tones (cool + warm) at 0.45/0.28 opacity — glass has something to refract without being decorative
-  * Glass opacity: 0.80 (was 0.72) for stability — production UIs don't float over chaotic backgrounds
-  * Backdrop blur: 24px (was 32px) — tighter, more refined
-  * Shadow scale: Linear/Vercel-tight — max 8px/20px ambient floor (was 24px/48px), lower opacity
-  * Accent: lower chroma 0.18 (was 0.21) — restrained, professional violet
-  * Borders: 0.91 lightness (was 0.89) — crisper definition
-  * Radii: tighter (panel 18px was 22px, section 12px was 14px)
-  * Added num-tabular utility for consistent numeric alignment
-  * Refined glass-hover: now uses shadow-panel-hover instead of transform lift (more subtle)
+  - Canvas: near-neutral slate (oklch 0.978 0.004) — background disappears, professional B2B feel
+  - Ambient mesh: reduced from 4 colorful blooms to 2 barely-there tones (cool + warm) at 0.45/0.28 opacity — glass has something to refract without being decorative
+  - Glass opacity: 0.80 (was 0.72) for stability — production UIs don't float over chaotic backgrounds
+  - Backdrop blur: 24px (was 32px) — tighter, more refined
+  - Shadow scale: Linear/Vercel-tight — max 8px/20px ambient floor (was 24px/48px), lower opacity
+  - Accent: lower chroma 0.18 (was 0.21) — restrained, professional violet
+  - Borders: 0.91 lightness (was 0.89) — crisper definition
+  - Radii: tighter (panel 18px was 22px, section 12px was 14px)
+  - Added num-tabular utility for consistent numeric alignment
+  - Refined glass-hover: now uses shadow-panel-hover instead of transform lift (more subtle)
 - Rewrote sidebar.tsx: tighter (264px was 276px), consistent icon strokeWidth=2, active state simplified (no heavy shadow, just accent bg + 2px accent bar), tighter nav item padding, smaller section headers with letter-spacing, refined workspace switcher + user profile
 - Rewrote command-bar.tsx: tighter h-10 (was h-11), consistent icon strokeWidth, solid accent button (no heavy shadow), notification badge ring-2 ring-white (cleaner)
 - Rewrote shared.tsx: StatusBadge smaller (text-[10px] px-1.5), PlatformBadge uses size-3 logo, PanelHeader size-8 icon (was size-9), SectionTitle size-8, Sparkline smaller (100x32 was 120x36) with thinner stroke, LinkAction smaller
@@ -363,6 +388,7 @@ Work Log:
 - VLM final assessment: 7/10 production readiness (up from 4/10). Strong RTL, clean hierarchy, consistent palette. Remaining: more visual polish needed for top-tier.
 
 Stage Summary:
+
 - Design system rebuilt for production: near-neutral canvas, restrained accent, tight shadows, stable glass (0.80 opacity), 2-tone subtle ambient
 - All 6 dashboard panels refined with consistent typography scale (text-[22px] for big numbers, text-[13px] for panel titles, text-[11-12px] for metadata)
 - All shell components tightened (sidebar 264px, command-bar h-10, consistent icon strokeWidth=2)
@@ -371,11 +397,13 @@ Stage Summary:
 - VLM rates 7/10 production-ready (would not ship to paying customers yet without additional polish, but significant improvement from amateur baseline)
 
 ---
+
 Task ID: RESEARCH-2
 Agent: Glass & UX Research Agent
 Task: Deep research on glass morphism best practices and dashboard UX rules
 
 Work Log:
+
 - Read worklog.md to understand prior agent work (Benchmark Research Agent and multiple build agents had already shipped a v1 dashboard; existing research-glass/ directory contained 40+ pre-fetched search JSONs and 24 full-text article .txt files)
 - Inventoried research-glass/ directory: 20 primary article fetches (p01–p24) covering Apple HIG Materials, CSS-Tricks Liquid Glass, Josh Comeau backdrop-filter, Setproduct glassmorphism-vs-liquid-glass (2026), Setproduct dashboard design principles, CreateWithSwift Liquid Glass principles, Luddy iOS 26 comprehensive reference, NN/G skeleton screens, Material Design bidirectionality, UX Collective accessibility critique, Vercel Geist, Vazirmatn GitHub, Inter stylistic sets, Linear redesign article, easing curves article, RTL robust UI, Apple a11y critique, Material bidi
 - Inventoried 40 search-result JSON files (s01–s40) covering: Apple Liquid Glass, glassmorphism right/wrong, glass articles, WCAG on glass, dashboard UX, states UX, Framer Motion, typography, spacing, Vazirmatn, RTL patterns, Jalali, Apple HIG, Stripe design, Linear design, Vercel design, microinteractions, F/Z pattern, loading patterns, easing curves, Inter stylistic sets, Persian digits, WCAG focus, chart design, status color, RTL charts, stagger, designerly glassmorphism, specular highlights, layered glass, visionOS, command palette, Apple vibrancy, saturate technique, data table typography, RTL icon flipping, focus rings, Geist font, empty states, Persian recommendations
@@ -385,6 +413,7 @@ Work Log:
 - Wrote comprehensive 1657-line / 78KB markdown report to /home/z/my-project/research-glass-ux.md with 4 appendices: full compiled checklist, Tailwind v4 token setup, reference quick cards (glass/motion/typography/RTL), bibliography
 
 Stage Summary:
+
 - Produced /home/z/my-project/research-glass-ux.md — comprehensive 1657-line research report synthesizing 22 primary sources + 40 search queries into actionable rules
 - Key findings the build team must apply:
   1. Glass is for navigation/modals/toasts ONLY — never on KPI cards, data tables, or form inputs (Apple HIG explicit rule)
@@ -404,36 +433,38 @@ Stage Summary:
 - This report directly informs the next dashboard refactor cycle: the existing 7/10-VLM-rated dashboard needs to apply these rules to reach production-grade polish
 
 ---
+
 Task ID: RESEARCH-1
 Agent: Design Systems Research Agent
 Task: Deep research on world-class design systems (Linear, Vercel, Stripe, Apple Liquid Glass) for Nashrino refactor
 
 Work Log:
+
 - Read existing worklog.md to understand project context (Nashrino Persian RTL social media dashboard, 5 platforms IG/Telegram/LinkedIn/Rubika/Eitaa, Next.js 15 + Tailwind v4 + iOS 26 Liquid Glass aesthetic, multiple prior design refinement passes — VLM rated 7/10 production-ready, user wants world-class)
 - Invoked `web-search` and `web-reader` skills to learn their CLI usage (`z-ai function -n web_search` / `page_reader`)
 - Discovered prior benchmark research had already populated `/home/z/my-project/research/design/` with 55 JSON files (search results + page-reader extractions) covering all 8 research topics. Leveraged existing cache.
 - Extracted readable plain-text from all 55 page-reader JSON files via Python (stripped GitHub page chrome, parsed HTML article bodies, unescaped entities, wrapped long lines). Saved as .txt companions for easy reading.
 - Ran 5 fresh targeted web searches to fill specific gaps:
-  * Stripe tabular figures / numeric typography (font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1)
-  * Linear shadow elevation system CSS variables (lch(0 0 0 / 0.02) 0px 3px 6px -2px, lch(0 0 0 / 0.04) 0px 1px 1px 0px — Linear-tight, 6% total opacity)
-  * iOS 26 Liquid Glass motion animation timing (Apple .bouncy spring, .spring(response: 0.3, dampingFraction: 0.6), .matchedGeometry transitions, .materialize)
-  * Persian numbers Eastern Arabic numerals RTL handling (Western digits for analytics recommended, Persian digits for prose, Eastern Arabic numerals ۰۱۲۳۴۵۶۷۸۹)
-  * Vazirmatn font CDN Next.js Tailwind setup (next/font/google + variable + Tailwind config)
+  - Stripe tabular figures / numeric typography (font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1)
+  - Linear shadow elevation system CSS variables (lch(0 0 0 / 0.02) 0px 3px 6px -2px, lch(0 0 0 / 0.04) 0px 1px 1px 0px — Linear-tight, 6% total opacity)
+  - iOS 26 Liquid Glass motion animation timing (Apple .bouncy spring, .spring(response: 0.3, dampingFraction: 0.6), .matchedGeometry transitions, .materialize)
+  - Persian numbers Eastern Arabic numerals RTL handling (Western digits for analytics recommended, Persian digits for prose, Eastern Arabic numerals ۰۱۲۳۴۵۶۷۸۹)
+  - Vazirmatn font CDN Next.js Tailwind setup (next/font/google + variable + Tailwind config)
 - Read and synthesized the following critical sources:
-  * Linear DESIGN.md (VoltAgent/awesome-design-md) — full extracted token set including 13-token type scale with exact px/weight/line-height/letter-spacing values, 8-token spacing scale (4px base), 4-tier surface ladder + 1 focus ring level, full color palette with hex values (#010102 canvas → #5e6ad2 primary lavender → #f7f8f8 ink), shadow token `lch(0 0 0 / 0.02) 0px 3px 6px -2px, lch(0 0 0 / 0.04) 0px 1px 1px 0px`, 8-token radius scale (4/6/8/12/16/24/9999px), motion variables (--speed-quickTransition: 0.1s, --speed-regularTransition: 0.25s)
-  * "How we redesigned the Linear UI (part Ⅱ)" Linear blog — LCH color space migration, 3-variable theme system (base + accent + contrast → 98 derived tokens), Inter Display for headings + regular Inter for body, 6-week redesign timeline, Karri's opacity-based exploration approach
-  * "How's Linear so fast?" technical breakdown — IndexedDB local-first architecture, optimistic UI discipline, animation rules (only transform/opacity/background-color/border-color; never width/height/margin/padding; never transition: all), inlined app shell CSS in index.html, per-package vendor chunking, variable Inter font single woff2 with crossorigin="anonymous" preload
-  * Geist UI typography documentation — full Tailwind class list (text-heading-72 through text-heading-14, text-label-20 through text-label-12-mono, text-copy-24 through text-copy-13-mono), Subtle/Strong modifier system, most-common-text-style is text-label-14-with-Strong
-  * Geist Empty State spec — 7 variants (Blank Slate/Informational/Educational/Guide/No-Results/Error/Permission), title is Title Case + description is sentence case + adds new information, CTA labels are Verb+Noun (never Get Started/Continue/OK), max 1 primary CTA, aria-live on async filter changes, 3-CTA rule = smell
-  * Stripe "Designing accessible color systems" blog (Daryl Koopersmith, Wilson Miner) — CIELAB perceptual uniformity, why HSL fails (yellow appears lighter than blue at same mathematical lightness), 5-level contrast rule for accessible pairs, Stripe purple #635BFF + Downriver navy #0A2540 + Black Squeeze canvas #F6F9FC
-  * Stripe brand color (Mobbin) — exact hex values: #0A2540 (Downriver deep navy ink), #F6F9FC (Black Squeeze cool canvas), #635BFF (Cornflower Blue electric violet)
-  * Stripe iPhone Dashboard (Michaël Villar) — card-based paradigm with slide-open-with-spring, extra shadow on drag, velocity-matched deck movement, 100ms tap delay for spatial feedback, full-UI-at-once loading (no spinner blinking), time-period fade-while-scaling animation
-  * Apple HIG Liquid Glass + Materials pages — explicit rule "Liquid Glass is exclusively for the navigation layer; never apply to content itself", two variants (.regular = full adaptivity, .clear = requires 35% dimming layer over bright content, .identity = conditional disable), no glass-on-glass stacking, 4-tier standard materials (ultraThin/thin/regular/thick), 4-level vibrancy (.label/.secondaryLabel/.tertiaryLabel/.quaternaryLabel)
-  * WWDC25 Session 219 "Meet Liquid Glass" notes — lensing (not blur), materialization, fluidity, morphing, adaptivity principles; tint for primary actions only never decorative; larger elements simulate thicker material
-  * Conor Luddy's comprehensive Liquid Glass reference — 5 parts covering Foundation/Intermediate/Advanced/Edge Cases/Best Practices; .bouncy default spring for morphing; .spring(response: 0.3, dampingFraction: 0.6) for drags; GlassEffectContainer with spacing parameter for morphing threshold; 4 readability solutions (gradient fade / strategic tinting / Regular over Clear / background dimming); 13% vs 1% battery drain iOS 26 vs iOS 18 on iPhone 16 Pro Max
-  * shadcn/ui New York style comparison — h-9 (36px) components (not h-10 40px Default), shadow-sm on buttons/inputs (Default was flat), text-base card title (not text-2xl), 1px outline 0px offset focus ring (not 2px/2px), rounded-xl cards 12px (not rounded-lg 8px)
-  * "Designing a Command Palette" (Destiner's notes) — ⌘K de-facto standard, fuzzy search required, favorites/recent queries at top, single entry point, multi-level palette optional, Raycast aliases pattern
-  * Vazirmatn font — Persian/Arabic primary, blends with Roboto for Latin glyphset, 9 weights, OFL licensed, Google Fonts distribution, font-feature-settings support
+  - Linear DESIGN.md (VoltAgent/awesome-design-md) — full extracted token set including 13-token type scale with exact px/weight/line-height/letter-spacing values, 8-token spacing scale (4px base), 4-tier surface ladder + 1 focus ring level, full color palette with hex values (#010102 canvas → #5e6ad2 primary lavender → #f7f8f8 ink), shadow token `lch(0 0 0 / 0.02) 0px 3px 6px -2px, lch(0 0 0 / 0.04) 0px 1px 1px 0px`, 8-token radius scale (4/6/8/12/16/24/9999px), motion variables (--speed-quickTransition: 0.1s, --speed-regularTransition: 0.25s)
+  - "How we redesigned the Linear UI (part Ⅱ)" Linear blog — LCH color space migration, 3-variable theme system (base + accent + contrast → 98 derived tokens), Inter Display for headings + regular Inter for body, 6-week redesign timeline, Karri's opacity-based exploration approach
+  - "How's Linear so fast?" technical breakdown — IndexedDB local-first architecture, optimistic UI discipline, animation rules (only transform/opacity/background-color/border-color; never width/height/margin/padding; never transition: all), inlined app shell CSS in index.html, per-package vendor chunking, variable Inter font single woff2 with crossorigin="anonymous" preload
+  - Geist UI typography documentation — full Tailwind class list (text-heading-72 through text-heading-14, text-label-20 through text-label-12-mono, text-copy-24 through text-copy-13-mono), Subtle/Strong modifier system, most-common-text-style is text-label-14-with-Strong
+  - Geist Empty State spec — 7 variants (Blank Slate/Informational/Educational/Guide/No-Results/Error/Permission), title is Title Case + description is sentence case + adds new information, CTA labels are Verb+Noun (never Get Started/Continue/OK), max 1 primary CTA, aria-live on async filter changes, 3-CTA rule = smell
+  - Stripe "Designing accessible color systems" blog (Daryl Koopersmith, Wilson Miner) — CIELAB perceptual uniformity, why HSL fails (yellow appears lighter than blue at same mathematical lightness), 5-level contrast rule for accessible pairs, Stripe purple #635BFF + Downriver navy #0A2540 + Black Squeeze canvas #F6F9FC
+  - Stripe brand color (Mobbin) — exact hex values: #0A2540 (Downriver deep navy ink), #F6F9FC (Black Squeeze cool canvas), #635BFF (Cornflower Blue electric violet)
+  - Stripe iPhone Dashboard (Michaël Villar) — card-based paradigm with slide-open-with-spring, extra shadow on drag, velocity-matched deck movement, 100ms tap delay for spatial feedback, full-UI-at-once loading (no spinner blinking), time-period fade-while-scaling animation
+  - Apple HIG Liquid Glass + Materials pages — explicit rule "Liquid Glass is exclusively for the navigation layer; never apply to content itself", two variants (.regular = full adaptivity, .clear = requires 35% dimming layer over bright content, .identity = conditional disable), no glass-on-glass stacking, 4-tier standard materials (ultraThin/thin/regular/thick), 4-level vibrancy (.label/.secondaryLabel/.tertiaryLabel/.quaternaryLabel)
+  - WWDC25 Session 219 "Meet Liquid Glass" notes — lensing (not blur), materialization, fluidity, morphing, adaptivity principles; tint for primary actions only never decorative; larger elements simulate thicker material
+  - Conor Luddy's comprehensive Liquid Glass reference — 5 parts covering Foundation/Intermediate/Advanced/Edge Cases/Best Practices; .bouncy default spring for morphing; .spring(response: 0.3, dampingFraction: 0.6) for drags; GlassEffectContainer with spacing parameter for morphing threshold; 4 readability solutions (gradient fade / strategic tinting / Regular over Clear / background dimming); 13% vs 1% battery drain iOS 26 vs iOS 18 on iPhone 16 Pro Max
+  - shadcn/ui New York style comparison — h-9 (36px) components (not h-10 40px Default), shadow-sm on buttons/inputs (Default was flat), text-base card title (not text-2xl), 1px outline 0px offset focus ring (not 2px/2px), rounded-xl cards 12px (not rounded-lg 8px)
+  - "Designing a Command Palette" (Destiner's notes) — ⌘K de-facto standard, fuzzy search required, favorites/recent queries at top, single entry point, multi-level palette optional, Raycast aliases pattern
+  - Vazirmatn font — Persian/Arabic primary, blends with Roboto for Latin glyphset, 9 weights, OFL licensed, Google Fonts distribution, font-feature-settings support
 
 - Compiled comprehensive 1713-line markdown report to `/home/z/my-project/research-design-systems.md` with 10 major sections:
   1. Executive Summary: 10 most important principles for a production-grade glass dashboard (glass is nav-only; restrained accent; OKLCH not HSL; tabular numerics everywhere; layered hairlines not heavy shadows; animate transform/opacity only; optimistic UI + local-first; keyboard-first ⌘K; empty states as first-class citizens; RTL is a layout rewrite)
@@ -446,36 +477,39 @@ Work Log:
   8. Dashboard UX patterns synthesis — layout grids from Linear/Vercel/Stripe/Notion/Raycast/Height, 3-tier and 4-tier information hierarchy examples, loading state approaches (Linear no-spinner / Stripe full-UI-at-once / Vercel skeleton), density vs breathing room analysis (Linear dense / Stripe balanced / Vercel spacious)
   9. Specific actionable recommendations for Nashrino — 4-tier glass material system with exact blur/opacity/saturation values per tier, layout grid (264px sidebar + h-12 top bar + 24px gutters), Vazirmatn + Geist font stack with 12-token type scale, OKLCH color tokens (3 inputs → derived surface/text/border/accent/semantic/platform palettes), Linear-tight shadow system (6% total opacity max, dark mode glow fallback), motion tokens (5 durations + 5 easings), 8-token spacing scale (4px base), 8-token radius scale, RTL-specific implementation rules (10 rules including logical properties / directional-icon flip / Western-digits-for-analytics / Jalali-primary / Persian letter-spacing caveat / bidi control), platform-specific UI patterns table (IG/Telegram/LinkedIn/Rubika/Eitaa), ⌘K command palette scope, 7 empty state variants
   10. Anti-patterns to AVOID — 10 glass morphism mistakes (glass-on-glass, glass on content, too transparent, too much blur, no edge definition, no specular highlight, heavy shadows, colorful ambient mesh, animated glass, glass-for-glass-sake), 10 dashboard mistakes (rainbow charts, center-aligned numbers, proportional figures, spinners everywhere, empty states with no/3 CTAs, generic loading screens, modal stacking, density without hierarchy, decorative animations), 10 Persian RTL mistakes (manual flipping with margin-left/right, not flipping directional icons, Persian digits in analytics, Latin text breaking RTL flow, wrong calendar, wrong week start, missing Persian font, letter-spacing on Persian, missing lang="fa", mixed-direction inputs)
-  + Concrete design tokens table — full OKLCH color tokens, type scale with exact px/weight/line-height, spacing scale, radius scale, layered shadow definitions (card-hover/panel/popover/command/drag/inset + dark mode glow), motion tokens with cubic-bezier values, z-index scale, glass material utility class definitions with ::before specular pseudo-element
+  - Concrete design tokens table — full OKLCH color tokens, type scale with exact px/weight/line-height, spacing scale, radius scale, layered shadow definitions (card-hover/panel/popover/command/drag/inset + dark mode glow), motion tokens with cubic-bezier values, z-index scale, glass material utility class definitions with ::before specular pseudo-element
 
 Stage Summary:
+
 - Produced `/home/z/my-project/research-design-systems.md` — 1713 lines, ~50KB, world-class design-systems research brief
 - Key actionable findings:
-  * Linear-tight shadows (6% total opacity, 2 layers max) — current Nashrino uses 24px/48px ambient floor which is amateur-heavy
-  * OKLCH color system with 3 inputs (base + accent + contrast) — Linear's exact pattern, derivable to 98+ tokens
-  * Glass is navigation-only (Apple HIG explicit rule) — current Nashrino applies glass too broadly across content cards
-  * Tabular numerics (font-variant-numeric: tabular-nums) required on every metric — currently inconsistent
-  * Animate only transform/opacity/background-color/border-color — never width/height/margin/padding, never transition: all
-  * Vazirmatn + Geist Sans/Mono font stack — Persian primary + Latin/numeric fallback for crisp tabular figures
-  * Western digits for analytics (better tabular comparison), Persian digits for prose content counts
-  * Linear's exact type scale (display-xl 80px 600 1.05 -3.0px tracking → caption 12px 400 1.40 0) adapted for Nashrino (display-xl 48px since dashboard not marketing)
-  * Linear's exact spacing scale (4/8/12/16/24/32/48/96px) — adopt verbatim
-  * Linear's exact radius scale (4/6/8/12/16/24/9999px) — adopt verbatim
-  * Apple Liquid Glass 2 variants (Regular for default nav, Clear only for media-rich backgrounds with 35% dimming layer)
-  * Apple explicit no-glass-on-glass rule — Nashrino's nested glass cards violate this
-  * Stripe's weight-300 body type elegance — Nashrino currently over-weights at 500
-  * Stripe's tabular currency alignment — `$` symbol dimmer than digits, right-aligned, thousands separator
-  * Geist's 7 empty state variants with Verb+Noun CTA labels (never Get Started/Continue/OK) and max-1-primary-CTA rule
-  * Linear's ⌘K searches local MobX pool (not server) — Nashrino command palette should index client-side for instant results
-  * 13% vs 1% battery drain (iOS 26 Liquid Glass vs iOS 18 standard materials on iPhone 16 Pro Max) — Liquid Glass is expensive, use sparingly
+  - Linear-tight shadows (6% total opacity, 2 layers max) — current Nashrino uses 24px/48px ambient floor which is amateur-heavy
+  - OKLCH color system with 3 inputs (base + accent + contrast) — Linear's exact pattern, derivable to 98+ tokens
+  - Glass is navigation-only (Apple HIG explicit rule) — current Nashrino applies glass too broadly across content cards
+  - Tabular numerics (font-variant-numeric: tabular-nums) required on every metric — currently inconsistent
+  - Animate only transform/opacity/background-color/border-color — never width/height/margin/padding, never transition: all
+  - Vazirmatn + Geist Sans/Mono font stack — Persian primary + Latin/numeric fallback for crisp tabular figures
+  - Western digits for analytics (better tabular comparison), Persian digits for prose content counts
+  - Linear's exact type scale (display-xl 80px 600 1.05 -3.0px tracking → caption 12px 400 1.40 0) adapted for Nashrino (display-xl 48px since dashboard not marketing)
+  - Linear's exact spacing scale (4/8/12/16/24/32/48/96px) — adopt verbatim
+  - Linear's exact radius scale (4/6/8/12/16/24/9999px) — adopt verbatim
+  - Apple Liquid Glass 2 variants (Regular for default nav, Clear only for media-rich backgrounds with 35% dimming layer)
+  - Apple explicit no-glass-on-glass rule — Nashrino's nested glass cards violate this
+  - Stripe's weight-300 body type elegance — Nashrino currently over-weights at 500
+  - Stripe's tabular currency alignment — `$` symbol dimmer than digits, right-aligned, thousands separator
+  - Geist's 7 empty state variants with Verb+Noun CTA labels (never Get Started/Continue/OK) and max-1-primary-CTA rule
+  - Linear's ⌘K searches local MobX pool (not server) — Nashrino command palette should index client-side for instant results
+  - 13% vs 1% battery drain (iOS 26 Liquid Glass vs iOS 18 standard materials on iPhone 16 Pro Max) — Liquid Glass is expensive, use sparingly
 - Deliverable ready to drive the Nashrino refactor: every value in the tokens table is sourced from a real production design system (Linear, Vercel/Geist, Stripe, Apple HIG). Apply directly to the Tailwind v4 `@theme` block in globals.css and propagate through component refactor.
 
 ---
+
 Task ID: VIEWS-REFACTOR
 Agent: Views Refactoring Agent
 Task: Refactor 9 view files to use new solid-surface design system
 
 Work Log:
+
 - Read worklog.md to understand prior context (multiple design refinement passes; dashboard already at 7/10 VLM; design system rebuilt with n-card / n-card-interactive / n-card-compact / n-glass-popover solid-surface tokens replacing the old n-panel family).
 - Verified the new CSS class definitions in src/app/globals.css: n-card (solid surface + hairline border + Linear-tight shadow), n-card-interactive (hoverable, border-color + shadow lift on hover), n-card-compact (subtle bg + built-in hover), n-glass-popover (glass for nav/overlays only), n-control / n-glass-control unchanged. Confirmed num-tabular custom utility = tabular-nums + lnum + tnum + tracking.
 - Verified shared.tsx exports EmptyState ({icon, title, message?, action?}) and Trend ({value, showArrow?}) components available for import.
@@ -505,6 +539,7 @@ Work Log:
 - Dev server log: `✓ Compiled in 6.8s`, all /api routes returning 200, zero compile errors after all edits.
 
 Stage Summary:
+
 - Total: ~80+ find/replace edits across 9 view files via MultiEdit batches.
 - All 9 view files now use the new solid-surface design system: every `n-panel` → `n-card`, every `n-panel-thin` → `n-card-compact`, every interactive `n-panel` button card → `n-card-interactive`, every `glass-hover` removed from content (4 instances), zero `n-popover` existed to convert.
 - Typography unified: `font-[800]` eliminated everywhere (→`font-[700]`); card titles and body emphasis demoted from `font-[700]`→`font-[600]`; `font-[700]` retained only for SectionTitle page titles, KPI/metric numbers, and section/column labels (TableHead, weekday headers, status badges, step number circles, "توضیحات"/"مانع اصلی"/"طرح‌های موجود" labels, calendar year/month display, publish-time/progress labels in calendar sheet).
@@ -516,11 +551,13 @@ Stage Summary:
 - Lint: PASS (only pre-existing examples-file error remains, out of scope).
 
 ---
+
 Task ID: REFACTOR-V2
 Agent: Main Agent (Z.ai Code)
 Task: Complete dashboard + design system refactor based on deep research (Linear, Vercel, Stripe, Apple HIG)
 
 Work Log:
+
 - Launched 2 parallel research agents (RESEARCH-1: design systems, RESEARCH-2: glass/UX rules)
 - Research produced 2 comprehensive reports (50KB + 78KB) with exact tokens, spacing, motion, typography values
 - Key paradigm shift from research: Apple HIG rule "Liquid Glass is for NAVIGATION ONLY, never content"
@@ -534,6 +571,7 @@ Work Log:
 - Verified with Agent Browser + VLM: all views rated 8/10, zero console errors, zero page errors, lint passes (only pre-existing examples folder error), responsive mobile (390px) verified
 
 Stage Summary:
+
 - Complete design system paradigm shift: glass navigation + solid content (Apple HIG compliant)
 - All 54 old class references (n-panel, n-popover, glass-hover) replaced with new system across 15 files
 - Production quality: 8/10 VLM rating across dashboard, analytics, compose, calendar, inbox, channels, mobile views
@@ -541,18 +579,21 @@ Stage Summary:
 - Zero errors, zero warnings, clean lint, responsive, RTL-compliant
 
 ---
+
 Task ID: RESEARCH-3
 Agent: 10/10 Benchmark Research Agent
 Task: Deep research on interaction/motion/polish layer for 10/10 dashboard quality
 
 Work Log:
+
 - Read existing research files to avoid duplication: worklog.md (541 lines), research-design-systems.md (1713 lines, RESEARCH-1 design-systems deep dive), research-glass-ux.md (1657 lines, RESEARCH-2 glass/dashboard-UX/motion-tokens deep dive)
-- Identified gap: prior research covered design tokens, color systems, glass materials, motion token *naming*, RTL/Persian digit basics — but NOT the specific interaction choreography, exact Framer Motion variants, or per-element specs that turn 8/10 into 10/10
+- Identified gap: prior research covered design tokens, color systems, glass materials, motion token _naming_, RTL/Persian digit basics — but NOT the specific interaction choreography, exact Framer Motion variants, or per-element specs that turn 8/10 into 10/10
 - Invoked web-search skill: ran 60 web searches covering Linear notification UX, Linear Method motion, cmdk command palette, Vercel loading states, micro-interactions, sonner toast, optimistic UI React Query, accessible popover patterns, RTL notification dropdown, Framer Motion layoutId, GitHub notification inbox, Slack notification preferences, Rauno Freiberg, Raycast, Notion command palette, Linear CSS variables, Linear gradient borders, Vercel empty states, count-up animations, skeleton loading, WebSocket indicators, ARIA live regions, chart tooltips/animations, Linear keyboard shortcuts, sonner features, Linear fast/instant feel, toggle animations, copy-to-clipboard, tooltip previews, page transitions, Linear notification inbox, Vercel deployment notifications, React Query refetchInterval, progress bars, Linear palette, dark mode design, empty states, chart legends, accessible chart palettes, focus-visible, Jalali pickers, Persian digit count-up, RTL popovers, Radix UI, Linear Method blog, Vercel Geist, Linear keyboard-first, AnimatePresence, Framer Motion stagger, Linear blog, motion.dev, instant feel dashboards, modal springs, shimmer, Vercel progress, Linear status transitions, cmdk paco, Rauno philosophy
 - Invoked web-reader skill: fetched and parsed 25 full articles from linear.app/method, linear.app/docs/notifications, emilkowal.ski (Sonner author), performance.dev (Linear speed reverse-engineering), vercel.com/blog (design engineering), vercel.com/geist/skeleton, knock.app (keyboard shortcuts + React notif libs), tkdodo.eu (concurrent optimistic updates), nngroup.com (skeleton screens), maggieappleton.com (command K bars), uxpatterns.dev (command palette), evergreen.segment.com (empty states), eleken.co (notification UX), ibelick.com (gradient borders), docs.github.com (notifications), setproduct.com (notifications UI), simonhearne.com (optimistic UI patterns), figma.com (motion principles + Linear method), github.com/dip/cmdk, tigerabrodi.blog (Sonner styling), atlassian.design (empty states), knock.app (notif libs)
 - Wrote comprehensive 1547-line markdown report to /home/z/my-project/research-10of10.md covering: (1) 10/10 Gap Analysis — six specific craft layers that separate 8/10 from 10/10 (perceived latency / 100ms threshold, Linear's exact `--speed-*` CSS variables, asymmetric timing, composite-only animation rule, the 5 Linear-feel pillars, Vercel's "delighters" concept, Sonner's "thousand barely audible voices" philosophy), (2) 30 specific micro-interactions with exact trigger/animation/duration/easing/code specs (bell badge pop-in, popover open, row hover, mark-as-read swipe, Cmd+K open, result selection, button press, toggle, copy-to-clipboard, sidebar active via layoutId, tab underline, toast entrance, swipe-to-dismiss, tab-visibility pause, KPI count-up, skeleton shimmer, skeleton→content fade, modal spring, list stagger, page transition, card hover, tooltip appear, shortcut hints, dropdown open, optimistic toggle, connection indicator, progress bar, empty state entrance, tabular nums), (3) Notification system anatomy (bell button + popover with header/filter tabs/mark-all-read, grouped list with icons/timestamps/swipe actions, empty state, footer, real-time updates, full accessibility), (4) Command palette anatomy (trigger, overlay, container with input+list+footer, 4 group types, nested pages, accessibility, "search local not server" rule), (5) Motion system with exact Framer Motion variant objects (motion tokens, page transition, list stagger, count-up hook, skeleton fade, popover spring, toast slide+swipe, modal/sheet spring, layoutId shared elements, reduced-motion fallbacks), (6) Theme refinements (10-hue tint palette for platform categorization, gradient borders via @property + border-box/padding-box, 4-level hover hierarchy, dark mode as designed-not-inverted with 6 specific rules, "5 colors total" restraint principle), (7) RTL-specific touches (Persian count-up every frame, native Jalali picker spec with Saturday-start weeks and animated month switching, RTL tooltip/popover arrow positioning, Persian number formatting in charts via toLocaleString+toPersianDigits, RTL shimmer direction, Persian-aware text truncation with ZWNJ), (8) Implementation priority matrix ranking top 10 improvements by wow÷effort (Cmd+K palette #1, notification popover #2, optimistic publish flow #3, sidebar layoutId #4, Sonner upgrade #5, KPI count-up #6, skeleton loading #7, hover hierarchy #8, connection indicator #9, polish details #10), (9) full sources cited, (10) Appendix cheat sheet with 5 motion rules, 4 hover levels, 3 notification channels, 3 keyboard discovery mechanisms, Linear's 5 timing tokens, 5 Sonner details, 5 cmdk parts
 
 Stage Summary:
+
 - The 10/10 Gap Analysis identifies six craft layers separating 8/10 from 10/10: (a) perceived latency via <100ms cause-and-effect threshold + optimistic mutations, (b) Linear's exact asymmetric timing tokens (instant enter / 150ms exit / 100-250-350ms scale), (c) animate-only-composite-properties rule (transform/opacity only — NEVER width/height/margin/padding), (d) the 5 "Linear feel" pillars (local-first data, optimistic mutations, granular reactivity, keyboard-first input, animation discipline), (e) Vercel's "delighters" as a dedicated work category, (f) Sonner's "thousand barely audible voices" — invisible-until-wrong details
 - 30 specific micro-interactions documented with exact specs including: trigger, animation, duration (ms), easing curve (cubic-bezier or spring stiffness/damping/mass), and complete Framer Motion/JSX code samples ready to paste into the codebase
 - Notification system anatomy: complete spec for world-class bell popover (trigger button with RTL-aware badge, glass popover with header/filter-tabs/mark-all-read, grouped list with 5 notification types each having a tinted icon, swipe-to-mark-read, real-time WebSocket updates, full keyboard navigation + ARIA live region for screen readers)
@@ -565,11 +606,13 @@ Stage Summary:
 - All 60 search results saved to /home/z/my-project/research-10of10/s01-s60.json, all 25 fetched article texts saved to /home/z/my-project/research-10of10/p01-p25.{json,txt} for future reference
 
 ---
+
 Task ID: REFACTOR-V3-10OF10
 Agent: Main Agent (Z.ai Code)
 Task: Push dashboard from 8/10 to 10/10 with deep research on interaction/motion/polish layer
 
 Work Log:
+
 - Launched RESEARCH-3 agent: 60 web searches + 25 articles fetched on micro-interactions, motion, notifications, command palettes, optimistic UI, RTL. Produced 63KB report at /home/z/my-project/research-10of10.md
 - Research identified top 10 implementation priorities ranked by wow÷effort
 - Created motion system library (src/lib/motion.tsx): easing tokens, page transition, list stagger, popover spring, KPI count-up hook with Persian digit conversion, CountUp component
@@ -585,6 +628,7 @@ Work Log:
 - Verified with Agent Browser + VLM: notification popover rated 9/10, command palette rated 9/10, overall dashboard rated 9/10 ("top tier of dashboard designs"), zero console errors, lint passes
 
 Stage Summary:
+
 - Dashboard quality: 6/10 → 8/10 (v2 refactor) → 9/10 (v3 interaction layer)
 - 8 new files/components created: motion.tsx, notification-popover.tsx, command-palette.tsx + 6 modified files
 - Top-tier features: Cmd+K command palette, notification bell popover, KPI count-up, sidebar layoutId, connection status, micro-interactions
@@ -592,11 +636,13 @@ Stage Summary:
 - Zero errors, zero warnings, clean lint, responsive, RTL-compliant
 
 ---
+
 Task ID: 2-a
 Agent: Views Skeleton+Optimistic A
 Task: Apply skeleton loading + optimistic UI + enhanced empty states + AnimatedTabs + n-gradient-border + n-focus-ring to compose/content/media/campaigns views
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md to absorb prior agent work (design system v3, motion library, command palette, notification popover, KPI count-up, plus P0/P1 publish-core implementation history).
 - Read /home/z/my-project/src/components/dashboard/shared.tsx in full to understand the newly added Skeleton/SkeletonText/SkeletonCard/SkeletonList/SkeletonKPI/LoadingState/EmptyState(illustration)/AnimatedTabs APIs.
 - Verified CSS utilities (.n-skeleton, .n-gradient-border, .n-focus-ring) exist in /home/z/my-project/src/app/globals.css (lines 398/432/472).
@@ -608,101 +654,107 @@ Work Log:
 - Ran `bun run lint` from /home/z/my-project: only the pre-existing error in upload/extracted/examples/websocket/frontend.tsx (react-hooks/set-state-in-effect, line 45) is reported. ZERO new errors, ZERO warnings introduced by the four view edits.
 
 Stage Summary:
+
 - Files modified (only): src/components/views/compose-view.tsx, src/components/views/content-view.tsx, src/components/views/media-view.tsx, src/components/views/campaigns-view.tsx
 - Patterns applied consistently across all 4 views:
-  * Optimistic UI via useMutation + onMutate/onError/onSettled, snapshot-previous-and-rollback pattern (TkDodo). Real backend call only for compose/publish (POST /api/publish exists); for content/media/campaigns create, mutationFn resolves immediately with a 120ms delay since the backend create endpoints are not wired yet — the optimistic row persists in the cache and gets reconciled by invalidate-on-settled.
-  * LoadingState wraps every isLoading↔content swap with AnimatePresence cross-fade; skeletons are size-matched to the real layout (Skeleton aspect-square for media grids, Skeleton h-14 for table rows, SkeletonCard for campaign cards, Skeleton h-14 for campaign-detail posts).
-  * EmptyState illustration mode for view-level empties (content table, media library, campaigns grid) with Persian imperative-verb CTA buttons: "ساخت محتوا", "آپلود اولین رسانه", "ساخت کمپین". EmptyState size="compact" for inline empties (compose StepMedia empty media library).
-  * AnimatedTabs replaces every prominent shadcn Tabs (campaigns-view status filter + campaigns-view CampaignDetail overview/posts/report tabs) — Linear-style sliding underline with layoutId.
-  * n-gradient-border applied to ONE hero card per view: compose live-preview card, content table card, media top toolbar card, campaigns first summary StatCard.
-  * n-focus-ring added to every interactive element lacking a visible focus state (step-rail buttons, nav buttons, action-bar buttons, folder sidebar buttons, layout toggles, upload/select/remove buttons, dropdown triggers, CampaignCard, detail-tab CTAs, schedule option cards).
+  - Optimistic UI via useMutation + onMutate/onError/onSettled, snapshot-previous-and-rollback pattern (TkDodo). Real backend call only for compose/publish (POST /api/publish exists); for content/media/campaigns create, mutationFn resolves immediately with a 120ms delay since the backend create endpoints are not wired yet — the optimistic row persists in the cache and gets reconciled by invalidate-on-settled.
+  - LoadingState wraps every isLoading↔content swap with AnimatePresence cross-fade; skeletons are size-matched to the real layout (Skeleton aspect-square for media grids, Skeleton h-14 for table rows, SkeletonCard for campaign cards, Skeleton h-14 for campaign-detail posts).
+  - EmptyState illustration mode for view-level empties (content table, media library, campaigns grid) with Persian imperative-verb CTA buttons: "ساخت محتوا", "آپلود اولین رسانه", "ساخت کمپین". EmptyState size="compact" for inline empties (compose StepMedia empty media library).
+  - AnimatedTabs replaces every prominent shadcn Tabs (campaigns-view status filter + campaigns-view CampaignDetail overview/posts/report tabs) — Linear-style sliding underline with layoutId.
+  - n-gradient-border applied to ONE hero card per view: compose live-preview card, content table card, media top toolbar card, campaigns first summary StatCard.
+  - n-focus-ring added to every interactive element lacking a visible focus state (step-rail buttons, nav buttons, action-bar buttons, folder sidebar buttons, layout toggles, upload/select/remove buttons, dropdown triggers, CampaignCard, detail-tab CTAs, schedule option cards).
 - Decisions/notes:
-  * For optimistic ContentItem/MediaItem/Campaign, used `id: optimistic-${Date.now()}` as a temporary ID — replaced by the real ID when onSettled invalidates and the server-fetched list replaces the cache (only relevant for compose/publish which hits a real API; for the simulated mutations the optimistic ID is the final ID until refresh).
-  * MediaGridCard and MediaListRow were extended to render an ImageIcon placeholder when item.thumbnail is empty — this prevents broken-image icons for optimistic uploads with no real thumbnail yet. This was an internal change to media-view only (no shared component touched).
-  * StatCard in campaigns-view received a new optional `className` prop to support applying n-gradient-border to just the first hero StatCard without modifying the other three.
-  * The CampaignDetail tabs were converted from shadcn Tabs (which had TabsList w-full + TabsTrigger flex-1 for full-width) to AnimatedTabs (natural-width, left-aligned). The AnimatedTabs component is inline-flex and cannot be made full-width without modifying shared.tsx (out of scope). The resulting visual is a Linear-style left-anchored tab bar with sliding underline — consistent with the rest of the dashboard.
-  * Existing toasts ("ویرایش محتوا به‌زودی فعال خواهد شد", "حذف نیازمند تأیید است", etc.) were preserved unchanged — only the create/upload/publish flows were promoted to real optimistic mutations.
+  - For optimistic ContentItem/MediaItem/Campaign, used `id: optimistic-${Date.now()}` as a temporary ID — replaced by the real ID when onSettled invalidates and the server-fetched list replaces the cache (only relevant for compose/publish which hits a real API; for the simulated mutations the optimistic ID is the final ID until refresh).
+  - MediaGridCard and MediaListRow were extended to render an ImageIcon placeholder when item.thumbnail is empty — this prevents broken-image icons for optimistic uploads with no real thumbnail yet. This was an internal change to media-view only (no shared component touched).
+  - StatCard in campaigns-view received a new optional `className` prop to support applying n-gradient-border to just the first hero StatCard without modifying the other three.
+  - The CampaignDetail tabs were converted from shadcn Tabs (which had TabsList w-full + TabsTrigger flex-1 for full-width) to AnimatedTabs (natural-width, left-aligned). The AnimatedTabs component is inline-flex and cannot be made full-width without modifying shared.tsx (out of scope). The resulting visual is a Linear-style left-anchored tab bar with sliding underline — consistent with the rest of the dashboard.
+  - Existing toasts ("ویرایش محتوا به‌زودی فعال خواهد شد", "حذف نیازمند تأیید است", etc.) were preserved unchanged — only the create/upload/publish flows were promoted to real optimistic mutations.
 
 ---
+
 Task ID: 2-b
 Agent: Views Skeleton+EmptyStates B
 Task: Apply skeleton loading + enhanced empty states + AnimatedTabs + n-gradient-border + n-focus-ring to inbox/analytics/channels/calendar/settings views
 
 Work Log:
+
 - Read worklog.md and shared.tsx to understand prior work (design system v3, Skeleton family, EmptyState illustration mode, AnimatedTabs, LoadingState, n-gradient-border, n-focus-ring utilities)
 - Read all 5 view files (inbox/analytics/channels/calendar/settings) to understand current structure, queries, loading states, empty states, and existing Persian copy style
 - inbox-view.tsx:
-  * Replaced shadcn Tabs/TabsList/TabsTrigger (all/unread/comment/dm filter) with AnimatedTabs, including unread count badge
-  * Removed unused Tabs import; added SkeletonList, LoadingState, AnimatedTabs imports
-  * Replaced basic animate-pulse block (6× h-16 cards) with `<SkeletonList rows={6} avatar />` wrapped in LoadingState
-  * Upgraded filtered-empty state to `illustration` mode with descriptive Persian message
-  * Upgraded thread "select a message" empty state to `illustration` mode
-  * Added `n-gradient-border` to the thread panel (most prominent hero card)
-  * Added `n-focus-ring` to the MessageListItem plain `<button>` rows (lacked visible focus state)
+  - Replaced shadcn Tabs/TabsList/TabsTrigger (all/unread/comment/dm filter) with AnimatedTabs, including unread count badge
+  - Removed unused Tabs import; added SkeletonList, LoadingState, AnimatedTabs imports
+  - Replaced basic animate-pulse block (6× h-16 cards) with `<SkeletonList rows={6} avatar />` wrapped in LoadingState
+  - Upgraded filtered-empty state to `illustration` mode with descriptive Persian message
+  - Upgraded thread "select a message" empty state to `illustration` mode
+  - Added `n-gradient-border` to the thread panel (most prominent hero card)
+  - Added `n-focus-ring` to the MessageListItem plain `<button>` rows (lacked visible focus state)
 - analytics-view.tsx:
-  * Replaced shadcn Tabs/TabsList/TabsTrigger (۷ روز/۳۰ روز) with AnimatedTabs in SectionTitle badge
-  * Removed all unused Tabs imports (Tabs, TabsList, TabsTrigger, TabsContent); removed unused toast import; added Button, Skeleton, LoadingState, AnimatedTabs
-  * Replaced KPI loading animate-pulse with `<Skeleton className="h-7 w-24 rounded" />`
-  * Wrapped the reach area chart in LoadingState with skeleton `<Skeleton className="h-64 w-full rounded-xl" />`
-  * Added `n-gradient-border` to the reach area chart card (hero summary card)
-  * Upgraded logs-table empty state to `size="compact"` with a CTA button "نمایش همه وضعیت‌ها" that resets statusFilter
+  - Replaced shadcn Tabs/TabsList/TabsTrigger (۷ روز/۳۰ روز) with AnimatedTabs in SectionTitle badge
+  - Removed all unused Tabs imports (Tabs, TabsList, TabsTrigger, TabsContent); removed unused toast import; added Button, Skeleton, LoadingState, AnimatedTabs
+  - Replaced KPI loading animate-pulse with `<Skeleton className="h-7 w-24 rounded" />`
+  - Wrapped the reach area chart in LoadingState with skeleton `<Skeleton className="h-64 w-full rounded-xl" />`
+  - Added `n-gradient-border` to the reach area chart card (hero summary card)
+  - Upgraded logs-table empty state to `size="compact"` with a CTA button "نمایش همه وضعیت‌ها" that resets statusFilter
 - channels-view.tsx:
-  * Removed unused Tabs import; added useMemo, SkeletonCard, LoadingState, AnimatedTabs
-  * Added new `statusFilter` state ("all" | "connected" | "issues") with derived healthyCount, issuesCount, filteredPlatforms memos (no API/query changes — pure client-side filter)
-  * Replaced animate-pulse cards with `<SkeletonCard />` (4×) wrapped in LoadingState
-  * Upgraded primary empty state ("پلتفرمی متصل نیست") to `illustration` mode with "اتصال پلتفرم" CTA
-  * Added new connection-status summary card with `n-gradient-border` (the hero card showing X از Y پلتفرم فعال + healthy/issues legend dots)
-  * Added AnimatedTabs filter (همه / متصل / نیازمند توجه) with count badges
-  * Added inline compact EmptyState when filteredPlatforms is empty (e.g., user filters by issues but none) with "نمایش همه" CTA
-  * Added `n-focus-ring` to the DisconnectItem's plain `<button>` (had outline-none) and to the ConnectDialog platform selector `<button>`s
+  - Removed unused Tabs import; added useMemo, SkeletonCard, LoadingState, AnimatedTabs
+  - Added new `statusFilter` state ("all" | "connected" | "issues") with derived healthyCount, issuesCount, filteredPlatforms memos (no API/query changes — pure client-side filter)
+  - Replaced animate-pulse cards with `<SkeletonCard />` (4×) wrapped in LoadingState
+  - Upgraded primary empty state ("پلتفرمی متصل نیست") to `illustration` mode with "اتصال پلتفرم" CTA
+  - Added new connection-status summary card with `n-gradient-border` (the hero card showing X از Y پلتفرم فعال + healthy/issues legend dots)
+  - Added AnimatedTabs filter (همه / متصل / نیازمند توجه) with count badges
+  - Added inline compact EmptyState when filteredPlatforms is empty (e.g., user filters by issues but none) with "نمایش همه" CTA
+  - Added `n-focus-ring` to the DisconnectItem's plain `<button>` (had outline-none) and to the ConnectDialog platform selector `<button>`s
 - calendar-view.tsx:
-  * Removed unused TabsList/TabsTrigger imports (kept Tabs, TabsContent for content switching)
-  * Added Plus icon and AnimatedTabs imports
-  * Replaced SectionTitle badge Tabs (month/week/agenda) with AnimatedTabs
-  * Upgraded agenda empty state to `illustration` mode with "ایجاد رویداد" CTA (Persian imperative verb)
-  * Upgraded queue-empty state to `illustration` mode with descriptive Persian message
-  * Added `n-gradient-border` to the calendar header card (current-month navigation card — hero)
-  * Added `n-focus-ring` to DayCell job `<button>`s and agenda job `<button>`s (plain buttons that lacked focus states)
+  - Removed unused TabsList/TabsTrigger imports (kept Tabs, TabsContent for content switching)
+  - Added Plus icon and AnimatedTabs imports
+  - Replaced SectionTitle badge Tabs (month/week/agenda) with AnimatedTabs
+  - Upgraded agenda empty state to `illustration` mode with "ایجاد رویداد" CTA (Persian imperative verb)
+  - Upgraded queue-empty state to `illustration` mode with descriptive Persian message
+  - Added `n-gradient-border` to the calendar header card (current-month navigation card — hero)
+  - Added `n-focus-ring` to DayCell job `<button>`s and agenda job `<button>`s (plain buttons that lacked focus states)
 - settings-view.tsx:
-  * Removed unused TabsList/TabsTrigger imports (kept Tabs, TabsContent); added Skeleton, LoadingState, AnimatedTabs
-  * Replaced section Tabs/TabsList/TabsTrigger (نمای کلی/برند/تیم/صورت‌گیری/اعلان‌ها) with AnimatedTabs (with Lucide icons) wrapped in a horizontal scroll container; kept Tabs wrapper for TabsContent context
-  * Replaced OverviewTab loading animate-pulse with `<Skeleton className="h-10 w-full rounded-lg" />` (4×)
-  * Replaced BrandTab loading animate-pulse with `<Skeleton className="h-10 w-full rounded-lg" />` (6×)
-  * Wrapped TeamTab table in LoadingState with `<Skeleton className="h-14 w-full rounded-xl" />` (4×) for in-place loading↔content swap
-  * Added `n-gradient-border` to the OverviewForm profile card (and the matching loading skeleton card) — the settings view's hero card
+  - Removed unused TabsList/TabsTrigger imports (kept Tabs, TabsContent); added Skeleton, LoadingState, AnimatedTabs
+  - Replaced section Tabs/TabsList/TabsTrigger (نمای کلی/برند/تیم/صورت‌گیری/اعلان‌ها) with AnimatedTabs (with Lucide icons) wrapped in a horizontal scroll container; kept Tabs wrapper for TabsContent context
+  - Replaced OverviewTab loading animate-pulse with `<Skeleton className="h-10 w-full rounded-lg" />` (4×)
+  - Replaced BrandTab loading animate-pulse with `<Skeleton className="h-10 w-full rounded-lg" />` (6×)
+  - Wrapped TeamTab table in LoadingState with `<Skeleton className="h-14 w-full rounded-xl" />` (4×) for in-place loading↔content swap
+  - Added `n-gradient-border` to the OverviewForm profile card (and the matching loading skeleton card) — the settings view's hero card
 - Ran `bun run lint` — only the pre-existing `upload/extracted/examples/websocket/frontend.tsx` error remains; no new lint errors introduced
 - Ran `bunx tsc --noEmit` — verified no TypeScript errors in any of the 5 modified view files (all listed errors are pre-existing in unrelated files like campaigns-view, compose-view, content-view, media-view, etc.)
 
 Stage Summary:
+
 - Files modified:
-  * src/components/views/inbox-view.tsx
-  * src/components/views/analytics-view.tsx
-  * src/components/views/channels-view.tsx
-  * src/components/views/calendar-view.tsx
-  * src/components/views/settings-view.tsx
+  - src/components/views/inbox-view.tsx
+  - src/components/views/analytics-view.tsx
+  - src/components/views/channels-view.tsx
+  - src/components/views/calendar-view.tsx
+  - src/components/views/settings-view.tsx
 - Key patterns applied:
-  * All shadcn `Tabs/TabsList/TabsTrigger` for prominent tab bars → `AnimatedTabs` (Linear-style sliding underline with layoutId, built-in n-focus-ring on triggers, count badges where applicable)
-  * All `animate-pulse` loading blocks → sized-matched `Skeleton`, `SkeletonList`, or `SkeletonCard`
-  * Loading↔content swaps wrapped in `<LoadingState>` for AnimatePresence cross-fade (where swap is in-place; for early-return conditional loads in settings Overview/Brand, kept conditional return but used Skeleton inside)
-  * View-level empties → `EmptyState illustration` (with halo + decorative dots + accent gradient icon)
-  * Inline / table-cell empties → `EmptyState size="compact"`
-  * Persian imperative-verb CTA buttons added where sensible: "اتصال پلتفرم", "ایجاد رویداد", "نمایش همه", "نمایش همه وضعیت‌ها"
-  * `n-gradient-border` on ONE hero card per view: inbox thread panel, analytics reach chart card, channels connection-status summary card (new derived card), calendar current-month header card, settings profile card
-  * `n-focus-ring` added to all plain `<button>` elements lacking visible focus states (MessageListItem rows, DisconnectItem trigger, ConnectDialog platform selectors, DayCell job buttons, calendar agenda job buttons)
-  * `toPersianDigits` used for all count badges and status summary numbers
+  - All shadcn `Tabs/TabsList/TabsTrigger` for prominent tab bars → `AnimatedTabs` (Linear-style sliding underline with layoutId, built-in n-focus-ring on triggers, count badges where applicable)
+  - All `animate-pulse` loading blocks → sized-matched `Skeleton`, `SkeletonList`, or `SkeletonCard`
+  - Loading↔content swaps wrapped in `<LoadingState>` for AnimatePresence cross-fade (where swap is in-place; for early-return conditional loads in settings Overview/Brand, kept conditional return but used Skeleton inside)
+  - View-level empties → `EmptyState illustration` (with halo + decorative dots + accent gradient icon)
+  - Inline / table-cell empties → `EmptyState size="compact"`
+  - Persian imperative-verb CTA buttons added where sensible: "اتصال پلتفرم", "ایجاد رویداد", "نمایش همه", "نمایش همه وضعیت‌ها"
+  - `n-gradient-border` on ONE hero card per view: inbox thread panel, analytics reach chart card, channels connection-status summary card (new derived card), calendar current-month header card, settings profile card
+  - `n-focus-ring` added to all plain `<button>` elements lacking visible focus states (MessageListItem rows, DisconnectItem trigger, ConnectDialog platform selectors, DayCell job buttons, calendar agenda job buttons)
+  - `toPersianDigits` used for all count badges and status summary numbers
 - Decisions / notes:
-  * For channels-view, added a new small derived "connection status" summary card at the top of the platform grid (shows X از Y پلتفرم فعال + healthy/issues legend dots) to provide a natural hero card for `n-gradient-border`. This is purely derived from existing `/api/platforms` data — no data model, API, or query-key changes.
-  * Added a client-side `statusFilter` (all/connected/issues) for channels with no API changes — same `/api/platforms` data, filtered client-side. The "issues" filter matches platforms where `!healthy || primaryIssue`.
-  * For settings section tabs, kept the shadcn `<Tabs>` wrapper around `<TabsContent>` for content context (TabsContent relies on Tabs context), but used AnimatedTabs for the visual triggers. Wrapped AnimatedTabs in an `overflow-x-auto` container to preserve mobile horizontal scroll behavior for the 5 tabs.
-  * For analytics logs table empty, used `size="compact"` (not `illustration`) because it's inside a table cell — illustration's py-16 is too tall for table contexts.
-  * Inbox thread "select a message" empty uses `illustration` mode because the thread panel is a prominent view-level area when no message is selected (the task examples treat side-panel hero empties as view-level).
+  - For channels-view, added a new small derived "connection status" summary card at the top of the platform grid (shows X از Y پلتفرم فعال + healthy/issues legend dots) to provide a natural hero card for `n-gradient-border`. This is purely derived from existing `/api/platforms` data — no data model, API, or query-key changes.
+  - Added a client-side `statusFilter` (all/connected/issues) for channels with no API changes — same `/api/platforms` data, filtered client-side. The "issues" filter matches platforms where `!healthy || primaryIssue`.
+  - For settings section tabs, kept the shadcn `<Tabs>` wrapper around `<TabsContent>` for content context (TabsContent relies on Tabs context), but used AnimatedTabs for the visual triggers. Wrapped AnimatedTabs in an `overflow-x-auto` container to preserve mobile horizontal scroll behavior for the 5 tabs.
+  - For analytics logs table empty, used `size="compact"` (not `illustration`) because it's inside a table cell — illustration's py-16 is too tall for table contexts.
+  - Inbox thread "select a message" empty uses `illustration` mode because the thread panel is a prominent view-level area when no message is selected (the task examples treat side-panel hero empties as view-level).
 
 ---
+
 Task ID: V4-FOUNDATION
 Agent: Main Agent (Z.ai Code)
 Task: Build foundational polish layer (skeleton system, enhanced empty states, animated tabs, shortcuts modal, gradient borders, focus rings, chart animations) to push dashboard from ~7.5/10 toward 10/10
 
 Work Log:
+
 - Read worklog + verified current state: dev server running, VLM-rated 9/10 after v3 (but user said 6/10). Identified remaining 8/10→10/10 gaps from research-10of10.md priorities 3,7,10 + honorable mentions.
 - Added CSS utilities to globals.css: (1) `.n-skeleton` shimmer with composite-only transform + dark mode variant; (2) `.n-gradient-border` animated conic-gradient border using @property --angle technique (ibelick); (3) `.n-focus-ring` consistent keyboard focus ring (2px surface + 4px accent); (4) `.n-tab-active-glow` subtle accent halo.
 - Extended shared.tsx with: (1) `Skeleton`, `SkeletonText`, `SkeletonCard`, `SkeletonList`, `SkeletonKPI` components — NN/G-compliant, size-matched to real content; (2) `LoadingState` wrapper with AnimatePresence cross-fade skeleton→content; (3) `EmptyState` upgraded with `illustration` mode (accent halo + decorative dots + motion entrance) and `size="compact"`; (4) `AnimatedTabs` generic component with `layoutId="animated-tab-underline"` shared-element sliding underline (Linear signature); (5) `Sparkline` upgraded with pathLength draw-in + area fade + end-dot spring entrance.
@@ -714,113 +766,122 @@ Work Log:
 - Verified: lint passes (only pre-existing websocket example error), zero browser console errors, Cmd+K palette works, ? shortcuts modal works, notification bell popover works, all views navigate and render.
 
 Stage Summary:
+
 - Foundation pieces created: 4 CSS utilities + 6 skeleton components + LoadingState + illustrated EmptyState + AnimatedTabs + animated Sparkline + shortcuts modal
 - Applied across 9 views by 2 parallel subagents: skeleton loading everywhere, optimistic UI on 4 create flows (compose/content/media/campaigns), illustrated empty states with CTAs, AnimatedTabs replacing shadcn Tabs in 6 prominent tab bars, n-gradient-border on 9 hero cards, n-focus-ring on all interactive elements
 - Interactive features verified end-to-end: Cmd+K, ?, notification bell, view navigation, all zero console errors
 - Honest current score: ~8/10 (up from 6/10 user rating). Remaining gap to 10/10 = the "invisible" craft layer (perceived latency tuning, ARIA live regions, chart tooltip polish, focus-trap edge cases) that requires real-user testing to surface.
 
 ---
+
 Task ID: 3-a
 Agent: v4 Polish Views A
 Task: Apply ChartTooltip + custom illustrations + ARIA live + skeleton fine-tuning + num-display to analytics/inbox/content/media views
 
 Work Log:
+
 - Read worklog.md tail (Tasks 2-a / 2-b / V4-FOUNDATION) and the four target view files plus the new v4 foundation pieces (illustrations.tsx with 8 keyed SVGs, chart-tooltip.tsx with ChartTooltip + BarChartTooltip, aria-live.tsx with announce/useAriaLive/useAnnounceValue, shared.tsx EmptyState illustration prop, globals.css num-display class).
 - Confirmed baseline lint = only the pre-existing websocket example error (upload/extracted/examples/websocket/frontend.tsx:45).
 - analytics-view.tsx (HIGHEST PRIORITY):
-  * Imported ChartTooltip + BarChartTooltip from "@/components/dashboard/chart-tooltip" and announce from "@/lib/aria-live".
-  * Replaced the AreaChart default Tooltip (with inline contentStyle + formatter + labelFormatter) with `<Tooltip content={<ChartTooltip />} />` — the new component auto-maps dataKey "reach" → "دسترسی", renders glass popover with Persian digits, RTL-aware.
-  * Replaced the BarChart default Tooltip (with inline contentStyle + formatter) with `<Tooltip content={<BarChartTooltip />} />` — auto-reads payload[0].payload.name for the platform label and formats the value with Persian digits + formatCompact.
-  * Added ARIA live announce in the period setter: `onValueChange` now also calls `announce(\`${v === "7" ? "۷" : "۳۰"} روز انتخاب شد\`)` so screen-reader users hear "۷ روز انتخاب شد" / "۳۰ روز انتخاب شد" when toggling the period tabs.
-  * Upgraded the logs-table empty state from `size="compact"` (no illustration) to `illustration="search" size="compact"` — adds the magnifying-glass-with-question-mark SVG (thematically right for "no filter results") while keeping the compact py-10 vertical fit appropriate for a table cell. CTA "نمایش همه وضعیت‌ها" preserved.
-  * Fine-tuned KPI value skeleton from `h-7` (28px) to `h-6` (24px) — matches the real `text-xl` value (20px glyph / 28px line-height) better; h-7 was visibly too tall. Other skeletons (chart h-64) already matched the real chart height and were left untouched.
-  * num-tabular left as-is on the KPI value (`text-xl` ~20px is under the 28px threshold for num-display); smaller tabulars in the breakdown list and summary table also stay num-tabular. No num-display needed in this view (no 28px+ hero numbers).
-  * Verified no mutations exist in this view (read-only useQuery × 3) so optimistic latency check is N/A here.
+  - Imported ChartTooltip + BarChartTooltip from "@/components/dashboard/chart-tooltip" and announce from "@/lib/aria-live".
+  - Replaced the AreaChart default Tooltip (with inline contentStyle + formatter + labelFormatter) with `<Tooltip content={<ChartTooltip />} />` — the new component auto-maps dataKey "reach" → "دسترسی", renders glass popover with Persian digits, RTL-aware.
+  - Replaced the BarChart default Tooltip (with inline contentStyle + formatter) with `<Tooltip content={<BarChartTooltip />} />` — auto-reads payload[0].payload.name for the platform label and formats the value with Persian digits + formatCompact.
+  - Added ARIA live announce in the period setter: `onValueChange` now also calls `announce(\`${v === "7" ? "۷" : "۳۰"} روز انتخاب شد\`)` so screen-reader users hear "۷ روز انتخاب شد" / "۳۰ روز انتخاب شد" when toggling the period tabs.
+  - Upgraded the logs-table empty state from `size="compact"` (no illustration) to `illustration="search" size="compact"` — adds the magnifying-glass-with-question-mark SVG (thematically right for "no filter results") while keeping the compact py-10 vertical fit appropriate for a table cell. CTA "نمایش همه وضعیت‌ها" preserved.
+  - Fine-tuned KPI value skeleton from `h-7` (28px) to `h-6` (24px) — matches the real `text-xl` value (20px glyph / 28px line-height) better; h-7 was visibly too tall. Other skeletons (chart h-64) already matched the real chart height and were left untouched.
+  - num-tabular left as-is on the KPI value (`text-xl` ~20px is under the 28px threshold for num-display); smaller tabulars in the breakdown list and summary table also stay num-tabular. No num-display needed in this view (no 28px+ hero numbers).
+  - Verified no mutations exist in this view (read-only useQuery × 3) so optimistic latency check is N/A here.
 - inbox-view.tsx:
-  * Imported useAnnounceValue from "@/lib/aria-live".
-  * Added `useAnnounceValue(unreadCount, "پیام خوانده‌نشده")` immediately after `unreadCount` is computed in the component body. When unreadCount changes the LiveRegionProvider will announce "افزایش/کاهش N پیام خوانده‌نشده، مجموع M" to screen readers (polite channel).
-  * Fixed the previously-broken `illustration` (boolean shorthand = `illustration={true}`) on BOTH empty states by passing the proper `IllustrationKey`:
+  - Imported useAnnounceValue from "@/lib/aria-live".
+  - Added `useAnnounceValue(unreadCount, "پیام خوانده‌نشده")` immediately after `unreadCount` is computed in the component body. When unreadCount changes the LiveRegionProvider will announce "افزایش/کاهش N پیام خوانده‌نشده، مجموع M" to screen readers (polite channel).
+  - Fixed the previously-broken `illustration` (boolean shorthand = `illustration={true}`) on BOTH empty states by passing the proper `IllustrationKey`:
     - Empty inbox list (`filtered.length === 0`): `illustration="inbox"` → envelope with floating notification dots.
     - Thread "select a message" empty: `illustration="inbox"` → same envelope illustration, thematically appropriate for the inbox view's hero side-panel empty.
 - content-view.tsx:
-  * Imported announce from "@/lib/aria-live".
-  * Fixed the broken `illustration` boolean shorthand on the table empty state → `illustration="content"` → stacked-documents SVG, thematically right for "no content in library".
-  * Added `announce("محتوای جدید اضافه شد")` (polite, default) at the end of the createContentMutation `onMutate` — fires synchronously when the optimistic row is appended to the ["content"] cache, so SR users hear the confirmation in the same render cycle as the visual optimistic update.
-  * Added `announce("خطا در ایجاد محتوا", "assertive")` at the end of `onError` — fires immediately when the rollback runs, so SR users hear the error at assertive priority alongside the toast.
-  * Verified optimistic latency: onMutate is fully synchronous relative to mutate() — cancelQueries + setQueryData run inline, the 120ms setTimeout in mutationFn only delays onSettled, not the optimistic UI. UI reflects the new row in <16ms (one render). ✓
-  * Skeleton check: 6× `<Skeleton className="h-14 rounded-xl" />` matches real TableRow height (~57px including padding + 2 lines of content). No change needed.
-  * num-tabular check: both num-tabular usages (header count badge at text-[11px], footer "نمایش N مورد از M" at text-[11px]) are well under 28px — stay num-tabular.
+  - Imported announce from "@/lib/aria-live".
+  - Fixed the broken `illustration` boolean shorthand on the table empty state → `illustration="content"` → stacked-documents SVG, thematically right for "no content in library".
+  - Added `announce("محتوای جدید اضافه شد")` (polite, default) at the end of the createContentMutation `onMutate` — fires synchronously when the optimistic row is appended to the ["content"] cache, so SR users hear the confirmation in the same render cycle as the visual optimistic update.
+  - Added `announce("خطا در ایجاد محتوا", "assertive")` at the end of `onError` — fires immediately when the rollback runs, so SR users hear the error at assertive priority alongside the toast.
+  - Verified optimistic latency: onMutate is fully synchronous relative to mutate() — cancelQueries + setQueryData run inline, the 120ms setTimeout in mutationFn only delays onSettled, not the optimistic UI. UI reflects the new row in <16ms (one render). ✓
+  - Skeleton check: 6× `<Skeleton className="h-14 rounded-xl" />` matches real TableRow height (~57px including padding + 2 lines of content). No change needed.
+  - num-tabular check: both num-tabular usages (header count badge at text-[11px], footer "نمایش N مورد از M" at text-[11px]) are well under 28px — stay num-tabular.
 - media-view.tsx:
-  * Imported announce from "@/lib/aria-live".
-  * Fixed the broken `illustration` boolean shorthand on the gallery empty state → `illustration="media"` → image-frame-with-mountains-and-sparkle SVG, thematically right for "empty media gallery".
-  * Added `announce("رسانه جدید اضافه شد")` (polite) at the end of uploadMutation `onMutate`.
-  * Added `announce("خطا در آپلود رسانه", "assertive")` at the end of `onError`.
-  * Verified optimistic latency: same pattern as content-view — onMutate synchronous, 120ms delay only affects onSettled. UI updates in <16ms. ✓
-  * Skeleton check: 8× `<Skeleton className="aspect-square rounded-xl" />` matches the real grid card aspect-square layout. No change needed.
-  * num-tabular check: both num-tabular usages (header count at text-[11px], folder sidebar count at text-[10px]) are well under 28px — stay num-tabular.
+  - Imported announce from "@/lib/aria-live".
+  - Fixed the broken `illustration` boolean shorthand on the gallery empty state → `illustration="media"` → image-frame-with-mountains-and-sparkle SVG, thematically right for "empty media gallery".
+  - Added `announce("رسانه جدید اضافه شد")` (polite) at the end of uploadMutation `onMutate`.
+  - Added `announce("خطا در آپلود رسانه", "assertive")` at the end of `onError`.
+  - Verified optimistic latency: same pattern as content-view — onMutate synchronous, 120ms delay only affects onSettled. UI updates in <16ms. ✓
+  - Skeleton check: 8× `<Skeleton className="aspect-square rounded-xl" />` matches the real grid card aspect-square layout. No change needed.
+  - num-tabular check: both num-tabular usages (header count at text-[11px], folder sidebar count at text-[10px]) are well under 28px — stay num-tabular.
 - Ran `bun run lint` from /home/z/my-project: only the pre-existing error in upload/extracted/examples/websocket/frontend.tsx:45 (react-hooks/set-state-in-effect) is reported. ZERO new errors, ZERO warnings introduced by the four view edits.
 
 Stage Summary:
+
 - Files modified (only): src/components/views/analytics-view.tsx, src/components/views/inbox-view.tsx, src/components/views/content-view.tsx, src/components/views/media-view.tsx
 - Key patterns applied per file:
-  * analytics-view: recharts Tooltip → ChartTooltip (AreaChart) + BarChartTooltip (BarChart), removed all inline contentStyle/formatter/labelFormatter; announce on period toggle; table empty upgraded to illustration="search" size="compact"; KPI value skeleton h-7 → h-6.
-  * inbox-view: useAnnounceValue(unreadCount, "پیام خوانده‌نشده") in component body; both empty states fixed to illustration="inbox" (was broken boolean shorthand).
-  * content-view: empty state fixed to illustration="content"; announce("محتوای جدید اضافه شد") in onMutate + announce("خطا در ایجاد محتوا", "assertive") in onError.
-  * media-view: empty state fixed to illustration="media"; announce("رسانه جدید اضافه شد") in onMutate + announce("خطا در آپلود رسانه", "assertive") in onError.
+  - analytics-view: recharts Tooltip → ChartTooltip (AreaChart) + BarChartTooltip (BarChart), removed all inline contentStyle/formatter/labelFormatter; announce on period toggle; table empty upgraded to illustration="search" size="compact"; KPI value skeleton h-7 → h-6.
+  - inbox-view: useAnnounceValue(unreadCount, "پیام خوانده‌نشده") in component body; both empty states fixed to illustration="inbox" (was broken boolean shorthand).
+  - content-view: empty state fixed to illustration="content"; announce("محتوای جدید اضافه شد") in onMutate + announce("خطا در ایجاد محتوا", "assertive") in onError.
+  - media-view: empty state fixed to illustration="media"; announce("رسانه جدید اضافه شد") in onMutate + announce("خطا در آپلود رسانه", "assertive") in onError.
 - Decisions / notes:
-  * The previous Task 2-a / 2-b work used `illustration` (boolean shorthand, equivalent to `illustration={true}`) on the EmptyState prop, but the v4 EmptyState signature requires `illustration?: IllustrationKey` (a string key). This would have been a runtime crash (ILLUSTRATIONS[true] → undefined → React rendering undefined component). All four occurrences (inbox × 2, content × 1, media × 1) are now fixed with proper keys. ESLint did not catch this because ESLint does not type-check; tsc was not part of the lint script.
-  * For analytics table empty (colSpan=7 cell), used `illustration="search" size="compact"` rather than default size to keep the cell from growing to py-16 (which would make the table feel cavernous on filter-empty). The 120×120 search illustration still renders; only the vertical padding is reduced (py-10 vs py-16). This preserves the prior Task 2-b decision to keep table empties compact while satisfying the new Task 3-a requirement to use an illustration for "no-results in table".
-  * For inbox thread "select a message" empty, used `illustration="inbox"` (matching the list-empty choice) since the inbox illustration thematically fits the whole view; the available keys do not include a "no-selection" variant and `search` (magnifying glass) felt less appropriate than the envelope for the inbox hero panel.
-  * num-display was NOT applied to any number in these four views — none of them have 28px+ hero numbers. The largest numbers are KPI values at `text-xl` (20px) in analytics, which stay num-tabular per the task rule "Keep num-tabular for smaller numbers (under 20px)" — text-xl is at the boundary and the prior agent's choice to use num-tabular there is preserved. (If a future task adds a hero KPI tile at text-3xl/32px+, that one would get num-display.)
-  * Verified optimistic latency on both mutations (content-view createContentMutation, media-view uploadMutation): onMutate is fully synchronous relative to the mutate() call — queryClient.cancelQueries + setQueryData run inline, so the cache updates and the UI re-renders within one React commit (~16ms). The 120ms setTimeout in mutationFn only delays onSettled; it does NOT delay the optimistic UI. This satisfies the "<100ms" requirement with ~6× margin.
-  * ARIA live announce() is a no-op if LiveRegionProvider is not mounted, so the new announce calls are safe even if the provider is conditionally rendered elsewhere. (Provider is already mounted globally per the task description.)
+  - The previous Task 2-a / 2-b work used `illustration` (boolean shorthand, equivalent to `illustration={true}`) on the EmptyState prop, but the v4 EmptyState signature requires `illustration?: IllustrationKey` (a string key). This would have been a runtime crash (ILLUSTRATIONS[true] → undefined → React rendering undefined component). All four occurrences (inbox × 2, content × 1, media × 1) are now fixed with proper keys. ESLint did not catch this because ESLint does not type-check; tsc was not part of the lint script.
+  - For analytics table empty (colSpan=7 cell), used `illustration="search" size="compact"` rather than default size to keep the cell from growing to py-16 (which would make the table feel cavernous on filter-empty). The 120×120 search illustration still renders; only the vertical padding is reduced (py-10 vs py-16). This preserves the prior Task 2-b decision to keep table empties compact while satisfying the new Task 3-a requirement to use an illustration for "no-results in table".
+  - For inbox thread "select a message" empty, used `illustration="inbox"` (matching the list-empty choice) since the inbox illustration thematically fits the whole view; the available keys do not include a "no-selection" variant and `search` (magnifying glass) felt less appropriate than the envelope for the inbox hero panel.
+  - num-display was NOT applied to any number in these four views — none of them have 28px+ hero numbers. The largest numbers are KPI values at `text-xl` (20px) in analytics, which stay num-tabular per the task rule "Keep num-tabular for smaller numbers (under 20px)" — text-xl is at the boundary and the prior agent's choice to use num-tabular there is preserved. (If a future task adds a hero KPI tile at text-3xl/32px+, that one would get num-display.)
+  - Verified optimistic latency on both mutations (content-view createContentMutation, media-view uploadMutation): onMutate is fully synchronous relative to the mutate() call — queryClient.cancelQueries + setQueryData run inline, so the cache updates and the UI re-renders within one React commit (~16ms). The 120ms setTimeout in mutationFn only delays onSettled; it does NOT delay the optimistic UI. This satisfies the "<100ms" requirement with ~6× margin.
+  - ARIA live announce() is a no-op if LiveRegionProvider is not mounted, so the new announce calls are safe even if the provider is conditionally rendered elsewhere. (Provider is already mounted globally per the task description.)
 
 ---
+
 Task ID: 3-b
 Agent: v4 Polish Views B
 Task: Apply custom illustrations + ARIA live + skeleton fine-tuning + num-display to campaigns/calendar/channels/settings/compose views
 
 Work Log:
+
 - Read worklog.md (prior v4 work) and the v4 foundation files: `src/components/dashboard/shared.tsx` (EmptyState with `illustration` prop, Skeleton system, LoadingState), `src/components/dashboard/illustrations.tsx` (8 keys: inbox/content/media/campaigns/analytics/calendar/channels/search), and `src/lib/aria-live.tsx` (`useAnnounceValue`, `announce`, `useAriaLive`).
 - Read all 5 target view files end-to-end to map existing empty states, mutations, and skeleton usages.
 - Ran baseline `bun run lint` — confirmed only the pre-existing `upload/extracted/examples/websocket/frontend.tsx` error remains (allowed per task rules).
 - **campaigns-view.tsx**: imported `useAnnounceValue, announce` from `@/lib/aria-live`; added `useAnnounceValue(stats.active, "کمپین فعال")` after the stats useMemo so screen-reader users hear active-count changes; added `announce("کمپین جدید ایجاد شد")` inside `createCampaignMutation.onMutate` (fires synchronously when the optimistic cache write completes — UI reflects in <16ms); added `announce("خطا در ایجاد کمپین", "assertive")` in `onError` (after rollback + toast) so errors are immediately announced; changed `<EmptyState illustration />` (which was passing `true` — invalid for the `IllustrationKey` type) to `illustration="campaigns"` for the view-level empty campaigns list; added `size="compact"` to the inline posts-tab EmptyState inside the CampaignDetail sheet (inline empty inside a section); bumped the posts-tab skeleton from `h-14` (56px) to `h-16` (64px) to better match the real `n-card-compact p-3` row (~64–72px with avatar + 2-line text + status badge).
-- **calendar-view.tsx**: imported `announce` from `@/lib/aria-live`; refactored `goPrev`/`goNext`/`goToday` to compute the new (year, month) pair locally before calling `setCalendarCursor`, then `announce(\`${JALALI_MONTHS[newMonth-1]} ${toPersianDigits(newYear)}\`)` for navigation, and `announce(\`امروز — ${monthName} ${year}\`)` for the "today" jump — gives SR users the same context that sighted users get from the visible month header; changed both `<EmptyState illustration />` instances (agenda view + queue panel) to `illustration="calendar"`. No skeleton changes needed — calendar uses day-cell grid, not Skeleton primitives.
-- **channels-view.tsx**: imported `useAnnounceValue, announce` from `@/lib/aria-live`; added `useAnnounceValue(healthyCount, "پلتفرم متصل")` after the healthyCount useMemo — announces connected-platform count changes; changed `<EmptyState illustration />` (no platforms connected) to `illustration="channels"`; added `announce("شروع اتصال پلتفرم با OAuth")` alongside the OAuth toast (the OAuth toast says "window opened, simulated" so the announce mirrors that this is a *start* of flow, not a confirmed connect); added `announce("پلتفرم با موفقیت متصل شد")` for the bot-token connect success; added `announce("پلتفرم با موفقیت قطع شد")` for the disconnect AlertDialog action; added `announce("لطفاً توکن و Chat ID را وارد کنید", "assertive")` for the validation error path; no Skeleton primitive changes needed (channels uses SkeletonCard which is a shared component outside scope).
+- **calendar-view.tsx**: imported `announce` from `@/lib/aria-live`; refactored `goPrev`/`goNext`/`goToday` to compute the new (year, month) pair locally before calling `setCalendarCursor`, then `announce(\`${JALALI_MONTHS[newMonth-1]} ${toPersianDigits(newYear)}\`)`for navigation, and`announce(\`امروز — ${monthName} ${year}\`)`for the "today" jump — gives SR users the same context that sighted users get from the visible month header; changed both`<EmptyState illustration />`instances (agenda view + queue panel) to`illustration="calendar"`. No skeleton changes needed — calendar uses day-cell grid, not Skeleton primitives.
+- **channels-view.tsx**: imported `useAnnounceValue, announce` from `@/lib/aria-live`; added `useAnnounceValue(healthyCount, "پلتفرم متصل")` after the healthyCount useMemo — announces connected-platform count changes; changed `<EmptyState illustration />` (no platforms connected) to `illustration="channels"`; added `announce("شروع اتصال پلتفرم با OAuth")` alongside the OAuth toast (the OAuth toast says "window opened, simulated" so the announce mirrors that this is a _start_ of flow, not a confirmed connect); added `announce("پلتفرم با موفقیت متصل شد")` for the bot-token connect success; added `announce("پلتفرم با موفقیت قطع شد")` for the disconnect AlertDialog action; added `announce("لطفاً توکن و Chat ID را وارد کنید", "assertive")` for the validation error path; no Skeleton primitive changes needed (channels uses SkeletonCard which is a shared component outside scope).
 - **settings-view.tsx**: imported `announce` from `@/lib/aria-live` and added `EmptyState` to the shared-imports list; added `announce("تنظیمات ذخیره شد")` to both OverviewForm and BrandForm save buttons (alongside the existing toast.success) — covers the explicit task requirement; added a new view-level EmptyState with `illustration="search"` for the TeamTab when `members && members.length === 0` — previously the table just rendered an empty body which was confusing for both sighted and SR users. Wrapped the existing Table in an else-branch so the empty state replaces the table cleanly. The inline empties (none currently exist in settings-view) would have used `size="compact"` if any were present. Skeleton usages (`h-10` for Inputs, `h-14` for table rows) already pixel-match the real content heights — no changes needed.
 - **compose-view.tsx**: imported `announce` from `@/lib/aria-live`; added `announce("در حال انتشار...")` immediately before `publishMutation.mutate(...)` (after the loading toast) so SR users hear the publish flow has started; added `announce("محتوا با موفقیت منتشر شد")` in the per-call `onSuccess` (after the success toast replaces the loading toast); added `announce("خطا در انتشار", "assertive")` in the per-call `onError` (after the error toast replaces the loading toast). Compose's only EmptyState (StepMedia inline empty when no media exists) already uses `size="compact"` — left as-is and did NOT add an illustration per task rule ("compose is a form, not a list — empty states here are inline"). Skeleton in the media grid uses `aspect-square` which already pixel-matches the real `aspect-square` media tiles — no changes needed.
 - Verified optimistic latency on both mutations touched:
-  * campaigns-view `createCampaignMutation.onMutate` — calls `queryClient.cancelQueries` then `queryClient.setQueryData` synchronously, then `announce`. The `setQueryData` triggers an immediate cache notification and React re-renders the campaigns grid in one commit (~16ms). The 120ms `setTimeout` in `mutationFn` only delays `onSettled`; it does NOT delay the optimistic UI. UI reflects in <100ms with ~6× margin.
-  * compose-view `publishMutation.onMutate` — same pattern: `cancelQueries` + `setQueryData(["content"], [optimistic, ...old])` synchronously. The optimistic content card appears in the content library cache immediately, well under 100ms. (The content library is a different view, but the cache update is what matters for the "Linear feel".)
+  - campaigns-view `createCampaignMutation.onMutate` — calls `queryClient.cancelQueries` then `queryClient.setQueryData` synchronously, then `announce`. The `setQueryData` triggers an immediate cache notification and React re-renders the campaigns grid in one commit (~16ms). The 120ms `setTimeout` in `mutationFn` only delays `onSettled`; it does NOT delay the optimistic UI. UI reflects in <100ms with ~6× margin.
+  - compose-view `publishMutation.onMutate` — same pattern: `cancelQueries` + `setQueryData(["content"], [optimistic, ...old])` synchronously. The optimistic content card appears in the content library cache immediately, well under 100ms. (The content library is a different view, but the cache update is what matters for the "Linear feel".)
 - After all edits, ran `bun run lint` from `/home/z/my-project` — confirmed only the pre-existing `upload/extracted/examples/websocket/frontend.tsx` error remains. No new errors, no new warnings.
 
 Stage Summary:
+
 - Files modified (5):
-  * `src/components/views/campaigns-view.tsx`
-  * `src/components/views/calendar-view.tsx`
-  * `src/components/views/channels-view.tsx`
-  * `src/components/views/settings-view.tsx`
-  * `src/components/views/compose-view.tsx`
+  - `src/components/views/campaigns-view.tsx`
+  - `src/components/views/calendar-view.tsx`
+  - `src/components/views/channels-view.tsx`
+  - `src/components/views/settings-view.tsx`
+  - `src/components/views/compose-view.tsx`
 - Key patterns applied per file:
-  * **campaigns-view**: `useAnnounceValue(activeCount, "کمپین فعال")` + onMutate/onError announce; `illustration="campaigns"` for view-level empty; `size="compact"` for sheet-tab inline empty; skeleton `h-14 → h-16` pixel-match.
-  * **calendar-view**: `announce(monthName + year)` in all 3 nav handlers (goPrev/goNext/goToday); `illustration="calendar"` for agenda empty + queue empty.
-  * **channels-view**: `useAnnounceValue(healthyCount, "پلتفرم متصل")` + announce for OAuth-start / bot-connect-success / disconnect-success / validation-error; `illustration="channels"` for no-platforms empty.
-  * **settings-view**: `announce("تنظیمات ذخیره شد")` on OverviewForm + BrandForm saves; new view-level `illustration="search"` EmptyState for empty team members list.
-  * **compose-view**: `announce("در حال انتشار...")` pre-mutate + `announce("محتوا با موفقیت منتشر شد")` onSuccess + `announce("خطا در انتشار", "assertive")` onError; no illustrations added (compose is a form, inline empties keep `size="compact"`).
+  - **campaigns-view**: `useAnnounceValue(activeCount, "کمپین فعال")` + onMutate/onError announce; `illustration="campaigns"` for view-level empty; `size="compact"` for sheet-tab inline empty; skeleton `h-14 → h-16` pixel-match.
+  - **calendar-view**: `announce(monthName + year)` in all 3 nav handlers (goPrev/goNext/goToday); `illustration="calendar"` for agenda empty + queue empty.
+  - **channels-view**: `useAnnounceValue(healthyCount, "پلتفرم متصل")` + announce for OAuth-start / bot-connect-success / disconnect-success / validation-error; `illustration="channels"` for no-platforms empty.
+  - **settings-view**: `announce("تنظیمات ذخیره شد")` on OverviewForm + BrandForm saves; new view-level `illustration="search"` EmptyState for empty team members list.
+  - **compose-view**: `announce("در حال انتشار...")` pre-mutate + `announce("محتوا با موفقیت منتشر شد")` onSuccess + `announce("خطا در انتشار", "assertive")` onError; no illustrations added (compose is a form, inline empties keep `size="compact"`).
 - Decisions/notes:
-  * **num-display NOT applied** to any number in these 5 views. The task rule is explicit: "Replace `num-tabular` with `num-display` on the largest KPI numbers (28px+ hero numbers only)." After grepping all 5 files, the largest numbers are `text-xl` (20px) in campaigns-view StatCard and `text-[18px]` in channels-view summary — both below the 28px threshold. All existing `num-tabular` instances preserved.
-  * Pre-existing bug discovered and fixed in passing: campaigns/calendar/channels views were using `<EmptyState illustration />` (JSX shorthand for `illustration={true}`), which is a TypeScript type error since `illustration` is typed as `IllustrationKey` (a string union). ESLint doesn't catch type errors, so this was silently broken — at runtime, `true` would index `ILLUSTRATIONS[true]` → `undefined`, then `<Illustration />` would crash on render if the empty state ever showed. Fixed all 4 instances by passing valid keys (`"campaigns"`, `"calendar"` ×2, `"channels"`). The other 4 instances in out-of-scope files (content-view, inbox-view ×2, media-view) still have this bug and should be fixed by whoever owns those views.
-  * `announce()` is a module-level function (not a hook), so sub-components like `DisconnectItem`, `ConnectDialog`, `OverviewForm`, `BrandForm` can call it directly without prop drilling. `useAnnounceValue` IS a hook, so it's only called from the top-level view components (CampaignsView, ChannelsView) at the top level of their function bodies — no conditional or loop placement.
-  * `announce()` is a safe no-op if `LiveRegionProvider` is not mounted (it checks for null refs and returns early), so the new announce calls are safe even in tests or isolated rendering.
-  * Channels-view has no `useMutation` — connect/disconnect are simulated via toasts only. Added `announce` calls alongside those toasts to give SR users parity with sighted users. If real mutations are wired later, the optimistic onMutate + announce pattern from campaigns-view should be replicated.
-  * In settings-view TeamTab, the new EmptyState is rendered *inside* `<LoadingState>`'s children (only shown when `!isLoading`), so the skeleton still shows during initial load and the empty state only appears after the query resolves with `[]`. Wrapped the existing `<Table>` in an else-branch so the two are mutually exclusive — no risk of both rendering.
+  - **num-display NOT applied** to any number in these 5 views. The task rule is explicit: "Replace `num-tabular` with `num-display` on the largest KPI numbers (28px+ hero numbers only)." After grepping all 5 files, the largest numbers are `text-xl` (20px) in campaigns-view StatCard and `text-[18px]` in channels-view summary — both below the 28px threshold. All existing `num-tabular` instances preserved.
+  - Pre-existing bug discovered and fixed in passing: campaigns/calendar/channels views were using `<EmptyState illustration />` (JSX shorthand for `illustration={true}`), which is a TypeScript type error since `illustration` is typed as `IllustrationKey` (a string union). ESLint doesn't catch type errors, so this was silently broken — at runtime, `true` would index `ILLUSTRATIONS[true]` → `undefined`, then `<Illustration />` would crash on render if the empty state ever showed. Fixed all 4 instances by passing valid keys (`"campaigns"`, `"calendar"` ×2, `"channels"`). The other 4 instances in out-of-scope files (content-view, inbox-view ×2, media-view) still have this bug and should be fixed by whoever owns those views.
+  - `announce()` is a module-level function (not a hook), so sub-components like `DisconnectItem`, `ConnectDialog`, `OverviewForm`, `BrandForm` can call it directly without prop drilling. `useAnnounceValue` IS a hook, so it's only called from the top-level view components (CampaignsView, ChannelsView) at the top level of their function bodies — no conditional or loop placement.
+  - `announce()` is a safe no-op if `LiveRegionProvider` is not mounted (it checks for null refs and returns early), so the new announce calls are safe even in tests or isolated rendering.
+  - Channels-view has no `useMutation` — connect/disconnect are simulated via toasts only. Added `announce` calls alongside those toasts to give SR users parity with sighted users. If real mutations are wired later, the optimistic onMutate + announce pattern from campaigns-view should be replicated.
+  - In settings-view TeamTab, the new EmptyState is rendered _inside_ `<LoadingState>`'s children (only shown when `!isLoading`), so the skeleton still shows during initial load and the empty state only appears after the query resolves with `[]`. Wrapped the existing `<Table>` in an else-branch so the two are mutually exclusive — no risk of both rendering.
 
 ---
+
 Task ID: V5-10OF10
 Agent: Main Agent (Z.ai Code)
 Task: Execute all 8 remaining items to push dashboard from ~8/10 to 10/10 — ARIA live regions, chart tooltips, custom SVG illustrations, RTL micro-typography, focus-trap verification, perceived latency tuning, skeleton fine-tuning, mobile gestures
 
 Work Log:
+
 - Created `/src/components/dashboard/illustrations.tsx` — 8 custom animated SVG illustrations (inbox envelope with notification dots, content stacked documents, media image with sparkles, campaigns flag on pole, analytics bar chart with trend arrow, calendar with event markers, channels linked nodes, search magnifying glass). Each 120×120, single accent color, thin strokes, float/draw-in/stagger motion on mount.
 - Created `/src/components/dashboard/chart-tooltip.tsx` — `ChartTooltip` (glass popover material, RTL-aware, color dots per series, auto-maps dataKeys to Persian labels: reach→دسترسی, engagement→تعامل, followers→مخاطبان, clicks→کلیک) + `BarChartTooltip` (simpler single-value variant). Persian digit formatting via formatCompact + toPersianDigits.
 - Created `/src/lib/aria-live.tsx` — Full ARIA live region system: `LiveRegionProvider` (mounts 2 sr-only divs: polite + assertive), `announce(message, politeness)` function, `useAriaLive()` hook with `announceChange(count, label)`, `useAnnounceValue(value, label)` hook with ref-based prev tracking (no setState-in-effect). Registered globally in AppShell.
@@ -835,6 +896,7 @@ Work Log:
 - Verified: lint passes (only pre-existing websocket error), zero browser console errors across all 9 views, Cmd+K palette works, ? shortcuts modal works, notification bell popover works, all views navigate and render cleanly.
 
 Stage Summary:
+
 - 3 new files created: illustrations.tsx (8 SVGs), chart-tooltip.tsx (2 components), aria-live.tsx (provider + 2 hooks + announce function)
 - 3 files upgraded: globals.css (RTL micro-typography + sr-only + num-display), shared.tsx (EmptyState illustration prop), app-shell.tsx (LiveRegionProvider)
 - 9 view files updated by 2 parallel subagents with: ChartTooltip, custom illustrations, ARIA live announcements, skeleton fine-tuning, num-display
@@ -843,54 +905,59 @@ Stage Summary:
 - Final state: zero lint errors (except pre-existing), zero runtime errors, all interactive features verified end-to-end
 
 ---
+
 Task ID: V6-KPI-VIZ
 Agent: Main Agent (Z.ai Code)
 Task: Fix KPI cards across all pages — they looked like decorative lines, not real data visualizations. Make the chart the hero element.
 
 Work Log:
+
 - Diagnosed root cause: the old `Sparkline` (height=32) was tucked in the bottom-right corner of each KPI card — it read as a decorative flourish, not data. Additionally, the metrics API had a `take: 7` bug that starved some metrics to 1 data point, triggering the sparse-data fallback (which itself was 5 tiny decorative bars).
 - Built a new `MiniChart` component in `src/components/dashboard/shared.tsx`:
-  * Full-width (100% of card), 60px tall — the hero visual element, not a corner decoration.
-  * Interactive hover: pointer tracking → nearest data point → vertical guide line + dot + glass tooltip showing the value (and optional date label).
-  * Average baseline: dashed horizontal reference line so users can see if a point is above/below average.
-  * Pulsing "current value" dot at the last point (solid dot + expanding ring animation).
-  * Crisp stroke via `vectorEffect="non-scaling-stroke"`; dots/baseline rendered as HTML overlays (no SVG circle distortion from preserveAspectRatio="none").
-  * Draw-in animation: `pathLength: 0 → 1` over 0.9s + area fade-in.
-  * Smart tooltip flip: if the hovered point is in the top 40% of the chart, tooltip renders below (avoids clipping).
-  * Honest sparse-data fallback: single data point → flat line + dot (not decorative bars); zero points → faint baseline.
+  - Full-width (100% of card), 60px tall — the hero visual element, not a corner decoration.
+  - Interactive hover: pointer tracking → nearest data point → vertical guide line + dot + glass tooltip showing the value (and optional date label).
+  - Average baseline: dashed horizontal reference line so users can see if a point is above/below average.
+  - Pulsing "current value" dot at the last point (solid dot + expanding ring animation).
+  - Crisp stroke via `vectorEffect="non-scaling-stroke"`; dots/baseline rendered as HTML overlays (no SVG circle distortion from preserveAspectRatio="none").
+  - Draw-in animation: `pathLength: 0 → 1` over 0.9s + area fade-in.
+  - Smart tooltip flip: if the hovered point is in the top 40% of the chart, tooltip renders below (avoids clipping).
+  - Honest sparse-data fallback: single data point → flat line + dot (not decorative bars); zero points → faint baseline.
 - Built a new `KpiCard` component (shared.tsx) with layout: [icon + label + trend chip] → [big 26px value] → [delta-vs-previous context line with semantic color] → [full-width MiniChart] → [LTR time anchors "۷ روز پیش / امروز"]. Includes skeleton loading state (header + value + chart all skeleton'd), keyboard focus ring, and ARIA label with the value + trend.
 - Fixed `src/app/api/dashboard/metrics/route.ts`: changed `take: 7` (which only grabbed 7 of 28 platform=null snapshots, starving some metrics) → date-filtered query (`date >= 8 days ago`) with `take: 60` so every metric gets a full 7-point series.
 - Replaced the local `KpiCard` in `src/components/views/analytics-view.tsx` with the shared `KpiCard`; added a `kpiCards` useMemo that computes per-card: sliced series (7 or 30 day), trend (% change over period), previous-period value, and a Jalali date labeler for the hover tooltip. Removed the now-unused local KpiCard function + Sparkline import.
 - Rewrote `src/components/dashboard/executive-metrics.tsx` (main dashboard KPI row) to use the shared `KpiCard`, mapping each metric to icon + iconColor + sparkColor + formatValue (compact for reach/engagement/followers, plain integer for campaigns) + previousValue (second-to-last chart point).
 - Increased average-baseline opacity from /20 to /35 (VLM confirmed it was too faint at /20; now visible).
 - Verified via Agent Browser + DOM eval:
-  * Dashboard: all 4 KPI cards have polyline + baseline + time anchors + trend chip + current-value dot.
-  * Analytics view: all 4 KPI cards same structure, hover tooltip shows Jalali date ("۱ تیر") + value ("۳۶۱.۶K").
-  * Hover interaction: vertical guide line + glass tooltip with Persian-formatted value confirmed on both views.
-  * VLM visual analysis: confirms full-width charts (40-45% of card height), visible dashed baseline, colored end dot, time labels, trend chips. Rated 8/10 "real data visualization, minimal decorative flourishes, aligns with professional analytics design".
+  - Dashboard: all 4 KPI cards have polyline + baseline + time anchors + trend chip + current-value dot.
+  - Analytics view: all 4 KPI cards same structure, hover tooltip shows Jalali date ("۱ تیر") + value ("۳۶۱.۶K").
+  - Hover interaction: vertical guide line + glass tooltip with Persian-formatted value confirmed on both views.
+  - VLM visual analysis: confirms full-width charts (40-45% of card height), visible dashed baseline, colored end dot, time labels, trend chips. Rated 8/10 "real data visualization, minimal decorative flourishes, aligns with professional analytics design".
 - Lint: passes (only pre-existing websocket error). Zero runtime/console errors.
 
 Stage Summary:
+
 - Files modified (4):
-  * `src/components/dashboard/shared.tsx` — added `MiniChart` + `KpiCard` exports (full-width interactive chart, hover tooltip, avg baseline, pulsing dot, trend chip, time anchors, skeleton loading)
-  * `src/app/api/dashboard/metrics/route.ts` — fixed `take: 7` bug → date-filtered query so all metrics get full 7-point series
-  * `src/components/views/analytics-view.tsx` — replaced local KpiCard with shared KpiCard; added kpiCards useMemo (trend + previous + Jalali date labeler)
-  * `src/components/dashboard/executive-metrics.tsx` — rewrote to use shared KpiCard (main dashboard KPI row)
+  - `src/components/dashboard/shared.tsx` — added `MiniChart` + `KpiCard` exports (full-width interactive chart, hover tooltip, avg baseline, pulsing dot, trend chip, time anchors, skeleton loading)
+  - `src/app/api/dashboard/metrics/route.ts` — fixed `take: 7` bug → date-filtered query so all metrics get full 7-point series
+  - `src/components/views/analytics-view.tsx` — replaced local KpiCard with shared KpiCard; added kpiCards useMemo (trend + previous + Jalali date labeler)
+  - `src/components/dashboard/executive-metrics.tsx` — rewrote to use shared KpiCard (main dashboard KPI row)
 - Key design decision: the chart is the HERO element (full-width, 60px, ~40% of card height), not a corner decoration. Hover interactivity (guide line + tooltip with date + value) makes it feel like real analytics, not a flourish.
 - Sparse-data fallback is now honest (flat line + dot) instead of decorative bars.
 
 ---
+
 Task ID: V7-KPI-SMOOTH
 Agent: Main Agent (Z.ai Code)
 Task: User feedback — KPI chart lines are too sharp, and the middle of the chart line has no boundaries like the left/right edges. Do deep research on modern KPI card visualization standards and apply.
 
 Work Log:
+
 - Researched modern KPI card chart design via web-search (10 results on KPI card best practices, 8 on smooth curve techniques, 8 on Vercel/Linear style charts, 6 on Catmull-Rom/Bézier SVG implementation).
 - Key findings from research:
-  * Top apps (Vercel, Linear, Stripe, Apple Health) use SMOOTH CURVED LINES, never straight polyline segments. Gold standard = Catmull-Rom spline → cubic Bézier conversion (same as D3's curveCatmullRom / recharts' type="monotone").
-  * Modern charts use HORIZONTAL PADDING/INSET so the curve doesn't touch left/right edges — gives the line room to breathe and makes first/last dots visible. The old edge-to-edge line made the middle "float" without anchoring.
-  * Subtle horizontal gridlines (quartile bands) give bounded context across the full chart width.
-  * Average baseline should use the chart's OWN COLOR (not gray) at low opacity — modern standard.
+  - Top apps (Vercel, Linear, Stripe, Apple Health) use SMOOTH CURVED LINES, never straight polyline segments. Gold standard = Catmull-Rom spline → cubic Bézier conversion (same as D3's curveCatmullRom / recharts' type="monotone").
+  - Modern charts use HORIZONTAL PADDING/INSET so the curve doesn't touch left/right edges — gives the line room to breathe and makes first/last dots visible. The old edge-to-edge line made the middle "float" without anchoring.
+  - Subtle horizontal gridlines (quartile bands) give bounded context across the full chart width.
+  - Average baseline should use the chart's OWN COLOR (not gray) at low opacity — modern standard.
 - Rewrote MiniChart in src/components/dashboard/shared.tsx with 3 major changes:
   1. SMOOTH CURVES: Added `smoothPath()` Catmull-Rom → cubic Bézier path generator. Replaced `<polyline>` with `<motion.path d={linePath}>` using the smooth path. The old sharp polyline segments are completely gone (verified: polylineCount=0 in DOM).
   2. HORIZONTAL PADDING: Added `padX = 6` (6% inset each side). The curve now starts at x=6 and ends at x=94, not 0→100. The area fill, gridlines, and average baseline all respect this padding. Pointer tracking updated to map to the padded usable area. This fixes "middle has no boundaries" — the chart now has consistent bounded context across its full width.
@@ -900,20 +967,21 @@ Work Log:
 - Increased gradient fill opacity from 0.26→0.28 for slightly richer area fill.
 - Increased last-point dot from size-1.5→size-2 with larger ring shadow for better visibility.
 - Verified via Agent Browser DOM eval:
-  * All 4 dashboard cards: hasBezier=true, polylineCount=0, gridlineCount=2, dashedBaselineCount=1
-  * All 4 analytics cards: same structure confirmed
-  * Hover tooltip works with new padding-aware pointer mapping (tested on both views — shows "۱۸.۶K" on dashboard, "۱ تیر / ۳۶۱.۶K" on analytics)
+  - All 4 dashboard cards: hasBezier=true, polylineCount=0, gridlineCount=2, dashedBaselineCount=1
+  - All 4 analytics cards: same structure confirmed
+  - Hover tooltip works with new padding-aware pointer mapping (tested on both views — shows "۱۸.۶K" on dashboard, "۱ تیر / ۳۶۱.۶K" on analytics)
 - VLM visual verification (6-point checklist):
-  * (1) Smooth bezier curves: YES (confirmed on both views)
-  * (2) Horizontal padding from edges: YES
-  * (3) Two faint gridlines at 25%/75%: YES
-  * (4) Dashed colored average baseline: YES (confirmed with close-up prompt)
-  * (5) Colored dot at right end: YES
-  * (6) Gradient fill under curve: YES
-  * Overall rating: 8/10 "clean, smooth, polished design"
+  - (1) Smooth bezier curves: YES (confirmed on both views)
+  - (2) Horizontal padding from edges: YES
+  - (3) Two faint gridlines at 25%/75%: YES
+  - (4) Dashed colored average baseline: YES (confirmed with close-up prompt)
+  - (5) Colored dot at right end: YES
+  - (6) Gradient fill under curve: YES
+  - Overall rating: 8/10 "clean, smooth, polished design"
 - Lint: passes (only pre-existing websocket error). Zero runtime/console errors.
 
 Stage Summary:
+
 - Files modified (1): `src/components/dashboard/shared.tsx` — MiniChart completely rewritten
 - 3 research-backed fixes applied:
   1. Catmull-Rom → cubic Bézier smooth curves (replaces sharp polylines)
@@ -922,11 +990,13 @@ Stage Summary:
 - Both user complaints resolved and VLM-verified. Charts now match modern Linear/Vercel/Stripe standard.
 
 ---
+
 Task ID: IMPORT-001
 Agent: Main Agent (Z.ai Code)
 Task: User uploaded their existing project (نشرینو / Nashrino SocialOps Studio) as a RAR archive and asked to "add it here first" before specifying further work. Integrate the uploaded project into /home/z/my-project/ and bring up all services so the app is running and verifiable.
 
 Work Log:
+
 - Inspected uploaded archive `/home/z/my-project/upload/workspace-47ec275c-c659-4f27-ac86-fdfc433753d3.rar` — a 2-layer archive (RAR → POSIX tar `workspace-...` → full project tree, 1086 non-git files).
 - Extracted RAR with `unrar x` to `upload/extracted/`, then `tar -xf` the inner tar to `upload/extracted/staged/`.
 - Identified project: Persian (RTL) social-media management dashboard "نشرینو" — Next.js 16 + Turbopack, TypeScript, Tailwind 4, shadcn/ui, Prisma (SQLite), Zustand, TanStack Query, Recharts, framer-motion, socket.io-client. Includes 2 mini-services: `realtime` (socket.io relay on :3003) and `publish-worker` (DB poller on :3001, internal). Target platforms: Instagram, Telegram, LinkedIn, Rubika, Eitaa.
@@ -941,28 +1011,31 @@ Work Log:
 - Hit a Turbopack cache corruption (`Failed to restore task data (corrupted database or bug)`) after the config-change-triggered restart returned HTTP 500. Fixed by killing dev, `rm -rf .next`, and restarting with the double-fork pattern. First recompile took ~52s (cold Turbopack build); subsequent requests ~80ms.
 - Cleaned up staging working dir `upload/extracted/` (was being scanned by eslint and surfacing 2 false-positive errors from a nested copy of `examples/websocket/frontend.tsx`). `upload/` now contains only the original RAR.
 - Agent Browser verification (1440x900 desktop + 390x844 mobile):
-  * `GET /` → HTTP 200, page title "نشرینو", full Persian RTL UI renders.
-  * Zero page errors, zero console errors/warnings.
-  * Dashboard renders all sections: خلاصه عملیات (Operational Summary), نبض انتشار (Publishing Pulse), مرکز اقدام (Action Center), کمپینها (Campaigns), پلتفرمها (Platforms), plus executive KPIs with real data (تعامل کل: ۱۹.۵K، دسترسی: ۳۴۵.۱K، رشد مخاطبان: ۲.۱K، کمپین‌های فعال: ۳) and Persian digits.
-  * Sidebar nav (10 views) + top bar (⌘K search, shortcuts, new publish, AI assistant, notifications) all present.
-  * View navigation verified: clicked "تحلیل و گزارشها" → analytics view rendered with its own KPIs (دسترسی: ۳۴۵.۱K، تعامل: ۱۹.۵K، کلیک: ۴.۷K) + ۷ روز / ۳۰ روز tabs. Zustand-driven SPA view state confirmed.
-  * Mobile responsive: at 390px a "باز کردن منو" (hamburger) button appears; all dashboard sections stack correctly.
-  * No `<footer>` element in app-shell (full-viewport sidebar dashboard) — sticky-footer rule is N/A.
-  * Screenshots saved: `verify-dashboard.png`, `verify-analytics.png`.
+  - `GET /` → HTTP 200, page title "نشرینو", full Persian RTL UI renders.
+  - Zero page errors, zero console errors/warnings.
+  - Dashboard renders all sections: خلاصه عملیات (Operational Summary), نبض انتشار (Publishing Pulse), مرکز اقدام (Action Center), کمپینها (Campaigns), پلتفرمها (Platforms), plus executive KPIs with real data (تعامل کل: ۱۹.۵K، دسترسی: ۳۴۵.۱K، رشد مخاطبان: ۲.۱K، کمپین‌های فعال: ۳) and Persian digits.
+  - Sidebar nav (10 views) + top bar (⌘K search, shortcuts, new publish, AI assistant, notifications) all present.
+  - View navigation verified: clicked "تحلیل و گزارشها" → analytics view rendered with its own KPIs (دسترسی: ۳۴۵.۱K، تعامل: ۱۹.۵K، کلیک: ۴.۷K) + ۷ روز / ۳۰ روز tabs. Zustand-driven SPA view state confirmed.
+  - Mobile responsive: at 390px a "باز کردن منو" (hamburger) button appears; all dashboard sections stack correctly.
+  - No `<footer>` element in app-shell (full-viewport sidebar dashboard) — sticky-footer rule is N/A.
+  - Screenshots saved: `verify-dashboard.png`, `verify-analytics.png`.
 - `bun run lint` → 0 errors, 0 warnings (clean).
 
 Stage Summary:
+
 - Project نشرینو fully imported and running. All 3 services up via double-fork daemon pattern (survive across bash tool calls): Next.js :3000 (PID 3110 next-server), realtime :3003 (PID 3068 bun --hot), publish-worker :3001 internal poller (PID 3069 bun --hot).
 - DB seeded with demo data (no re-seed needed). Lint clean. Agent Browser confirms: 200 OK, zero errors, RTL Persian UI, real data, view navigation, mobile responsive.
 - Key operational discovery: background processes must use the double-fork pattern `( setsid bash -c '...' & )` to persist in this sandbox — plain `nohup`/`&`/`setsid` alone get reaped when the bash command returns.
 - Ready for user's next instruction.
 
 ---
+
 Task ID: AUDIT-1A
 Agent: Explore (Architecture & Engineering Audit)
 Task: Deep audit of نشرینو codebase architecture, engineering, and modern-standards compliance.
 
 Work Log:
+
 - Read prior worklog context — particularly IMPORT-001 (lines 924-958) which describes نشرینو as a Persian RTL social-media management studio (Next.js 16 + Turbopack + Tailwind 4 + Prisma 6/SQLite + Zustand + TanStack Query + socket.io-client), with 2 mini-services (realtime :3003, publish-worker :3001) and 5 target platforms (Instagram, Telegram, LinkedIn, Rubika, Eitaa).
 - Read root config thoroughly: package.json (next 16.1.1, react 19, prisma 6.11, zustand 5, tanstack-query 5.82, next-auth 4.24 INSTALLED but unused, zod 4 INSTALLED but unused), next.config.ts (output: standalone ✓, ignoreBuildErrors: true ✗, reactStrictMode: false ✗), tsconfig.json (strict: true but noImplicitAny: false ✗), eslint.config.mjs (EVERY meaningful rule disabled — no-explicit-any, no-unused-vars, no-unreachable, react-hooks/exhaustive-deps, react-compiler all off), tailwind.config.ts (legacy v3-style HSL config — but globals.css uses Tailwind 4 @theme + OKLCH ✓), components.json (shadcn new-york style ✓), Caddyfile (:81 plain HTTP, XTransformPort query-pattern reverse proxy).
 - Read full Prisma schema (254 lines): 10 models (Workspace, WorkspaceMember, Platform, Campaign, Content, ContentPlatform, PublishJob, Media, InboxMessage, AnalyticsSnapshot, Notification, AppSetting). Zero @@index declarations on any FK. All status/type/role fields are String with comments — no Prisma enums. Schema duplicated 2x in publish-worker (prisma/schema.prisma + prisma-schema.prisma) — manual sync, drift risk.
@@ -977,6 +1050,7 @@ Work Log:
 - Wrote comprehensive 600+ line audit report to /home/z/my-project/audit/AUDIT-1A-architecture.md covering all 10 dimensions with scores, evidence (file:line refs), gaps, top-3 fixes per dimension, overall weighted score (52/100), and Top 10 cross-cutting recommendations ordered by impact×effort.
 
 Stage Summary:
+
 - Full audit report: /home/z/my-project/audit/AUDIT-1A-architecture.md
 - Overall weighted score: 52/100 — a competent, working prototype that masks production-readiness gaps.
 - 10 dimension scores inline:
@@ -994,11 +1068,13 @@ Stage Summary:
 - Ready for next instruction.
 
 ---
+
 Task ID: AUDIT-1B
 Agent: Explore (UI/UX & Design System Audit)
 Task: Deep audit of نشرینو UI/UX, design system, components, accessibility, RTL, theming, motion, data viz.
 
 Work Log:
+
 - Read worklog.md fully (958 lines, esp. IMPORT-001 + V7-KPI-SMOOTH context) to understand project history.
 - Read /home/z/my-project/src/app/globals.css (765 lines) line-by-line — token architecture, light/dark themes, glass classes, skeleton shimmer, gradient border, RTL micro-typography, focus-visible, prefers-reduced-motion guards.
 - Read tailwind.config.ts, postcss.config.mjs, components.json, src/app/layout.tsx, src/app/page.tsx.
@@ -1013,6 +1089,7 @@ Work Log:
 - Wrote full audit report (10 dimensions, each with score + sub-criteria + evidence + gaps + top-3 fixes, plus overall weighted score and top-10 recommendations) to /home/z/my-project/audit/AUDIT-1B-uiux.md.
 
 Stage Summary:
+
 - Full report at /home/z/my-project/audit/AUDIT-1B-uiux.md (~12KB, ~600 lines).
 - 10 dimension scores (out of 100):
   1. Design System & Tokens: 72 (dark mode locked, brand picker non-functional, dual token systems)
@@ -1029,11 +1106,13 @@ Stage Summary:
 - Top 5 recommendations: (1) implement query error states with retry, (2) remove forcedTheme="light" + add dark mode toggle, (3) wire brand color pickers to CSS variables, (4) add skip link + main id + nav aria-label, (5) implement advertised shortcuts OR prune the modal.
 
 ---
+
 Task ID: AUDIT-1C
 Agent: Research (Social Media Management Platform Benchmarks)
 Task: Research world's top social media management platforms; produce feature benchmark + gold-standard feature set + نشرینو's gaps.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md to absorb prior context — confirmed IMPORT-001: نشرینو is a Persian RTL social-media ops studio (Next.js 16 + Tailwind 4 + shadcn/ui + Prisma + Zustand + TanStack Query + Recharts + framer-motion + socket.io-client) targeting 5 platforms (IG, Telegram, LinkedIn, Rubika, Eitaa). Current feature set: dashboard (operational summary, executive KPIs, publishing pulse, action center, campaigns panel, platforms panel), compose, content calendar, campaigns, content library, media library, inbox, analytics, channels/platforms management, settings, realtime socket.io service on :3003, publish-worker mini-service on :3001 with per-channel retry + circuit breaker adapters. Single-tenant demo. (Also confirmed prior Task ID 2 had already produced a 12-platform benchmark + 18-capability world-class bar — reused its research/text/ artifacts.)
 - Invoked Skill(command="web-search") and Skill(command="web-reader") to confirm their CLI usage (`z-ai function -n web_search -a '{"query":"...","num":N}' -o file.json` and `z-ai function -n page_reader -a '{"url":"..."}' -o file.json`).
 - Ran 32 fresh web-search queries via the z-ai CLI covering all 23 platforms (Hootsuite, Sprout, Buffer, Later, Loomly, Publer, Metricool, ContentStudio, SocialPilot, Sendible, Agorapulse, Planable, Sprinklr, Khoros, OpusClip, Predis.ai, Flick, Ocoya, Pallyy, FeedHive, Postiz, Mixpost, Socioboard) plus 8 cross-cutting topics (AI features, best-time-to-post, social listening, unified inbox, collaboration/approvals, real-time APIs/webhooks, G2/Capterra/TrustRadius best-of-2025 lists). Hit HTTP 429 rate limits on 4 of 8 initial parallel batches; recovered with single-call retries spaced 5-12s apart after a 30-90s cooldown. Saved all 32 raw JSON results to /home/z/my-project/audit/research/smm/*.json.
@@ -1047,17 +1126,20 @@ Work Log:
 - Produced regional opportunity analysis: 7 interlocking moats (RTL/Persian-first, Jalali, Rubika+Eitaa, IRR pricing arbitrage, Persian AI, Telegram-native depth, Comment-to-DM automation) — each individually replicable, but all seven together structurally impossible for Western SaaS to match.
 
 Stage Summary:
+
 - Full benchmark report written to /home/z/my-project/audit/AUDIT-1C-benchmarks.md (713 lines, ~32 KB). Covers 23 platforms with 8 deep-dives, full 8×30 feature matrix, UX pattern digest across 7 areas, 30-capability gold-standard set, prioritized top-15 gaps (with effort S/M/L and priority P0/P1/P2), 7-moat regional opportunity analysis, and 30+ cited source URLs.
 - Key findings: (1) نشرینو maps to ~40-45% of the 2025 gold-standard feature set; (2) top-5 P0 gaps for v1 launch = multi-tenant workspace + RBAC + approval workflows + unified-inbox depth + Persian AI caption generation; (3) نشرینو's competitive moat is the compound of 7 regional factors (RTL + Jalali + Rubika + Eitaa + IRR pricing + Persian AI + Telegram-native) — none of which any global SMM platform supports; (4) strategic imperative = defend the moat while closing the ~15 capability gaps buyers compare against global tools.
-- Raw research artifacts preserved: /home/z/my-project/audit/research/smm/*.json (32 search results), /home/z/my-project/audit/research/smm/pages/*.html (18 vendor pages), /home/z/my-project/audit/research/smm/search_digest.txt + pages_digest.txt (condensed digests).
+- Raw research artifacts preserved: /home/z/my-project/audit/research/smm/_.json (32 search results), /home/z/my-project/audit/research/smm/pages/_.html (18 vendor pages), /home/z/my-project/audit/research/smm/search_digest.txt + pages_digest.txt (condensed digests).
 - Reused prior Task ID 2 research corpus at /home/z/my-project/research/text/*_text.txt (12 Tier-1 platform cleaned pages) — verified fresh against 2025/2026 sources.
 
 ---
+
 Task ID: AUDIT-1E
 Agent: Research (Modern Design & UX Standards 2025)
 Task: Research the most modern 2025 design/UX standards; produce design benchmark + patterns to adopt + scoring rubric.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md (IMPORT-001 section + RESEARCH-1/2/3 history) and /home/z/my-project/docs/06_DESIGN_SYSTEM.md (نشرینو's existing design contract) to ground the research in the project's actual stack (Next.js 16 + Tailwind 4 + shadcn/ui + Recharts + framer-motion + Vazirmatn + Jalali + RTL) and prior art (Linear, Geist, Stripe, Apple HIG already deep-dived).
 - Loaded the web-search and web-reader skills (z-ai CLI: `z-ai function -n web_search -a '{...}' -o file.json` and `z-ai function -n page_reader -a '{...}' -o file.json`).
 - Ran 21 web searches covering: 2025 design trends / post-glassmorphism shift, AI-native UX patterns, WCAG 2.2 new criteria, INP Core Web Vitals, cmdk command palettes, Recharts-vs-Visx-vs-Nivo-vs-Tremor 2026, Vazirmatn Persian typography, OKLCH + Tailwind v4 theming, skeleton/loading states, framer-motion layoutId + AnimatePresence, container queries + mobile bottom sheets, text-wrap balance/pretty, Vercel Geist, Stripe accessibility, Apple HIG Materials (Liquid Glass WWDC25), RTL Persian dashboard patterns, KPI card anatomy, Catmull-Rom spline smoothing, shadcn/Radix/Mantine/Park UI comparison, GitHub Primer, bento grid layouts.
@@ -1071,6 +1153,7 @@ Work Log:
 - Cited sources (URLs) inline throughout the report — primary sources for key claims, secondary sources for context.
 
 Stage Summary:
+
 - Full report written to /home/z/my-project/audit/AUDIT-1E-design-standards.md (385 lines, ~22 KB markdown).
 - The report defines the 2025 "design bar" نشرینو will be scored against: §1 sets the 2025 context (6 shifts), §2 is the 40-criterion benchmark across 11 categories, §3 is the 22 patterns-to-adopt backlog, §4 is the 0–100 scoring rubric with per-category weighting, §5 is the 13 anti-patterns, §6 is the full source list.
 - Raw research artifacts preserved: /home/z/my-project/research/audit-1e/ (21 search JSONs s01-s21, 17 page_reader JSONs p01-p17, 17 extracted .txt files, extract.py script).
@@ -1078,11 +1161,13 @@ Stage Summary:
 - This report is the canonical design-bar reference for subsequent audit/scoring tasks against نشرینو's actual UI.
 
 ---
+
 Task ID: AUDIT-1D
 Agent: Research (Modern Webapp Engineering Standards 2025)
 Task: Research the most modern 2025 standards for building webapps; produce a modern-standard checklist + scoring rubric.
 
 Work Log:
+
 - Read prior worklog context (IMPORT-001 section, lines 924-959) to understand the نشرینو project: Next.js 16 + TS + Tailwind 4 + shadcn/ui + Prisma (SQLite) + Zustand + TanStack Query + Recharts + framer-motion + socket.io-client; two mini-services (realtime :3003, publish-worker :3001); single-tenant RTL Persian demo.
 - Invoked `web-search` and `web-reader` skills. Ran 32 web searches via `z-ai function -n web_search` covering: Next.js 16 (release, PPR, Server Actions vs Routes, standalone, allowedDevOrigins, cache/revalidateTag/unstable_cache, upgrade), React 19 (useActionState/useOptimistic/useFormStatus/use, RSC/Suspense streaming, form actions), Tailwind v4 (release, features, migration), shadcn/ui (registry/CLI/RSC), Zustand v5, TanStack Query v5 (suspense/queryOptions), Prisma 6 (accelerate/driver adapters), Drizzle comparison, Zod v4, react-hook-form + zod, socket.io vs SSE vs WebSocket, Postgres LISTEN/NOTIFY, Auth.js v5, better-auth/Clerk/WorkOS, Vitest/Playwright/MSW/Storybook 9, OpenTelemetry/Sentry/PostHog, pino structured logging, Vercel Speed Insights, CSP/CSRF/rate-limiting/DOMPurify, Core Web Vitals 2025 (INP), Next.js 16 perf (RSC streaming/bundle analyzer), WCAG 2.2 + axe + ARIA APG, focus-visible/reduced-motion, next-intl + Vazirmatn + RTL, Jalali calendar + Persian digits, Vercel AI SDK 6 (agents/structured output/MCP/Server Actions), Turbopack/Docker/edge/preview deploys, and Next.js anti-patterns + best-in-class examples.
 - Hit shared API rate limits (429) several times — co-shared SDK with sibling agents (AUDIT-1A/B/C/E). Resolved with sleep + serial execution + 6–8s spacing between calls. All 32 searches eventually completed.
@@ -1091,17 +1176,20 @@ Work Log:
 - Wrote report to `/home/z/my-project/audit/AUDIT-1D-standards.md`.
 
 Stage Summary:
+
 - Full report: `/home/z/my-project/audit/AUDIT-1D-standards.md` (358 lines, ~38 KB).
 - Key 2025 anchors established: Next.js 16 (Oct 21 2025) — Turbopack stable + file-system caching, Cache Components (`cacheComponents: true` + `"use cache"` directive), PPR stable, `proxy.ts` replaces `middleware.ts`, React 19.2 (View Transitions + `useEffectEvent` + `<Activity/>`), Build Adapters API, React Compiler stable, `updateTag()`/`revalidateTag()`; Next 16.1 (Dec 18 2025) — Turbopack FS cache stable, experimental Bundle Analyzer, `next dev --inspect`. React 19 (Dec 5 2024) — Actions, `useActionState`/`useFormStatus`/`useOptimistic`, `use()` hook, ref-as-prop, Suspense pre-warming. Tailwind v4 (Jan 22 2025) — CSS-first config (`@theme`/`@import`), native cascade layers, container queries, `@starting-style`, P3 palette, 5×/100× build speed. Zod v4 — 14× faster string parse, 100× fewer tsc instantiations. AI SDK 6 (Dec 22 2025) — agents, tool execution approval, MCP, structured output via Zod, DevTools, Server Actions replace API routes. INP < 200 ms at p75 (replaced FID March 2024). WCAG 2.2 AA (target ≥ 24 px, focus appearance).
 - Deliverable rubric: 14 categories × 0–100, weighted to 100 (with Nashrino-specific adjustment: bump Real-time + i18n/RTL weights, reduce AI + DevX). Grade bands A (90+), B (80–89), C (70–79), D (60–69), F (<60).
 - Ready for downstream scoring agents (AUDIT-1E and beyond) to evaluate نشرینو against this bar; per-category "core items required for ≥75" table gives unambiguous pass/fail criteria.
 
 ---
+
 Task ID: AUDIT-1F
 Agent: Research (Interactive & Motion Design Deep-Dive)
 Task: Deep research on 2025 interactive design + motion design standards; evaluate نشرینو's current implementation; produce pattern catalog + scoring.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md IMPORT-001 (lines 925-994), AUDIT-1B (997-1029), AUDIT-1E (1056-1078) sections to ground the task in نشرینو's actual stack (Next.js 16 + TS + Tailwind 4 + shadcn/ui + Prisma + Zustand + TanStack Query + Recharts + framer-motion + socket.io-client) and prior findings (AUDIT-1B: 14 advertised shortcuts non-functional, dual toast system, ambient mesh static, forcedTheme="light"; AUDIT-1E: 5 motion criteria C1-C5, patterns #6/#7/#11/#14/#15, anti-pattern #5).
 - Read /home/z/my-project/audit/AUDIT-1E-design-standards.md §2C (lines 89-99, 5 Motion criteria), §3 (lines 185-218, patterns 5-15), §5 (anti-pattern #5 "transition: all 0.2s ease") to ensure EXTENSION not duplication. AUDIT-1E weighted Motion at 0.8× ("polish layer, lower business priority") — AUDIT-1F goes deep instead.
 - Deep code audit of نشرینو's interactive + motion implementation, reading in full: src/lib/motion.tsx (184 lines — ease/duration/spring presets, CountUp), src/app/globals.css (766 lines — @theme motion+ease tokens at 116-130, n-skeleton shimmer at 398-428 LTR-only, prefers-reduced-motion gate at 757-764, hover-level-1..4 at 326-369), src/components/shell/{app-shell,sidebar,command-palette,shortcuts-modal,command-bar,notification-popover,ambient-mesh}.tsx, src/components/dashboard/{shared(804 lines — MiniChart Catmull-Rom + pathLength draw-on + infinite pulse, KpiCard, AnimatedTabs layoutId, Skeleton system, LoadingState AnimatePresence),executive-metrics,publishing-pulse,action-center,campaigns-panel,platforms-panel}.tsx, src/components/views/{compose,analytics,calendar,inbox}-view.tsx, src/hooks/{use-publish-stream,use-mobile,use-mounted}.ts, src/lib/aria-live.tsx, src/app/layout.tsx, src/app/page.tsx, src/lib/store.ts, src/components/ui/sonner.tsx, src/components/dashboard/chart-tooltip.tsx.
@@ -1117,6 +1205,7 @@ Work Log:
 - Wrote the full report to /home/z/my-project/audit/AUDIT-1F-interactive-motion.md (669 lines, ~38KB markdown).
 
 Stage Summary:
+
 - Full report at /home/z/my-project/audit/AUDIT-1F-interactive-motion.md (669 lines, ~38KB, 7 sections: §0 Executive Summary, §1 Interactive Design Benchmark A1-A14, §2 Motion Design Benchmark B1-B22, §3 نشرینو evaluation with file:line evidence, §4 35-pattern catalog, §5 motion token system, §6 top-15 recommendations, §7 sources).
 - نشرینو Interactive Design score = 42/100; Motion Design score = 45/100. Both at the "2020 baseline, not 2025 bar" band — strong foundation (tokenized durations/easings, spring presets, layoutId shared elements, AnimatePresence mode="wait", Catmull-Rom MiniChart with pathLength draw-on, optimistic publish, aria-live) but missing the 2024-2025 layer (View Transitions API, scroll-driven animations, streaming AI text, magnetic/pointer-aware UI, multiplayer presence, DnD, motion catalog) plus 3 active bugs (framer-motion bypasses prefers-reduced-motion because only useCountUp checks; skeleton shimmer is LTR-only in an RTL app; 14 of 16 advertised keyboard shortcuts non-functional).
 - Top 3 Interactive Design gaps: (A7) zero View Transitions API, (A11) zero cursor/pointer-aware UI, (A13) zero realtime-collaboration interaction. Top 3 Motion Design gaps: (B7) zero View Transitions, (B8) zero scroll-driven animations, (B13) zero text/AI streaming animations. (Plus the cross-cutting B17 reduced-motion bypass and B18 LTR-only-shimmer bugs.)
@@ -1125,11 +1214,13 @@ Stage Summary:
 - This report extends (does not duplicate) AUDIT-1E §2C (5 motion criteria → expanded to 22 motion + 14 interactive sub-areas), §3 patterns #6/#7/#11/#14/#15 (referenced and elaborated in the 35-pattern catalog), §5 anti-pattern #5 (referenced in B2/B20).
 
 ---
+
 Task ID: AUDIT-1G
 Agent: Deep Module/Feature Inventory + Gap Analysis (Explore)
 Task: Inventory every module/feature in نشرینو, score completeness % vs world benchmark, produce per-feature professionalization plan + roadmap.
 
 Work Log:
+
 - Read prior worklog context (IMPORT-001, AUDIT-1A through AUDIT-1F) to align with established findings (architecture 52/100, UI/UX 80/100, 57% feature gap density vs gold standard, etc.).
 - Performed exhaustive code inventory: read `src/app/page.tsx`, `src/lib/store.ts`, all 17 API route handlers, `prisma/schema.prisma` (12 models), all 9 views in `src/components/views/`, all 7 dashboard components in `src/components/dashboard/`, all 7 shell components, `src/hooks/use-publish-stream.ts`, all publish-worker adapters + lib, `mini-services/realtime/index.ts`. Cited every file with line counts.
 - Cross-referenced inventory against AUDIT-1C's 2025 gold-standard feature set (30 capabilities, 7 groups) and per-module best-in-class references (Linear, Vercel, Stripe, Sprout, Hootsuite, Buffer, Planable, Agorapulse, Notion, Figma).
@@ -1140,6 +1231,7 @@ Work Log:
 - The agent's final response to the orchestrator was lost to a network "context canceled" error, but the full report file completed successfully on disk (1,824 lines, 115 KB — the largest audit report).
 
 Stage Summary:
+
 - Full report: `/home/z/my-project/audit/AUDIT-1G-feature-inventory.md` (1,824 lines, ~115 KB).
 - **Overall نشرینو product completeness: 43%** (weighted average across 27 features; aligns with AUDIT-1C's 57% gap density).
 - Top 5 lopsided gaps (high impact × low current state): (1) Compose/Editor 15%, (2) Auth/Identity 0%, (3) AI Assistant 5%, (4) Unified Inbox depth 25%, (5) Publishing Pipeline real adapters 15% (all 4 channel adapters are `await sleep + Math.random()` mocks).
@@ -1148,11 +1240,13 @@ Stage Summary:
 - Ready for synthesis (AUDIT-2) into master scorecard + roadmap.
 
 ---
+
 Task ID: AUDIT-2
 Agent: Main Agent (Z.ai Code) — Synthesis
 Task: Combine all 7 audit workstreams (1A-1G) into a single master scorecard + gap analysis + prioritized roadmap.
 
 Work Log:
+
 - Verified all 7 AUDIT-1x reports complete on disk (total ~440 KB, ~7,400 lines): 1A-architecture (44KB), 1B-uiux (48KB), 1C-benchmarks (56KB), 1D-standards (39KB), 1E-design-standards (53KB), 1F-interactive-motion (85KB), 1G-feature-inventory (115KB).
 - Extracted the 23 dimension scores across all reports (10 engineering from 1A, 10 design/UX from 1B, 2 interactive/motion from 1F, 1 feature completeness from 1G).
 - Computed roll-up scores: Engineering 48/100 (F), Design & UX 79/100 (B), Interactive & Motion 66/100 (D), Feature Depth 43/100 (F). Overall weighted نشرینو score: ~55/100 (D+).
@@ -1163,6 +1257,7 @@ Work Log:
 - Wrote master synthesis to `/home/z/my-project/audit/AUDIT-2-MASTER-SYNTHESIS.md`.
 
 Stage Summary:
+
 - Master synthesis: `/home/z/my-project/audit/AUDIT-2-MASTER-SYNTHESIS.md`
 - **Overall نشرینو score: ~55/100 (D+)**
 - Roll-ups: Engineering 48 (F) · Design & UX 79 (B) · Interactive & Motion 66 (D) · Feature Depth 43 (F)
@@ -1172,11 +1267,13 @@ Stage Summary:
 - All 8 audit reports (1A, 1B, 1C, 1D, 1E, 1F, 1G, 2) complete in `/home/z/my-project/audit/`. Ready for user to direct implementation.
 
 ---
+
 Task ID: PHASE0-QW
 Agent: Main Agent (Z.ai Code)
 Task: Execute the 8 Quick Wins from AUDIT-2 §5 (S-effort modernization moves) before starting Phase 0 critical zeros.
 
 Work Log:
+
 - **QW1 — Dark mode unlock + toggle**: Removed `forcedTheme="light"` from layout.tsx ThemeProvider (was locking the fully-implemented dark CSS). Added `enableSystem` so it respects OS preference. Created `src/components/shell/theme-toggle.tsx` — a glass-control button with animated Sun/Moon icon crossfade (framer-motion AnimatePresence). Mounted in CommandBar next to notifications. Dead radix `<Toaster />` import removed from layout (QW7).
 - **QW2 — Skip link + nav semantics (WCAG 2.4.1)**: Added skip-to-main-content link (`<a href="#main-content">` with `sr-only focus:not-sr-only` styling) to AppShell. Wrapped Sidebar in `<nav aria-label="ناوبری اصلی">`. Added `id="main-content"` + `tabIndex={-1}` to `<main>` for focus management. Fixes the WCAG 2.4.1 Level A bypass-block violation.
 - **QW3 — Error boundaries + error states**: Created `src/app/error.tsx` (route-level error boundary with retry CTA), `src/app/global-error.tsx` (root-level boundary with its own `<html>`/`<body>`), `src/app/not-found.tsx` (404 page). Enhanced `LoadingState` in `shared.tsx` with `isError` + `onRetry` props. Added new `ErrorState` component (alert icon + label + retry button) for use inside any view when a query fails.
@@ -1189,6 +1286,7 @@ Work Log:
 **Critical infrastructure fix during QW work**: After clearing `.next` cache, hit a Turbopack CSS parsing bug — `tw-animate-css` + Tailwind v4 generates `in-data-[stack]:first-child>&` selectors that Turbopack's CSS parser can't handle (returns "unparsable" + HTTP 500). Downgraded `tw-animate-css` from 1.4.0 → 1.3.5 (original spec) but bug persisted — it's a Turbopack issue, not a version issue. **Solution: switched dev server from Turbopack to webpack** by adding `--webpack` flag to the `dev` script in package.json. Webpack compiles the same CSS without issues. Also fixed: `motion.tsx` needed `"use client"` directive (it uses `useState`/`MotionConfig`), and removed a duplicate `useReducedMotion` import.
 
 **Agent Browser verification (all passed)**:
+
 - Page loads HTTP 200, title "نشرینو", zero page errors, zero console errors.
 - Skip link present (`a[href="#main-content"]`).
 - `main` has `id="main-content"`.
@@ -1198,6 +1296,7 @@ Work Log:
 - `bun run lint` → 0 errors, 0 warnings (clean).
 
 Stage Summary:
+
 - 8 Quick Wins all complete and Agent-Browser-verified.
 - Files modified: layout.tsx, app-shell.tsx, command-bar.tsx, shortcuts-modal.tsx, settings-view.tsx, motion.tsx, shared.tsx, package.json, prisma/schema.prisma (+ worker schema sync).
 - Files created: theme-toggle.tsx, use-keyboard-shortcuts.ts, error.tsx, global-error.tsx, not-found.tsx.
@@ -1206,11 +1305,13 @@ Stage Summary:
 - Ready for Phase 0 critical zeros (Auth, AI, Editor, Adapters, Approvals).
 
 ---
+
 Task ID: R3
 Agent: Research (Persian AI Assistant Architecture)
 Task: Deep research on modern AI integration for Persian social-media assistant; produce implementation spec.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md prior context — confirmed IMPORT-001 (نشرینو = Next.js 16 + Tailwind 4 + Prisma 6/SQLite + Zustand + TanStack Query + framer-motion + socket.io-client, Persian RTL SMM studio, 5 platforms IG/Telegram/LinkedIn/Rubika/Eitaa), AUDIT-1A §8 (z-ai-web-dev-sdk installed but NEVER imported), AUDIT-1C §8.5 (Persian AI is نشرینو's biggest moat vs Western SMM tools), AUDIT-1G §3.27 (AI at 0%, Sparkles icon appears 6× in UI with zero implementation).
 - Read /home/z/my-project/src/components/views/compose-view.tsx (818 lines) — confirmed the `Sparkles` icon at line 387 is purely decorative next to "پیش‌نمایش زنده" header; no AI button, no handler, no model call anywhere in the composer.
 - Invoked Skill(command="LLM") to read the official z-ai-web-dev-sdk skill docs (located at skills/LLM/SKILL.md + scripts/chat.ts). Confirmed: backend-only SDK, OpenAI-compatible API, role:'system' supported in ChatMessage type, thinking:{type:'enabled'|'disabled'} chain-of-thought toggle, stream:true returns ReadableStream of SSE frames, no native structured-output / function-calling-via-LLM (only direct web_search/page_reader RPC).
@@ -1227,6 +1328,7 @@ Work Log:
 - Wrote the complete implementation spec to /home/z/my-project/audit/R3-ai-architecture.md (1441 lines, ~46 KB, 10 sections): §0 Executive Summary, §1 z-ai-web-dev-sdk usage guide with verified code examples, §2 Vercel AI SDK 6 integration pattern with full 70-line LanguageModelV2 provider adapter, §3 Persian prompt engineering (5 rules + per-platform matrix + hashtag tiers + brand-voice builder code + few-shot pattern), §4 six AI surfaces full specs (input/output Zod + prompt + Route Handler + React pattern + effort), §5 streaming UI patterns (accept/edit/reject, shimmer, multi-variant, useAIStream hook, a11y), §6 architecture (module layout, streaming Route Handler skeleton, quota/cache/safety/cost, text-based diagram), §7 best-in-class references, §8 implementation roadmap (4 sprints + v1.1 hardening), §9 sources, §10 one-page decision table.
 
 Stage Summary:
+
 - Full implementation-ready report: /home/z/my-project/audit/R3-ai-architecture.md (1441 lines, ~46 KB).
 - Recommended AI stack (one line): z-ai-web-dev-sdk (model) → custom LanguageModelV2 provider (src/lib/ai/zai-provider.ts, ~70 lines) → Vercel AI SDK 6 streamText/useChat → Next.js Route Handler (SSE) → React + framer-motion streaming UI. Install: `bun add ai@^6 @ai-sdk/react@^2` (zod already present).
 - z-ai-web-dev-sdk is production-usable today — config already present at /etc/.z-ai-config in sandbox; OpenAI-compatible API with SSE streaming, image generation, vision, TTS, ASR, and built-in web_search/page_reader functions. No native structured output → use prompt + JSON.parse + Zod + 1 retry.
@@ -1235,11 +1337,13 @@ Stage Summary:
 - The report is code-ready: every surface has input/output Zod schemas, prompt templates, Route Handler skeleton, and React pattern. The build agent can start with src/lib/ai/zai.ts + src/lib/ai/zai-provider.ts + src/app/api/ai/caption/route.ts + src/components/ai/caption-assistant.tsx in Sprint 1.
 
 ---
+
 Task ID: R2
 Agent: Research (Auth.js v5 Multi-Tenant Architecture)
 Task: Deep research on modern auth architecture for multi-tenant SaaS; produce implementation spec for نشرینو.
 
 Work Log:
+
 - Read worklog.md context: IMPORT-001 (نشرینو = Persian RTL SMM studio, Next 16 + Tailwind 4 + Prisma 6/SQLite + Zustand + TanStack Query, 5 platforms, single-tenant demo), AUDIT-1A §6 (next-auth@4.24.11 installed but NEVER USED, src/lib/server.ts:5 single-tenant findFirst hack, 25/100 security score), AUDIT-1G §3.26 (Auth at 0%) + §3.19 (Team/RBAC at 25%), AUDIT-1D §1 + §3 (Next 16 — proxy.ts replaces middleware.ts, Auth.js v5 standard).
 - Inspected project state: prisma/schema.prisma (290 lines — has Workspace + WorkspaceMember but NO User/Account/Session/VerificationToken/AuditLog; WorkspaceMember.userId is a loose String with no User relation), src/lib/server.ts (5 lines — the findFirst single-tenant hack), package.json (next-auth@4.24.11 unused, zod 4 installed, prisma 6.11, Next 16.1.1).
 - Hit shared SDK rate limits (429) repeatedly on web_search + page_reader (sibling agents co-sharing quota) — pivoted to direct curl of official docs (authjs.dev, nextjs.org, OWASP, Kavenegar) which worked perfectly and returned server-rendered HTML.
@@ -1252,17 +1356,20 @@ Work Log:
 - Wrote report to /home/z/my-project/audit/R2-auth-architecture.md.
 
 Stage Summary:
+
 - Recommended auth stack: Auth.js v5 (next-auth@beta) + JWT sessions (Credentials requires JWT — database sessions return null) + Prisma adapter + Credentials (argon2id) + Phone OTP (Kavenegar) + Email magic link (Nodemailer/SMTP) + Next 16 proxy.ts edge gating + Prisma client extension for tenant isolation + 4-role RBAC matrix (admin/editor/approver/viewer) enforced via requireRole/requireRoleApi guards.
 - Key architectural decisions: (1) JWT not database sessions — Credentials provider limitation per Auth.js v5 + edge-runtime requirement of proxy.ts. (2) activeWorkspaceId stored in JWT but RE-VALIDATED per request via getActiveMembership() to prevent stale-JWT attacks. (3) Prisma client extension auto-injects workspaceId on all queries — defense-in-depth against tenant leakage. (4) Session-based workspace switching (Linear pattern) over subdomain (Slack pattern) for Caddy TLS simplicity. (5) argon2id with OWASP-spec 19 MiB / 2 iter / 1 parallelism, scrypt fallback for dev where argon2 native binding fails.
 - Full report: /home/z/my-project/audit/R2-auth-architecture.md (1,502 lines, ~58 KB, 14 sections, 10 code-ready samples, complete Prisma schema additions, 15-step implementation roadmap).
 - Next actions for implementation team: execute roadmap steps 1–3 (cleanup deps, add Prisma models, generate AUTH_SECRET) — these are S-sized and unblock everything. Then steps 4–8 (M-sized) deliver a working multi-tenant auth system in ~2 weeks. The single-tenant src/lib/server.ts:5 findFirst hack is removed in step 5.
 
 ---
+
 Task ID: R4
 Agent: Research (Tiptap Editor + Multi-Platform Preview)
 Task: Deep research on modern editor architecture for social-media composer; produce implementation spec for نشرینو.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md IMPORT-001 (lines 925-994), AUDIT-1B (997-1029), AUDIT-1G (1128-1148) sections, and AUDIT-2 synthesis (1151-1172) to ground the research in نشرینو's actual stack (Next.js 16 + Turbopack→webpack + TS + Tailwind 4 + shadcn/ui + Prisma 6/SQLite + Zustand + TanStack Query 5 + Recharts + framer-motion + socket.io-client; 5 target platforms IG/Telegram/LinkedIn/Rubika/Eitaa; RTL Persian; single-tenant demo).
 - Read the current editor in full: /home/z/my-project/src/components/views/compose-view.tsx (818 lines, plain `<Textarea>` 4-step wizard with title/caption/hashtags/campaign/note/media/platform/schedule fields; per-platform caption overrides; live preview pane; optimistic publish with TanStack Query; mocked autosave/toast-only drafts; mocked media-upload dropzone; Jalali text input; IG_LIMIT=2200 only). Identified the exact line numbers for the rebuild targets (Textarea at line 517, fake dropzone at 585-593, generic preview at 385-435, plain Jalali input at 785, autosave badge lie at 269).
 - Read /home/z/my-project/package.json — confirmed `@mdxeditor/editor@^3.39.1` IS currently installed (line ~20), `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` already present, `react-day-picker@^9.8.0` already present, `react-hook-form` + `zod@^4` + `sharp@^0.34.3` + `z-ai-web-dev-sdk` already present. NOT yet present: `@tiptap/*`, `react-dropzone`, `react-image-crop`, `emoji-mart`, `ai` (Vercel AI SDK), `tippy.js`, `prosemirror-markdown`, `@tiptap/extension-markdown`.
@@ -1275,6 +1382,7 @@ Work Log:
 - Cited official docs throughout: tiptap.dev/docs/editor/introduction, /react, /extensions, /extensions/mention, /extensions/character-count, /extensions/suggestion, /extensions/markdown, /extensions/collaboration; prosemirror.net/docs; lexical.dev; sdk.vercel.ai/docs; react-day-picker.js.org; docs.dndkit.com; sharp.pixelplumbing.com.
 
 Stage Summary:
+
 - Recommended editor framework: **Tiptap v2** (headless ProseMirror-based, React-friendly, best-in-class RTL — critical for Persian; used by Notion/Linear/Vercel/Substack; 50+ official extensions cover 80% of needs; Y.js collab upgrade path for v3).
 - Uninstall @mdxeditor/editor (markdown-blog-shaped, not caption-shaped; lacks slash commands; would outgrow in 2 months).
 - Full report: /home/z/my-project/audit/R4-editor-architecture.md (2,221 lines, ~106 KB, 16 sections, 30+ code-ready TypeScript/TSX blocks, complete Prisma schema additions, 8-phase implementation roadmap E1-E8).
@@ -1284,11 +1392,13 @@ Stage Summary:
 - Next actions for implementation engineer: (1) `bun add` the 13 Tiptap packages listed in §4.1 + `bun remove @mdxeditor/editor`; (2) start Phase E1 by creating src/components/editor/nashrino-editor.tsx from §4.3; (3) replace Textarea at compose-view.tsx:517 with `<NashrinoEditor>`; (4) ship MVP in 4 weeks (E1-E4).
 
 ---
+
 Task ID: R5
 Agent: Research (Approval Workflow + Collaboration)
 Task: Deep research on approval workflow + collaboration patterns; produce implementation spec.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md prior context — confirmed IMPORT-001 (نشرینو = Next.js 16 + Turbopack + TS + Tailwind 4 + shadcn/ui + Prisma 6/SQLite + Zustand + TanStack Query 5 + Recharts + framer-motion + socket.io-client; Persian RTL SMM studio; 5 platforms IG/Telegram/LinkedIn/Rubika/Eitaa; single-tenant demo), AUDIT-1C §5.6 + §7 (top gap #1 = Approval workflows at 5%, "Planable's entire value prop; agencies won't buy without it", M effort, P0), AUDIT-1G §3.28 (Approvals & Collaboration at 5%; P0; L effort to 80%; existing stubs: Content.status enum includes review/approved, compose-view.tsx:213-215 toast-only submit-for-review, WorkspaceMember.role includes 'approver' but unenforced, dashboard summary counts status='review' for pendingApproval badge), AUDIT-2 §1 (Approvals is 1 of 5 critical zeros blocking everything).
 - Inspected the actual codebase to ground the spec: prisma/schema.prisma (290 lines — confirmed 6-value Content.status enum draft/review/approved/scheduled/published/failed; WorkspaceMember.role 4 values admin/editor/approver/viewer; Notification model with 6 type values publish_success/publish_failed/approval_requested/inbox_new/token_expiring/channel_disconnected; no Approval/ContentComment/ContentVersion/ContentPresence models yet), mini-services/realtime/index.ts (217 lines — confirmed socket.io relay on :3003 with workspace:{wid} rooms, currently 2 events job:status/job:progress, POST /emit pattern for worker→relay broadcast, subscribe/unsubscribe client events), src/hooks/use-publish-stream.ts (existing socket.io client hook pattern to mirror for R5 events), src/lib/server.ts (single-tenant getWorkspaceId helper — R2 will replace with real session), src/app/api/content/route.ts + dashboard/summary/route.ts (existing route patterns to extend), src/app/api/members/route.ts (existing role-to-Persian-label mapping for RBAC), src/components/views/compose-view.tsx:203-216 (confirmed the toast-only submit stub to replace).
 - Read /home/z/my-project/research/text/planable_text.txt (1,308 lines fetched 2025 from planable.io) in full — extracted Planable's 4 approval modes (None/Optional/Required/Multi-level), workspace settings (auto-schedule-on-approve, lock-on-approve, approval/notification/publishing preferences, timetable, custom labels, post templates), collaboration features (team-only drafts/notes, version history 7d/30d/unlimited by tier, bulk approve, bulk request approval, text annotations, suggest edits), pricing model (per-workspace, unlimited users — explicitly designed for collaboration-first teams), positioning ("collaboration is the foundation, not an afterthought").
@@ -1299,6 +1409,7 @@ Work Log:
 - Wrote the complete implementation spec to /home/z/my-project/audit/R5-approval-architecture.md (2,339 lines, ~110 KB, 14 sections + appendix): §0 Executive Summary, §1 Planable + reference research (4 approval modes deep-dive, multi-level chain with named steps, version history, retention, Planable positioning quotes), §2 Approval state machine (8 states + 14 transitions + content lock + SLA timer + multi-level chain), §3 Prisma schema additions (full code for 6 new models + 11 Content fields + 8 Workspace fields + migration SQL), §4 API route design (14 endpoints with full TypeScript skeletons for submit/approve/reject/withdraw/retry/unschedule/unpublish/force-unlock/comments CRUD/versions restore/request-client-review/approval queue/presence), §5 Inline comments design (text anchoring + re-anchoring + threading + @mentions + suggest-edits + internal/external visibility + resolve/reopen), §6 Version history (save-on-edit + diff viewer + restore + retention), §7 Notifications (in-app extension + 3-channel dispatcher + 4 email templates + Telegram bot + member preferences model), §8 UI/UX (10 components with full TSX code for StatusBadge, ApprovalActionBar, CommentsPanel, CommentComposer, VersionHistoryModal, ApprovalQueueView, lock indicator, SlaCountdown, presence avatars, activity feed), §9 Real-time design (8 new socket.io events + server extension code + client hooks + Tiptap RemoteCursors plugin + presence cleanup), §10 RBAC enforcement (5×9 matrix + helpers + route guard + client can.*), §11 Client portal (magic-link flow + token security + public page + Persian UX), §12 Best-in-class references table (18 capabilities × 8 reference apps), §13 Phased roadmap (Phase A MVP 2wk→50%, Phase B P1 collab 4wk→80%, Phase C P2 multiplayer+advanced 8+wk→95%, total 14wk ~2 eng-quarters for 5%→95%), §14 Sources (Planable + 7 approval-workflow articles + 5 reference apps + 6 technical libraries + 6 نشرینو internal citations), Appendix A Quick Decision Table (16 decisions).
 
 Stage Summary:
+
 - Full report: /home/z/my-project/audit/R5-approval-architecture.md (2,339 lines, ~110 KB, 14 sections + appendix, 30+ code-ready TypeScript/TSX/Prisma blocks, complete schema additions, 14 API route skeletons, 10 UI components, 8 socket.io events, 5×9 RBAC matrix, magic-link client portal, 3-phase roadmap).
 - Approval state machine: 8 states (draft → in_review → changes_requested → approved → scheduled → publishing → published → failed) with 14 explicit transitions (T1-T14) including submit, approve, reject, withdraw, retry, unschedule, unpublish, force-unlock; content lock enforced when status IN (in_review, approved, scheduled, publishing, published); SLA timer default 48h with countdown chip; multi-level chain via ApprovalStep (per-workspace definition) + Approval (per-decision rows).
 - Prisma additions: 6 new models (Approval, ApprovalStep, ContentComment, ContentVersion, ContentPresence, ContentAuditLog, ClientToken) + 11 new fields on Content (approvalMode, approvalStepIndex, reviewDeadline, approvedById, approvedAt, rejectedReason, rejectedById, rejectedAt, lockedAt, lockOverriddenById, lastEditedAt, clientFeedback) + 8 new fields on Workspace (approvalModeDefault, approvalSlaHours, lockOnApprove, autoScheduleOnApprove, preserveProgressOnReject, notifyOnApprovalRequest, notifyOnDecision, notifyOnComment, telegramApprovalBotToken, telegramApprovalChatId) + Notification model extension (contentId, actorId, actorName, actionUrl, metadata) — all SQLite-compatible (no native enums, no JSON columns, comma-separated strings for arrays).
@@ -1312,11 +1423,13 @@ Stage Summary:
 - Next actions for implementation engineer: (1) start Phase A1 — append the 6 new models + 11 new Content fields + 8 new Workspace fields to prisma/schema.prisma from §3, then `bunx prisma migrate dev --name r5_approval_collaboration`; (2) A2-A3 — create src/lib/rbac.ts (requireWorkspaceRole + can.*) and src/lib/notify.ts (3-channel dispatcher with email+telegram stubs); (3) A4 — implement the 5 core API routes from §4.2-4.4 (submit/approve/reject/withdraw/retry) by copying the skeletons verbatim; (4) A6-A7 — replace the toast-only submit stub in compose-view.tsx:213-215 with the real mutation, then add the ApprovalQueueView as a new tab in content-view.tsx; (5) ship Phase A MVP in 2 weeks → §3.28 score 5%→50%; (6) Phase B in 4 weeks → 80%; Phase C in 8+ weeks → 95%.
 
 ---
+
 Task ID: R1
 Agent: Main Agent (research compiled from official docs)
 Task: Deep research on 5 channel official APIs (Telegram, Instagram, Rubika, Bale, LinkedIn) + real connector specs.
 
 Work Log:
+
 - Fetched official Rubika bot API docs from https://rubika.ir/botapi + /botapi/methods + /botapi/group-channel (Persian mkdocs site). Confirmed: URL pattern `https://botapi.rubika.ir/v3/{token}/{method}` (POST); methods: getMe, sendMessage, sendPoll, getUpdates, updateBotEndpoint (webhook); webhook body has Update object (type: NewMessage/StartedBot/StoppedBot, chat_id, message_id, sender_id, text); bot added to channel via "add member" → admin → permissions; limitations documented.
 - Fetched official Bale bot API docs from https://docs.bale.ai/ (Nextra single-page app, RTL Persian). Confirmed: Bale is Telegram-Bot-API-COMPATIBLE — URL `https://tapi.bale.ai/bot<token>/METHOD_NAME`; file download `https://tapi.bale.ai/file/bot<token>/<file_path>`; methods identical to Telegram (getMe, sendMessage, sendPhoto, sendVideo, sendDocument, sendMediaGroup, sendLocation, sendContact, sendChatAction, forwardMessage, copyMessage, editMessage*, deleteMessage, getFile, getChat*, banChatMember, promoteChatMember, setChat*, pinChatMessage, getUpdates, setWebhook, deleteWebhook, getWebhookInfo, sendInvoice, stickers, etc.); chat types private/group/channel; promoteChatMember with can_post_messages for channel admin.
 - Documented Telegram Bot API (core.telegram.org/bots/api) — bot token via @BotFather, URL `https://api.telegram.org/bot<TOKEN>/<METHOD>`, sendMessage/sendPhoto/sendVideo/sendMediaGroup, MarkdownV2/HTML formatting, 30msg/sec rate limit, webhook via setWebhook.
@@ -1327,6 +1440,7 @@ Work Log:
 - Wrote full report to /home/z/my-project/audit/R1-channel-apis.md.
 
 Stage Summary:
+
 - Full report: /home/z/my-project/audit/R1-channel-apis.md
 - Key finding: Bale is Telegram-Bot-API-compatible → 90% code reuse between Telegram + Bale adapters.
 - Key finding: Rubika has a simple REST API (text-only for v1, media support unclear in public docs).
@@ -1334,11 +1448,13 @@ Stage Summary:
 - All 5 adapters have complete TypeScript skeletons ready to implement.
 
 ---
+
 Task ID: R5
 Agent: Main Agent (research compiled from Planable/Figma/Linear patterns)
 Task: Deep research on approval workflow + collaboration patterns; produce implementation spec.
 
 Work Log:
+
 - Researched Planable's 4 approval modes (None, Optional, Required, Multi-level) — the gold standard for social-media approvals.
 - Designed content status state machine: draft → review → approved → scheduled → published (with rejected branch back to draft).
 - Designed Prisma schema additions: ContentComment (inline comments with text selection anchoring + threaded replies), ContentVersion (snapshot history), ContentPresence (real-time cursors).
@@ -1350,6 +1466,7 @@ Work Log:
 - Wrote full report to /home/z/my-project/audit/R5-approval-architecture.md.
 
 Stage Summary:
+
 - Full report: /home/z/my-project/audit/R5-approval-architecture.md
 - Approval state machine: draft → review → approved → scheduled → published (+ rejected → draft).
 - 4 approval modes: none, optional, required, multi_level (per workspace).
@@ -1357,17 +1474,19 @@ Stage Summary:
 - MVP (A1) = state machine + 4 modes + API routes + status badges → 3-5 days effort.
 
 ---
+
 Task ID: IMPL-CHANNELS-AI
 Agent: Main Agent (Z.ai Code)
 Task: Implement real channel connectors (5 APIs, no mocks) + Persian AI assistant v1.
 
 Work Log:
+
 - **Real channel connectors**: Rewrote all 5 adapters in `mini-services/publish-worker/adapters/` as REAL implementations (no mocks):
-  * `telegram.ts` — real Telegram Bot API (api.telegram.org/bot<token>/METHOD). sendMessage, sendPhoto, sendVideo, sendDocument, sendMediaGroup with HTML parse_mode. Full error handling (429 rate limit → retryable, 401 → permanent).
-  * `bale.ts` — NEW adapter for Bale (tapi.bale.ai/bot<token>/METHOD). Bale is Telegram-Bot-API-compatible per official docs (docs.bale.ai). Same methods as Telegram, just different base URL. 90% code reuse from Telegram adapter. Persian platform = moat.
-  * `rubika.ts` — real Rubika Bot API (botapi.rubika.ir/v3/{token}/{method}). Text-only sendMessage per official docs (media not in public v3 docs). Noted media limitation in code.
-  * `instagram.ts` — real Instagram Graph API (graph.facebook.com/v21.0). Two-step publish: POST /media → POST /media_publish. Supports IMAGE, VIDEO, REEL, CAROUSEL (2-10 items). Video processing wait loop. Insights + healthCheck.
-  * `linkedin.ts` — real LinkedIn Posts API (api.linkedin.com/v2/posts). Two-step image upload: registerUpload → PUT binary → create post. Text-only, single image, and multi-image carousel (up to 9).
+  - `telegram.ts` — real Telegram Bot API (api.telegram.org/bot<token>/METHOD). sendMessage, sendPhoto, sendVideo, sendDocument, sendMediaGroup with HTML parse_mode. Full error handling (429 rate limit → retryable, 401 → permanent).
+  - `bale.ts` — NEW adapter for Bale (tapi.bale.ai/bot<token>/METHOD). Bale is Telegram-Bot-API-compatible per official docs (docs.bale.ai). Same methods as Telegram, just different base URL. 90% code reuse from Telegram adapter. Persian platform = moat.
+  - `rubika.ts` — real Rubika Bot API (botapi.rubika.ir/v3/{token}/{method}). Text-only sendMessage per official docs (media not in public v3 docs). Noted media limitation in code.
+  - `instagram.ts` — real Instagram Graph API (graph.facebook.com/v21.0). Two-step publish: POST /media → POST /media_publish. Supports IMAGE, VIDEO, REEL, CAROUSEL (2-10 items). Video processing wait loop. Insights + healthCheck.
+  - `linkedin.ts` — real LinkedIn Posts API (api.linkedin.com/v2/posts). Two-step image upload: registerUpload → PUT binary → create post. Text-only, single image, and multi-image carousel (up to 9).
 - Updated `adapters/types.ts`: added `bale` to PlatformType, added `token`, `targetId` to AdapterAccount, added `mediaItems` to AdapterContent.
 - Updated `adapters/index.ts`: registered BaleAdapter.
 - Updated `prisma/schema.prisma`: added `tokenSecret` + `targetId` fields to Platform model (for storing bot tokens / OAuth tokens + chat IDs / author URN). Ran `bun run db:push` — schema in sync. Synced worker schema + regenerated Prisma client.
@@ -1375,21 +1494,22 @@ Work Log:
 - Restarted publish-worker with real adapters — confirmed polling DB every 2s, no errors.
 
 - **Persian AI Assistant v1** (per R3 research):
-  * Created `src/lib/ai/zai.ts` — z-ai-web-dev-sdk singleton (`getZAI()`), `generateCaption()` (non-streaming), `streamCaption()` (async generator yielding text chunks), `suggestHashtags()` (returns string[]). Persian system prompt with: brand voice, content guidelines, default hashtags, caption footer, platform-specific rules, ZWNJ نیم‌فاصله, Persian digits, Iranian emoji conventions. Per R3 §3.5 prompt template.
-  * Created `src/app/api/ai/caption/route.ts` — POST endpoint, SSE streaming response (data: {json}\n\n frames). Validates topic (3-280 chars) + platform. Gets workspace context for brand voice. 60s maxDuration.
-  * Created `src/app/api/ai/hashtags/route.ts` — POST endpoint, returns `{ hashtags: string[] }`. Generates 10 Persian + English hashtags.
-  * Created `src/components/ai/caption-assistant.tsx` — React component with streaming UI (ChatGPT-style): "تولید کپشن" button → streaming text display with blinking cursor → accept/reject/regenerate actions. "هشتگ‌های پیشنهادی" button. Abort controller for cancel. framer-motion AnimatePresence for smooth transitions.
-  * Wired CaptionAssistant into `src/components/views/compose-view.tsx` StepContent: appears when title ≥ 3 chars. onInsert places caption into the Textarea, onHashtags fills the hashtags field.
+  - Created `src/lib/ai/zai.ts` — z-ai-web-dev-sdk singleton (`getZAI()`), `generateCaption()` (non-streaming), `streamCaption()` (async generator yielding text chunks), `suggestHashtags()` (returns string[]). Persian system prompt with: brand voice, content guidelines, default hashtags, caption footer, platform-specific rules, ZWNJ نیم‌فاصله, Persian digits, Iranian emoji conventions. Per R3 §3.5 prompt template.
+  - Created `src/app/api/ai/caption/route.ts` — POST endpoint, SSE streaming response (data: {json}\n\n frames). Validates topic (3-280 chars) + platform. Gets workspace context for brand voice. 60s maxDuration.
+  - Created `src/app/api/ai/hashtags/route.ts` — POST endpoint, returns `{ hashtags: string[] }`. Generates 10 Persian + English hashtags.
+  - Created `src/components/ai/caption-assistant.tsx` — React component with streaming UI (ChatGPT-style): "تولید کپشن" button → streaming text display with blinking cursor → accept/reject/regenerate actions. "هشتگ‌های پیشنهادی" button. Abort controller for cancel. framer-motion AnimatePresence for smooth transitions.
+  - Wired CaptionAssistant into `src/components/views/compose-view.tsx` StepContent: appears when title ≥ 3 chars. onInsert places caption into the Textarea, onHashtags fills the hashtags field.
 
 - **Agent Browser verification**:
-  * `GET /` → HTTP 200.
-  * Navigated to Compose (C shortcut) → typed "قهوه" → AI assistant buttons appeared: "تولید کپشن" + "هشتگ‌های پیشنهادی".
-  * `POST /api/ai/caption` → returns SSE stream (confirmed format correct; z-ai SDK returned 429 rate limit from shared quota — infrastructure works, will function when rate limits reset).
-  * `POST /api/ai/hashtags` → returns JSON (same 429 — shared rate limit).
-  * `bun run lint` → 0 errors, 0 warnings.
-  * All 3 services running: Next.js :3000, realtime :3003, publish-worker :3001.
+  - `GET /` → HTTP 200.
+  - Navigated to Compose (C shortcut) → typed "قهوه" → AI assistant buttons appeared: "تولید کپشن" + "هشتگ‌های پیشنهادی".
+  - `POST /api/ai/caption` → returns SSE stream (confirmed format correct; z-ai SDK returned 429 rate limit from shared quota — infrastructure works, will function when rate limits reset).
+  - `POST /api/ai/hashtags` → returns JSON (same 429 — shared rate limit).
+  - `bun run lint` → 0 errors, 0 warnings.
+  - All 3 services running: Next.js :3000, realtime :3003, publish-worker :3001.
 
 Stage Summary:
+
 - 5 real channel adapters implemented (Telegram, Bale, Rubika, Instagram, LinkedIn) — zero mocks remaining.
 - Persian AI assistant v1 streaming + hashtag suggestion built and wired into Compose editor.
 - Files modified: adapters/{telegram,bale,rubika,instagram,linkedin}.ts, adapters/{types,index}.ts, prisma/schema.prisma, publish-worker/index.ts, compose-view.tsx.
@@ -1398,11 +1518,13 @@ Stage Summary:
 - Ready for next: Auth.js v5 (keystone), Tiptap editor rebuild, Approval workflow.
 
 ---
+
 Task ID: IMPL-AI-GAPGPT
 Agent: Main Agent (Z.ai Code)
 Task: Switch Persian AI assistant to use GapGPT (OpenAI-compatible gateway) with user's API key.
 
 Work Log:
+
 - User provided GapGPT API key + endpoint (https://api.gapgpt.app/v1). GapGPT is an OpenAI-compatible gateway supporting 94 models (GPT, Claude, Gemini, Grok, Qwen, Gemma) through one endpoint — works globally from the sandbox (Hong Kong), unlike direct Gemini which has 0 free-tier quota from this region.
 - User requested gemma-3-27b-it model. Tested it: the model is LISTED in GapGPT's /v1/models but returns persistent "bad_response_status_code" upstream errors — GapGPT's Google/Gemma upstream is misconfigured/down. Reported this to user.
 - Tested all Persian-capable models on GapGPT: gpt-4o-mini ✅ (excellent Persian, reliable), gapgpt-qwen-3.5-thinking ✅ (but needs max_tokens:2000+ because it's a reasoning model), gemini-2.0-flash ❌ (not in GapGPT default group), gpt-4o/gpt-5-mini/claude/grok ❌ (upstream errors), gemma-3-27b-it ❌ (upstream errors).
@@ -1415,14 +1537,15 @@ Work Log:
 - Updated `.env`: added `GAPGPT_API_KEY=sk-6eeqxQAfEWHOtt7Z6lks5uM93HKfIAZSMm1MdQR0GlMR3DNj` + kept `GEMINI_API_KEY` for fallback.
 - The API routes (`/api/ai/caption` + `/api/ai/hashtags`) import from `src/lib/ai/gemini.ts` — no route changes needed (same exported function signatures).
 - **Agent Browser verification**:
-  * Navigated to Compose → typed "قهوه تازه دم" → clicked "تولید کپشن"
-  * AI streamed a natural Persian caption: *"سلام! ☕️ قهوه تازه دم همیشه حال و هوای خوبی به روزمون میده. عطرش، طعمش و حتی رنگش می‌تونه ما رو به دنیای متفاوتی ببره. آیا شما هم با یک فنجان قهوه، انرژی روز رو می‌گیرین؟..."*
-  * Correct Persian grammar, natural ZWNJ (نیم‌فاصله), appropriate emoji, conversational tone — NOT translated from English.
-  * Hashtags endpoint returned 10 relevant Persian + English tags: #قهوه, #coffee, #کافه, #قهوه_ساز, #coffeeholic, #قهوه_ایرانی, #coffee_lovers, #قهوه_سبز, #دمنوش, #barista.
-  * Screenshot saved: `verify-ai-gapgpt.png`.
+  - Navigated to Compose → typed "قهوه تازه دم" → clicked "تولید کپشن"
+  - AI streamed a natural Persian caption: _"سلام! ☕️ قهوه تازه دم همیشه حال و هوای خوبی به روزمون میده. عطرش، طعمش و حتی رنگش می‌تونه ما رو به دنیای متفاوتی ببره. آیا شما هم با یک فنجان قهوه، انرژی روز رو می‌گیرین؟..."_
+  - Correct Persian grammar, natural ZWNJ (نیم‌فاصله), appropriate emoji, conversational tone — NOT translated from English.
+  - Hashtags endpoint returned 10 relevant Persian + English tags: #قهوه, #coffee, #کافه, #قهوه_ساز, #coffeeholic, #قهوه_ایرانی, #coffee_lovers, #قهوه_سبز, #دمنوش, #barista.
+  - Screenshot saved: `verify-ai-gapgpt.png`.
 - `bun run lint` → 0 errors, 0 warnings.
 
 Stage Summary:
+
 - AI provider chain: GapGPT (gpt-4o-mini) → Gemini (gemini-2.0-flash) → z-ai (glm-4-plus).
 - Both streaming caption + hashtag suggestion fully working with real Persian output.
 - GapGPT key in .env. Model = gpt-4o-mini (reliable + excellent Persian). gemma-3-27b-it documented as broken upstream.
@@ -1430,25 +1553,28 @@ Stage Summary:
 - Ready to continue: Auth.js v5, Tiptap editor rebuild, Approval workflow.
 
 ---
+
 Task ID: R6
 Agent: Research (Persian Social Media Tone Differentiation)
 Task: Deep research on Persian caption writing styles across different tones; produce differentiated prompt specs.
 
 Work Log:
+
 - Read /home/z/my-project/worklog.md → IMPL-AI-GAPGPT section. Confirmed root cause of user feedback "tones are not different enough": the current `buildCaptionSystem()` in src/lib/ai/gemini.ts (and zai.ts) appends ONLY a single Persian adjective to the system prompt (e.g., `لحن: صمیمی` / `لحن: رسمی`), giving gpt-4o-mini no concrete linguistic instruction → it defaults to one neutral-conversational register for all 4 tones.
 - Inspected current code: tone union `"formal" | "friendly" | "playful" | "professional"` lives in 3 files: src/lib/ai/gemini.ts (line 78, 128, 409), src/lib/ai/zai.ts (line 41, 67, 163), src/components/ai/caption-assistant.tsx (line 9), src/app/api/ai/caption/route.ts (line 31).
 - Attempted to use z-ai `web_search` and `page_reader` skills via CLI — BOTH services returned persistent HTTP 429 ("Too many requests") for the ENTIRE session despite multiple retries with 1-, 2-, 3-, 5-, and 8-minute waits. This is a shared sandbox quota issue, not a query-specific block.
 - Pivoted: used direct `curl` to fetch Persian Wikipedia articles that don't require JavaScript rendering. Successfully retrieved (HTTP 200):
-  * fa.wikipedia.org/wiki/زبان_فارسی (1.7 MB) — confirmed معیار vs محاوره register distinction, Academy regulation
-  * fa.wikipedia.org/wiki/فاصله_مجازی — confirmed ZWNJ (U+200C) typography rules: `می‌شود، خانه‌ها، بهره‌وری، گفت‌وگو`
-  * fa.wikipedia.org/wiki/فارسی_تهرانی — confirmed Tehran dialect as colloquial base
-  * fa.wikipedia.org/wiki/هشتگ, /wiki/اینستاگرام, /wiki/زبان‌شناسی, /wiki/رجیستر — supporting context
+  - fa.wikipedia.org/wiki/زبان_فارسی (1.7 MB) — confirmed معیار vs محاوره register distinction, Academy regulation
+  - fa.wikipedia.org/wiki/فاصله_مجازی — confirmed ZWNJ (U+200C) typography rules: `می‌شود، خانه‌ها، بهره‌وری، گفت‌وگو`
+  - fa.wikipedia.org/wiki/فارسی_تهرانی — confirmed Tehran dialect as colloquial base
+  - fa.wikipedia.org/wiki/هشتگ, /wiki/اینستاگرام, /wiki/زبان‌شناسی, /wiki/رجیستر — supporting context
 - Built a Python HTML-to-text extractor and pulled key passages confirming register/colloquial/standard linguistic facts from the Wikipedia corpus.
 - Google/Bing/DuckDuckGo direct scraping was blocked (anti-bot 202 / 404 / anomaly pages), so empirical Iranian social-media caption claims were synthesized from (a) the Wikipedia corpus + (b) domain expertise in Persian linguistics and the Iranian Instagram/Telegram/LinkedIn market. All linguistic tables (verb conjugation paradigm, pronoun sets, formal-vs-colloquial vocabulary pairs) are standard reference material found in any Persian linguistics textbook.
 - Synthesized full report covering: Persian register system crash course (معیار vs محاوره, full verb paradigm for رفتن/گفتن/بودن, pronoun differences, 25+ formal-vs-colloquial vocabulary pairs, ZWNJ rules, sentence-structure patterns, interjection/slang dictionary); field-research section on 4 Iranian caption subcultures + platform conventions (Instagram/Telegram/LinkedIn/Rubika-Bale-Eitaa/Twitter); complete per-tone specs for all 8 recommended tones (4 original + 4 new) each with 7-axis linguistic table, 3-4 example captions on the topic "معرفی قهوه تازه دم", do/don't list, and the EXACT Persian system-prompt fragment to splice into buildCaptionSystem; full 8-tones × 10-features comparison table; recommendation to expand from 4 to 8 tones with per-platform defaulting; implementation guidance for the dev (file paths, type changes, refactor pattern); validation rubric (7 axes must differ).
 - Wrote 60KB / 767-line report to /home/z/my-project/audit/R6-persian-tones.md.
 
 Stage Summary:
+
 - Root cause of "tones not different enough": system prompt adds only ONE word per tone (لحن: صمیمی/رسمی/شاد/حرفه‌ای) → insufficient linguistic instruction → model collapses to a single neutral register.
 - Fix: each tone must be specified by 7 orthogonal axes (register, verb conjugation, pronouns, vocabulary tier, sentence length, emoji density, hook+CTA template). Report provides ready-to-paste Persian system-prompt fragments per tone (DO NOT shorten — the per-tone fragments are the minimum granularity).
 - Recommendation: expand from 4 to 8 tones — add داستان‌گویی (storytelling), فروش و تبلیغاتی (sales), آموزشی (educational), احساسی و شاعرانه (poetic). Full tone list + per-platform defaults in report Section 6.
@@ -1457,31 +1583,34 @@ Stage Summary:
 - Tools caveat: z-ai web_search + page_reader were 429-blocked throughout this session; direct curl to fa.wikipedia.org succeeded. Findings synthesized from Wikipedia corpus + Persian-linguistics domain expertise. Empirical Iranian social-media claims should be re-validated with z-ai web_search once the rate-limit clears.
 
 ---
+
 Task ID: IMPL-AI-TONES-V2
 Agent: Main Agent (Z.ai Code)
 Task: Rebuild Persian AI tone system per R6 research — expand 4→8 tones with genuinely differentiated linguistic rules.
 
 Work Log:
+
 - User feedback: "different tones are not good and really different enough" — the old 4 tones (friendly/formal/playful/professional) produced similar output because the prompt only passed one word ("لحن: صمیمی") with no concrete linguistic instruction.
 - Launched R6 research agent → produced detailed Persian tone differentiation report (767 lines) with 8 tones, each with: verb paradigm, pronoun set, vocabulary level, sentence length, emoji density, hook style, CTA style, and example captions. Report at `/home/z/my-project/audit/R6-persian-tones.md`.
 - Rewrote `buildCaptionSystem()` in `src/lib/ai/gemini.ts` — the core fix:
-  * OLD: passed `لحن: ${toneLabels[tone]}` (one word) → AI had no concrete instruction
-  * NEW: passes a DETAILED linguistic spec per tone (7-10 lines of rules including exact verb forms to use/avoid, pronouns, vocabulary examples, sentence length range, emoji count, hook style, CTA style)
-  * Each tone instruction includes DO/DON'T verb pairs (e.g. friendly: "می‌رم" ✓ never "می‌روم" ✗; formal: "می‌رود" ✓ never "می‌شه" ✗)
-  * Added final instruction: "لحن باید کاملاً در افعال، ضمایر، واژگان و ساختار جمله مشهود باشد. خواننده با خواندن چند کلمه باید بتواند لحن را تشخیص دهد."
+  - OLD: passed `لحن: ${toneLabels[tone]}` (one word) → AI had no concrete instruction
+  - NEW: passes a DETAILED linguistic spec per tone (7-10 lines of rules including exact verb forms to use/avoid, pronouns, vocabulary examples, sentence length range, emoji count, hook style, CTA style)
+  - Each tone instruction includes DO/DON'T verb pairs (e.g. friendly: "می‌رم" ✓ never "می‌روم" ✗; formal: "می‌رود" ✓ never "می‌شه" ✗)
+  - Added final instruction: "لحن باید کاملاً در افعال، ضمایر، واژگان و ساختار جمله مشهود باشد. خواننده با خواندن چند کلمه باید بتواند لحن را تشخیص دهد."
 - Expanded Tone type from 4 → 8: added `storytelling` (داستانی), `sales` (فروش), `educational` (آموزشی), `poetic` (احساسی).
 - Updated UI (`caption-assistant.tsx`): TONES array now has 8 entries with emojis (😊 صمیمی, 🎩 رسمی, 🎉 شاد, 💼 حرفه‌ای, 📖 داستانی, 🛒 فروش, 💡 آموزشی, 🌙 احساسی).
 - Updated API route (`/api/ai/caption`): VALID_TONES array expanded to 8.
 - **Verified tone differentiation** via API tests (same topic "معرفی قهوه تازه دم", 4 tones):
-  * **friendly**: "تا حالا دقت کردی...؟ می‌تونه... بریم یه فنجون... کامنت کن ببینم!" — colloquial verbs, informal
-  * **formal**: "مطالعات نشان می‌دهد... تبدیل گردیده است... بیان فرمایید" — formal verbs, literary vocabulary (بهره‌مندی، دلپذیر)
-  * **playful**: "بچه‌ها! ☕️🔥 یه دنیای باحال... حرف نداره... تگ کن دوستت رو" — slang, group address, lots of emoji
-  * **poetic**: "قهوه، بوی خاطره است... نغمه‌ای در سکوت صبح می‌رقصند... شوق زندگی در دل می‌جوشد... در سکوتِ عطرش، روزت را بیاب" — literary, poetic imagery, reflective CTA
-  * Each tone has GENUINELY different verb forms, vocabulary, sentence structure, emoji density, hooks, and CTAs — not just minor wording changes.
+  - **friendly**: "تا حالا دقت کردی...؟ می‌تونه... بریم یه فنجون... کامنت کن ببینم!" — colloquial verbs, informal
+  - **formal**: "مطالعات نشان می‌دهد... تبدیل گردیده است... بیان فرمایید" — formal verbs, literary vocabulary (بهره‌مندی، دلپذیر)
+  - **playful**: "بچه‌ها! ☕️🔥 یه دنیای باحال... حرف نداره... تگ کن دوستت رو" — slang, group address, lots of emoji
+  - **poetic**: "قهوه، بوی خاطره است... نغمه‌ای در سکوت صبح می‌رقصند... شوق زندگی در دل می‌جوشد... در سکوتِ عطرش، روزت را بیاب" — literary, poetic imagery, reflective CTA
+  - Each tone has GENUINELY different verb forms, vocabulary, sentence structure, emoji density, hooks, and CTAs — not just minor wording changes.
 - **Agent Browser verification**: all 8 tone buttons render correctly in the Compose UI. Screenshot: `verify-8-tones.png`.
 - `bun run lint` → 0 errors, 0 warnings.
 
 Stage Summary:
+
 - 8 professionally-differentiated Persian tones (was 4 with weak differentiation).
 - Each tone has detailed linguistic rules: verb forms, pronouns, vocabulary, sentence length, emoji density, hook style, CTA style.
 - Verified via API: same topic produces visibly different output per tone (colloquial vs formal vs slang vs literary).
@@ -1489,18 +1618,20 @@ Stage Summary:
 - AI Assistant completeness: 55% → 70% (genuinely differentiated tones + expanded from 4 to 8).
 
 ---
+
 Task ID: IMPL-AUTH-V1
 Agent: Main Agent (Z.ai Code)
 Task: Implement Auth.js (NextAuth v4) + multi-tenant workspace isolation per R2 research.
 
 Work Log:
+
 - Added Prisma models: User, Account, Session, VerificationToken, AuditLog. Updated WorkspaceMember to link to User (real FK relation). Ran `bun run db:push` — schema in sync.
 - Created `src/lib/password.ts` — scrypt-based password hashing (Node built-in crypto, no native deps). OWASP params: N=16384, r=8, p=1, keyLen=64. Constant-time comparison via timingSafeEqual.
 - Created `src/lib/auth.ts` — NextAuth v4 config with Credentials provider (email+password). JWT session strategy (required for Credentials in v4). JWT callback injects {id, role, activeWorkspaceId}. Session callback exposes them to client. Account lockout (5 failed → 15min lock). Auto-resets on success.
 - Created `src/app/api/auth/[...nextauth]/route.ts` — NextAuth route handler.
 - Created `src/lib/auth-guards.ts` — requireAuth(), requireWorkspace(), requireRole(), requireWorkspaceApi(), can(role, permission). Full RBAC matrix (admin/editor/approver/viewer × 11 permissions). Drop-in replacement for old `getWorkspaceId()` hack.
 - Created `src/types/next-auth.d.ts` — type augmentation for session.user.id, .role, activeWorkspaceId.
-- Created `src/middleware.ts` — protects all routes except /api/auth/*, /auth/*, /api/ai/*, static assets. Unauthenticated → redirect to /auth/signin.
+- Created `src/middleware.ts` — protects all routes except /api/auth/_, /auth/_, /api/ai/*, static assets. Unauthenticated → redirect to /auth/signin.
 - Created `src/components/providers/session-provider.tsx` — NextAuth SessionProvider wrapper. Mounted in layout.tsx.
 - Updated `src/lib/server.ts` — getWorkspace() now checks auth session first (activeWorkspaceId), falls back to demo mode (first workspace) if no session. Backward-compatible with all 17 existing API routes.
 - Created `src/app/auth/signin/page.tsx` — RTL Persian login page with email/password fields, loading state, error display, demo credentials hint. framer-motion entrance animation.
@@ -1508,16 +1639,17 @@ Work Log:
 - Added NEXTAUTH_SECRET + NEXTAUTH_URL to .env.
 
 - **Verification**:
-  * `bun run lint` → 0 errors, 0 warnings.
-  * GET / without session → 307 redirect to /api/auth/signin (middleware working).
-  * GET /auth/signin → 200 (login page renders).
-  * POST /api/auth/callback/credentials with correct credentials → 200, session created with {user.id, user.role="admin", activeWorkspaceId}.
-  * POST with wrong credentials → redirect back to signin (authorize returns null).
-  * Agent Browser: typed demo@nashrino.ir + demo1234 → clicked "ورود" → redirected to / → dashboard rendered ("خلاصه عملیات"). Full login flow working end-to-end.
-  * Session cookie (next-auth.session-token) set correctly (HttpOnly, 30-day expiry).
-  * All 3 services running: Next.js :3000, realtime :3003, publish-worker :3001.
+  - `bun run lint` → 0 errors, 0 warnings.
+  - GET / without session → 307 redirect to /api/auth/signin (middleware working).
+  - GET /auth/signin → 200 (login page renders).
+  - POST /api/auth/callback/credentials with correct credentials → 200, session created with {user.id, user.role="admin", activeWorkspaceId}.
+  - POST with wrong credentials → redirect back to signin (authorize returns null).
+  - Agent Browser: typed demo@nashrino.ir + demo1234 → clicked "ورود" → redirected to / → dashboard rendered ("خلاصه عملیات"). Full login flow working end-to-end.
+  - Session cookie (next-auth.session-token) set correctly (HttpOnly, 30-day expiry).
+  - All 3 services running: Next.js :3000, realtime :3003, publish-worker :3001.
 
 Stage Summary:
+
 - **Auth is live.** NextAuth v4 + Credentials provider + JWT sessions + multi-tenant workspace isolation.
 - Demo credentials: demo@nashrino.ir / demo1234
 - Files created: src/lib/{password,auth,auth-guards}.ts, src/types/next-auth.d.ts, src/middleware.ts, src/app/api/auth/[...nextauth]/route.ts, src/app/auth/signin/page.tsx, src/components/providers/session-provider.tsx, prisma/seed-auth.ts.
@@ -1526,37 +1658,40 @@ Stage Summary:
 - Next: Tiptap editor rebuild, or Approval workflow, or migrate API routes to use auth guards.
 
 ---
+
 Task ID: IMPL-EDITOR-V1
 Agent: Main Agent (Z.ai Code)
 Task: Rebuild the Compose/Editor with Tiptap per R4 research (Phase E1: foundation).
 
 Work Log:
+
 - Installed Tiptap v2 packages: @tiptap/react, @tiptap/pm, @tiptap/starter-kit, @tiptap/extension-link, @tiptap/extension-placeholder, @tiptap/extension-character-count (47 packages, 72s).
 - Created `src/components/editor/nashrino-editor.tsx` — full Tiptap editor component with:
-  * RTL Persian support (dir="rtl", lang="fa" on editor attributes)
-  * Formatting toolbar: Bold, Italic, H2, Bullet List, Ordered List, Blockquote, Code, Link, Undo, Redo
-  * Character count with limit warning (green → yellow at 90% → red over limit)
-  * Word count
-  * Placeholder text (Persian)
-  * Link insertion dialog
-  * Markdown shortcuts (built into StarterKit: ** for bold, ## for H2, > for quote, etc.)
-  * `immediatelyRender: false` for SSR safety (Next.js 16)
-  * Loading skeleton while editor initializes
-  * Accessible toolbar buttons with aria-labels (Persian)
+  - RTL Persian support (dir="rtl", lang="fa" on editor attributes)
+  - Formatting toolbar: Bold, Italic, H2, Bullet List, Ordered List, Blockquote, Code, Link, Undo, Redo
+  - Character count with limit warning (green → yellow at 90% → red over limit)
+  - Word count
+  - Placeholder text (Persian)
+  - Link insertion dialog
+  - Markdown shortcuts (built into StarterKit: ** for bold, ## for H2, > for quote, etc.)
+  - `immediatelyRender: false` for SSR safety (Next.js 16)
+  - Loading skeleton while editor initializes
+  - Accessible toolbar buttons with aria-labels (Persian)
 - Added Tiptap content styles to `src/app/globals.css` (`.ProseMirror` + elements: p, h2, h3, ul, ol, li, blockquote, code, a, strong, em, placeholder, selection). RTL-aware (border-right for blockquotes, padding-right for lists).
 - Replaced the plain `<Textarea>` in `src/components/views/compose-view.tsx` with `<NashrinoEditor>`. The editor's onChange passes (html, text) — we store the plain text in `caption` state for backward compatibility with the publish pipeline. The old char-count span was removed (the editor has its own footer with char + word count).
 - Added NashrinoEditor import to compose-view.tsx.
 
 - **Agent Browser verification**:
-  * Logged in (demo@nashrino.ir / demo1234) → redirected to dashboard.
-  * Pressed 'c' → compose view loaded ("ساخت محتوای جدید").
-  * Typed "قهوه تازه دم" in title → AI assistant + tone selector appeared.
-  * Tiptap editor rendered: `.ProseMirror` element present, 18 toolbar buttons found.
-  * Typed "این یک تست است" in editor → text confirmed in `.ProseMirror.textContent`.
-  * Screenshot: `verify-tiptap-editor.png`.
+  - Logged in (demo@nashrino.ir / demo1234) → redirected to dashboard.
+  - Pressed 'c' → compose view loaded ("ساخت محتوای جدید").
+  - Typed "قهوه تازه دم" in title → AI assistant + tone selector appeared.
+  - Tiptap editor rendered: `.ProseMirror` element present, 18 toolbar buttons found.
+  - Typed "این یک تست است" in editor → text confirmed in `.ProseMirror.textContent`.
+  - Screenshot: `verify-tiptap-editor.png`.
 - `bun run lint` → 0 errors, 0 warnings.
 
 Stage Summary:
+
 - **The editor is no longer "too weak."** Tiptap rich-text editor with toolbar, char count, RTL Persian support replaces the plain `<Textarea>`.
 - Files created: `src/components/editor/nashrino-editor.tsx`.
 - Files modified: `src/app/globals.css` (Tiptap styles), `src/components/views/compose-view.tsx` (Textarea → NashrinoEditor).
@@ -1564,17 +1699,19 @@ Stage Summary:
 - Next steps (per R4 roadmap): E2 multi-platform preview tabs, E3 media upload, E4 AI floating toolbar, E5 autosave.
 
 ---
+
 Task ID: IMPL-APPROVALS-V1
 Agent: Main Agent (Z.ai Code)
 Task: Build approval workflow MVP per R5 research (Phase A1: state machine + API + UI).
 
 Work Log:
+
 - Added Prisma schema: ContentComment model (inline comments with text selection + threaded replies), ContentVersion model (snapshot history), Content extension (approvedById, approvedAt, rejectedReason, reviewDeadline fields). Ran `bun run db:push` + `bun run db:generate`.
 - Created 4 API routes:
-  * POST /api/content/[id]/submit-review — draft/rejected → review (saves version snapshot, notifies approvers)
-  * POST /api/content/[id]/approve — review → approved (sets approvedAt, notifies team)
-  * POST /api/content/[id]/reject — review → rejected (stores reason, notifies team)
-  * GET/POST /api/content/[id]/comments — list/add comments
+  - POST /api/content/[id]/submit-review — draft/rejected → review (saves version snapshot, notifies approvers)
+  - POST /api/content/[id]/approve — review → approved (sets approvedAt, notifies team)
+  - POST /api/content/[id]/reject — review → rejected (stores reason, notifies team)
+  - GET/POST /api/content/[id]/comments — list/add comments
 - Fixed Next.js 16 async params: all 4 routes use `params: Promise<{ id: string }>` + `const { id } = await params` (Next.js 16 makes params a Promise).
 - Updated publish API to support `mode: "review"` — creates content with status="review" (no publish jobs, notifies approvers). mode="publish" is the default (current behavior).
 - Wired compose view's "ارسال برای تأیید" button to actually call the API (was just a toast before). Creates content with mode="review" + resets form on success.
@@ -1585,6 +1722,7 @@ Work Log:
 - `bun run lint` → 0 errors, 0 warnings.
 
 Stage Summary:
+
 - Approval workflow MVP is live: draft → review → approved/rejected state machine with API enforcement + UI.
 - Files created: src/components/approval/approval-bar.tsx, src/app/api/content/[id]/{submit-review,approve,reject,comments}/route.ts.
 - Files modified: prisma/schema.prisma (ContentComment, ContentVersion, Content approval fields), src/app/api/publish/route.ts (mode="review"), src/components/views/compose-view.tsx (wired "ارسال برای تأیید"), src/components/views/content-view.tsx (status badges + dropdown actions + filter).
@@ -1592,27 +1730,30 @@ Stage Summary:
 - Next: multi-platform preview tabs (editor E2), or continue with other Phase 0 items.
 
 ---
+
 Task ID: IMPL-PREVIEW-V1
 Agent: Main Agent (Z.ai Code)
 Task: Build multi-platform preview tabs per R4 research (Phase E2: preview).
 
 Work Log:
+
 - Created `src/components/editor/platform-preview-tabs.tsx` — Planable/Buffer-style multi-platform live preview:
-  * **PlatformPreviewTabs** — tab bar with platform logos + char count chips (green/yellow/red based on limit). AnimatePresence for smooth tab transitions.
-  * **InstagramPreview** — authentic IG layout: gradient avatar ring, square media (1:1), action bar (Heart/Comment/Share/Bookmark), likes count, caption with "… بیشتر" truncation at 125 chars.
-  * **TelegramPreview** — channel message bubble: channel avatar + name, rounded message bubble with media, title, caption, view count + time. Reused for Rubika/Bale/Eitaa (similar messaging UX).
-  * **LinkedInPreview** — article card: professional avatar, text-above-media layout, 16:9 media, reactions bar (ThumbsUp/Repeat), "…دیدن بیشتر" truncation at 700 chars.
-  * Per-platform character limits: IG 2200, TG 4096, LinkedIn 3000, Rubika/Bale/Eitaa 4096.
-  * Active tab state with useEffect to reset when platform selection changes.
+  - **PlatformPreviewTabs** — tab bar with platform logos + char count chips (green/yellow/red based on limit). AnimatePresence for smooth tab transitions.
+  - **InstagramPreview** — authentic IG layout: gradient avatar ring, square media (1:1), action bar (Heart/Comment/Share/Bookmark), likes count, caption with "… بیشتر" truncation at 125 chars.
+  - **TelegramPreview** — channel message bubble: channel avatar + name, rounded message bubble with media, title, caption, view count + time. Reused for Rubika/Bale/Eitaa (similar messaging UX).
+  - **LinkedInPreview** — article card: professional avatar, text-above-media layout, 16:9 media, reactions bar (ThumbsUp/Repeat), "…دیدن بیشتر" truncation at 700 chars.
+  - Per-platform character limits: IG 2200, TG 4096, LinkedIn 3000, Rubika/Bale/Eitaa 4096.
+  - Active tab state with useEffect to reset when platform selection changes.
 - Replaced the old simple preview in `compose-view.tsx` with `<PlatformPreviewTabs>`. The old preview was a generic card; the new one shows platform-specific renderings.
 - The preview updates live as the user types (caption, title, hashtags, media all flow into the preview).
 - When no platforms are selected, defaults to Instagram tab. When platforms are selected (step 3), tabs appear for each selected platform.
 
 - **Agent Browser verification**:
-  * Compose view → IG tab active by default → IG preview renders: avatar "ن", username "نشرینو", "الان" timestamp, "بدون رسانه" (no media), "۱۲۴ پسند" (124 likes), caption text.
-  * Lint: 0 errors, 0 warnings.
+  - Compose view → IG tab active by default → IG preview renders: avatar "ن", username "نشرینو", "الان" timestamp, "بدون رسانه" (no media), "۱۲۴ پسند" (124 likes), caption text.
+  - Lint: 0 errors, 0 warnings.
 
 Stage Summary:
+
 - Multi-platform preview tabs are live: IG (square photo + actions), Telegram (channel bubble), LinkedIn (article card), Rubika/Bale/Eitaa (TG-style).
 - Files created: `src/components/editor/platform-preview-tabs.tsx`.
 - Files modified: `src/components/views/compose-view.tsx` (replaced old preview with PlatformPreviewTabs).
@@ -1620,11 +1761,13 @@ Stage Summary:
 - Next: media upload (E3), or continue with other features.
 
 ---
+
 Task ID: IMPL-COMPOSE-FLOW-V2
 Agent: Main Agent (Z.ai Code)
 Task: Redesign compose flow from multi-step wizard to single-view layout (Buffer/Planable style).
 
 Work Log:
+
 - User feedback: "preview first then platform is in third step — need better flow and UX"
 - Root cause: old flow was Step 1 (content+preview) → Step 2 (media) → Step 3 (platform) → Step 4 (schedule). Preview showed in step 1 but platforms weren't selected until step 3, so the preview was irrelevant.
 - Research: Buffer, Planable, Later, Hootsuite all use a **single-view composer** with platform selection at top, editor on left, live preview on right, schedule at bottom. No multi-step wizard.
@@ -1638,16 +1781,17 @@ Work Log:
 - Also fixed: publish button changed from gradient violet/fuchsia to solid accent color (design system consistency).
 
 - **Agent Browser verification**:
-  * Heading: "ساخت محتوای جدید"
-  * Platform selector at top: "انتخاب پلتفرم‌ها" with 4 toggle buttons (اینستاگرام, تلگرام, لینکدین, روبیکا)
-  * Tiptap editor present
-  * Live preview present (right side)
-  * Schedule section inline: "زمان‌بندی انتشار"
-  * Step wizard GONE: no "مرحله قبل/بعد" buttons
-  * Screenshot: `verify-single-view-compose.png`
+  - Heading: "ساخت محتوای جدید"
+  - Platform selector at top: "انتخاب پلتفرم‌ها" with 4 toggle buttons (اینستاگرام, تلگرام, لینکدین, روبیکا)
+  - Tiptap editor present
+  - Live preview present (right side)
+  - Schedule section inline: "زمان‌بندی انتشار"
+  - Step wizard GONE: no "مرحله قبل/بعد" buttons
+  - Screenshot: `verify-single-view-compose.png`
 - `bun run lint` → 0 errors, 0 warnings.
 
 Stage Summary:
+
 - Compose flow completely redesigned: multi-step wizard → single-view (Buffer/Planable style).
 - Platform selection is now FIRST (at top), so the preview is always relevant.
 - Media + scheduling are inline (not separate steps), reducing friction.
@@ -1655,27 +1799,32 @@ Stage Summary:
 - Feature completeness: Compose/Editor 55% → 60% (better flow + UX + all-in-one layout).
 
 ---
+
 Task ID: DOCS-07
 Agent: Main Agent (Z.ai Code)
 Task: Write full detailed changelog doc for all implementation changes + dark mode.
 
 Work Log:
+
 - Created `docs/07_IMPLEMENTATION_CHANGELOG.md` (725 lines, 32 KB) — comprehensive documentation of all Phase 0 + Quick Wins changes.
 - Document covers 11 sections: Executive Summary, Quick Wins (8 items), Real Channel Connectors (5 adapters with API details), Persian AI Assistant (3-provider fallback + 7 tones with linguistic specs), Auth.js + Multi-Tenant (models, guards, RBAC, signin), Tiptap Editor Rebuild (extensions, toolbar, CSS), Approval Workflow (state machine, API routes, UI), Compose Flow Redesign (old vs new, wireframe), Dark Mode (token table, design principles), Dev Server Stability Fix (root cause + fix), Feature Completeness Scorecard (before/after table).
 - Each section includes: problem description, solution details, files created/modified, verification results.
 - Appendix lists all 25 new files + 15 modified files with descriptions.
 
 Stage Summary:
+
 - Full implementation changelog at `docs/07_IMPLEMENTATION_CHANGELOG.md` (725 lines, 32 KB).
 - Covers every change made during the audit → implementation sprint.
 - Includes dark mode documentation with token comparison table.
 
 ---
+
 Task ID: P1.1-MEDIA-UPLOAD
 Agent: Main Agent (Z.ai Code)
 Task: Real media upload with sharp processing + drag-drop UI (Phase 1, item 1).
 
 Work Log:
+
 - Created `/api/media/upload` route — accepts multipart/form-data, processes with sharp (thumbnail 400x400 WebP, gets dimensions), saves to /public/uploads/, creates Media DB record. Validates type (JPEG/PNG/WebP/GIF) + size (max 10MB).
 - Created `src/components/editor/media-uploader.tsx` — drag-drop + click-to-upload + media library grid with select/deselect. Upload progress indicator, toast notifications, TanStack Query cache invalidation.
 - Wired MediaUploader into compose-view.tsx, replacing the old static media grid.
@@ -1684,86 +1833,95 @@ Work Log:
 - Lint: 0 errors.
 
 Stage Summary:
+
 - Real media upload is live: drag-drop → sharp thumbnail → DB record → media grid.
 - Files: src/app/api/media/upload/route.ts, src/components/editor/media-uploader.tsx, compose-view.tsx modified.
 
 ---
+
 Task ID: P1.2-REAL-INBOX
 Agent: Main Agent (Z.ai Code)
 Task: Real inbox — reply + assign + mark-read + AI smart-reply (Phase 1, item 2).
 
 Work Log:
+
 - Created 3 API routes:
-  * POST /api/inbox/[id]/reply — stores reply text, marks message as replied + read
-  * POST /api/inbox/[id]/assign — assigns message to a team member (assigneeId)
-  * POST /api/inbox/[id]/read — marks message as read
+  - POST /api/inbox/[id]/reply — stores reply text, marks message as replied + read
+  - POST /api/inbox/[id]/assign — assigns message to a team member (assigneeId)
+  - POST /api/inbox/[id]/read — marks message as read
 - Updated GET /api/inbox to include assignee info (name, avatar) via Prisma relation.
 - Added `assignee` relation to InboxMessage model + `assignedMessages` backrelation on WorkspaceMember. Ran db:push + db:generate.
 - Rewrote inbox-view.tsx:
-  * Replaced fake `toast.success("پاسخ ارسال شد")` with real `replyMutation` → API POST
-  * Added `assignMutation` — Select dropdown to assign messages to team members
-  * Added `readMutation` — auto-marks message as read when selected (fixed: removed from useCallback deps to avoid stale closure)
-  * Added `handleSmartReply` — streams AI-generated reply via /api/ai/caption SSE endpoint, fills the reply textarea with the AI suggestion (user reviews + sends)
-  * Thread header shows assignee name with UserCheck icon
-  * Reply box shows loading states: "در حال تولید پاسخ هوشمند…" / "آماده ارسال" / hint text
-  * All mutations use TanStack Query with cache invalidation (inbox + dashboard-summary)
+  - Replaced fake `toast.success("پاسخ ارسال شد")` with real `replyMutation` → API POST
+  - Added `assignMutation` — Select dropdown to assign messages to team members
+  - Added `readMutation` — auto-marks message as read when selected (fixed: removed from useCallback deps to avoid stale closure)
+  - Added `handleSmartReply` — streams AI-generated reply via /api/ai/caption SSE endpoint, fills the reply textarea with the AI suggestion (user reviews + sends)
+  - Thread header shows assignee name with UserCheck icon
+  - Reply box shows loading states: "در حال تولید پاسخ هوشمند…" / "آماده ارسال" / hint text
+  - All mutations use TanStack Query with cache invalidation (inbox + dashboard-summary)
 - Fixed Prisma relation: `InboxMessage.assignee` → `WorkspaceMember.assignedMessages` (bidirectional relation).
 - Fixed stale closure bug: `handleSelectMessage` had `messages` + `readMutation` in useCallback deps causing the selection to fail. Simplified to just `setSelectedId(id)`.
 
 - **Agent Browser verification**:
-  * Inbox loads with 11 messages
-  * Clicking a message (مریم حسینی) opens the thread
-  * Reply box (textarea) visible
-  * "ارجاع به" (assign dropdown) visible
-  * "پیشنهاد هوشمند" (AI smart reply button) visible
+  - Inbox loads with 11 messages
+  - Clicking a message (مریم حسینی) opens the thread
+  - Reply box (textarea) visible
+  - "ارجاع به" (assign dropdown) visible
+  - "پیشنهاد هوشمند" (AI smart reply button) visible
 - **API tests**: reply ✅, assign ✅, mark-read ✅ — all return `{ok: true}`.
 - Lint: 0 errors.
 
 Stage Summary:
+
 - Inbox is now functional: real reply (stores in DB), assign to team member, auto mark-read, AI smart-reply (streaming).
 - Files: src/app/api/inbox/[id]/{reply,assign,read}/route.ts, src/app/api/inbox/route.ts, src/components/views/inbox-view.tsx, prisma/schema.prisma.
 
 ---
+
 Task ID: CHART-FIX + AI-V2
 Agent: Main Agent (Z.ai Code)
 Task: Fix KPI chart issues + upgrade AI to full system per 08_CHANGES_AND_FIXES.md.
 
 Work Log:
+
 - **Chart fixes (V7-MINICHART-FIXES)**: Fixed 4 issues in MiniChart:
   1. Incomplete line near endpoint dot: removed surface halo that was erasing the stroke
   2. Inconsistent gridline spacing: replaced data-dependent quartile gridlines with single consistent bottom axis line
   3. Stroke thinner in middle: added ResizeObserver for 1:1 pixel rendering (removed viewBox=100 + preserveAspectRatio=none distortion)
   4. Pulse ring not centered: wrapped pulse in centering container div that holds translate(-50%, -50%)
-  Also converted all positioning from percentage-based to pixel-based.
+     Also converted all positioning from percentage-based to pixel-based.
 
 - **AI system upgrade**: Upgraded from simple 7-tone caption assistant to full system:
-  * Added CreatorRole (7 roles: influencer, store, reviewer, educator, brand, news, community)
-  * Added ContentGoal (6 goals: sell, educate, review, announce, engage, inspire)
-  * Added CaptionLength (3 options: short/standard/long) with char ranges + maxTokens
-  * Added variation param for caption regeneration (بازنویسی) — bumps temperature +0.05 per variation
-  * Added enriched hashtags {tag, reason}[] with role/goal-aware hashtag intent maps
-  * Added SSE heartbeat (immediate + every 2s) to prevent 502 gateway timeouts
-  * Added thinking status indicator ("در حال تفکر…")
-  * Added hallucination prevention in system prompt (no fabricated specs, no "سلام" greeting, no yes/no hooks, no template labels)
-  * Added save draft functionality (POST /api/ai/drafts)
-  * Added drafts browser (GET /api/ai/drafts, DELETE /api/ai/drafts/[id])
-  * Added multi-platform generation route (/api/ai/caption-multi)
-  * Split types into src/lib/ai/types.ts (no SDK imports, safe for client)
-  * Updated caption-assistant.tsx with all selectors + regenerate + save + copy + hashtag tooltips
+  - Added CreatorRole (7 roles: influencer, store, reviewer, educator, brand, news, community)
+  - Added ContentGoal (6 goals: sell, educate, review, announce, engage, inspire)
+  - Added CaptionLength (3 options: short/standard/long) with char ranges + maxTokens
+  - Added variation param for caption regeneration (بازنویسی) — bumps temperature +0.05 per variation
+  - Added enriched hashtags {tag, reason}[] with role/goal-aware hashtag intent maps
+  - Added SSE heartbeat (immediate + every 2s) to prevent 502 gateway timeouts
+  - Added thinking status indicator ("در حال تفکر…")
+  - Added hallucination prevention in system prompt (no fabricated specs, no "سلام" greeting, no yes/no hooks, no template labels)
+  - Added save draft functionality (POST /api/ai/drafts)
+  - Added drafts browser (GET /api/ai/drafts, DELETE /api/ai/drafts/[id])
+  - Added multi-platform generation route (/api/ai/caption-multi)
+  - Split types into src/lib/ai/types.ts (no SDK imports, safe for client)
+  - Updated caption-assistant.tsx with all selectors + regenerate + save + copy + hashtag tooltips
 
 - **Verified**: All features rendering in Agent Browser — roles, goals, lengths, tones, generate button, hashtag button. Zero console errors. Lint clean.
 
 Stage Summary:
+
 - Chart: 4 fixes applied (pulse center, incomplete line, stroke uniformity, gridline consistency)
 - AI: upgraded from 7-tone simple → full system (roles + goals + lengths + regeneration + drafts + multi-platform + SSE heartbeat + enriched hashtags + hallucination prevention)
 - Files: shared.tsx (chart), gemini.ts (AI backend), types.ts (new), caption-assistant.tsx (full rewrite), caption route.ts (SSE heartbeat), hashtags route.ts (enriched), drafts route.ts + [id] (new), caption-multi route.ts (new)
 
 ---
+
 Task ID: AI-V2-FULL-PROMPT
 Agent: Main Agent (Z.ai Code)
 Task: Implement full 12-section prompt architecture per 09_AI_TUNING_AND_PROMPT_ENGINEERING.md.
 
 Work Log:
+
 - Replaced simple buildCaptionSystem with full 12-section architecture:
   1. Creator role (most important — determines structure)
   2. Content goal (determines CTA + hook style)
@@ -1785,27 +1943,30 @@ Work Log:
 - Verified: curl test with store/sell/sales role produces natural Persian caption with real product specs, no greeting, no section labels. Lint clean.
 
 Stage Summary:
+
 - AI system now matches 09_AI_TUNING_AND_PROMPT_ENGINEERING.md spec:
-  * 12-section prompt architecture with ═══ delimiters
-  * reasoning_effort: 'low' (10× speedup)
-  * Anti-hallucination (CONTENT_FIDELITY_BLOCK)
-  * Anti-AI-smell (12 patterns, ANTI_AI_SMELL_BLOCK)
-  * Hook formulas (12 patterns, HOOK_FORMULAS_BLOCK)
-  * Self-review checklist (SELF_REVIEW_BLOCK)
-  * Output format constraints (OUTPUT_FORMAT_BLOCK)
-  * Persian language rules (PERSIAN_LANGUAGE_RULES — 6 sections with Unicode code points)
-  * Register field per tone (معیار/شکسته‌نویسی/نیمه‌رسمی)
-  * Platform-specific guidance (6 platforms)
-  * Voice examples (few-shot brand voice transfer)
-  * X-Accel-Buffering: no header
-  * SSE heartbeat (immediate + every 2s)
+  - 12-section prompt architecture with ═══ delimiters
+  - reasoning_effort: 'low' (10× speedup)
+  - Anti-hallucination (CONTENT_FIDELITY_BLOCK)
+  - Anti-AI-smell (12 patterns, ANTI_AI_SMELL_BLOCK)
+  - Hook formulas (12 patterns, HOOK_FORMULAS_BLOCK)
+  - Self-review checklist (SELF_REVIEW_BLOCK)
+  - Output format constraints (OUTPUT_FORMAT_BLOCK)
+  - Persian language rules (PERSIAN_LANGUAGE_RULES — 6 sections with Unicode code points)
+  - Register field per tone (معیار/شکسته‌نویسی/نیمه‌رسمی)
+  - Platform-specific guidance (6 platforms)
+  - Voice examples (few-shot brand voice transfer)
+  - X-Accel-Buffering: no header
+  - SSE heartbeat (immediate + every 2s)
 
 ---
+
 Task ID: R8
 Agent: Research (AI Assistant UI/UX Patterns)
 Task: Research how top apps handle AI assistant UI/UX; produce recommendation for نشرینو.
 
 Work Log:
+
 - Read worklog.md (focused AI-related sections via Grep) — confirmed current AI assistant is an inline card in `src/components/ai/caption-assistant.tsx` (383 lines), rendered by `src/components/views/compose-view.tsx` when `title.trim().length >= 3`. Card exposes all 4 control matrices (role × goal × tone × length) upfront, then streams the result below the controls, pushing the editor ~420 px down.
 - Confirmed prior research notes (R3 Persian AI Architecture + Task 8 UX digest) already flagged the target pattern: "AI right-panel deep-context expert + inline AI overlay in composer" — R8 specifies and validates that direction against external benchmarks.
 - Read `caption-assistant.tsx` end-to-end: streaming SSE handler, abort controller, 7-tone palette, hashtag suggestion, save-draft flow. Confirmed all logic is reusable inside the recommended side-panel pattern.
@@ -1815,6 +1976,7 @@ Work Log:
 - Wrote report to `/home/z/my-project/audit/R8-ai-assistant-uiux.md` (~10 KB, 9 sections): §0 Executive Summary, §1 Current State in نشرینو (baseline), §2 Research Method, §3 Comparison Table (13 apps + 2 taxonomies), §4 Recommendation (3-tier: right-side sheet primary + inline selection toolbar secondary + ⌘K tertiary), §5 Text Wireframe (desktop compose view + inline selection toolbar + mobile bottom sheet), §6 Specific UX Details (trigger/entry points, sizing/positioning, animation/transitions with easing curves, controls flow, streaming, content interaction, mobile vs desktop), §7 Top 5 Inspiring Apps (Buffer, Later, Notion, Google Docs, Linear), §8 Migration Path (5 phases, additive/non-breaking), §9 Sources (27 citations).
 
 Stage Summary:
+
 - **Recommended pattern**: Replace the inline card with a **tabbed right-side sheet** — the existing 2-col preview column gains a tab strip `پیش‌نمایش | ✨ هوش مصنوعی | 💬 نظرات` (`Preview | AI | Comments`), opened by a ✨ button on the Tiptap editor toolbar and `⌘/Ctrl + J`. Supplement with a Notion/Google-Docs-style floating inline selection toolbar (✨ بهبود / کوتاه‌تر / طولانی‌تر / رسمی‌تر / صمیمی‌تر / ترجمه) for in-place text transforms. Mobile degrades to an 80vh modal bottom sheet with drag-to-dismiss.
 - **Why better than the current inline card**: (1) eliminates ~420 px layout shift — the right column already exists, switching tabs is a 200 ms cross-fade; (2) restores side-by-side editing (Later's stated design rationale — "work on captions at the same time they are generating them"); (3) adopts Buffer/Google-Docs "controls come after first generation" flow instead of the current 4-matrix upfront form; (4) decouples discoverability from typing a title (✨ button + ⌘J always available, so AI can suggest the title itself); (5) gives room for variation history (stack, not replace), hashtags, and saved drafts in one surface; (6) sets up a clean evolution path toward a Notion-style chat mode without another redesign; (7) mobile pattern (bottom sheet) is dismissable and doesn't monopolize the small screen.
 - **Top 5 inspiring apps**: Buffer (side panel + post-gen controls), Later (side modal fly-out rationale), Notion AI (inline selection toolbar + right-side chat tab), Google Docs "Help me write" (Refine floating bar: Tone/Summarize/Bulletize/Elaborate/Shorten/Rephrase/Retry/Custom + Insert/Replace), Linear AI (⌘K → Ask AI tertiary entry point — نشرینو already has ⌘K wired).
@@ -1822,11 +1984,13 @@ Stage Summary:
 - **Implementation note for next agent**: Phase 1 (move CaptionAssistant into a tabbed right column + add ✨ toolbar button + ⌘J shortcut + remove the inline card from the editor column) is additive and non-breaking, and alone resolves the layout-shift problem. All existing streaming/abort/tone/hashtag/draft logic in `caption-assistant.tsx` is reusable as-is inside the new container.
 
 ---
+
 Task ID: AI-UI-V3
 Agent: Main Agent (Z.ai Code)
 Task: Redesign AI assistant UI per R8 research — tabbed right-side panel.
 
 Work Log:
+
 - R8 research found: top apps (Buffer, Later, Notion, Google Docs, Linear) use a **side panel** or **tabbed panel** for AI, NOT an inline card. Key reasons: no layout shift, side-by-side editing, room for variation history, progressive controls.
 - Redesigned compose view right column from preview-only → **3-tab panel**: پیش‌نمایش (Preview) | ✨ هوش مصنوعی (AI) | نظرات (Comments)
 - Removed inline CaptionAssistant card from the editor column (was pushing editor ~420px down on appear)
@@ -1839,113 +2003,126 @@ Work Log:
 - Verified: Agent Browser confirms 3 tabs, AI button, ⌘J hint, empty state → full AI panel after typing title. Zero console errors.
 
 Stage Summary:
+
 - AI assistant UI upgraded from inline card → tabbed right-side panel (Buffer/Later/Notion pattern).
 - No more layout shift when AI opens. Editor stays full-height. Side-by-side editing possible.
 - Files: src/components/views/compose-view.tsx (right panel rewrite + AI button + ⌘J shortcut).
 
 ---
+
 Task ID: AI-UI-MOTION
 Agent: Main Agent (Z.ai Code)
 Task: Fix AI button not visibly working + add motion animations.
 
 Work Log:
+
 - Root cause: button WAS working (tab switched) but there was no visible feedback — no animation, no scroll. On mobile the right panel is below the fold so clicking did nothing visible.
 - Added `rightPanelRef` + `openAITab()` callback that switches tab + scrolls panel into view (smooth scroll for mobile/tablet).
 - Added framer-motion animations:
-  * AI button: `whileHover={{ scale: 1.02 }}` + `whileTap={{ scale: 0.98 }}` (tactile feedback)
-  * Sparkles icon: gentle rotation animation (`rotate: [0, 10, -10, 0]`, 2s loop with 3s delay) — draws attention
-  * Tab content: `AnimatePresence mode="wait"` with slide+fade transitions (`opacity: 0, x: 10 → opacity: 1, x: 0`, 200ms ease-out) — smooth tab switching
-  * Empty state: floating Sparkles icon (`y: [0, -6, 0]`, 2s infinite loop) + scale-in entrance
+  - AI button: `whileHover={{ scale: 1.02 }}` + `whileTap={{ scale: 0.98 }}` (tactile feedback)
+  - Sparkles icon: gentle rotation animation (`rotate: [0, 10, -10, 0]`, 2s loop with 3s delay) — draws attention
+  - Tab content: `AnimatePresence mode="wait"` with slide+fade transitions (`opacity: 0, x: 10 → opacity: 1, x: 0`, 200ms ease-out) — smooth tab switching
+  - Empty state: floating Sparkles icon (`y: [0, -6, 0]`, 2s infinite loop) + scale-in entrance
 - Verified: Agent Browser confirms AI tab activates, empty state shows, zero console errors.
 
 Stage Summary:
+
 - AI button now has visible feedback: hover scale, tap scale, icon rotation, tab slide transition, smooth scroll on mobile.
 - Files: src/components/views/compose-view.tsx.
 
 ---
+
 Task ID: AI-POPUP-SHEET + CAPTION-QUALITY-V2
 Agent: Main Agent (Z.ai Code)
 Task: Fix caption quality (too machine-like) + redesign AI as popup sheet.
 
 Work Log:
+
 - **Caption quality fix**: User showed caption output with `✔️ آماده‌سازی سریع:` section labels + mechanical structure. This violates anti-AI-smell rule 10 but the model was still doing it because the example wasn't specific enough. Fixed by:
-  * Added rules 13-15 to ANTI_AI_SMELL_BLOCK: explicit ban on ✔️/✅ bullets with labels, ban on translated "Pain→Solution→Benefit→Urgency" template, ban on meaning-translated phrases ("با هر فنجان، خستگی رو فراموش کن")
-  * Added the user's EXACT bad output as the ❌ example in the prompt, paired with a ✅ natural example that shows real product writing (specific times, specific counts, conversational tone)
-  * The ✅ example demonstrates: no greeting, no bullet labels, conversational opening ("صبح هفت، دستات سردن"), real product info (three flavors, 30 cups per packet), specific CTA
+  - Added rules 13-15 to ANTI_AI_SMELL_BLOCK: explicit ban on ✔️/✅ bullets with labels, ban on translated "Pain→Solution→Benefit→Urgency" template, ban on meaning-translated phrases ("با هر فنجان، خستگی رو فراموش کن")
+  - Added the user's EXACT bad output as the ❌ example in the prompt, paired with a ✅ natural example that shows real product writing (specific times, specific counts, conversational tone)
+  - The ✅ example demonstrates: no greeting, no bullet labels, conversational opening ("صبح هفت، دستات سردن"), real product info (three flavors, 30 cups per packet), specific CTA
 
 - **UI redesign — popup sheet**: Replaced the tabbed right-panel AI with a **slide-out sheet** (Buffer/Later pattern):
-  * Created `src/components/ai/ai-assistant-sheet.tsx` — a right-side slide-out panel (max-width 440px) with backdrop overlay
-  * Spring animation: `type: "spring", stiffness: 350, damping: 32` for natural slide-in
-  * Contains: topic input (editable in-sheet), role/goal/tone/length selectors, generate button, thinking indicator, streaming caption, action buttons (insert/regenerate/copy/save), hashtags
-  * Esc to close, backdrop click to close
-  * Header with animated Sparkles icon + version counter
-  * Footer with disclaimer
-  * Replaced the tabbed right panel in compose-view.tsx with a simple preview-only panel (removed AI tab + comments tab)
-  * The AI button now opens the sheet instead of switching a tab
-  * ⌘J still works to open the sheet
+  - Created `src/components/ai/ai-assistant-sheet.tsx` — a right-side slide-out panel (max-width 440px) with backdrop overlay
+  - Spring animation: `type: "spring", stiffness: 350, damping: 32` for natural slide-in
+  - Contains: topic input (editable in-sheet), role/goal/tone/length selectors, generate button, thinking indicator, streaming caption, action buttons (insert/regenerate/copy/save), hashtags
+  - Esc to close, backdrop click to close
+  - Header with animated Sparkles icon + version counter
+  - Footer with disclaimer
+  - Replaced the tabbed right panel in compose-view.tsx with a simple preview-only panel (removed AI tab + comments tab)
+  - The AI button now opens the sheet instead of switching a tab
+  - ⌘J still works to open the sheet
 
 - **Verified**: Agent Browser — click AI button → sheet slides in from right → topic input visible → type topic → generate button visible → zero console errors.
 
 Stage Summary:
+
 - Caption quality: 3 new anti-patterns added (✔️ bullets, translated template, meaning-translated phrases) + user's exact bad output as ❌ example
 - UI: tabbed panel → popup sheet (slide-out from right with spring animation + backdrop)
 - Files: src/lib/ai/gemini.ts (ANTI_AI_SMELL_BLOCK strengthened), src/components/ai/ai-assistant-sheet.tsx (new), src/components/views/compose-view.tsx (simplified right panel + sheet integration)
 
 ---
+
 Task ID: MODEL-UPGRADE + BRAND-FIX + LABELS
 Agent: Main Agent (Z.ai Code)
 Task: Fix brand hallucination + upgrade model + improve labels.
 
 Work Log:
+
 - **Model upgrade**: Changed from gpt-4o-mini → gpt-5-mini (reasoning model with reasoning_effort:'low'). Better Persian quality, fewer grammar errors, more natural phrasing.
 - **Brand hallucination fix**: Root cause was passing workspace name "نشرینو" to the prompt unconditionally. The model saw the brand name and created fake products like "قهوه فوری نشرینو". Fixed by ONLY passing the workspace name when the topic explicitly mentions it (`topic.includes(ws.name)`). When the topic doesn't mention the brand, the name is not passed at all.
 - **Fixed bug**: `buildCaptionSystem` was referencing `topic` variable but didn't have it as a parameter. Added `topic?: string` parameter and passed it from `streamCaption` and `generateCaption`.
 - **Labels improved** (Persian natural language):
-  * "موضوع / ایده پست" → "درباره چی بنویسم؟"
-  * "نقش خالق محتوا" → "شما کی هستید؟"
-  * "هدف محتوا" → "می‌خوای چی بشه؟"
-  * "لحن کپشن" → "لحن حرف"
-  * "طول کپشن" → "چقدر طولانی؟"
-  * "تولید کپشن" → "بنویس برام"
-  * "هشتگ" → "هشتگ بزن"
-  * "درج در کپشن" → "بذار تو کپشن"
-  * "بازنویسی" → "دوباره بنویس"
-  * "ذخیره" → "ذخیره کن"
+  - "موضوع / ایده پست" → "درباره چی بنویسم؟"
+  - "نقش خالق محتوا" → "شما کی هستید؟"
+  - "هدف محتوا" → "می‌خوای چی بشه؟"
+  - "لحن کپشن" → "لحن حرف"
+  - "طول کپشن" → "چقدر طولانی؟"
+  - "تولید کپشن" → "بنویس برام"
+  - "هشتگ" → "هشتگ بزن"
+  - "درج در کپشن" → "بذار تو کپشن"
+  - "بازنویسی" → "دوباره بنویس"
+  - "ذخیره" → "ذخیره کن"
 - **Verified**: curl test with "معرفی قهوه فوری با سه طعم" → output says "قهوه فوری ما" (not "نشرینو"), natural prose, no ✔️ bullets, good grammar. Lint clean.
 
 Stage Summary:
+
 - Model: gpt-4o-mini → gpt-5-mini (reasoning model, better Persian)
 - Brand hallucination: fixed (workspace name only passed when topic mentions it)
 - Labels: all 10 UI labels rewritten in natural conversational Persian
 - Bug: buildCaptionSystem missing `topic` parameter — fixed
 
 ---
+
 Task ID: R9
 Agent: Research (Persian Prompt Engineering Deep Dive)
 Task: Deep research on fine-tuning prompt engineering for best Persian AI output.
 
 Work Log:
+
 - Read worklog.md AI sections (Tasks 2, R3, R5, R6, R8) to understand prior work — especially R6 which already covered the 7-axis tone differentiation (register, verb conjugation, pronoun, vocabulary tier, sentence length, emoji density, hook+CTA). R9 builds ON R6 by going deeper on prompt-engineering mechanics (few-shot, CoT, temperature, self-correction, structure) and per-tone real examples.
 - Read current `src/lib/ai/gemini.ts` lines 530–742 in detail: PERSIAN_LANGUAGE_RULES, ANTI_AI_SMELL_BLOCK (15 rules), HOOK_FORMULAS_BLOCK (12 formulas), SELF_REVIEW_BLOCK, CREATOR_ROLE_MAP, CONTENT_GOAL_MAP, TONE_MAP, platformGuidance, buildCaptionSystem (12-section), and the gapgptComplete/gapgptStream helpers (uses gpt-5-mini with `reasoning_effort: "low"`, single flat temperature 0.8+variation·0.05 for all tones).
 - Ran 33 web searches via `z-ai function -n web_search` covering: Persian LLM unnatural patterns, Persian register differences (معیار vs شکسته‌نویسی vs محاوره), Persian Instagram copywriting blogs (Cookie Agency, Novin, Adseto, FarazSMS, MeliPayamak), GPT-4 Persian errors/bias, Persian discourse markers, Persian rhythm, few-shot best practices (OpenAI, Anthropic, Evan Armstrong, Cleanlab, Prompting Guide, PromptHub), chain-of-thought benefits and harms for creative writing, temperature per use case (Tetrate, Medium, Reddit), self-critique prompting, negative examples / contrastive prompting, persona prompting, prompt structure order, system prompt leakage, GPT-5 prompting guide details, GPT-5-mini reasoning_effort, Anthropic interactive tutorial, AI text humanization, Persian collocation translation errors, AI text detection in Persian.
 - Fetched full text via `r.jina.ai` markdown reader (since `page_reader` returns JS-shell HTML) of: OpenAI GPT-5 prompting guide, OpenAI GPT-4.1 prompting guide, Anthropic Claude best practices, Evan Armstrong's "Few-Shot Examples Done Properly" (promptingweekly), Cleanlab few-shot reliability, Prompting Guide CoT/Few-Shot, PromptHub GPT-5 guide, OpenAI community thread on Persian bias, and arXiv abstracts. All saved to `audit/research/r9/extracted/*.md`.
 - Extracted key findings:
-  * **OpenAI GPT-5**: surgical instruction following — contradictory/vague prompts BURN reasoning tokens; verbosity parameter (low/medium/high); minimal reasoning effort needs prompted planning; self-reflection pattern (rubric → iterate → restart if not top marks).
-  * **Anthropic Claude**: 3–5 examples optimal in `<example>` XML tags; "tell what to do, NOT what NOT to do"; match prompt style to desired output style (remove markdown from prompt to reduce markdown in output); data at top + query at end (30% quality lift); self-correction as SEPARATE API calls (draft → review → refine).
-  * **Evan Armstrong**: 2 examples minimum (1 overfits); common-cases first, BEST example LAST (recency bias); DO NOT put examples in system prompt (gives model nothing to autocomplete); hand-write, don't AI-generate; pattern must be flawless; for generation tasks put your best example last.
-  * **Cleanlab**: BAD few-shot examples HURT more than help — noisy 50-shot scored 59.6% vs zero-shot 67.4%; quality > quantity; manual disclaimers barely help.
-  * **CoT research**: "Chain-of-thought can hurt performance on tasks where thinking is bad" — explicitly lists creative writing as a domain where CoT HURTS; LLMs favor linear modes of reasoning → AI text becomes more alike.
-  * **Temperature**: sales/factual copy 0.4–0.6; educational/professional 0.5–0.7; formal/news 0.3–0.5; friendly 0.7–0.85; storytelling 0.8–0.95; poetic/creative 0.9–1.1.
-  * **Persian discourse markers**: prompt currently mentions ZERO of them. Native Persian uses خب، راستش، حالا، یعنی، اصلاً، ببین، گوش کن، آخرش، خلاصه, etc. constantly. Omission is the #1 "machine-feel" signal.
-  * **Persian rhythm**: Persian is syllable-timed; native captions mix long compound (25–35 words) + medium (10–15) + fragment (2–5) + single-line punch paragraphs. AI defaults to uniform ~15-word × 3-paragraph structure — biggest tell after greeting opener.
-  * **Persian collocation**: most common translation error by both human translators AND LLMs is literal collocation translation ("با هر فنجان، خستگی رو فراموش کن" = literal of "with every cup, forget fatigue"). The current ANTI_AI_SMELL_BLOCK catches this (rule 14) but doesn't show the native alternative.
-  * **شکسته‌نویسی ≠ محاوره**: paknevis/virastaran clarify these are DIFFERENT. شکسته‌نویسی = writing colloquially (still standard vocab, colloquial verb endings). محاوره = using street slang. The current TONE_MAP[friendly] says "شکسته‌نویسی" but conflates with محاوره, leading to register drift.
+  - **OpenAI GPT-5**: surgical instruction following — contradictory/vague prompts BURN reasoning tokens; verbosity parameter (low/medium/high); minimal reasoning effort needs prompted planning; self-reflection pattern (rubric → iterate → restart if not top marks).
+  - **Anthropic Claude**: 3–5 examples optimal in `<example>` XML tags; "tell what to do, NOT what NOT to do"; match prompt style to desired output style (remove markdown from prompt to reduce markdown in output); data at top + query at end (30% quality lift); self-correction as SEPARATE API calls (draft → review → refine).
+  - **Evan Armstrong**: 2 examples minimum (1 overfits); common-cases first, BEST example LAST (recency bias); DO NOT put examples in system prompt (gives model nothing to autocomplete); hand-write, don't AI-generate; pattern must be flawless; for generation tasks put your best example last.
+  - **Cleanlab**: BAD few-shot examples HURT more than help — noisy 50-shot scored 59.6% vs zero-shot 67.4%; quality > quantity; manual disclaimers barely help.
+  - **CoT research**: "Chain-of-thought can hurt performance on tasks where thinking is bad" — explicitly lists creative writing as a domain where CoT HURTS; LLMs favor linear modes of reasoning → AI text becomes more alike.
+  - **Temperature**: sales/factual copy 0.4–0.6; educational/professional 0.5–0.7; formal/news 0.3–0.5; friendly 0.7–0.85; storytelling 0.8–0.95; poetic/creative 0.9–1.1.
+  - **Persian discourse markers**: prompt currently mentions ZERO of them. Native Persian uses خب، راستش، حالا، یعنی، اصلاً، ببین، گوش کن، آخرش، خلاصه, etc. constantly. Omission is the #1 "machine-feel" signal.
+  - **Persian rhythm**: Persian is syllable-timed; native captions mix long compound (25–35 words) + medium (10–15) + fragment (2–5) + single-line punch paragraphs. AI defaults to uniform ~15-word × 3-paragraph structure — biggest tell after greeting opener.
+  - **Persian collocation**: most common translation error by both human translators AND LLMs is literal collocation translation ("با هر فنجان، خستگی رو فراموش کن" = literal of "with every cup, forget fatigue"). The current ANTI_AI_SMELL_BLOCK catches this (rule 14) but doesn't show the native alternative.
+  - **شکسته‌نویسی ≠ محاوره**: paknevis/virastaran clarify these are DIFFERENT. شکسته‌نویسی = writing colloquially (still standard vocab, colloquial verb endings). محاوره = using street slang. The current TONE_MAP[friendly] says "شکسته‌نویسی" but conflates with محاوره, leading to register drift.
 - Identified 14 specific patterns the current 15-rule ANTI_AI_SMELL_BLOCK does NOT catch (discourse-marker starvation, uniform rhythm, register bleeding, literal collocation, Arabic connective drift, verb-final rigidity, zero pro-drop variety, English-numeral leakage under pressure, «» omission, ZWNJ inconsistency, stiff exclamation rhetoric, hashtag-position drift, emoji-mechanical symmetry, copula retention in casual).
 - Wrote 21 hand-crafted few-shot examples (3 per tone × 7 tones: friendly, formal, professional, storytelling, sales, educational, poetic). Each example models: correct verb conjugation for the register, native discourse markers, natural rhythm variation (long + short + punch), native Persian collocations (NOT translations), correct emoji density and placement, native CTA patterns, correct Persian typography (ی/ک, ZWNJ, ،؟؛«», Persian numerals). Topics deliberately span products/services/nostalgia/educational/social commentary so the model doesn't overfit to one product type.
 - Designed improved system prompt structure (V2) with: concrete persona per tone (نادر the 32-year-old Tehran copywriter); XML tags replacing ═══ delimiters; positive constraints replacing negative ones; discourse markers allowlist; rhythm rules; per-tone temperature + reasoning_effort config; examples moved from system prompt to user message as `<example>`/`<topic>`/`<caption>` triplets.
 - Provided implementation roadmap (P0–P5) with LOC estimates and expected quality lifts. P0 (per-tone temp+reasoning, 1 day, +15%) + P1 (21 few-shot examples, 2 days, +30%) = 70–80% of total quality gain in 3 days.
 
 Stage Summary:
+
 - **Root cause of "machine-like" Persian output**: zero positive few-shot examples per tone + flat temperature 0.8 for all 7 tones + 15 negative "don't" rules instead of positive "do" rules + zero mention of Persian discourse markers + no rhythm variation instruction + reasoning_effort "low" too low for nuanced stylistic choices.
 - **Single biggest lever**: Add 3 hand-written few-shot examples per tone (21 total) to the USER message as `<example>` XML blocks. OpenAI/Anthropic/Evan Armstrong all agree: examples > system prompts for style.
 - **Per-tone temperature recommendation**: formal 0.45 / professional 0.60 / friendly 0.80 / storytelling 0.90 / sales 0.65 / educational 0.60 / poetic 1.00 — with reasoning_effort medium for creative tones (friendly/storytelling/sales/educational/poetic) and low for formal/professional.
@@ -1954,137 +2131,149 @@ Stage Summary:
 - **Report**: Full deep-dive report at `/home/z/my-project/audit/R9-persian-prompt-deep.md` (1,115 lines, 77KB) with: executive summary, 14-pattern gap analysis, advanced techniques section (few-shot/CoT/negative-examples/temperature/structure/output-control/self-correction), per-tone analysis for all 7 tones, 4 fine-tuning alternatives (persona/style-anchor/constraint-cascade/output-shaping), top-10 actionable techniques ranked by impact, 21 hand-written few-shot examples (3 per tone), recommended V2 system prompt structure with code, per-tone config table, implementation roadmap P0–P5, 30 sources consulted.
 
 ---
+
 Task ID: R9-APPLY
 Agent: Main Agent (Z.ai Code)
 Task: Apply R9 research findings — per-tone temperature, few-shot examples, discourse markers, rhythm rules.
 
 Work Log:
+
 - **Per-tone temperature + reasoning_effort**: Replaced flat 0.8 for all tones with per-tone config:
-  * formal: 0.45, low effort
-  * friendly: 0.80, medium effort
-  * professional: 0.60, low effort
-  * storytelling: 0.90, medium effort
-  * sales: 0.65, medium effort (precise but persuasive)
-  * educational: 0.60, medium effort
-  * poetic: 1.00, medium effort (max creativity)
-  * Variation nudge reduced from 0.05 to 0.03 (stays closer to target)
-  * Added top_p per tone (0.90-0.98)
+  - formal: 0.45, low effort
+  - friendly: 0.80, medium effort
+  - professional: 0.60, low effort
+  - storytelling: 0.90, medium effort
+  - sales: 0.65, medium effort (precise but persuasive)
+  - educational: 0.60, medium effort
+  - poetic: 1.00, medium effort (max creativity)
+  - Variation nudge reduced from 0.05 to 0.03 (stays closer to target)
+  - Added top_p per tone (0.90-0.98)
 - **Few-shot examples**: Added 1-2 hand-curated Persian example captions per tone (9 total) in XML `<example_1>` tags. Examples demonstrate: natural discourse markers, varied sentence rhythm, no labels, real product info, natural CTA.
 - **Persian discourse markers**: Added per-tone allowlist of natural Persian transition words (خب، راستش، حالا، ببین، یعنی، اصلاً، آخرش، خلاصه). Their omission was the #1 "machine-feel" tell.
 - **Rhythm variation rules**: Added "ریتم و تنوع جملات" section to ANTI_AI_SMELL_BLOCK with 5 positive rules:
-  * At least one short 3-5 word sentence
-  * At least one long 20-30 word sentence
-  * No two adjacent sentences same length
-  * Single-word emphasis sentences ("فکر کن." "ببین.")
-  * Paragraphs must vary in length
+  - At least one short 3-5 word sentence
+  - At least one long 20-30 word sentence
+  - No two adjacent sentences same length
+  - Single-word emphasis sentences ("فکر کن." "ببین.")
+  - Paragraphs must vary in length
 - **Fixed constraint contradictions**: friendly tone now explicitly says "شما (صمیمی اما محترمانه)" instead of ambiguous "شما/تو". Sales tone guidance no longer contradicts the goal map.
 - Updated gapgptComplete + gapgptStream to accept + pass reasoningEffort + topP params.
 - **Test output** (sales/store/sell): "صبح‌ها وقت نداری برای آماده‌سازی قهوه؟ اینجا یه راه‌حل ساده و سریع داریم.\n\nقهوه فوری ما فقط با آب داغ آماده می‌شه. دو دقیقه و آماده..." — natural conversational Persian, no ✔️ labels, no brand hallucination, varied sentence length, discourse markers present.
 - Lint: 0 errors.
 
 Stage Summary:
+
 - 5 R9 findings all applied: per-tone temp, few-shot examples, discourse markers, rhythm rules, contradiction fixes.
 - AI output quality significantly improved — more natural, more human, less machine-like.
 - Files: src/lib/ai/gemini.ts (TONE_CONFIG with 7 tones × {temp, topP, reasoningEffort, guidance, discourseMarkers, examples}, ANTI_AI_SMELL_BLOCK with rhythm section, gapgpt helpers updated).
 
 ---
+
 Task ID: PHASE1-FINAL
 Agent: Main Agent (Z.ai Code)
 Task: Finish Phase 1 — Channels UI, Inline comments, Team invite, Real analytics.
 
 Work Log:
+
 - **P1.3 Channels UI**: Replaced all fake toasts with real API calls.
-  * Created `/api/platforms/[id]/connect` — saves bot token + targetId, validates by calling platform's getMe endpoint (Telegram/Bale/Rubika). Updates platform status to "active" on success.
-  * Created `/api/platforms/[id]/validate` — tests existing connection by calling getMe, updates platform status.
-  * Updated ConnectDialog: real handleConnect() that finds existing platform, calls connect API, shows bot info on success. Added help text per platform ("از @BotFather دریافت کنید").
-  * Updated PlatformCard: real handleValidate() with loading state, shows bot username on success.
-  * All buttons now show loading states ("در حال تست..." / "در حال اتصال...").
+  - Created `/api/platforms/[id]/connect` — saves bot token + targetId, validates by calling platform's getMe endpoint (Telegram/Bale/Rubika). Updates platform status to "active" on success.
+  - Created `/api/platforms/[id]/validate` — tests existing connection by calling getMe, updates platform status.
+  - Updated ConnectDialog: real handleConnect() that finds existing platform, calls connect API, shows bot info on success. Added help text per platform ("از @BotFather دریافت کنید").
+  - Updated PlatformCard: real handleValidate() with loading state, shows bot username on success.
+  - All buttons now show loading states ("در حال تست..." / "در حال اتصال...").
 
 - **P1.4 Inline comments**: API already exists (`/api/content/[id]/comments` with GET + POST). Comments panel UI is ready as a placeholder tab in the compose right panel.
 
 - **P1.5 Team invite**: Created `/api/members/invite` — accepts email + name + role, checks for duplicates, creates WorkspaceMember with invite token, creates notification. Returns 201 with member info.
 
 - **P1.6 Real analytics**: Created `/api/analytics/real` — fetches real stats from platform APIs:
-  * Telegram: getChatMemberCount (real subscriber count)
-  * Bale: getChatMemberCount (same API)
-  * Instagram: /{ig-user-id}/insights (follower_count, reach, impressions)
-  * Falls back to DB AnalyticsSnapshot when API unavailable
-  * Returns `{ real: {...}, fallback: [...], hasRealData: boolean }`
+  - Telegram: getChatMemberCount (real subscriber count)
+  - Bale: getChatMemberCount (same API)
+  - Instagram: /{ig-user-id}/insights (follower_count, reach, impressions)
+  - Falls back to DB AnalyticsSnapshot when API unavailable
+  - Returns `{ real: {...}, fallback: [...], hasRealData: boolean }`
 
 - Lint: 0 errors. All 4 Phase 1 items have real API endpoints.
 
 Stage Summary:
+
 - Phase 1 complete: Channels UI (real token validation), Inline comments (API ready), Team invite (API ready), Real analytics (API ready).
 - Files created: src/app/api/platforms/[id]/{connect,validate}/route.ts, src/app/api/members/invite/route.ts, src/app/api/analytics/real/route.ts.
 - Files modified: src/components/views/channels-view.tsx (real API calls instead of fake toasts).
 - The publish pipeline is now fully testable: Channels → enter Telegram bot token → validate → Compose → publish → message appears on channel.
 
 ---
+
 Task ID: PHASE2-MODERN-ENG
 Agent: Main Agent (Z.ai Code)
 Task: Phase 2 — Zod validation + security hardening + rate limiting.
 
 Work Log:
+
 - **P2.1 Zod validation**: Created `src/lib/validations.ts` with 10 schemas + `validateBody()` helper. Applied to 7 key API routes:
-  * `/api/publish` — publishSchema (title required, platform types validated, mode enum)
-  * `/api/ai/caption` — aiCaptionSchema (topic min 3 chars, platform/tone/role/goal/length enums)
-  * `/api/ai/hashtags` — aiHashtagsSchema
-  * `/api/inbox/[id]/reply` — inboxReplySchema (reply min 1, max 2000)
-  * `/api/content/[id]/reject` — contentRejectSchema (reason required)
-  * `/api/members/invite` — memberInviteSchema (email format, role enum)
-  * `/api/platforms/[id]/connect` — platformConnectSchema (token min 10)
-  All routes now reject invalid input with Persian error messages before hitting the DB.
+  - `/api/publish` — publishSchema (title required, platform types validated, mode enum)
+  - `/api/ai/caption` — aiCaptionSchema (topic min 3 chars, platform/tone/role/goal/length enums)
+  - `/api/ai/hashtags` — aiHashtagsSchema
+  - `/api/inbox/[id]/reply` — inboxReplySchema (reply min 1, max 2000)
+  - `/api/content/[id]/reject` — contentRejectSchema (reason required)
+  - `/api/members/invite` — memberInviteSchema (email format, role enum)
+  - `/api/platforms/[id]/connect` — platformConnectSchema (token min 10)
+    All routes now reject invalid input with Persian error messages before hitting the DB.
 
 - **P2.2 Security hardening**:
-  * Created `src/lib/ratelimit.ts` — in-memory sliding window rate limiter (no Redis needed for SQLite). Pre-configured: AI 15/min, auth 5/5min, API 60/min.
-  * Applied `aiRateLimit` to `/api/ai/caption` — 15 requests/minute per IP. Returns 429 with Persian message.
-  * Added CSP + security headers in `next.config.ts`:
+  - Created `src/lib/ratelimit.ts` — in-memory sliding window rate limiter (no Redis needed for SQLite). Pre-configured: AI 15/min, auth 5/5min, API 60/min.
+  - Applied `aiRateLimit` to `/api/ai/caption` — 15 requests/minute per IP. Returns 429 with Persian message.
+  - Added CSP + security headers in `next.config.ts`:
     - Content-Security-Policy (script/style/font/img/connect-src whitelisted per domain)
     - X-Content-Type-Options: nosniff
     - X-Frame-Options: SAMEORIGIN
     - Referrer-Policy: strict-origin-when-cross-origin
     - X-XSS-Protection: 1; mode=block
-  * connect-src allows: gapgpt.app, telegram.org, bale.ai, rubika.ir, graph.facebook.com, linkedin.com, wss
+  - connect-src allows: gapgpt.app, telegram.org, bale.ai, rubika.ir, graph.facebook.com, linkedin.com, wss
 
 - **Verified**:
-  * Zod validation: `{"topic":"ab"}` → `{"error":"موضوع حداقل ۳ کاراکتر باید باشد"}` ✅
-  * Valid input: `{"topic":"قهوه","platform":"instagram"}` → SSE stream starts ✅
-  * Rate limit: works (15/min threshold)
-  * Lint: 0 errors
-  * GET / → HTTP 200
+  - Zod validation: `{"topic":"ab"}` → `{"error":"موضوع حداقل ۳ کاراکتر باید باشد"}` ✅
+  - Valid input: `{"topic":"قهوه","platform":"instagram"}` → SSE stream starts ✅
+  - Rate limit: works (15/min threshold)
+  - Lint: 0 errors
+  - GET / → HTTP 200
 
 Stage Summary:
+
 - Phase 2 (P2.1 + P2.2) complete: Zod validation on 7 routes + CSP headers + rate limiting.
 - Files: src/lib/validations.ts (new), src/lib/ratelimit.ts (new), next.config.ts (security headers), 7 API routes updated with Zod.
 - Remaining P2 items: testing (Vitest + Playwright), calendar drag-drop, RSC migration — lower priority.
 
 ---
+
 Task ID: P2-5
 Agent: DnD Calendar Agent
 Task: Add @dnd-kit drag-and-drop reschedule to the calendar month grid (drag a job chip from one day cell, drop onto another → PATCH /api/publish-jobs/[id] { action: "reschedule", scheduledAt: noon-local-time ISO }).
 
 Work Log:
+
 - Read `/home/z/my-project/worklog.md` last ~200 lines for prior context (Phase 2 P2.1/P2.2 done; calendar reschedule mutation already wired by a prior agent; calendar-view.tsx already has JalaliDatePicker sheet UI).
 - Read full `src/components/views/calendar-view.tsx` (551 lines) end-to-end. Identified: month grid renders 42 `DayCell` components at lines ~243-252 in a `grid grid-cols-7 gap-1`; each `DayCell` receives `cell: CalendarCell`, `jobs: CalendarJob[]`, `onSelectJob`; existing `rescheduleMutation` at lines 94-112 (PATCH /api/publish-jobs/[id] with `{ action, scheduledAt }`, invalidates `["calendar"]` + `["publish-jobs"]` queries on success). Week view also reuses `DayCell` (line 261-269).
 - Confirmed `@dnd-kit/core@6.3.1`, `@dnd-kit/sortable@10.0.0`, `@dnd-kit/utilities@3.2.2` installed and present in `node_modules/@dnd-kit/core/dist`. Used only `@dnd-kit/core` (no sortable/utilities needed for non-reordering drag-drop between droppables).
 - Edited `src/components/views/calendar-view.tsx` via MultiEdit (4 atomic edits, file now 644 lines):
-  * **Edit 1 — Imports (lines 7-17)**: Added `DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent` from `@dnd-kit/core` (placed immediately after `sonner` import, before `lucide-react`).
-  * **Edit 2 — State + sensors (lines 102-110)**: Added `activeDrag` state (`{ id: string; title: string } | null`) right after `editingSchedule`. Added `sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))` — the 6px distance constraint lets pure clicks (which open the job sheet) through while still enabling drag.
-  * **Edit 3 — Drag handlers (lines 196-216)**: Added `handleDragStart(event: DragStartEvent)` which looks up the active job in `jobs` and stores `{ id, title }` in `activeDrag`. Added `handleDragEnd(event: DragEndEvent)` which: clears `activeDrag`; returns early if no `over` or `over.id` doesn't start with `day-` (defensive — droppables are the only drop targets); strips `day-` prefix, parses ISO, validates with `Number.isNaN(date.getTime())`, calls `dropDate.setHours(12, 0, 0, 0)` (noon local time), then calls `rescheduleMutation.mutate({ jobId, scheduledAt: dropDate })`. Reuses the existing mutation verbatim (no modification to the mutation itself).
-  * **Edit 4 — DndContext wrapper around month grid (lines 283-308)**: Wrapped the `<div className="grid grid-cols-7 gap-1">` (the day-cells grid) in a `<DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>`. Added `activeDragId={activeDrag?.id ?? null}` prop to each `<DayCell>`. Added `<DragOverlay>` inside DndContext that renders a ghost chip (`rounded-lg bg-primary text-primary-foreground px-2 py-1 text-[10px] font-[700] shadow-xl max-w-56 truncate`) showing `activeDrag.title` when active. The week-view and agenda-view are intentionally left outside DndContext.
-  * **Edit 5 — DayCell refactor (lines 494-568)**: Added `activeDragId?: string | null` to props. Added `useDroppable({ id: \`day-\${cell.date.toISOString()}\`, data: { date: cell.date } })` hook — `setNodeRef` attached to outer div, `isOver` adds `ring-2 ring-accent ring-offset-1` highlight class. Added `aria-label={\`انتقال به \${day} \${JALALI_MONTHS[cell.jalali.month - 1]}\`}` on the day cell. Replaced the inline chip `<button>` with a `<JobChip>` sub-component for each job.
-  * **Edit 6 — JobChip component (lines 571-602)**: New component. `useDraggable({ id: job.id, data: { jobId: job.id, scheduledAt: job.scheduledAt } })`. Spreads `{...attributes}` and `{...listeners}` on a `<button>` (preserves `onClick={() => onSelectJob(job)}` — works because of the 6px activation constraint). Added `aria-label="کشیدن برای جابجایی"` and `touch-none` class (prevents touch scroll-jacking). Added `cursor-grab active:cursor-grabbing` for cursor feedback. Applied `opacity-30` when `isDragging || isDimmed` (the source chip fades during drag — dnd-kit doesn't auto-hide the source when using DragOverlay). Kept original platform chip classes (`PLATFORM_CHIP[job.platform]`).
+  - **Edit 1 — Imports (lines 7-17)**: Added `DndContext, DragOverlay, PointerSensor, useDraggable, useDroppable, useSensor, useSensors, type DragEndEvent, type DragStartEvent` from `@dnd-kit/core` (placed immediately after `sonner` import, before `lucide-react`).
+  - **Edit 2 — State + sensors (lines 102-110)**: Added `activeDrag` state (`{ id: string; title: string } | null`) right after `editingSchedule`. Added `sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))` — the 6px distance constraint lets pure clicks (which open the job sheet) through while still enabling drag.
+  - **Edit 3 — Drag handlers (lines 196-216)**: Added `handleDragStart(event: DragStartEvent)` which looks up the active job in `jobs` and stores `{ id, title }` in `activeDrag`. Added `handleDragEnd(event: DragEndEvent)` which: clears `activeDrag`; returns early if no `over` or `over.id` doesn't start with `day-` (defensive — droppables are the only drop targets); strips `day-` prefix, parses ISO, validates with `Number.isNaN(date.getTime())`, calls `dropDate.setHours(12, 0, 0, 0)` (noon local time), then calls `rescheduleMutation.mutate({ jobId, scheduledAt: dropDate })`. Reuses the existing mutation verbatim (no modification to the mutation itself).
+  - **Edit 4 — DndContext wrapper around month grid (lines 283-308)**: Wrapped the `<div className="grid grid-cols-7 gap-1">` (the day-cells grid) in a `<DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>`. Added `activeDragId={activeDrag?.id ?? null}` prop to each `<DayCell>`. Added `<DragOverlay>` inside DndContext that renders a ghost chip (`rounded-lg bg-primary text-primary-foreground px-2 py-1 text-[10px] font-[700] shadow-xl max-w-56 truncate`) showing `activeDrag.title` when active. The week-view and agenda-view are intentionally left outside DndContext.
+  - **Edit 5 — DayCell refactor (lines 494-568)**: Added `activeDragId?: string | null` to props. Added `useDroppable({ id: \`day-\${cell.date.toISOString()}\`, data: { date: cell.date } })`hook —`setNodeRef`attached to outer div,`isOver`adds`ring-2 ring-accent ring-offset-1`highlight class. Added`aria-label={\`انتقال به \${day} \${JALALI_MONTHS[cell.jalali.month - 1]}\`}`on the day cell. Replaced the inline chip`<button>`with a`<JobChip>` sub-component for each job.
+  - **Edit 6 — JobChip component (lines 571-602)**: New component. `useDraggable({ id: job.id, data: { jobId: job.id, scheduledAt: job.scheduledAt } })`. Spreads `{...attributes}` and `{...listeners}` on a `<button>` (preserves `onClick={() => onSelectJob(job)}` — works because of the 6px activation constraint). Added `aria-label="کشیدن برای جابجایی"` and `touch-none` class (prevents touch scroll-jacking). Added `cursor-grab active:cursor-grabbing` for cursor feedback. Applied `opacity-30` when `isDragging || isDimmed` (the source chip fades during drag — dnd-kit doesn't auto-hide the source when using DragOverlay). Kept original platform chip classes (`PLATFORM_CHIP[job.platform]`).
 - **Verified**:
-  * `bun run lint` → 0 errors, 0 warnings (only `$ eslint .` printed, no findings).
-  * `bunx tsc --noEmit` → no errors in `calendar-view.tsx` (pre-existing errors in unrelated files like `mini-services/publish-worker/adapters/*` and `examples/*` are untouched and out of scope).
-  * `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` → 200. Dev server recompiled successfully (latest log entry: `GET / 200 in 138ms (compile: 78ms, render: 59ms)` — clean compile of the changed file).
-  * Checked `/tmp/nashrino-dev.log` — only stale `jalali-picker.tsx Duplicate export` artifact from a previous hot-reload cycle (NOT caused by my changes; file not touched). All recent GET requests return 200.
-  * Draggable chips: have `aria-label="کشیدن برای جابجایی"`, `touch-none` class, `cursor-grab` cursor.
-  * Droppable day cells: have `id={\`day-\${cell.date.toISOString()}\`}`, `data: { date: cell.date }`, `aria-label={\`انتقال به \${day} \${JALALI_MONTHS[month-1]}\`}`, and `ring-2 ring-accent ring-offset-1` highlight on `isOver`.
-  * Existing functionality preserved: clicking a chip still opens the sheet (sheet state unchanged), clicking outside still dismisses, week/agenda tabs intact, queue panel intact.
+  - `bun run lint` → 0 errors, 0 warnings (only `$ eslint .` printed, no findings).
+  - `bunx tsc --noEmit` → no errors in `calendar-view.tsx` (pre-existing errors in unrelated files like `mini-services/publish-worker/adapters/*` and `examples/*` are untouched and out of scope).
+  - `curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/` → 200. Dev server recompiled successfully (latest log entry: `GET / 200 in 138ms (compile: 78ms, render: 59ms)` — clean compile of the changed file).
+  - Checked `/tmp/nashrino-dev.log` — only stale `jalali-picker.tsx Duplicate export` artifact from a previous hot-reload cycle (NOT caused by my changes; file not touched). All recent GET requests return 200.
+  - Draggable chips: have `aria-label="کشیدن برای جابجایی"`, `touch-none` class, `cursor-grab` cursor.
+  - Droppable day cells: have `id={\`day-\${cell.date.toISOString()}\`}`, `data: { date: cell.date }`, `aria-label={\`انتقال به \${day} \${JALALI_MONTHS[month-1]}\`}`, and `ring-2 ring-accent ring-offset-1`highlight on`isOver`.
+  - Existing functionality preserved: clicking a chip still opens the sheet (sheet state unchanged), clicking outside still dismisses, week/agenda tabs intact, queue panel intact.
 - No issues encountered. No new packages added. No other files modified.
 
 Stage Summary:
+
 - Calendar month grid now supports drag-and-drop reschedule: pick up a job chip from any day cell, drop onto any other day cell → calls PATCH /api/publish-jobs/[id] with `{ action: "reschedule", scheduledAt: <drop-date at 12:00 local time> }`. Toast shows on success/error via the existing `rescheduleMutation`.
 - dnd-kit core usage: DndContext wraps the day-cells grid; PointerSensor with `distance: 6` activation constraint preserves click-to-open-sheet behavior; useDraggable on each chip (via new JobChip component); useDroppable on each DayCell; DragOverlay renders a ghost chip following the cursor; source chip fades to 30% opacity during drag; target day cell gets `ring-2 ring-accent ring-offset-1` highlight on hover.
 - Week view and agenda view unchanged (DayCell is rendered outside DndContext there — useDraggable/useDroppable gracefully no-op without a provider, click behavior preserved).
@@ -2092,51 +2281,54 @@ Stage Summary:
 - Lint: 0 errors. TypeScript: 0 errors in modified file. Dev server: 200 OK with clean recompile.
 
 ---
+
 Task ID: PHASE2-MODERN-ENG-FULL
 Agent: Main Agent (Z.ai Code)
 Task: Phase 2 — Modern Engineering (Jalali date picker, calendar DnD, Zod extension, testing, RSC, security fixes).
 
 Work Log:
+
 - **P2.3 JalaliDatePicker**: Created `src/components/ui/jalali-picker.tsx` — Persian-first date picker popover built on `src/lib/jalali.ts`. Features: Saturday-first week grid, Persian digits, Iranian holiday highlighting (red tint + dot), weekend (Thu/Fri) amber tint, animated month transition (Framer Motion spring), `disablePast` + `minDate`/`maxDate` constraints, optional `showTime` mode with time input, "امروز" quick-nav + "پاک کردن" clear button, `aria-pressed` for selected day, `aria-label` per day. Supports both `popover` mode (default) and `inline` mode (for use inside Sheets/Dialogs to avoid Radix focus-trap conflicts). Internal `CalendarGrid` component extracted for reuse.
 - **P2.4 Compose + Calendar wiring**:
-  * `compose-view.tsx`: Replaced gregorian `<Input type="date">` + `<Input type="time">` with single `<JalaliDatePicker showTime />`. State consolidated from `scheduleDate`+`scheduleTime` strings to single `scheduledAt: Date | null`. Removed dead `StepSchedule` component (~80 lines). Schedule info card now shows Jalali-formatted date.
-  * `calendar-view.tsx`: Replaced stub "ویرایش زمان‌بندی" toast with real reschedule UI — inline `JalaliDatePicker` inside the job detail Sheet, plus "ذخیره زمان جدید" button that fires `rescheduleMutation`. Stub "ایجاد رویداد" toast replaced with `setActiveView("compose")` navigation.
+  - `compose-view.tsx`: Replaced gregorian `<Input type="date">` + `<Input type="time">` with single `<JalaliDatePicker showTime />`. State consolidated from `scheduleDate`+`scheduleTime` strings to single `scheduledAt: Date | null`. Removed dead `StepSchedule` component (~80 lines). Schedule info card now shows Jalali-formatted date.
+  - `calendar-view.tsx`: Replaced stub "ویرایش زمان‌بندی" toast with real reschedule UI — inline `JalaliDatePicker` inside the job detail Sheet, plus "ذخیره زمان جدید" button that fires `rescheduleMutation`. Stub "ایجاد رویداد" toast replaced with `setActiveView("compose")` navigation.
 - **P2.5 Calendar drag-drop** (delegated to DnD agent — completed):
-  * `calendar-view.tsx`: Wrapped month grid in `DndContext` (PointerSensor, 6px activation constraint so clicks still open sheet). Each job chip is `useDraggable` with `aria-label="کشیدن برای جابجایی"` + `touch-none`. Each day cell is `useDroppable` with `id="day-<iso>"` + ring highlight on `isOver`. `DragOverlay` renders ghost chip. On drop: calls `rescheduleMutation.mutate({ jobId, scheduledAt: noon-local })`.
+  - `calendar-view.tsx`: Wrapped month grid in `DndContext` (PointerSensor, 6px activation constraint so clicks still open sheet). Each job chip is `useDraggable` with `aria-label="کشیدن برای جابجایی"` + `touch-none`. Each day cell is `useDroppable` with `id="day-<iso>"` + ring highlight on `isOver`. `DragOverlay` renders ghost chip. On drop: calls `rescheduleMutation.mutate({ jobId, scheduledAt: noon-local })`.
 - **P2.6 Modern engineering fixes**:
-  * `src/lib/db.ts`: Prisma `log: ['query']` gated behind `NODE_ENV !== 'production' || LOG_QUERIES=1` — was noisy/slow in prod.
-  * `src/lib/auth.ts`: NextAuth `secret` no longer silently falls back to hardcoded dev string — throws in production if `NEXTAUTH_SECRET` missing, warns in dev.
-  * `src/lib/validations.ts`: Extended with `campaignCreateSchema`, `contentListQuerySchema`, `contentCommentsQuerySchema`, `mediaUploadQuerySchema`, `idSchema`, `paginationSchema`, `validateId()` helper, `validateParams()` helper.
-  * 14 additional API routes now have Zod validation (total: 20 of 36 routes validated, up from 6): `inbox/[id]/{assign,read}`, `content/{[id]/approve,comments,submit-review},route}`, `ai/{hashtags,drafts,drafts/[id]}`, `campaigns`, `media/upload`, `members`, `platforms/[id]/validate`.
-  * `src/app/api/calendar/route.ts`: Fixed date-window bug — replaced duplicated local `jalaliToGreg` with well-tested `jalaliToDate` from `@/lib/jalali`. Calendar API was returning `[]` for months with scheduled jobs due to a subtle conversion bug in the local copy. Now returns correct jobs. Added Zod validation on `year`/`month` query params. Added null-safe `j.content?.title` fallback.
-  * `src/app/api/publish-jobs/[id]/route.ts`: Added `reschedule` action (PATCH `{ action: "reschedule", scheduledAt }`) with Zod validation via `rescheduleSchema` — rejects invalid dates + past dates with Persian errors.
+  - `src/lib/db.ts`: Prisma `log: ['query']` gated behind `NODE_ENV !== 'production' || LOG_QUERIES=1` — was noisy/slow in prod.
+  - `src/lib/auth.ts`: NextAuth `secret` no longer silently falls back to hardcoded dev string — throws in production if `NEXTAUTH_SECRET` missing, warns in dev.
+  - `src/lib/validations.ts`: Extended with `campaignCreateSchema`, `contentListQuerySchema`, `contentCommentsQuerySchema`, `mediaUploadQuerySchema`, `idSchema`, `paginationSchema`, `validateId()` helper, `validateParams()` helper.
+  - 14 additional API routes now have Zod validation (total: 20 of 36 routes validated, up from 6): `inbox/[id]/{assign,read}`, `content/{[id]/approve,comments,submit-review},route}`, `ai/{hashtags,drafts,drafts/[id]}`, `campaigns`, `media/upload`, `members`, `platforms/[id]/validate`.
+  - `src/app/api/calendar/route.ts`: Fixed date-window bug — replaced duplicated local `jalaliToGreg` with well-tested `jalaliToDate` from `@/lib/jalali`. Calendar API was returning `[]` for months with scheduled jobs due to a subtle conversion bug in the local copy. Now returns correct jobs. Added Zod validation on `year`/`month` query params. Added null-safe `j.content?.title` fallback.
+  - `src/app/api/publish-jobs/[id]/route.ts`: Added `reschedule` action (PATCH `{ action: "reschedule", scheduledAt }`) with Zod validation via `rescheduleSchema` — rejects invalid dates + past dates with Persian errors.
 - **P2.7 Testing infrastructure**:
-  * `vitest.config.ts` — jsdom environment, `@vitejs/plugin-react`, `@/` alias, postcss disabled (Tailwind v4 plugin incompatible with Vite string loader).
-  * `playwright.config.ts` — fa-IR locale, Asia/Tehran timezone, chromium project, auto-starts dev server.
-  * `tests/setup.ts` — jest-dom matchers + cleanup.
-  * `tests/unit/jalali.test.ts` — 5 tests (gregorian→jalali, persian digits, jalali→gregorian, formatting, normalize digits). All pass.
-  * `tests/unit/validations.test.ts` — 6 tests (publishSchema, aiCaptionSchema, memberInviteSchema, rescheduleSchema). All pass.
-  * `tests/e2e/dashboard.spec.ts` — 3 smoke tests (home title, sidebar visible, signin form fields).
-  * `package.json` scripts added: `test`, `test:watch`, `test:ui`, `test:e2e`, `test:e2e:ui`, `typecheck`.
-  * **11/11 unit tests pass.** `bun run test` → 2 files, 11 tests, 1.02s.
+  - `vitest.config.ts` — jsdom environment, `@vitejs/plugin-react`, `@/` alias, postcss disabled (Tailwind v4 plugin incompatible with Vite string loader).
+  - `playwright.config.ts` — fa-IR locale, Asia/Tehran timezone, chromium project, auto-starts dev server.
+  - `tests/setup.ts` — jest-dom matchers + cleanup.
+  - `tests/unit/jalali.test.ts` — 5 tests (gregorian→jalali, persian digits, jalali→gregorian, formatting, normalize digits). All pass.
+  - `tests/unit/validations.test.ts` — 6 tests (publishSchema, aiCaptionSchema, memberInviteSchema, rescheduleSchema). All pass.
+  - `tests/e2e/dashboard.spec.ts` — 3 smoke tests (home title, sidebar visible, signin form fields).
+  - `package.json` scripts added: `test`, `test:watch`, `test:ui`, `test:e2e`, `test:e2e:ui`, `typecheck`.
+  - **11/11 unit tests pass.** `bun run test` → 2 files, 11 tests, 1.02s.
 - **P2.8 RSC migration**:
-  * `src/app/page.tsx`: Converted from `'use client'` to Server Component. Now renders `<AppRouter />` client island.
-  * `src/components/shell/app-router.tsx` (new): Client component that owns the `activeView` Zustand state + Framer Motion view transition. Extracted from page.tsx so the page shell is RSC (enables future streaming, metadata, server data-fetching).
+  - `src/app/page.tsx`: Converted from `'use client'` to Server Component. Now renders `<AppRouter />` client island.
+  - `src/components/shell/app-router.tsx` (new): Client component that owns the `activeView` Zustand state + Framer Motion view transition. Extracted from page.tsx so the page shell is RSC (enables future streaming, metadata, server data-fetching).
 
 - **Verified with Agent Browser**:
-  * Dashboard renders fully (all panels, nav, metrics). ✅
-  * Compose → "زمان‌بندی" → JalaliDatePicker popover opens with تیر ۱۴۰۵ month, Persian digits, past days disabled. ✅
-  * Selecting a date updates trigger to "1405/04/06 • 12:00 بعدازظهر" (Jalali ISO + Persian time). ✅
-  * Calendar view shows 7 draggable job chips with `aria-label="کشیدن برای جابجایی"`. ✅
-  * Clicking a chip opens Sheet with inline JalaliDatePicker (all days visible, no focus-trap issue). ✅
-  * Selecting a date → "ذخیره زمان جدید" button appears. ✅
-  * Reschedule API: `PATCH /api/publish-jobs/[id] { action: "reschedule", scheduledAt }` → `{"ok": true, "scheduledAt": "2026-07-03...", "message": "زمان‌بندی با موفقیت به‌روزرسانی شد"}`. ✅
-  * Zod validation: invalid date → `"تاریخ معتبر نیست"` (400). Past date → `"تاریخ باید در آینده باشد"` (400). ✅
-  * Lint: 0 errors, 0 warnings. ✅
-  * Tests: 11/11 pass. ✅
-  * Dev server: HTTP 200. ✅
+  - Dashboard renders fully (all panels, nav, metrics). ✅
+  - Compose → "زمان‌بندی" → JalaliDatePicker popover opens with تیر ۱۴۰۵ month, Persian digits, past days disabled. ✅
+  - Selecting a date updates trigger to "1405/04/06 • 12:00 بعدازظهر" (Jalali ISO + Persian time). ✅
+  - Calendar view shows 7 draggable job chips with `aria-label="کشیدن برای جابجایی"`. ✅
+  - Clicking a chip opens Sheet with inline JalaliDatePicker (all days visible, no focus-trap issue). ✅
+  - Selecting a date → "ذخیره زمان جدید" button appears. ✅
+  - Reschedule API: `PATCH /api/publish-jobs/[id] { action: "reschedule", scheduledAt }` → `{"ok": true, "scheduledAt": "2026-07-03...", "message": "زمان‌بندی با موفقیت به‌روزرسانی شد"}`. ✅
+  - Zod validation: invalid date → `"تاریخ معتبر نیست"` (400). Past date → `"تاریخ باید در آینده باشد"` (400). ✅
+  - Lint: 0 errors, 0 warnings. ✅
+  - Tests: 11/11 pass. ✅
+  - Dev server: HTTP 200. ✅
 
 Stage Summary:
+
 - Phase 2 (Modern Engineering) complete. All 8 items done.
 - Files created: `src/components/ui/jalali-picker.tsx`, `src/components/shell/app-router.tsx`, `vitest.config.ts`, `playwright.config.ts`, `tests/setup.ts`, `tests/unit/jalali.test.ts`, `tests/unit/validations.test.ts`, `tests/e2e/dashboard.spec.ts`.
 - Files modified: `src/components/views/compose-view.tsx`, `src/components/views/calendar-view.tsx`, `src/app/api/publish-jobs/[id]/route.ts`, `src/app/api/calendar/route.ts`, `src/lib/validations.ts`, `src/lib/db.ts`, `src/lib/auth.ts`, `src/app/page.tsx`, `package.json`, + 14 API routes with Zod.
@@ -2144,11 +2336,13 @@ Stage Summary:
 - App score estimate: ~85/100 (up from ~78).
 
 ---
+
 Task ID: AUDIT-PROD
 Agent: Explore sub-agent (Z.ai Code)
 Task: Comprehensive read-only production-readiness audit of the Nashrino publish repo. Inspect project structure, Prisma schema, auth/security, 10 sample API routes, worker + adapters, realtime, AI flow, media flow, frontend architecture, testing/CI, Docker/deployment, config/build, docs. Write evidence-based report with file:line citations.
 
 Work Log:
+
 - Read `/home/z/my-project/worklog.md` lines 1994-2144 for prior context (Phase 2 complete: Zod on 20/36 routes, Jalali picker, calendar DnD, RSC page shell, vitest+playwright infra, security hardening).
 - Inspected project structure: 36 API routes confirmed (matches expected), 151 src/ files, 84 components, 2 mini-services (publish-worker + realtime). Listed all top-level dirs with file counts.
 - Read `prisma/schema.prisma` (417 lines, 17 models, 36 indexes). Identified: `Platform.tokenSecret` plaintext (line 157, schema comment admits "encrypt at rest with AUTH_SECRET" — never implemented); `AuditLog.metadata` as `String @default("{}")` instead of `Json` (line 76); `PublishJob.idempotencyKey` is `@@index` not `@@unique` (line 321); missing `@@index([workspaceId, scheduledAt])` on Content; missing `@@index([workspaceId, status])` on Platform.
@@ -2177,6 +2371,7 @@ Work Log:
 - Confirmed db/custom.db (442KB SQLite) is gitignored via `.gitignore` lines `db/*.db*`.
 
 Stage Summary:
+
 - **Verdict: NOT production-ready.** Five blocking issues: (1) auth middleware disabled, (2) demo-mode workspace fallback, (3) 0/36 routes use secure guard, (4) plaintext platform tokens, (5) `ignoreBuildErrors: true` ships 156 type errors.
 - Wrote comprehensive audit report to `/home/z/my-project/audit/AUDIT-PRODUCTION-READINESS.md` (~1300 lines, 12 sections, 20 ranked risks, 20 quick wins).
 - Category scores (1-10): backend 4, database 6, API quality 4, auth/security 2, worker 6, realtime 5, performance 5, observability 2, CI/CD 1, Docker 2, tests 3, production readiness 2.
@@ -2184,34 +2379,37 @@ Stage Summary:
 - This was a READ-ONLY audit — no code was changed.
 
 ---
+
 Task ID: PROD-READINESS-PLAN
 Agent: Main Agent (Z.ai Code) — senior backend architect + production-readiness lead
 Task: Deep research + full production-readiness audit + 10-phase roadmap for Nashrino (publish repo).
 
 Work Log:
+
 - Delegated deep codebase audit to Explore subagent → produced `audit/AUDIT-PRODUCTION-READINESS.md` (896 lines, 12 sections, 20 ranked risks, 20 quick wins, 12 category scores with file:line evidence).
 - Conducted web research on modern production patterns (Next.js 16 Docker, Prisma+Postgres pooling, NextAuth hardening, BullMQ, pino+OpenTelemetry, socket.io Redis adapter, S3 presigned uploads, LLM prompt injection defense, GitHub Actions CI).
 - Synthesized findings into `docs/PRODUCTION_READINESS_MASTER_PLAN.md` (~1100 lines):
-  * Executive summary (verdict: 2/10, 5 blockers, 10-week path to 9/10)
-  * Current architecture map (text diagram + API inventory + Prisma inventory)
-  * Current scorecard (12 categories scored 1-10 with evidence)
-  * Top 20 risks (ranked, with file:line evidence + phase assignment)
-  * P0/P1/P2 backlog (10 + 20 + 20 items)
-  * 10-phase roadmap (each phase: goal, tasks, acceptance criteria)
-  * Backend refactor plan (module-by-module: auth, API, worker, realtime, AI, media, DB, frontend)
-  * Performance hardening plan (budgets table + tasks + anti-patterns)
-  * Security hardening plan (25-item checklist)
-  * Docker/deployment plan (Dockerfile + compose + compose.production + .env.example + staging checklist)
-  * Testing/CI plan (GitHub Actions YAML + coverage targets + Playwright E2E plan)
-  * Definition of Done (final production readiness checklist)
-  * Appendix A: recommended stack additions (16 packages with versions + phase)
-  * Appendix B: anti-patterns to avoid
+  - Executive summary (verdict: 2/10, 5 blockers, 10-week path to 9/10)
+  - Current architecture map (text diagram + API inventory + Prisma inventory)
+  - Current scorecard (12 categories scored 1-10 with evidence)
+  - Top 20 risks (ranked, with file:line evidence + phase assignment)
+  - P0/P1/P2 backlog (10 + 20 + 20 items)
+  - 10-phase roadmap (each phase: goal, tasks, acceptance criteria)
+  - Backend refactor plan (module-by-module: auth, API, worker, realtime, AI, media, DB, frontend)
+  - Performance hardening plan (budgets table + tasks + anti-patterns)
+  - Security hardening plan (25-item checklist)
+  - Docker/deployment plan (Dockerfile + compose + compose.production + .env.example + staging checklist)
+  - Testing/CI plan (GitHub Actions YAML + coverage targets + Playwright E2E plan)
+  - Definition of Done (final production readiness checklist)
+  - Appendix A: recommended stack additions (16 packages with versions + phase)
+  - Appendix B: anti-patterns to avoid
 - Created supporting docs:
-  * `docs/CURRENT_STATUS.md` — scorecard + what's working + blockers + next action
-  * `docs/IMPLEMENTATION_ROADMAP.md` — 10-phase table with status + dependency graph
-  * `docs/DECISION_LOG.md` — 8 architecture decisions (D-001 through D-008) with context/decision/why/alternatives/consequences
+  - `docs/CURRENT_STATUS.md` — scorecard + what's working + blockers + next action
+  - `docs/IMPLEMENTATION_ROADMAP.md` — 10-phase table with status + dependency graph
+  - `docs/DECISION_LOG.md` — 8 architecture decisions (D-001 through D-008) with context/decision/why/alternatives/consequences
 
 Stage Summary:
+
 - Complete production-readiness blueprint delivered.
 - Verdict: NOT production-ready (2/10). 5 blocking security issues.
 - Path: 10 phases over ~10 weeks → 9/10 production readiness.
@@ -2220,46 +2418,49 @@ Stage Summary:
 - No code changes made (research + planning only). Ready for Phase 1 execution.
 
 ---
+
 Task ID: ARCH-2026-BASELINE
 Agent: Main Agent (Z.ai Code) — senior backend architect
 Task: Integrate modern 2026 architecture baseline (stable versions + modular monolith + BFF + domain modules).
 
 Work Log:
+
 - Created `docs/VERSION_BASELINE_2026.md` (~180 lines):
-  * Stable version pins for all layers (Node 24.18 LTS, Next 16.2.9, React 19.2.7, TS 6.0.3, Tailwind 4.3.1, Zod 4.4.3, NextAuth 4.24.14, Prisma 7.8.0, Postgres 18.4)
-  * Python backend option (FastAPI 0.138.1, Celery 5.6.3, Ruff 0.15.20) — only if specific need arises
-  * 10 architecture principles (modular monolith, BFF layer, domain modules, workers for all bg work, realtime, S3 storage, security, quality gates, observability, token-driven UI)
-  * Version migration plan (current → target)
-  * Prisma 6 → 7 migration notes (do alongside Postgres migration in Phase 4)
-  * Rules for version management (pin, audit, don't chase latest)
+  - Stable version pins for all layers (Node 24.18 LTS, Next 16.2.9, React 19.2.7, TS 6.0.3, Tailwind 4.3.1, Zod 4.4.3, NextAuth 4.24.14, Prisma 7.8.0, Postgres 18.4)
+  - Python backend option (FastAPI 0.138.1, Celery 5.6.3, Ruff 0.15.20) — only if specific need arises
+  - 10 architecture principles (modular monolith, BFF layer, domain modules, workers for all bg work, realtime, S3 storage, security, quality gates, observability, token-driven UI)
+  - Version migration plan (current → target)
+  - Prisma 6 → 7 migration notes (do alongside Postgres migration in Phase 4)
+  - Rules for version management (pin, audit, don't chase latest)
 
 - Created `docs/ARCHITECTURE_MODULAR_MONOLITH.md` (~350 lines):
-  * Full architecture diagram (Browser → Caddy → Next.js BFF → Domain Modules → Postgres + Redis → Workers + S3 + Observability)
-  * BFF/API layer pattern (thin route handlers → service modules; what routes do NOT do)
-  * 11 domain modules inventory (accounts, channels, content, media, campaigns, calendar, analytics, automations, notifications, billing, team)
-  * Module structure (service.ts + repository.ts + types.ts + __tests__)
-  * Module communication rules (call via services, not repositories)
-  * Example: content module (types + repository + service)
-  * Worker architecture: 6 BullMQ queues (publish-jobs, media-processing, analytics-sync, webhook-process, notifications, automations)
-  * Why BullMQ over DB-polling (comparison table)
-  * Instagram professional account integration (OAuth, permissions, container-based publishing, comment-to-DM automation, manual fallback)
-  * UI design token system (spacing, radius, glass, shadows, typography, RTL, dark mode, high contrast, component states, WCAG 2.2)
-  * Performance budgets table (bundle, LCP, INP, CLS, API p95, worker queue delay, image sizes)
-  * Gradual migration path (extract modules in Phase 8-10, one PR per module)
+  - Full architecture diagram (Browser → Caddy → Next.js BFF → Domain Modules → Postgres + Redis → Workers + S3 + Observability)
+  - BFF/API layer pattern (thin route handlers → service modules; what routes do NOT do)
+  - 11 domain modules inventory (accounts, channels, content, media, campaigns, calendar, analytics, automations, notifications, billing, team)
+  - Module structure (service.ts + repository.ts + types.ts + **tests**)
+  - Module communication rules (call via services, not repositories)
+  - Example: content module (types + repository + service)
+  - Worker architecture: 6 BullMQ queues (publish-jobs, media-processing, analytics-sync, webhook-process, notifications, automations)
+  - Why BullMQ over DB-polling (comparison table)
+  - Instagram professional account integration (OAuth, permissions, container-based publishing, comment-to-DM automation, manual fallback)
+  - UI design token system (spacing, radius, glass, shadows, typography, RTL, dark mode, high contrast, component states, WCAG 2.2)
+  - Performance budgets table (bundle, LCP, INP, CLS, API p95, worker queue delay, image sizes)
+  - Gradual migration path (extract modules in Phase 8-10, one PR per module)
 
 - Appended 7 new decisions to `docs/DECISION_LOG.md` (D-009 through D-015):
-  * D-009: Stable version baseline (not "newest experimental")
-  * D-010: Modular monolith (not microservices, not flat template)
-  * D-011: BullMQ for all background work (6 queues)
-  * D-012: Instagram official Meta API only (no scraping)
-  * D-013: S3-compatible object storage (reaffirms D-006)
-  * D-014: Token-driven UI system (design tokens)
-  * D-015: Observability before launch (not after)
+  - D-009: Stable version baseline (not "newest experimental")
+  - D-010: Modular monolith (not microservices, not flat template)
+  - D-011: BullMQ for all background work (6 queues)
+  - D-012: Instagram official Meta API only (no scraping)
+  - D-013: S3-compatible object storage (reaffirms D-006)
+  - D-014: Token-driven UI system (design tokens)
+  - D-015: Observability before launch (not after)
 
 - Updated `docs/CURRENT_STATUS.md` with version baseline reference + new doc links.
 - Updated `docs/IMPLEMENTATION_ROADMAP.md` with version baseline + architecture references.
 
 Stage Summary:
+
 - 2026 architecture baseline fully integrated into the production-readiness plan.
 - 3 new docs created (~820 lines total), 2 docs updated, 7 new decisions logged.
 - Key principles: stable versions (no experimental), modular monolith with 11 domain modules, BFF pattern (thin routes → services), BullMQ for all background work, Instagram official API only, S3 presigned uploads, token-driven UI, observability before launch.
@@ -2267,114 +2468,120 @@ Stage Summary:
 - Ready for Phase 1 execution.
 
 ---
+
 Task ID: PHASE-1-BOOTSTRAP
 Agent: Main Agent (Z.ai Code)
 Task: Set up GitHub project management + add README/.env.example/CI + create Phase 1 branch.
 
 Work Log:
+
 - **Created 10 GitHub milestones** (Phase 1-10) via GitHub API:
-  * #1 Phase 1 — P0 Safety Blockers
-  * #2 Phase 2 — Observability + Health
-  * #3 Phase 3 — Docker + CI/CD
-  * #4 Phase 4 — PostgreSQL Migration
-  * #5 Phase 5 — Token Encryption + RBAC + AI Safety
-  * #6 Phase 6 — Worker Hardening
-  * #7 Phase 7 — Realtime Auth + Redis Adapter
-  * #8 Phase 8 — API Quality
-  * #9 Phase 9 — Media: S3 + Validation + Quotas
-  * #10 Phase 10 — Testing + Performance Budgets
+  - #1 Phase 1 — P0 Safety Blockers
+  - #2 Phase 2 — Observability + Health
+  - #3 Phase 3 — Docker + CI/CD
+  - #4 Phase 4 — PostgreSQL Migration
+  - #5 Phase 5 — Token Encryption + RBAC + AI Safety
+  - #6 Phase 6 — Worker Hardening
+  - #7 Phase 7 — Realtime Auth + Redis Adapter
+  - #8 Phase 8 — API Quality
+  - #9 Phase 9 — Media: S3 + Validation + Quotas
+  - #10 Phase 10 — Testing + Performance Budgets
 
 - **Created 10 Phase 1 issues** (#2-#11) via GitHub API, all assigned to milestone #1:
-  * #2 P0-1: Re-enable auth middleware
-  * #3 P0-2: Remove demo-mode workspace fallback
-  * #4 P0-3: Set ignoreBuildErrors: false + fix type errors
-  * #5 P0-4: Tighten CSP + security headers
-  * #6 P0-5: Make PublishJob.idempotencyKey @@unique
-  * #7 P0-6: Fix hardcoded authorName in publish route
-  * #8 P0-7: Sanitize AI error messages
-  * #9 P0-8: Create .env.example
-  * #10 P0-9: Fix corrupted Persian string in instagram adapter
-  * #11 P0-10: Re-enable ESLint rules
-  Each issue has: problem statement (with file:line evidence), fix steps, acceptance criteria, effort estimate, severity, and labels.
+  - #2 P0-1: Re-enable auth middleware
+  - #3 P0-2: Remove demo-mode workspace fallback
+  - #4 P0-3: Set ignoreBuildErrors: false + fix type errors
+  - #5 P0-4: Tighten CSP + security headers
+  - #6 P0-5: Make PublishJob.idempotencyKey @@unique
+  - #7 P0-6: Fix hardcoded authorName in publish route
+  - #8 P0-7: Sanitize AI error messages
+  - #9 P0-8: Create .env.example
+  - #10 P0-9: Fix corrupted Persian string in instagram adapter
+  - #11 P0-10: Re-enable ESLint rules
+    Each issue has: problem statement (with file:line evidence), fix steps, acceptance criteria, effort estimate, severity, and labels.
 
 - **Created root README.md** (~150 lines):
-  * Quick start (prerequisites, install, run, test)
-  * Tech stack table (Node 24, Next 16, PG 18, Prisma, NextAuth, socket.io, BullMQ, Tiptap, Recharts, Framer Motion, Jalali)
-  * Project structure tree
-  * Production readiness section with links to all docs + 10-phase roadmap table with milestone links
-  * Environment variables table
-  * Supported platforms table (5 real adapters, no scraping policy)
-  * Contributing guide (branch naming, CI gates, PR workflow)
+  - Quick start (prerequisites, install, run, test)
+  - Tech stack table (Node 24, Next 16, PG 18, Prisma, NextAuth, socket.io, BullMQ, Tiptap, Recharts, Framer Motion, Jalali)
+  - Project structure tree
+  - Production readiness section with links to all docs + 10-phase roadmap table with milestone links
+  - Environment variables table
+  - Supported platforms table (5 real adapters, no scraping policy)
+  - Contributing guide (branch naming, CI gates, PR workflow)
 
 - **Created .env.example** (~75 lines):
-  * Database (SQLite dev / PostgreSQL prod)
-  * Auth (NEXTAUTH_SECRET, NEXTAUTH_URL)
-  * AI providers (GAPGPT, GEMINI)
-  * Realtime (port, emit URL, shared secret)
-  * Worker (health port)
-  * Redis (for BullMQ, rate limit, socket.io adapter)
-  * Observability (Sentry DSN, log level, LOG_QUERIES)
-  * Media storage (S3 endpoint, bucket, keys, CDN)
-  * Rate limiting (Upstash Redis REST)
-  * Demo/seed note (gated by NODE_ENV)
+  - Database (SQLite dev / PostgreSQL prod)
+  - Auth (NEXTAUTH_SECRET, NEXTAUTH_URL)
+  - AI providers (GAPGPT, GEMINI)
+  - Realtime (port, emit URL, shared secret)
+  - Worker (health port)
+  - Redis (for BullMQ, rate limit, socket.io adapter)
+  - Observability (Sentry DSN, log level, LOG_QUERIES)
+  - Media storage (S3 endpoint, bucket, keys, CDN)
+  - Rate limiting (Upstash Redis REST)
+  - Demo/seed note (gated by NODE_ENV)
 
 - **Created .github/workflows/ci.yml** (~120 lines):
-  * `quality` job: postgres + redis services, bun install, prisma generate, db push, lint, typecheck, test, build, prisma migrate diff, coverage upload
-  * `security` job: bun audit (high/critical), gitleaks secret scan
-  * `docker` job: Docker build (no push, main branch only, GHA cache)
-  * `e2e` job: Playwright (disabled — `if: false` — enable in Phase 10)
-  * Concurrency cancel, timeout-minutes, frozen-lockfile
+  - `quality` job: postgres + redis services, bun install, prisma generate, db push, lint, typecheck, test, build, prisma migrate diff, coverage upload
+  - `security` job: bun audit (high/critical), gitleaks secret scan
+  - `docker` job: Docker build (no push, main branch only, GHA cache)
+  - `e2e` job: Playwright (disabled — `if: false` — enable in Phase 10)
+  - Concurrency cancel, timeout-minutes, frozen-lockfile
 
 - **Created branch `fix/phase-1-safety-blockers`** from main.
 - Committed README.md, .env.example, .github/workflows/ci.yml on the branch.
 - Pushed branch to GitHub (will open PR after this worklog).
 
 Stage Summary:
+
 - GitHub project management fully set up: 10 milestones + 10 Phase 1 issues with acceptance criteria.
 - Root README.md, .env.example, CI workflow created.
 - Branch `fix/phase-1-safety-blockers` created and pushed.
 - Next: open PR for this branch, then start executing P0-1 through P0-10.
 
 ---
+
 Task ID: P0-2-ROUTES
 Agent: Route Migration Agent
 Task: Migrate 31 API routes from getWorkspaceId() to requireWorkspaceApi()
 
 Work Log:
+
 - Read worklog.md (last 50 lines) for context. Confirmed security fix to getWorkspace() (env-aware: dev fallback, prod null) is already applied to src/lib/server.ts and src/lib/auth-guards.ts (uncommitted on branch `main`).
 - Verified src/lib/auth-guards.ts already exports requireWorkspaceApi() with env-aware dev fallback + 401/403 status codes.
 - Listed all 31 files in src/app/api/ containing `getWorkspaceId` via `rg -l "getWorkspaceId" src/app/api/`. Confirmed 0 files already use requireWorkspaceApi (all need migration).
 - Confirmed 2 additional routes (ai/caption, ai/caption-multi) use `getWorkspace()` (not `getWorkspaceId`) with an unusual try/catch swallowing pattern — these are NOT in the 31-file list and were skipped per task scope.
 - Audited guard-block variations across all 31 files:
-  * Quote style: single quotes (`'...'`) vs double quotes (`"..."`).
-  * Statement style: with semicolons (e.g. `;`) vs without.
-  * Status code: 404 (older "workspace not found") vs 403 (newer "no_workspace").
-  * Error message: `'workspace not found'`, `"no_workspace"`, plus Persian messages.
-  * if-block shape: single-line (`if (!x) return ...`) vs multi-line (`if (!x) {\n  return ...\n}`).
-  * 4 files (ai/drafts/route.ts, content/[id]/comments/route.ts, campaigns/route.ts, members/route.ts) had TWO guard blocks (GET + POST handlers).
-  * All 31 files imported only `getWorkspaceId` from `@/lib/server` (no other symbols co-imported), so the import line could be replaced wholesale.
+  - Quote style: single quotes (`'...'`) vs double quotes (`"..."`).
+  - Statement style: with semicolons (e.g. `;`) vs without.
+  - Status code: 404 (older "workspace not found") vs 403 (newer "no_workspace").
+  - Error message: `'workspace not found'`, `"no_workspace"`, plus Persian messages.
+  - if-block shape: single-line (`if (!x) return ...`) vs multi-line (`if (!x) {\n  return ...\n}`).
+  - 4 files (ai/drafts/route.ts, content/[id]/comments/route.ts, campaigns/route.ts, members/route.ts) had TWO guard blocks (GET + POST handlers).
+  - All 31 files imported only `getWorkspaceId` from `@/lib/server` (no other symbols co-imported), so the import line could be replaced wholesale.
 - Wrote a one-shot Python migration script (/home/z/my-project/migrate_routes.py — deleted after run) using two regex patterns (single-line + multi-line guard) plus an import-line pattern. Each pattern captures the file's existing quote and semicolon style so the replacement matches the surrounding code (e.g. `import { requireWorkspaceApi } from "@/lib/auth-guards";` for files that use double quotes + semicolons, `'@/lib/auth-guards'` for files that use single quotes + no semicolons).
 - Ran the script — migrated all 31/31 files successfully:
-  * 31 import lines replaced.
-  * 35 guard blocks replaced (27 files × 1 guard + 4 files × 2 guards = 35).
-  * Each replacement follows the canonical pattern:
-      const guard = await requireWorkspaceApi()<;>
-      if (guard.error) return guard.error<;>
-      const workspaceId = guard.workspace.id<;>
-  * Variable name `workspaceId` preserved at every call site → minimal diff, no business-logic changes.
+  - 31 import lines replaced.
+  - 35 guard blocks replaced (27 files × 1 guard + 4 files × 2 guards = 35).
+  - Each replacement follows the canonical pattern:
+    const guard = await requireWorkspaceApi()<;>
+    if (guard.error) return guard.error<;>
+    const workspaceId = guard.workspace.id<;>
+  - Variable name `workspaceId` preserved at every call site → minimal diff, no business-logic changes.
 - After migration, ran `bun run typecheck` and discovered 36 new TypeScript errors of the form `'guard.workspace' is possibly 'null'` across all 31 routes. Root cause: `requireWorkspaceApi()` had its `error` field cast to `null as null | NextResponse` in the success branches, which collapsed the discriminated union into a flat object type so TypeScript could not narrow `workspace` to non-null after the `if (guard.error) return guard.error` check.
 - Fixed the root cause in src/lib/auth-guards.ts (type-level change only, zero runtime impact):
-  * Removed both `null as null | NextResponse` casts and the `as Role` cast on the dev-bypass `"admin"` literal.
-  * Added explicit return type annotation `Promise<WorkspaceGuardResult>` where `WorkspaceGuardResult` is a proper discriminated union:
-      type WorkspaceGuardSuccess = { error: null; workspace: <non-null>; session; role }
-      type WorkspaceGuardError   = { error: NextResponse; workspace: null; session }
-      type WorkspaceGuardResult  = WorkspaceGuardSuccess | WorkspaceGuardError
-  * Exported the three types so future RBAC code (Phase 5) can re-use them.
-  * Updated the JSDoc usage example to show `guard.workspace.id` (was `const { workspace } = guard`).
-  * This change aligns with the task's stated pattern and means call sites need NO `!` non-null assertions.
+  - Removed both `null as null | NextResponse` casts and the `as Role` cast on the dev-bypass `"admin"` literal.
+  - Added explicit return type annotation `Promise<WorkspaceGuardResult>` where `WorkspaceGuardResult` is a proper discriminated union:
+    type WorkspaceGuardSuccess = { error: null; workspace: <non-null>; session; role }
+    type WorkspaceGuardError = { error: NextResponse; workspace: null; session }
+    type WorkspaceGuardResult = WorkspaceGuardSuccess | WorkspaceGuardError
+  - Exported the three types so future RBAC code (Phase 5) can re-use them.
+  - Updated the JSDoc usage example to show `guard.workspace.id` (was `const { workspace } = guard`).
+  - This change aligns with the task's stated pattern and means call sites need NO `!` non-null assertions.
 - Re-ran typecheck: 0 new errors in src/app/api/. The only remaining src/app/api/ error is a pre-existing one (`publish/route.ts:130` `jobs.push` against a `never[]` array) — verified pre-existing by `git stash` + typecheck before/after.
 
 Verification results:
+
 - `bun run lint` → 0 errors (eslint passes).
 - `bun run test` → 11/11 tests pass (2 test files: jalali.test.ts 5, validations.test.ts 6).
 - `rg -l "getWorkspaceId" src/app/api/` → 0 results (all 31 migrated).
@@ -2383,47 +2590,51 @@ Verification results:
 - `bun run typecheck` → no NEW errors introduced by this migration (only the pre-existing publish/route.ts `jobs.push` error remains, unrelated to workspace guard).
 
 Files changed (32 total):
+
 - src/lib/auth-guards.ts — discriminated-union return types (no runtime change).
 - 31 route files under src/app/api/ — each had 1 import line + 1–2 guard blocks migrated.
 
 Routes migrated (31/31):
-1.  src/app/api/ai/drafts/route.ts                          (2 guards: GET + POST)
-2.  src/app/api/ai/drafts/[id]/route.ts                     (1 guard: DELETE)
-3.  src/app/api/analytics/route.ts                          (1 guard: GET)
-4.  src/app/api/analytics/real/route.ts                     (1 guard: GET)
-5.  src/app/api/calendar/route.ts                           (1 guard: GET)
-6.  src/app/api/campaigns/route.ts                          (2 guards: GET + POST)
-7.  src/app/api/content/route.ts                            (1 guard: GET)
-8.  src/app/api/content/[id]/approve/route.ts               (1 guard: POST)
-9.  src/app/api/content/[id]/comments/route.ts              (2 guards: GET + POST)
-10. src/app/api/content/[id]/reject/route.ts                (1 guard: POST)
-11. src/app/api/content/[id]/submit-review/route.ts         (1 guard: POST)
-12. src/app/api/dashboard/action-center/route.ts            (1 guard: GET)
-13. src/app/api/dashboard/metrics/route.ts                  (1 guard: GET)
-14. src/app/api/dashboard/pulse/route.ts                    (1 guard: GET)
-15. src/app/api/dashboard/summary/route.ts                  (1 guard: GET)
-16. src/app/api/inbox/route.ts                              (1 guard: GET)
-17. src/app/api/inbox/[id]/assign/route.ts                  (1 guard: POST)
-18. src/app/api/inbox/[id]/read/route.ts                    (1 guard: POST)
-19. src/app/api/inbox/[id]/reply/route.ts                   (1 guard: POST)
-20. src/app/api/media/route.ts                              (1 guard: GET)
-21. src/app/api/media/upload/route.ts                       (1 guard: POST)
-22. src/app/api/members/route.ts                            (2 guards: GET + POST)
-23. src/app/api/members/invite/route.ts                     (1 guard: POST)
-24. src/app/api/notifications/route.ts                      (1 guard: GET)
-25. src/app/api/platforms/route.ts                          (1 guard: GET)
-26. src/app/api/platforms/[id]/connect/route.ts             (1 guard: POST)
-27. src/app/api/platforms/[id]/validate/route.ts            (1 guard: POST)
-28. src/app/api/publish/route.ts                            (1 guard: POST, multi-line if)
-29. src/app/api/publish-jobs/route.ts                       (1 guard: GET)
-30. src/app/api/publish-jobs/[id]/route.ts                  (1 guard: PATCH, multi-line if)
-31. src/app/api/workspace/route.ts                          (1 guard: GET)
+
+1.  src/app/api/ai/drafts/route.ts (2 guards: GET + POST)
+2.  src/app/api/ai/drafts/[id]/route.ts (1 guard: DELETE)
+3.  src/app/api/analytics/route.ts (1 guard: GET)
+4.  src/app/api/analytics/real/route.ts (1 guard: GET)
+5.  src/app/api/calendar/route.ts (1 guard: GET)
+6.  src/app/api/campaigns/route.ts (2 guards: GET + POST)
+7.  src/app/api/content/route.ts (1 guard: GET)
+8.  src/app/api/content/[id]/approve/route.ts (1 guard: POST)
+9.  src/app/api/content/[id]/comments/route.ts (2 guards: GET + POST)
+10. src/app/api/content/[id]/reject/route.ts (1 guard: POST)
+11. src/app/api/content/[id]/submit-review/route.ts (1 guard: POST)
+12. src/app/api/dashboard/action-center/route.ts (1 guard: GET)
+13. src/app/api/dashboard/metrics/route.ts (1 guard: GET)
+14. src/app/api/dashboard/pulse/route.ts (1 guard: GET)
+15. src/app/api/dashboard/summary/route.ts (1 guard: GET)
+16. src/app/api/inbox/route.ts (1 guard: GET)
+17. src/app/api/inbox/[id]/assign/route.ts (1 guard: POST)
+18. src/app/api/inbox/[id]/read/route.ts (1 guard: POST)
+19. src/app/api/inbox/[id]/reply/route.ts (1 guard: POST)
+20. src/app/api/media/route.ts (1 guard: GET)
+21. src/app/api/media/upload/route.ts (1 guard: POST)
+22. src/app/api/members/route.ts (2 guards: GET + POST)
+23. src/app/api/members/invite/route.ts (1 guard: POST)
+24. src/app/api/notifications/route.ts (1 guard: GET)
+25. src/app/api/platforms/route.ts (1 guard: GET)
+26. src/app/api/platforms/[id]/connect/route.ts (1 guard: POST)
+27. src/app/api/platforms/[id]/validate/route.ts (1 guard: POST)
+28. src/app/api/publish/route.ts (1 guard: POST, multi-line if)
+29. src/app/api/publish-jobs/route.ts (1 guard: GET)
+30. src/app/api/publish-jobs/[id]/route.ts (1 guard: PATCH, multi-line if)
+31. src/app/api/workspace/route.ts (1 guard: GET)
 
 Routes skipped (2, both out of scope):
-- src/app/api/ai/caption/route.ts       — uses `getWorkspace()` (not `getWorkspaceId`) with an unusual try/catch + `let workspace: ... = null` pattern that swallows errors to keep streaming alive when unauthenticated. Not in the 31-file target list. Left untouched.
+
+- src/app/api/ai/caption/route.ts — uses `getWorkspace()` (not `getWorkspaceId`) with an unusual try/catch + `let workspace: ... = null` pattern that swallows errors to keep streaming alive when unauthenticated. Not in the 31-file target list. Left untouched.
 - src/app/api/ai/caption-multi/route.ts — same pattern as above. Left untouched.
 
 Notes:
+
 - No `getWorkspaceId` function removed from src/lib/server.ts (still used by worker; task constraint respected).
 - No RBAC `can()` checks added (Phase 5 work; task constraint respected).
 - No business logic changed anywhere — only the workspace-resolution pattern at the top of each handler.
@@ -2431,6 +2642,7 @@ Notes:
 - Did NOT commit or push — left for human review.
 
 Stage Summary:
+
 - All 31 API routes migrated to requireWorkspaceApi() with proper HTTP status codes (401 unauthenticated, 403 no-workspace/forbidden) replacing the old 404/403 mixed bag.
 - Bonus: fixed a latent type-safety issue in auth-guards.ts by introducing a proper discriminated-union return type — call sites now get compile-time narrowing of `guard.workspace` to non-null after the guard check, with zero runtime impact.
 - Lint clean, all 11 tests pass, server returns 200, no new TypeScript errors.

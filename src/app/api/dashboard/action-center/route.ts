@@ -18,7 +18,14 @@ export async function GET() {
   // Primary critical task
   const failed = notifications.find((n) => n.type === 'publish_failed')
   const primary = failed
-    ? { id: failed.id, type: 'critical', title: failed.title, context: failed.body ?? '', time: failed.createdAt, action: 'ط¨ط±ط±ط³غŒ ظˆ طھظ„ط§ط´ ظ…ط¬ط¯ط¯' }
+    ? {
+        id: failed.id,
+        type: 'critical',
+        title: failed.title,
+        context: failed.body ?? '',
+        time: failed.createdAt,
+        action: 'ط¨ط±ط±ط³غŒ ظˆ طھظ„ط§ط´ ظ…ط¬ط¯ط¯',
+      }
     : null
 
   // Secondary tasks
@@ -41,45 +48,70 @@ export async function GET() {
 
 function iconFor(t: string) {
   switch (t) {
-    case 'publish_failed': return 'AlertTriangle'
-    case 'approval_requested': return 'CheckCircle2'
-    case 'token_expiring': return 'ShieldAlert'
-    case 'inbox_new': return 'Inbox'
-    case 'channel_disconnected': return 'AlertTriangle'
-    case 'publish_success': return 'CheckCircle2'
-    default: return 'Bell'
+    case 'publish_failed':
+      return 'AlertTriangle'
+    case 'approval_requested':
+      return 'CheckCircle2'
+    case 'token_expiring':
+      return 'ShieldAlert'
+    case 'inbox_new':
+      return 'Inbox'
+    case 'channel_disconnected':
+      return 'AlertTriangle'
+    case 'publish_success':
+      return 'CheckCircle2'
+    default:
+      return 'Bell'
   }
 }
 function colorFor(t: string) {
   switch (t) {
     case 'publish_failed':
-    case 'channel_disconnected': return 'text-rose-600'
-    case 'approval_requested': return 'text-amber-600'
-    case 'token_expiring': return 'text-orange-600'
-    case 'inbox_new': return 'text-blue-600'
-    case 'publish_success': return 'text-emerald-600'
-    default: return 'text-slate-600'
+    case 'channel_disconnected':
+      return 'text-rose-600'
+    case 'approval_requested':
+      return 'text-amber-600'
+    case 'token_expiring':
+      return 'text-orange-600'
+    case 'inbox_new':
+      return 'text-blue-600'
+    case 'publish_success':
+      return 'text-emerald-600'
+    default:
+      return 'text-slate-600'
   }
 }
 function bgFor(t: string) {
   switch (t) {
     case 'publish_failed':
-    case 'channel_disconnected': return 'bg-rose-50'
-    case 'approval_requested': return 'bg-amber-50'
-    case 'token_expiring': return 'bg-orange-50'
-    case 'inbox_new': return 'bg-blue-50'
-    case 'publish_success': return 'bg-emerald-50'
-    default: return 'bg-slate-50'
+    case 'channel_disconnected':
+      return 'bg-rose-50'
+    case 'approval_requested':
+      return 'bg-amber-50'
+    case 'token_expiring':
+      return 'bg-orange-50'
+    case 'inbox_new':
+      return 'bg-blue-50'
+    case 'publish_success':
+      return 'bg-emerald-50'
+    default:
+      return 'bg-slate-50'
   }
 }
 function borderFor(t: string) {
   switch (t) {
     case 'publish_failed':
-    case 'channel_disconnected': return 'border-rose-100'
-    case 'approval_requested': return 'border-amber-100'
-    case 'token_expiring': return 'border-orange-100'
-    case 'inbox_new': return 'border-blue-100'
-    case 'publish_success': return 'border-emerald-100'
-    default: return 'border-slate-100'
+    case 'channel_disconnected':
+      return 'border-rose-100'
+    case 'approval_requested':
+      return 'border-amber-100'
+    case 'token_expiring':
+      return 'border-orange-100'
+    case 'inbox_new':
+      return 'border-blue-100'
+    case 'publish_success':
+      return 'border-emerald-100'
+    default:
+      return 'border-slate-100'
   }
 }

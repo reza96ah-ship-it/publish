@@ -27,8 +27,11 @@ import { createClient } from 'redis'
 // ── Config ───────────────────────────────────────────────────────────────
 const PORT = parseInt(process.env.REALTIME_PORT || '3003', 10)
 const EMIT_SECRET = process.env.EMIT_SECRET || 'nashrino-dev-emit-secret'
-const NEXTAUTH_SECRET = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'nashrino-dev-secret-change-in-production'
-const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*'  // tighten in production
+const NEXTAUTH_SECRET =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  'nashrino-dev-secret-change-in-production'
+const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*' // tighten in production
 const REDIS_URL = process.env.REDIS_URL || ''
 
 const isDev = process.env.NODE_ENV !== 'production'
@@ -151,10 +154,12 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
 
       const { workspaceId, event, payload } = body
       if (
-        typeof workspaceId !== 'string' || workspaceId.length === 0 ||
+        typeof workspaceId !== 'string' ||
+        workspaceId.length === 0 ||
         typeof event !== 'string' ||
         !ALLOWED_EVENTS.includes(event as (typeof ALLOWED_EVENTS)[number]) ||
-        !payload || typeof payload !== 'object'
+        !payload ||
+        typeof payload !== 'object'
       ) {
         return sendJson(res, 400, {
           ok: false,
@@ -166,7 +171,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       io.to(room).emit(event, payload)
       const subscribers = io.sockets.adapter.rooms.get(room)?.size ?? 0
       console.log(
-        `[emit] room=${room} event=${event} jobId=${payload.jobId} status=${payload.status} subs=${subscribers}`,
+        `[emit] room=${room} event=${event} jobId=${payload.jobId} status=${payload.status} subs=${subscribers}`
       )
       return sendJson(res, 200, { ok: true, event, room, subscribers })
     }
@@ -278,9 +283,12 @@ io.on('connection', (socket: Socket) => {
   })
 })
 
-io.engine.on('connection_error', (err: { context?: unknown; code?: number; message?: string; req?: IncomingMessage }) => {
-  console.error('[io] connection_error:', err.code, err.message)
-})
+io.engine.on(
+  'connection_error',
+  (err: { context?: unknown; code?: number; message?: string; req?: IncomingMessage }) => {
+    console.error('[io] connection_error:', err.code, err.message)
+  }
+)
 
 // P7.4: Redis adapter for horizontal scaling
 if (REDIS_URL) {
@@ -290,12 +298,14 @@ if (REDIS_URL) {
   Promise.all([
     pubClient.connect().catch((err) => console.error('[redis] pub connect failed:', err)),
     subClient.connect().catch((err) => console.error('[redis] sub connect failed:', err)),
-  ]).then(() => {
-    io.adapter(createAdapter(pubClient, subClient))
-    console.log('[redis] adapter enabled — realtime can scale horizontally')
-  }).catch((err) => {
-    console.error('[redis] adapter setup failed:', err)
-  })
+  ])
+    .then(() => {
+      io.adapter(createAdapter(pubClient, subClient))
+      console.log('[redis] adapter enabled — realtime can scale horizontally')
+    })
+    .catch((err) => {
+      console.error('[redis] adapter setup failed:', err)
+    })
 } else {
   console.log('[redis] disabled (REDIS_URL not set) — single-instance only')
 }
@@ -331,7 +341,9 @@ process.on('SIGINT', () => shutdown('SIGINT'))
 
 // ── Boot ─────────────────────────────────────────────────────────────────
 httpServer.listen(PORT, () => {
-  console.log(`[realtime] service on :${PORT} (cors: ${CORS_ORIGIN}, redis: ${REDIS_URL ? 'on' : 'off'})`)
+  console.log(
+    `[realtime] service on :${PORT} (cors: ${CORS_ORIGIN}, redis: ${REDIS_URL ? 'on' : 'off'})`
+  )
 })
 
 // ── Helpers ──────────────────────────────────────────────────────────────

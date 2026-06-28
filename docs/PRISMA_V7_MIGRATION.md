@@ -7,6 +7,7 @@
 ## Why not migrate now
 
 Prisma 6 → 7 is a major upgrade with breaking changes:
+
 - `PrismaClient` now requires a driver adapter (no bare `new PrismaClient()`)
 - Connection URL moves from `schema.prisma` to `prisma.config.ts`
 - Seeding behavior changes (explicit `prisma db seed` required)
@@ -16,6 +17,7 @@ Prisma 6 → 7 is a major upgrade with breaking changes:
 ## Files that use Prisma (must update during migration)
 
 ### App (src/)
+
 - `src/lib/db.ts` — `new PrismaClient()` → adapter pattern
 - `src/lib/auth.ts` — `db.user.findUnique` in `authorize()`
 - `src/lib/auth-guards.ts` — `db.workspaceMember.findFirst` in `requireWorkspaceApi()`
@@ -24,15 +26,18 @@ Prisma 6 → 7 is a major upgrade with breaking changes:
 - All 36 API routes in `src/app/api/` — import `db` from `@/lib/db`
 
 ### Worker (mini-services/publish-worker/)
+
 - `mini-services/publish-worker/lib/db.ts` — `new PrismaClient()` → adapter pattern
 - `mini-services/publish-worker/index.ts` — all DB queries
 - `mini-services/publish-worker/prisma/schema.prisma` — duplicate schema (delete after migration)
 
 ### Seed scripts
+
 - `prisma/seed.ts` — `db.workspace.create()`, `db.platform.create()`, etc.
 - `prisma/seed-auth.ts` — `db.user.create()`, `db.workspaceMember.create()`
 
 ### Config
+
 - `prisma/schema.prisma` — datasource + generator blocks change
 - `package.json` — `prisma` and `@prisma/client` version pins
 - `next.config.ts` — `serverExternalPackages` may need update

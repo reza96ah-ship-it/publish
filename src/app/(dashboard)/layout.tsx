@@ -10,18 +10,14 @@
  * changes. This gives us instant view transitions with no layout flash.
  */
 
-import { AppShell } from "@/components/shell/app-shell";
-import { WebVitals } from "@/components/providers/web-vitals";
+import { AppShell } from '@/components/shell/app-shell'
+import { WebVitals } from '@/components/providers/web-vitals'
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AppShell>
       <WebVitals />
       {children}
     </AppShell>
-  );
+  )
 }

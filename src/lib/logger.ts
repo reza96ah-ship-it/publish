@@ -54,9 +54,7 @@ export const logger = pino({
  * Checks X-Request-Id, then X-Correlation-Id, then generates a UUID.
  */
 export function getRequestId(req: Request): string {
-  const headerVal =
-    req.headers.get('x-request-id') ||
-    req.headers.get('x-correlation-id')
+  const headerVal = req.headers.get('x-request-id') || req.headers.get('x-correlation-id')
   if (headerVal) return headerVal
 
   // Generate a short ID (8 chars is enough for correlation)

@@ -5,9 +5,17 @@ describe('God-node: can() RBAC matrix', () => {
   const roles: Role[] = ['admin', 'editor', 'approver', 'viewer']
 
   const permissions: Permission[] = [
-    'content.create', 'content.edit', 'content.delete', 'content.review',
-    'content.publish', 'job.schedule', 'job.cancel', 'platform.manage',
-    'inbox.reply', 'member.invite', 'billing.manage',
+    'content.create',
+    'content.edit',
+    'content.delete',
+    'content.review',
+    'content.publish',
+    'job.schedule',
+    'job.cancel',
+    'platform.manage',
+    'inbox.reply',
+    'member.invite',
+    'billing.manage',
   ]
 
   describe('admin role', () => {

@@ -1,13 +1,13 @@
 /**
  * Telegram Bot API adapter — REAL implementation.
- * 
+ *
  * Official docs: https://core.telegram.org/bots/api
  * URL pattern: https://api.telegram.org/bot<TOKEN>/<METHOD>
- * 
+ *
  * Auth: Bot token from @BotFather.
  * Rate limits: 30 msg/sec global, 1 msg/sec per chat, 20 msg/min per group.
  * Formatting: MarkdownV2, HTML.
- * 
+ *
  * To post to a channel: add bot as admin with "Post Messages" permission,
  * then use @channelusername or channel chat_id as the target.
  */
@@ -46,7 +46,11 @@ export class TelegramAdapter implements ChannelAdapter {
       const res = await fetch(`${TG_API_BASE}${token}/getMe`)
       const data = await res.json()
       if (!data.ok) {
-        return { healthy: false, status: 'error', lastError: data.description || 'توکن نامعتبر است' }
+        return {
+          healthy: false,
+          status: 'error',
+          lastError: data.description || 'توکن نامعتبر است',
+        }
       }
       return { healthy: true, status: 'active', lastError: null }
     } catch (err) {
@@ -54,7 +58,10 @@ export class TelegramAdapter implements ChannelAdapter {
     }
   }
 
-  async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
+  async validateReadiness(
+    content: AdapterContent,
+    account: AdapterAccount
+  ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
     if (text.length > TG_TEXT_LIMIT) {

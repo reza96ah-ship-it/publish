@@ -10,7 +10,10 @@ export async function GET() {
   const workspaceId = guard.workspace.id
 
   const jobs = await db.publishJob.findMany({
-    where: { workspaceId, status: { in: ['processing', 'pending', 'scheduled', 'action', 'failed', 'success'] } },
+    where: {
+      workspaceId,
+      status: { in: ['processing', 'pending', 'scheduled', 'action', 'failed', 'success'] },
+    },
     include: {
       content: { select: { title: true, body: true, thumbnailUrl: true } },
       platform: { select: { type: true, name: true } },
@@ -28,7 +31,14 @@ export async function GET() {
     platform: j.platform.type,
     platformName: j.platform.name,
     status: statusLabel(j.status),
-    type: j.status === 'processing' ? 'live' : j.status === 'success' ? 'success' : j.status === 'action' || j.status === 'failed' ? 'action' : 'scheduled',
+    type:
+      j.status === 'processing'
+        ? 'live'
+        : j.status === 'success'
+          ? 'success'
+          : j.status === 'action' || j.status === 'failed'
+            ? 'action'
+            : 'scheduled',
     schedule: j.scheduledAt,
     processLabel: j.processLabel,
     progress: j.progress,
@@ -45,19 +55,38 @@ export async function GET() {
 
 function statusLabel(s: string) {
   switch (s) {
-    case 'processing': return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
-    case 'success': return 'ظ…ظ†طھط´ط± ط´ط¯'
-    case 'failed': return 'ظ†ط§ظ…ظˆظپظ‚'
-    case 'action': return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
-    case 'scheduled': return 'ط¯ط± طµظپ'
-    case 'pending': return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
-    default: return s
+    case 'processing':
+      return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
+    case 'success':
+      return 'ظ…ظ†طھط´ط± ط´ط¯'
+    case 'failed':
+      return 'ظ†ط§ظ…ظˆظپظ‚'
+    case 'action':
+      return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
+    case 'scheduled':
+      return 'ط¯ط± طµظپ'
+    case 'pending':
+      return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
+    default:
+      return s
   }
 }
 
 function platformColor(t: string) {
-  return t === 'instagram' ? 'text-pink-600' : t === 'telegram' ? 'text-sky-600' : t === 'linkedin' ? 'text-blue-600' : 'text-purple-600'
+  return t === 'instagram'
+    ? 'text-pink-600'
+    : t === 'telegram'
+      ? 'text-sky-600'
+      : t === 'linkedin'
+        ? 'text-blue-600'
+        : 'text-purple-600'
 }
 function platformBg(t: string) {
-  return t === 'instagram' ? 'bg-pink-100' : t === 'telegram' ? 'bg-sky-100' : t === 'linkedin' ? 'bg-blue-100' : 'bg-purple-100'
+  return t === 'instagram'
+    ? 'bg-pink-100'
+    : t === 'telegram'
+      ? 'bg-sky-100'
+      : t === 'linkedin'
+        ? 'bg-blue-100'
+        : 'bg-purple-100'
 }

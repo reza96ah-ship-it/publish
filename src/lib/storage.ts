@@ -94,9 +94,14 @@ export function validateMagicBytes(buffer: Buffer): {
   }
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   if (
-    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e &&
-    buffer[3] === 0x47 && buffer[4] === 0x0d && buffer[5] === 0x0a &&
-    buffer[6] === 0x1a && buffer[7] === 0x0a
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47 &&
+    buffer[4] === 0x0d &&
+    buffer[5] === 0x0a &&
+    buffer[6] === 0x1a &&
+    buffer[7] === 0x0a
   ) {
     const width = buffer.readUInt32BE(16)
     const height = buffer.readUInt32BE(20)
@@ -104,17 +109,19 @@ export function validateMagicBytes(buffer: Buffer): {
   }
   // WebP: RIFF .... WEBP
   if (
-    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 &&
-    buffer[3] === 0x46 && buffer[8] === 0x57 && buffer[9] === 0x45 &&
-    buffer[10] === 0x42 && buffer[11] === 0x50
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
   ) {
     return { valid: true, type: 'webp' }
   }
   // GIF: 47 49 46 38 (GIF8)
-  if (
-    buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 &&
-    buffer[3] === 0x38
-  ) {
+  if (buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38) {
     const width = buffer.readUInt16LE(6)
     const height = buffer.readUInt16LE(8)
     return { valid: true, type: 'gif', width, height }

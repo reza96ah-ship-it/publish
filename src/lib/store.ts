@@ -19,7 +19,14 @@ function defaultCursor() {
   const now = new Date()
   const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
   const gy2 = now.getMonth() > 1 ? now.getFullYear() + 1 : now.getFullYear()
-  let days = 355666 + 365 * now.getFullYear() + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + now.getDate() + g_d_m[now.getMonth()]
+  let days =
+    355666 +
+    365 * now.getFullYear() +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400) +
+    now.getDate() +
+    g_d_m[now.getMonth()]
   let jy = -1595 + 33 * Math.floor(days / 12053)
   days = days - Math.floor(days / 12053) * 12053
   jy += 4 * Math.floor(days / 1461)

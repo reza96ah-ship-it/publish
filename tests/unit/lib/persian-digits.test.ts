@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { toPersianDigits, normalizeDigits, formatNumber, formatCompact } from '../../../src/lib/jalali'
+import {
+  toPersianDigits,
+  normalizeDigits,
+  formatNumber,
+  formatCompact,
+} from '../../../src/lib/jalali'
 
 describe('God-node: toPersianDigits()', () => {
   it('converts single digit', () => {

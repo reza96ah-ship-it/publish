@@ -12,25 +12,25 @@
  * Note: api/ai routes are now protected (previously excluded for demo mode).
  */
 
-import withAuth from "next-auth/middleware";
+import withAuth from 'next-auth/middleware'
 
 export default withAuth({
   pages: {
-    signIn: "/auth/signin",
+    signIn: '/auth/signin',
   },
   callbacks: {
     authorized: ({ token }) => {
       // Dev bypass: allows the Z.ai preview iframe to load without a session.
       // In production, this branch is never taken.
-      if (process.env.NODE_ENV !== "production") {
-        return true;
+      if (process.env.NODE_ENV !== 'production') {
+        return true
       }
       // Production: require a valid NextAuth JWT token.
       // If null/missing, the user is redirected to /auth/signin.
-      return !!token;
+      return !!token
     },
   },
-});
+})
 
 export const config = {
   matcher: [
@@ -44,6 +44,6 @@ export const config = {
     //   _next/static   — Next.js static assets
     //   _next/image    — Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* — public assets
-    "/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)",
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
   ],
-};
+}

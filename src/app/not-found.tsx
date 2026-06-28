@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { Compass } from "lucide-react";
+import Link from 'next/link'
+import { Compass } from 'lucide-react'
 
 /**
  * not-found.tsx — 404 page for the App Router.
@@ -26,5 +26,5 @@ export default function NotFound() {
         </Link>
       </div>
     </div>
-  );
+  )
 }

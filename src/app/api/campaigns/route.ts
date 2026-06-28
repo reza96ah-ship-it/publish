@@ -15,24 +15,26 @@ export async function GET() {
     orderBy: { createdAt: 'asc' },
   })
 
-  return NextResponse.json(campaigns.map((c) => ({
-    id: c.id,
-    name: c.name,
-    description: c.description,
-    status: c.status,
-    healthLabel: c.healthLabel,
-    healthColor: c.healthColor,
-    owner: c.ownerName,
-    daysRemaining: c.daysRemaining,
-    pubProgress: c.pubProgress,
-    goalCompletion: c.goalCompletion,
-    platforms: [],
-    topBlocker: c.topBlocker,
-    startDate: c.startDate,
-    endDate: c.endDate,
-    goalType: c.goalType,
-    goalValue: c.goalValue,
-  })))
+  return NextResponse.json(
+    campaigns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      description: c.description,
+      status: c.status,
+      healthLabel: c.healthLabel,
+      healthColor: c.healthColor,
+      owner: c.ownerName,
+      daysRemaining: c.daysRemaining,
+      pubProgress: c.pubProgress,
+      goalCompletion: c.goalCompletion,
+      platforms: [],
+      topBlocker: c.topBlocker,
+      startDate: c.startDate,
+      endDate: c.endDate,
+      goalType: c.goalType,
+      goalValue: c.goalValue,
+    }))
+  )
 }
 
 // POST â€” create a new campaign
@@ -57,22 +59,25 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({
-    id: campaign.id,
-    name: campaign.name,
-    description: campaign.description,
-    status: campaign.status,
-    healthLabel: campaign.healthLabel,
-    healthColor: campaign.healthColor,
-    owner: campaign.ownerName,
-    daysRemaining: campaign.daysRemaining,
-    pubProgress: campaign.pubProgress,
-    goalCompletion: campaign.goalCompletion,
-    platforms: [],
-    topBlocker: campaign.topBlocker,
-    startDate: campaign.startDate,
-    endDate: campaign.endDate,
-    goalType: campaign.goalType,
-    goalValue: campaign.goalValue,
-  }, { status: 201 })
+  return NextResponse.json(
+    {
+      id: campaign.id,
+      name: campaign.name,
+      description: campaign.description,
+      status: campaign.status,
+      healthLabel: campaign.healthLabel,
+      healthColor: campaign.healthColor,
+      owner: campaign.ownerName,
+      daysRemaining: campaign.daysRemaining,
+      pubProgress: campaign.pubProgress,
+      goalCompletion: campaign.goalCompletion,
+      platforms: [],
+      topBlocker: campaign.topBlocker,
+      startDate: campaign.startDate,
+      endDate: campaign.endDate,
+      goalType: campaign.goalType,
+      goalValue: campaign.goalValue,
+    },
+    { status: 201 }
+  )
 }

@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,8 +10,10 @@
    ============================================================================ */
 
 @theme inline {
-  --font-sans: "Vazirmatn", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans:
+    'Vazirmatn', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* ---- Surfaces (solid — for CONTENT) ---- */
   --color-canvas: var(--n-canvas);
@@ -80,8 +82,8 @@
   /* ---- Chart colors (refined, muted) ---- */
   --color-chart-1: oklch(0.58 0.18 295);
   --color-chart-2: oklch(0.62 0.14 160);
-  --color-chart-3: oklch(0.70 0.15 65);
-  --color-chart-4: oklch(0.60 0.20 25);
+  --color-chart-3: oklch(0.7 0.15 65);
+  --color-chart-4: oklch(0.6 0.2 25);
   --color-chart-5: oklch(0.58 0.13 240);
 
   /* ---- Radii (refined scale) ---- */
@@ -102,12 +104,20 @@
   --radius: 0.5rem;
 
   /* ---- Shadows (Linear-tight — 6% total opacity) ---- */
-  --shadow-xs: 0 1px 2px oklch(0.20 0.02 280 / 0.04);
-  --shadow-sm: 0 1px 2px oklch(0.20 0.02 280 / 0.04), 0 2px 4px oklch(0.20 0.02 280 / 0.03);
-  --shadow-md: 0 1px 2px oklch(0.20 0.02 280 / 0.04), 0 4px 8px oklch(0.20 0.02 280 / 0.04), 0 8px 16px oklch(0.20 0.02 280 / 0.03);
-  --shadow-lg: 0 2px 4px oklch(0.20 0.02 280 / 0.05), 0 8px 16px oklch(0.20 0.02 280 / 0.05), 0 16px 32px oklch(0.20 0.02 280 / 0.04);
-  --shadow-xl: 0 4px 8px oklch(0.20 0.02 280 / 0.06), 0 12px 24px oklch(0.20 0.02 280 / 0.06), 0 24px 48px oklch(0.20 0.02 280 / 0.05);
-  --shadow-2xl: 0 8px 16px oklch(0.20 0.02 280 / 0.08), 0 24px 48px oklch(0.20 0.02 280 / 0.08), 0 48px 96px oklch(0.20 0.02 280 / 0.06);
+  --shadow-xs: 0 1px 2px oklch(0.2 0.02 280 / 0.04);
+  --shadow-sm: 0 1px 2px oklch(0.2 0.02 280 / 0.04), 0 2px 4px oklch(0.2 0.02 280 / 0.03);
+  --shadow-md:
+    0 1px 2px oklch(0.2 0.02 280 / 0.04), 0 4px 8px oklch(0.2 0.02 280 / 0.04),
+    0 8px 16px oklch(0.2 0.02 280 / 0.03);
+  --shadow-lg:
+    0 2px 4px oklch(0.2 0.02 280 / 0.05), 0 8px 16px oklch(0.2 0.02 280 / 0.05),
+    0 16px 32px oklch(0.2 0.02 280 / 0.04);
+  --shadow-xl:
+    0 4px 8px oklch(0.2 0.02 280 / 0.06), 0 12px 24px oklch(0.2 0.02 280 / 0.06),
+    0 24px 48px oklch(0.2 0.02 280 / 0.05);
+  --shadow-2xl:
+    0 8px 16px oklch(0.2 0.02 280 / 0.08), 0 24px 48px oklch(0.2 0.02 280 / 0.08),
+    0 48px 96px oklch(0.2 0.02 280 / 0.06);
 
   --shadow-panel: var(--n-shadow-card);
   --shadow-floating: var(--n-shadow-popover);
@@ -163,11 +173,11 @@
      NOTE: Slightly LOWER opacity than before so the cool canvas shows through,
      creating clear visual distinction from pure-white content cards. */
   --n-glass-nav-bg: rgb(252 252 254 / 0.68);
-  --n-glass-popover-bg: rgb(255 255 255 / 0.90);
+  --n-glass-popover-bg: rgb(255 255 255 / 0.9);
   --n-glass-sheet-bg: rgb(255 255 255 / 0.86);
   --n-glass-border: rgb(255 255 255 / 0.65);
   --n-glass-border-outer: rgb(15 23 42 / 0.06);
-  --n-glass-highlight: rgb(255 255 255 / 0.90);
+  --n-glass-highlight: rgb(255 255 255 / 0.9);
 
   /* Borders — crisp 1px hairlines */
   --n-border: oklch(0.915 0.004 280);
@@ -182,7 +192,7 @@
 
   /* Accent — single restrained violet (Linear + Stripe synthesis).
      Lower chroma = more professional. Used sparingly. */
-  --n-accent: oklch(0.52 0.20 295);
+  --n-accent: oklch(0.52 0.2 295);
   --n-accent-hover: oklch(0.47 0.21 295);
   --n-accent-soft: oklch(0.96 0.022 295);
   --n-accent-tint: oklch(0.94 0.028 295);
@@ -202,42 +212,34 @@
   --n-info-tint: oklch(0.95 0.035 240);
 
   --n-selected-bg: var(--n-accent-soft);
-  --n-focus-ring: oklch(0.52 0.20 295 / 0.24);
+  --n-focus-ring: oklch(0.52 0.2 295 / 0.24);
 
   /* ---- Linear-tight shadow scale (6% total opacity) ----
      Key: smaller blur, lower opacity. Depth without heaviness.
      inset 0 1px 0 = top highlight (subtle). */
   --n-shadow-card:
-    inset 0 1px 0 rgb(255 255 255 / 0.80),
-    0 1px 2px oklch(0.20 0.02 280 / 0.04),
-    0 2px 4px oklch(0.20 0.02 280 / 0.03);
+    inset 0 1px 0 rgb(255 255 255 / 0.8), 0 1px 2px oklch(0.2 0.02 280 / 0.04),
+    0 2px 4px oklch(0.2 0.02 280 / 0.03);
 
   --n-shadow-card-hover:
-    inset 0 1px 0 rgb(255 255 255 / 0.90),
-    0 2px 4px oklch(0.20 0.02 280 / 0.05),
-    0 4px 8px oklch(0.20 0.02 280 / 0.04),
-    0 8px 16px oklch(0.20 0.02 280 / 0.03);
+    inset 0 1px 0 rgb(255 255 255 / 0.9), 0 2px 4px oklch(0.2 0.02 280 / 0.05),
+    0 4px 8px oklch(0.2 0.02 280 / 0.04), 0 8px 16px oklch(0.2 0.02 280 / 0.03);
 
-  --n-shadow-control:
-    inset 0 1px 0 rgb(255 255 255 / 0.70),
-    0 1px 1px oklch(0.20 0.02 280 / 0.03);
+  --n-shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.7), 0 1px 1px oklch(0.2 0.02 280 / 0.03);
 
   --n-shadow-popover:
-    inset 0 1px 0 rgb(255 255 255 / 0.90),
-    0 4px 8px oklch(0.20 0.02 280 / 0.06),
-    0 12px 24px oklch(0.20 0.02 280 / 0.06),
-    0 24px 48px oklch(0.20 0.02 280 / 0.04);
+    inset 0 1px 0 rgb(255 255 255 / 0.9), 0 4px 8px oklch(0.2 0.02 280 / 0.06),
+    0 12px 24px oklch(0.2 0.02 280 / 0.06), 0 24px 48px oklch(0.2 0.02 280 / 0.04);
 
   --n-shadow-glass-nav:
-    inset 0 1px 0 var(--n-glass-highlight),
-    inset 0 0 0 0.5px var(--n-glass-border),
-    0 1px 2px oklch(0.20 0.02 280 / 0.03);
+    inset 0 1px 0 var(--n-glass-highlight), inset 0 0 0 0.5px var(--n-glass-border),
+    0 1px 2px oklch(0.2 0.02 280 / 0.03);
 }
 
 .dark {
   color-scheme: dark;
   --n-canvas: oklch(0.145 0.008 280);
-  --n-canvas-elevated: oklch(0.185 0.010 280);
+  --n-canvas-elevated: oklch(0.185 0.01 280);
   --n-surface: oklch(0.19 0.011 280);
   --n-surface-hover: oklch(0.23 0.013 280);
   --n-surface-subtle: oklch(0.21 0.011 280);
@@ -252,19 +254,19 @@
 
   --n-border: oklch(0.27 0.011 280);
   --n-border-strong: oklch(0.33 0.013 280);
-  --n-border-subtle: oklch(0.24 0.010 280);
+  --n-border-subtle: oklch(0.24 0.01 280);
 
   --n-text-primary: oklch(0.96 0.004 280);
-  --n-text-secondary: oklch(0.76 0.010 280);
-  --n-text-tertiary: oklch(0.62 0.010 280);
-  --n-text-disabled: oklch(0.48 0.010 280);
+  --n-text-secondary: oklch(0.76 0.01 280);
+  --n-text-tertiary: oklch(0.62 0.01 280);
+  --n-text-disabled: oklch(0.48 0.01 280);
 
   --n-accent: oklch(0.68 0.18 295);
   --n-accent-hover: oklch(0.73 0.18 295);
   --n-accent-soft: oklch(0.28 0.08 295);
   --n-accent-tint: oklch(0.24 0.06 295);
 
-  --n-success: oklch(0.70 0.14 155);
+  --n-success: oklch(0.7 0.14 155);
   --n-success-soft: oklch(0.26 0.05 155);
   --n-success-tint: oklch(0.22 0.06 155);
   --n-warning: oklch(0.76 0.14 65);
@@ -273,37 +275,38 @@
   --n-danger: oklch(0.68 0.18 25);
   --n-danger-soft: oklch(0.28 0.07 25);
   --n-danger-tint: oklch(0.24 0.08 25);
-  --n-info: oklch(0.70 0.12 240);
+  --n-info: oklch(0.7 0.12 240);
   --n-info-soft: oklch(0.26 0.05 240);
   --n-info-tint: oklch(0.22 0.06 240);
 
   --n-shadow-card:
-    inset 0 1px 0 rgb(255 255 255 / 0.04),
-    0 1px 2px oklch(0 0 0 / 0.20),
+    inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px oklch(0 0 0 / 0.2),
     0 2px 4px oklch(0 0 0 / 0.16);
 
   --n-shadow-card-hover:
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
-    0 2px 4px oklch(0 0 0 / 0.24),
-    0 4px 8px oklch(0 0 0 / 0.20),
-    0 8px 16px oklch(0 0 0 / 0.16);
+    inset 0 1px 0 rgb(255 255 255 / 0.06), 0 2px 4px oklch(0 0 0 / 0.24),
+    0 4px 8px oklch(0 0 0 / 0.2), 0 8px 16px oklch(0 0 0 / 0.16);
 
-  --n-shadow-control:
-    inset 0 1px 0 rgb(255 255 255 / 0.04),
-    0 1px 1px oklch(0 0 0 / 0.20);
+  --n-shadow-control: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 1px oklch(0 0 0 / 0.2);
 
   --n-shadow-popover:
-    inset 0 1px 0 rgb(255 255 255 / 0.06),
-    0 4px 8px oklch(0 0 0 / 0.32),
-    0 12px 24px oklch(0 0 0 / 0.28),
-    0 24px 48px oklch(0 0 0 / 0.20);
+    inset 0 1px 0 rgb(255 255 255 / 0.06), 0 4px 8px oklch(0 0 0 / 0.32),
+    0 12px 24px oklch(0 0 0 / 0.28), 0 24px 48px oklch(0 0 0 / 0.2);
 }
 
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
-  .thin-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
   .thin-scrollbar::-webkit-scrollbar-thumb {
     background: oklch(0.78 0.008 280 / 0.45);
     border-radius: 999px;
@@ -311,15 +314,19 @@
     background-clip: padding-box;
   }
   .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.68 0.010 280 / 0.65);
+    background: oklch(0.68 0.01 280 / 0.65);
     background-clip: padding-box;
   }
-  .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
   /* Numeric tabular alignment — Stripe-standard for all data */
   .num-tabular {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1, "lnum" 1;
+    font-feature-settings:
+      'tnum' 1,
+      'lnum' 1;
     letter-spacing: -0.01em;
   }
 
@@ -402,7 +409,7 @@
     border-radius: var(--radius-sm);
   }
   .n-skeleton::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
@@ -415,7 +422,9 @@
     animation: n-shimmer 1.6s var(--ease-standard) infinite;
   }
   @keyframes n-shimmer {
-    100% { transform: translateX(100%); }
+    100% {
+      transform: translateX(100%);
+    }
   }
   /* Dark mode shimmer */
   .dark .n-skeleton::after {
@@ -435,7 +444,7 @@
     border-radius: var(--radius-card);
   }
   .n-gradient-border::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
@@ -448,7 +457,9 @@
       var(--n-accent) 75%,
       transparent 100%
     );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     opacity: 0;
@@ -460,12 +471,14 @@
     animation: n-rotate-gradient 3s linear infinite;
   }
   @property --gradient-angle {
-    syntax: "<angle>";
+    syntax: '<angle>';
     inherits: false;
     initial-value: 0deg;
   }
   @keyframes n-rotate-gradient {
-    to { --gradient-angle: 360deg; }
+    to {
+      --gradient-angle: 360deg;
+    }
   }
 
   /* ---- Focus ring utility — consistent keyboard focus visibility ---- */
@@ -474,12 +487,14 @@
     transition: box-shadow var(--motion-quick) var(--ease-standard);
   }
   .n-focus-ring:focus-visible {
-    box-shadow: 0 0 0 2px var(--n-surface), 0 0 0 4px var(--n-accent);
+    box-shadow:
+      0 0 0 2px var(--n-surface),
+      0 0 0 4px var(--n-accent);
   }
 
   /* ---- Tab active underline glow (subtle accent halo) ---- */
   .n-tab-active-glow {
-    box-shadow: 0 1px 8px oklch(0.52 0.20 295 / 0.25);
+    box-shadow: 0 1px 8px oklch(0.52 0.2 295 / 0.25);
   }
 }
 
@@ -530,7 +545,7 @@
   .n-card-compact:hover {
     background: var(--n-surface-hover);
     border-color: var(--n-border);
-    box-shadow: 0 1px 2px oklch(0.20 0.02 280 / 0.05);
+    box-shadow: 0 1px 2px oklch(0.2 0.02 280 / 0.05);
   }
 
   /* Raised card — for emphasized content (KPI hero) */
@@ -558,7 +573,7 @@
   }
   /* Specular sheen — top-edge highlight */
   .n-glass-nav::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
@@ -566,10 +581,12 @@
     background: linear-gradient(
       180deg,
       rgb(255 255 255 / 0.45) 0%,
-      rgb(255 255 255 / 0.10) 25%,
+      rgb(255 255 255 / 0.1) 25%,
       transparent 60%
     );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
@@ -588,7 +605,7 @@
     backdrop-filter: blur(32px) saturate(1.8);
   }
   .n-glass-popover::before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
@@ -599,7 +616,9 @@
       rgb(255 255 255 / 0.12) 30%,
       transparent 65%
     );
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
@@ -612,7 +631,9 @@
     background: rgb(255 255 255 / 0.55);
     border: 0.5px solid var(--n-glass-border);
     border-radius: var(--radius-control);
-    box-shadow: inset 0 1px 0 var(--n-glass-highlight), 0 1px 1px oklch(0.20 0.02 280 / 0.03);
+    box-shadow:
+      inset 0 1px 0 var(--n-glass-highlight),
+      0 1px 1px oklch(0.2 0.02 280 / 0.03);
     -webkit-backdrop-filter: blur(16px) saturate(1.6);
     backdrop-filter: blur(16px) saturate(1.6);
     transition:
@@ -620,10 +641,14 @@
       border-color var(--motion-quick) var(--ease-standard),
       box-shadow var(--motion-fast) var(--ease-standard);
   }
-  .n-glass-control:hover { background: rgb(255 255 255 / 0.72); }
+  .n-glass-control:hover {
+    background: rgb(255 255 255 / 0.72);
+  }
   .n-glass-control:focus-within {
     border-color: var(--n-accent);
-    box-shadow: 0 0 0 3px var(--n-focus-ring), inset 0 1px 0 var(--n-glass-highlight);
+    box-shadow:
+      0 0 0 3px var(--n-focus-ring),
+      inset 0 1px 0 var(--n-glass-highlight);
   }
 
   /* ===== Solid control — for content forms (inputs in views) ===== */
@@ -638,10 +663,14 @@
       box-shadow var(--motion-fast) var(--ease-standard),
       background var(--motion-quick) var(--ease-standard);
   }
-  .n-control:hover { border-color: var(--n-border-strong); }
+  .n-control:hover {
+    border-color: var(--n-border-strong);
+  }
   .n-control:focus-within {
     border-color: var(--n-accent);
-    box-shadow: 0 0 0 3px var(--n-focus-ring), var(--n-shadow-control);
+    box-shadow:
+      0 0 0 3px var(--n-focus-ring),
+      var(--n-shadow-control);
   }
 
   /* ===== Ambient — subtle neutral tint =====
@@ -650,20 +679,30 @@
   .ambient-mesh {
     background:
       radial-gradient(90rem 60rem at 92% -6%, oklch(0.93 0.025 295 / 0.45), transparent 55%),
-      radial-gradient(80rem 54rem at 2% 106%, oklch(0.94 0.020 60 / 0.30), transparent 58%),
+      radial-gradient(80rem 54rem at 2% 106%, oklch(0.94 0.02 60 / 0.3), transparent 58%),
       var(--n-canvas);
   }
 
   /* ===== Trend indicator — up/down with semantic color ===== */
-  .trend-up { color: var(--n-success); }
-  .trend-down { color: var(--n-danger); }
+  .trend-up {
+    color: var(--n-success);
+  }
+  .trend-down {
+    color: var(--n-danger);
+  }
 }
 
 /* Fallback for browsers without backdrop-filter */
 @supports not ((backdrop-filter: blur(1px))) {
-  .n-glass-nav { background: rgb(255 255 255 / 0.98); }
-  .n-glass-popover { background: rgb(255 255 255 / 0.99); }
-  .n-glass-control { background: rgb(255 255 255 / 0.98); }
+  .n-glass-nav {
+    background: rgb(255 255 255 / 0.98);
+  }
+  .n-glass-popover {
+    background: rgb(255 255 255 / 0.99);
+  }
+  .n-glass-control {
+    background: rgb(255 255 255 / 0.98);
+  }
 }
 
 /* Respect reduced transparency preference (Apple HIG accessibility) */
@@ -678,9 +717,12 @@
 }
 
 @layer base {
-  * { @apply border-border outline-ring/50; }
+  * {
+    @apply border-border outline-ring/50;
+  }
 
-  [lang="fa"], [lang="ar"] {
+  [lang='fa'],
+  [lang='ar'] {
     letter-spacing: 0; /* Never letter-space Persian — breaks connected glyphs */
   }
 
@@ -688,10 +730,15 @@
      Persian text needs specific font-feature-settings for correct rendering.
      Vazirmatn supports: ss01 (alt 6/9), ss02 (alt digits), cv01-cv05 (glyph variants).
      We enable ss02 for tabular contexts (via .num-tabular) and keep default for prose. */
-  [lang="fa"], [lang="ar"], [dir="rtl"] {
+  [lang='fa'],
+  [lang='ar'],
+  [dir='rtl'] {
     /* Ensure ZWNJ (نیم‌فاصله, U+200C) renders correctly — no special CSS needed,
        but we set font-variant-eastern-asian for proper spacing. */
-    font-feature-settings: "liga" 1, "calt" 1, "ss02" 1;
+    font-feature-settings:
+      'liga' 1,
+      'calt' 1,
+      'ss02' 1;
     /* Persian numbers should never break to a new line alone */
     word-break: normal;
     overflow-wrap: break-word;
@@ -702,20 +749,29 @@
   /* Persian digit kerning — slightly tighter for headers/KPIs */
   .num-tabular {
     font-variant-numeric: tabular-nums lining-nums;
-    font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1;
+    font-feature-settings:
+      'tnum' 1,
+      'lnum' 1,
+      'ss01' 1;
   }
 
   /* Persian large display numbers (KPI hero) — even tighter */
   .num-display {
     font-variant-numeric: tabular-nums lining-nums slashed-zero;
-    font-feature-settings: "tnum" 1, "lnum" 1, "ss01" 1, "ss02" 1;
+    font-feature-settings:
+      'tnum' 1,
+      'lnum' 1,
+      'ss01' 1,
+      'ss02' 1;
     letter-spacing: -0.015em;
   }
 
   .latin-number {
     letter-spacing: -0.012em;
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1, "lnum" 1;
+    font-feature-settings:
+      'tnum' 1,
+      'lnum' 1;
   }
 
   body {
@@ -723,7 +779,10 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     line-height: 1.6; /* Persian-friendly (Vazirmatn needs more breathing room) */
-    font-feature-settings: "liga" 1, "calt" 1, "ss02" 1;
+    font-feature-settings:
+      'liga' 1,
+      'calt' 1,
+      'ss02' 1;
   }
 
   body {
@@ -755,7 +814,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       scroll-behavior: auto !important;
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
@@ -763,100 +824,100 @@
     }
   }
 
-/* ============================================================================
+  /* ============================================================================
    TIPTAP EDITOR — Persian RTL rich-text editor styles
    ============================================================================ */
-.ProseMirror {
-  outline: none;
-  min-height: 200px;
-}
+  .ProseMirror {
+    outline: none;
+    min-height: 200px;
+  }
 
-.ProseMirror p {
-  margin: 0 0 0.5em 0;
-  line-height: 1.7;
-}
+  .ProseMirror p {
+    margin: 0 0 0.5em 0;
+    line-height: 1.7;
+  }
 
-.ProseMirror p:last-child {
-  margin-bottom: 0;
-}
+  .ProseMirror p:last-child {
+    margin-bottom: 0;
+  }
 
-.ProseMirror h2 {
-  font-size: 1.1em;
-  font-weight: 700;
-  margin: 0.8em 0 0.4em;
-  color: var(--n-text-primary);
-}
+  .ProseMirror h2 {
+    font-size: 1.1em;
+    font-weight: 700;
+    margin: 0.8em 0 0.4em;
+    color: var(--n-text-primary);
+  }
 
-.ProseMirror h3 {
-  font-size: 1em;
-  font-weight: 700;
-  margin: 0.6em 0 0.3em;
-  color: var(--n-text-primary);
-}
+  .ProseMirror h3 {
+    font-size: 1em;
+    font-weight: 700;
+    margin: 0.6em 0 0.3em;
+    color: var(--n-text-primary);
+  }
 
-.ProseMirror ul,
-.ProseMirror ol {
-  padding-right: 1.5em;
-  margin: 0.3em 0;
-}
+  .ProseMirror ul,
+  .ProseMirror ol {
+    padding-right: 1.5em;
+    margin: 0.3em 0;
+  }
 
-.ProseMirror ul {
-  list-style-type: disc;
-}
+  .ProseMirror ul {
+    list-style-type: disc;
+  }
 
-.ProseMirror ol {
-  list-style-type: decimal;
-}
+  .ProseMirror ol {
+    list-style-type: decimal;
+  }
 
-.ProseMirror li {
-  margin: 0.15em 0;
-  line-height: 1.7;
-}
+  .ProseMirror li {
+    margin: 0.15em 0;
+    line-height: 1.7;
+  }
 
-.ProseMirror blockquote {
-  border-right: 3px solid var(--n-accent);
-  padding-right: 0.8em;
-  margin: 0.5em 0;
-  color: var(--n-text-secondary);
-  font-style: italic;
-}
+  .ProseMirror blockquote {
+    border-right: 3px solid var(--n-accent);
+    padding-right: 0.8em;
+    margin: 0.5em 0;
+    color: var(--n-text-secondary);
+    font-style: italic;
+  }
 
-.ProseMirror code {
-  background: var(--n-surface-hover);
-  border-radius: 4px;
-  padding: 0.1em 0.3em;
-  font-size: 0.9em;
-  font-family: var(--font-mono);
-  direction: ltr;
-  display: inline-block;
-}
+  .ProseMirror code {
+    background: var(--n-surface-hover);
+    border-radius: 4px;
+    padding: 0.1em 0.3em;
+    font-size: 0.9em;
+    font-family: var(--font-mono);
+    direction: ltr;
+    display: inline-block;
+  }
 
-.ProseMirror a {
-  color: var(--n-accent);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
+  .ProseMirror a {
+    color: var(--n-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
 
-.ProseMirror strong {
-  font-weight: 700;
-  color: var(--n-text-primary);
-}
+  .ProseMirror strong {
+    font-weight: 700;
+    color: var(--n-text-primary);
+  }
 
-.ProseMirror em {
-  font-style: italic;
-}
+  .ProseMirror em {
+    font-style: italic;
+  }
 
-/* Placeholder (empty editor) */
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: right;
-  color: var(--n-text-tertiary);
-  pointer-events: none;
-  height: 0;
-}
+  /* Placeholder (empty editor) */
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: right;
+    color: var(--n-text-tertiary);
+    pointer-events: none;
+    height: 0;
+  }
 
-/* Selection color */
-.ProseMirror ::selection {
-  background: var(--n-accent-soft);
-}
+  /* Selection color */
+  .ProseMirror ::selection {
+    background: var(--n-accent-soft);
+  }
 }

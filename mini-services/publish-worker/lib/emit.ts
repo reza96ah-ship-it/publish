@@ -29,10 +29,10 @@ export async function emitJobStatus(evt: JobStatusEvent): Promise<void> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Emit-Secret': EMIT_SECRET,  // P7.3: authenticate worker → realtime
+        'X-Emit-Secret': EMIT_SECRET, // P7.3: authenticate worker → realtime
       },
       body: JSON.stringify(evt),
-      signal: AbortSignal.timeout(5_000),  // don't block worker if realtime is slow
+      signal: AbortSignal.timeout(5_000), // don't block worker if realtime is slow
     })
     if (!res.ok && res.status === 401) {
       console.error('[emit] 401 — EMIT_SECRET mismatch between worker and realtime')

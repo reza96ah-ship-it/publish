@@ -125,7 +125,6 @@ describe('God-node: api fetch wrapper', () => {
       const call = mockFetch.mock.calls[0]
       expect(call[1].headers['Content-Type']).toBe('application/json')
     })
-
   })
 
   describe('error handling', () => {

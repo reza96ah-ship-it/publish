@@ -1,16 +1,16 @@
-"use client";
+'use client'
 
 /**
  * DashboardView — the default landing view at /
  * Shows: Operational Summary, Publishing Pulse, Action Center, Executive Metrics, Campaigns, Platforms
  */
 
-import { OperationalSummary } from "@/components/dashboard/operational-summary";
-import { ExecutiveMetrics } from "@/components/dashboard/executive-metrics";
-import { PublishingPulse } from "@/components/dashboard/publishing-pulse";
-import { CampaignsPanel } from "@/components/dashboard/campaigns-panel";
-import { PlatformsPanel } from "@/components/dashboard/platforms-panel";
-import { ActionCenter } from "@/components/dashboard/action-center";
+import { OperationalSummary } from '@/components/dashboard/operational-summary'
+import { ExecutiveMetrics } from '@/components/dashboard/executive-metrics'
+import { PublishingPulse } from '@/components/dashboard/publishing-pulse'
+import { CampaignsPanel } from '@/components/dashboard/campaigns-panel'
+import { PlatformsPanel } from '@/components/dashboard/platforms-panel'
+import { ActionCenter } from '@/components/dashboard/action-center'
 
 export function DashboardView() {
   return (
@@ -58,5 +58,5 @@ export function DashboardView() {
         </div>
       </div>
     </div>
-  );
+  )
 }

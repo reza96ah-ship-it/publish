@@ -1,7 +1,12 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireWorkspaceApi } from '@/lib/auth-guards'
-import { validateBody, validateParams, memberInviteSchema, cursorPaginationSchema } from '@/lib/validations'
+import {
+  validateBody,
+  validateParams,
+  memberInviteSchema,
+  cursorPaginationSchema,
+} from '@/lib/validations'
 import { randomUUID } from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -57,7 +62,11 @@ export async function POST(req: NextRequest) {
 
   // Check duplicate
   const existing = await db.workspaceMember.findFirst({ where: { workspaceId, email } })
-  if (existing) return NextResponse.json({ error: 'ط§غŒظ† ط¹ط¶ظˆ ظ‚ط¨ظ„ط§ظ‹ ط§ط¶ط§ظپظ‡ ط´ط¯ظ‡ ط§ط³طھ' }, { status: 409 })
+  if (existing)
+    return NextResponse.json(
+      { error: 'ط§غŒظ† ط¹ط¶ظˆ ظ‚ط¨ظ„ط§ظ‹ ط§ط¶ط§ظپظ‡ ط´ط¯ظ‡ ط§ط³طھ' },
+      { status: 409 }
+    )
 
   const member = await db.workspaceMember.create({
     data: {
@@ -69,24 +78,32 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({
-    ok: true,
-    member: {
-      id: member.id,
-      name: member.name,
-      email: member.email,
-      role: member.role,
-      roleLabel: roleLabel(member.role),
+  return NextResponse.json(
+    {
+      ok: true,
+      member: {
+        id: member.id,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        roleLabel: roleLabel(member.role),
+      },
     },
-  }, { status: 201 })
+    { status: 201 }
+  )
 }
 
 function roleLabel(r: string) {
   switch (r) {
-    case 'admin': return 'ظ…ط¯غŒط±'
-    case 'editor': return 'ظˆغŒط±ط§ط³طھط§ط±'
-    case 'approver': return 'طھط£غŒغŒط¯ع©ظ†ظ†ط¯ظ‡'
-    case 'viewer': return 'ط¨غŒظ†ظ†ط¯ظ‡'
-    default: return r
+    case 'admin':
+      return 'ظ…ط¯غŒط±'
+    case 'editor':
+      return 'ظˆغŒط±ط§ط³طھط§ط±'
+    case 'approver':
+      return 'طھط£غŒغŒط¯ع©ظ†ظ†ط¯ظ‡'
+    case 'viewer':
+      return 'ط¨غŒظ†ظ†ط¯ظ‡'
+    default:
+      return r
   }
 }

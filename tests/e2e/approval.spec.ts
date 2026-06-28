@@ -70,7 +70,9 @@ test.describe('Approval flow', () => {
     // Look for tab buttons
     const monthTab = page.locator('button:has-text("ماه"), [role="tab"]:has-text("ماه")').first()
     const weekTab = page.locator('button:has-text("هفته"), [role="tab"]:has-text("هفته")').first()
-    const agendaTab = page.locator('button:has-text("برنامه"), [role="tab"]:has-text("برنامه")').first()
+    const agendaTab = page
+      .locator('button:has-text("برنامه"), [role="tab"]:has-text("برنامه")')
+      .first()
 
     if (await monthTab.isVisible({ timeout: 3000 }).catch(() => false)) {
       // Click week tab

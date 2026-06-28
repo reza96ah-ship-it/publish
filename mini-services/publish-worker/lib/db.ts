@@ -1,7 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 
-const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL ?? ''
+const url = process.env.DATABASE_URL ?? ''
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required. For migrations use DIRECT_DATABASE_URL.')
+}
 const adapter = new PrismaPg({ connectionString: url })
 
 export const db = new PrismaClient({

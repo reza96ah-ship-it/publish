@@ -7,19 +7,19 @@
 
 ## 10-Phase Roadmap to 9/10 Production Readiness
 
-| Phase | Focus | Effort | Status | Acceptance |
-|---|---|---:|---|---|
-| **1** | P0 Safety Blockers | 1 week | Done - merged 2026-06-27 | [§6.1](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-1--p0-safety-blockers-week-1) |
-| **2** | Observability + Health | 3 days | Done - merged 2026-06-27 | [§6.2](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-2--observability--health-week-2) |
-| **3** | Docker + CI/CD | 4 days | Done - merged 2026-06-27 | [§6.3](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-3--docker--cicd-week-3) |
-| **4** | PostgreSQL Migration | 4 days | In progress | [§6.4](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-4--postgresql-migration-week-4) |
-| **5** | Token Encryption + RBAC + AI Safety | 3 days | Pending | [§6.5](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-5--token-encryption--rbac--ai-safety-week-5) |
-| **6** | Worker Hardening | 4 days | Pending | [§6.6](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-6--worker-hardening-week-6) |
-| **7** | Realtime Auth + Redis Adapter | 3 days | Pending | [§6.7](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-7--realtime-auth--redis-adapter-week-7) |
-| **8** | API Quality: Pagination + Rate Limiting | 4 days | Pending | [§6.8](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-8--api-quality-pagination--rate-limiting--zod-week-8) |
-| **9** | Media: S3 + Validation + Quotas | 4 days | Pending | [§6.9](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-9--media-s3--validation--quotas-week-9) |
-| **10** | Testing + Performance Budgets | 5 days | Pending | [§6.10](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-10--testing--performance-budgets-week-10) |
-| **Total** | | **~10 weeks** | | |
+| Phase     | Focus                                   |        Effort | Status                   | Acceptance                                                                                                     |
+| --------- | --------------------------------------- | ------------: | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| **1**     | P0 Safety Blockers                      |        1 week | Done - merged 2026-06-27 | [§6.1](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-1--p0-safety-blockers-week-1)                         |
+| **2**     | Observability + Health                  |        3 days | Done - merged 2026-06-27 | [§6.2](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-2--observability--health-week-2)                      |
+| **3**     | Docker + CI/CD                          |        4 days | Done - merged 2026-06-27 | [§6.3](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-3--docker--cicd-week-3)                               |
+| **4**     | PostgreSQL Migration                    |        4 days | In progress              | [§6.4](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-4--postgresql-migration-week-4)                       |
+| **5**     | Token Encryption + RBAC + AI Safety     |        3 days | Pending                  | [§6.5](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-5--token-encryption--rbac--ai-safety-week-5)          |
+| **6**     | Worker Hardening                        |        4 days | Pending                  | [§6.6](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-6--worker-hardening-week-6)                           |
+| **7**     | Realtime Auth + Redis Adapter           |        3 days | Pending                  | [§6.7](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-7--realtime-auth--redis-adapter-week-7)               |
+| **8**     | API Quality: Pagination + Rate Limiting |        4 days | Pending                  | [§6.8](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-8--api-quality-pagination--rate-limiting--zod-week-8) |
+| **9**     | Media: S3 + Validation + Quotas         |        4 days | Pending                  | [§6.9](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-9--media-s3--validation--quotas-week-9)               |
+| **10**    | Testing + Performance Budgets           |        5 days | Pending                  | [§6.10](../docs/PRODUCTION_READINESS_MASTER_PLAN.md#phase-10--testing--performance-budgets-week-10)            |
+| **Total** |                                         | **~10 weeks** |                          |                                                                                                                |
 
 ## Status Legend
 

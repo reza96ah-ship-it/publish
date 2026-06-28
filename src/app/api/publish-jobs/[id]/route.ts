@@ -8,9 +8,7 @@ import { enqueuePublishJob } from '@/lib/queue'
 export const dynamic = 'force-dynamic'
 
 type PatchBody =
-  | { action: 'retry' }
-  | { action: 'discard' }
-  | { action: 'reschedule'; scheduledAt: string }
+  { action: 'retry' } | { action: 'discard' } | { action: 'reschedule'; scheduledAt: string }
 
 /**
  * PATCH /api/publish-jobs/[id]
@@ -18,10 +16,7 @@ type PatchBody =
  * - discard: set status=failed permanently, clear scheduledAt
  * - reschedule: change scheduledAt to a new future timestamp (used by calendar drag-drop)
  */
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireWorkspaceApi()
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
@@ -131,6 +126,6 @@ export async function PATCH(
 
   return NextResponse.json(
     { error: 'action نامعتبر است (retry، discard یا reschedule)' },
-    { status: 400 },
+    { status: 400 }
   )
 }

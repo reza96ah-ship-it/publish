@@ -44,6 +44,7 @@ Beyond these blockers: no Docker, no CI/CD, no health endpoints, no structured l
 ### The recommended path forward
 
 **Do NOT rewrite from scratch.** The audit confirms the foundation is sound:
+
 - ✅ scrypt password hashing (OWASP-aligned)
 - ✅ Account lockout (5 attempts / 15-min)
 - ✅ Worker has circuit breaker + exponential backoff with jitter + visibility timeout
@@ -57,19 +58,19 @@ The strategy is **harden, don't rebuild**: fix the 5 blockers first (Phase 1, ~1
 
 ### Estimated total effort
 
-| Phase | Focus | Effort | Outcome |
-|---|---|---|---|
-| 1 | P0 safety blockers | 1 week | Routes protected, no demo mode, build errors fixed, CSP hardened |
-| 2 | Observability + health | 3 days | `/api/health`, pino logs, request IDs, Sentry |
-| 3 | Docker + CI/CD | 4 days | Dockerfile, compose, GitHub Actions, env.example |
-| 4 | PostgreSQL migration | 4 days | SQLite → Postgres, Prisma migrations, connection pooling |
-| 5 | Token encryption + RBAC | 3 days | AES-256-GCM tokens, `requireWorkspaceApi()` on all routes, `can()` enforcement |
-| 6 | Worker hardening | 4 days | Graceful shutdown, fetch timeouts, BullMQ migration, audit logs |
-| 7 | Realtime auth + Redis adapter | 3 days | JWT handshake, room auth, Redis adapter for scaling |
-| 8 | API quality: pagination + rate limiting | 4 days | Cursor pagination, Redis-backed rate limiter, Zod on all 36 routes |
-| 9 | Media: S3 + validation + quotas | 4 days | Presigned URL uploads, magic-byte validation, ClamAV, per-workspace quota |
-| 10 | Testing + performance budgets | 5 days | API tests, adapter tests, Playwright, Lighthouse CI, bundle budgets |
-| **Total** | | **~10 weeks** | **9/10 production readiness** |
+| Phase     | Focus                                   | Effort        | Outcome                                                                        |
+| --------- | --------------------------------------- | ------------- | ------------------------------------------------------------------------------ |
+| 1         | P0 safety blockers                      | 1 week        | Routes protected, no demo mode, build errors fixed, CSP hardened               |
+| 2         | Observability + health                  | 3 days        | `/api/health`, pino logs, request IDs, Sentry                                  |
+| 3         | Docker + CI/CD                          | 4 days        | Dockerfile, compose, GitHub Actions, env.example                               |
+| 4         | PostgreSQL migration                    | 4 days        | SQLite → Postgres, Prisma migrations, connection pooling                       |
+| 5         | Token encryption + RBAC                 | 3 days        | AES-256-GCM tokens, `requireWorkspaceApi()` on all routes, `can()` enforcement |
+| 6         | Worker hardening                        | 4 days        | Graceful shutdown, fetch timeouts, BullMQ migration, audit logs                |
+| 7         | Realtime auth + Redis adapter           | 3 days        | JWT handshake, room auth, Redis adapter for scaling                            |
+| 8         | API quality: pagination + rate limiting | 4 days        | Cursor pagination, Redis-backed rate limiter, Zod on all 36 routes             |
+| 9         | Media: S3 + validation + quotas         | 4 days        | Presigned URL uploads, magic-byte validation, ClamAV, per-workspace quota      |
+| 10        | Testing + performance budgets           | 5 days        | API tests, adapter tests, Playwright, Lighthouse CI, bundle budgets            |
+| **Total** |                                         | **~10 weeks** | **9/10 production readiness**                                                  |
 
 ---
 
@@ -120,17 +121,18 @@ The strategy is **harden, don't rebuild**: fix the 5 blockers first (Phase 1, ~1
 
 ### API routes inventory (36 routes)
 
-| Metric | Current | Target |
-|---|---|---|
-| Zod-validated | 16/36 (44%) | 36/36 (100%) |
+| Metric                    | Current                                       | Target                                   |
+| ------------------------- | --------------------------------------------- | ---------------------------------------- |
+| Zod-validated             | 16/36 (44%)                                   | 36/36 (100%)                             |
 | Workspace-scoped (secure) | 0/36 (0%) ← uses demo-mode `getWorkspaceId()` | 31/31 (100%) via `requireWorkspaceApi()` |
-| Paginated | 8/36 (mostly `take:50`, no `skip`) | All list endpoints cursor-paginated |
-| Rate-limited | 1/36 (only `/api/ai/caption`) | Auth, AI, publish, upload, webhook |
-| RBAC-enforced | 0/36 (`can()` helper unused) | All mutating routes |
+| Paginated                 | 8/36 (mostly `take:50`, no `skip`)            | All list endpoints cursor-paginated      |
+| Rate-limited              | 1/36 (only `/api/ai/caption`)                 | Auth, AI, publish, upload, webhook       |
+| RBAC-enforced             | 0/36 (`can()` helper unused)                  | All mutating routes                      |
 
 ### Prisma models (17 models, 36 indexes)
 
 Key gaps:
+
 - `Platform.tokenSecret` — plaintext (CRITICAL)
 - `PublishJob.idempotencyKey` — `@@index` not `@@unique` (dedup not enforced)
 - `AuditLog.metadata` — `String @default("{}")` not `Json`
@@ -142,64 +144,64 @@ Key gaps:
 
 ## 3. Current Scorecard
 
-| Category | Score | One-line rationale |
-|---|---|---|
-| **Backend architecture** | **4/10** | Solid adapters + worker; auth bypassed, no pagination, no env.example |
-| **Database design** | **6/10** | Coherent schema, 36 indexes; tokens unencrypted; SQLite limits scale; no migrations |
-| **API quality** | **4/10** | 16/36 Zod-validated; 1/36 rate-limited; 0/36 secure-guarded; hardcoded `authorName` |
-| **Auth/security** | **2/10** | Middleware disabled; demo-mode fallback; CSP `frame-ancestors *`; plaintext tokens |
-| **Worker reliability** | **6/10** | Retry/backoff/circuit-breaker present; NO graceful shutdown; NO fetch timeouts |
-| **Realtime reliability** | **5/10** | Auth-less socket.io; CORS `*`; no Redis adapter; good graceful shutdown |
-| **Performance** | **5/10** | RSC + Zustand; no dynamic imports for Tiptap/Recharts; 6 N+1 in dashboard; no pagination |
-| **Observability** | **2/10** | No structured logs, no metrics, no tracing, no `/api/health`, no error tracking |
-| **CI/CD** | **1/10** | No `.github/workflows`; `ignoreBuildErrors: true`; ESLint rules all disabled |
-| **Docker/deployment** | **2/10** | `output: "standalone"` ✓; no Dockerfile; no compose; no health endpoint; no env.example |
-| **Test coverage** | **3/10** | 11 unit tests (jalali, validations); 3 e2e smoke; no API/adapter/worker tests |
-| **Production readiness** | **2/10** | Blocking security issues must be fixed before any external exposure |
+| Category                 | Score    | One-line rationale                                                                       |
+| ------------------------ | -------- | ---------------------------------------------------------------------------------------- |
+| **Backend architecture** | **4/10** | Solid adapters + worker; auth bypassed, no pagination, no env.example                    |
+| **Database design**      | **6/10** | Coherent schema, 36 indexes; tokens unencrypted; SQLite limits scale; no migrations      |
+| **API quality**          | **4/10** | 16/36 Zod-validated; 1/36 rate-limited; 0/36 secure-guarded; hardcoded `authorName`      |
+| **Auth/security**        | **2/10** | Middleware disabled; demo-mode fallback; CSP `frame-ancestors *`; plaintext tokens       |
+| **Worker reliability**   | **6/10** | Retry/backoff/circuit-breaker present; NO graceful shutdown; NO fetch timeouts           |
+| **Realtime reliability** | **5/10** | Auth-less socket.io; CORS `*`; no Redis adapter; good graceful shutdown                  |
+| **Performance**          | **5/10** | RSC + Zustand; no dynamic imports for Tiptap/Recharts; 6 N+1 in dashboard; no pagination |
+| **Observability**        | **2/10** | No structured logs, no metrics, no tracing, no `/api/health`, no error tracking          |
+| **CI/CD**                | **1/10** | No `.github/workflows`; `ignoreBuildErrors: true`; ESLint rules all disabled             |
+| **Docker/deployment**    | **2/10** | `output: "standalone"` ✓; no Dockerfile; no compose; no health endpoint; no env.example  |
+| **Test coverage**        | **3/10** | 11 unit tests (jalali, validations); 3 e2e smoke; no API/adapter/worker tests            |
+| **Production readiness** | **2/10** | Blocking security issues must be fixed before any external exposure                      |
 
 ### Target scorecard (after 10 phases)
 
-| Category | Current | Target | Delta |
-|---|---|---|---|
-| Backend architecture | 4 | 9 | +5 |
-| Database design | 6 | 9 | +3 |
-| API quality | 4 | 9 | +5 |
-| Auth/security | 2 | 9 | +7 |
-| Worker reliability | 6 | 9 | +3 |
-| Realtime reliability | 5 | 9 | +4 |
-| Performance | 5 | 8 | +3 |
-| Observability | 2 | 9 | +7 |
-| CI/CD | 1 | 9 | +8 |
-| Docker/deployment | 2 | 9 | +7 |
-| Test coverage | 3 | 8 | +5 |
-| **Production readiness** | **2** | **9** | **+7** |
+| Category                 | Current | Target | Delta  |
+| ------------------------ | ------- | ------ | ------ |
+| Backend architecture     | 4       | 9      | +5     |
+| Database design          | 6       | 9      | +3     |
+| API quality              | 4       | 9      | +5     |
+| Auth/security            | 2       | 9      | +7     |
+| Worker reliability       | 6       | 9      | +3     |
+| Realtime reliability     | 5       | 9      | +4     |
+| Performance              | 5       | 8      | +3     |
+| Observability            | 2       | 9      | +7     |
+| CI/CD                    | 1       | 9      | +8     |
+| Docker/deployment        | 2       | 9      | +7     |
+| Test coverage            | 3       | 8      | +5     |
+| **Production readiness** | **2**   | **9**  | **+7** |
 
 ---
 
 ## 4. Top 20 Risks
 
-| # | Risk | Severity | Evidence | Phase |
-|---|---|---|---|---|
-| 1 | Auth middleware disabled — all routes publicly accessible | 🔴 Critical | `src/middleware.ts:20-26` | P1 |
-| 2 | Demo-mode workspace fallback — unauthenticated users read/write first tenant's data | 🔴 Critical | `src/lib/server.ts:25-31` | P1 |
-| 3 | 0/36 API routes use the secure `requireWorkspaceApi()` guard | 🔴 Critical | `grep requireWorkspace src/app/api/ → 0` | P1/P5 |
-| 4 | Platform bot tokens stored in plaintext | 🔴 Critical | `prisma/schema.prisma:157` | P5 |
-| 5 | `typescript.ignoreBuildErrors: true` ships 156 type errors | 🔴 Critical | `next.config.ts:5-7` | P1 |
-| 6 | CSP `frame-ancestors *` + `X-Frame-Options: ALLOWALL` — clickjacking | 🔴 Critical | `next.config.ts:20,34` | P1 |
-| 7 | CSP `script-src 'unsafe-eval' 'unsafe-inline'` — XSS | 🔴 High | `next.config.ts:27` | P1 |
-| 8 | Realtime socket.io has no auth — anyone can subscribe to any workspace | 🔴 High | `mini-services/realtime/index.ts:111-136` | P7 |
-| 9 | `POST /emit` on realtime has no auth — anyone can broadcast fake job status | 🔴 High | `mini-services/realtime/index.ts:58-84` | P7 |
-| 10 | No fetch timeout on adapters — hung platform API blocks worker indefinitely | 🔴 High | All `adapters/*.ts` | P6 |
-| 11 | No graceful shutdown in worker — in-flight jobs lost on deploy/restart | 🔴 High | `publish-worker/index.ts:285-288` | P6 |
-| 12 | No `/api/health` endpoint — orchestrators can't probe app health | 🟠 Medium | Missing entirely | P2 |
-| 13 | AI prompt injection — user `topic` concatenated raw into LLM prompt | 🟠 Medium | `src/lib/ai/gemini.ts:181,193,242,257` | P5 |
-| 14 | No CI/CD pipeline — no automated tests/scan on PR | 🟠 Medium | No `.github/workflows/` | P3 |
-| 15 | No Dockerfile / containerization story | 🟠 Medium | Missing entirely | P3 |
-| 16 | `PublishJob.idempotencyKey` is `@@index` not `@@unique` — duplicate publishes possible | 🟠 Medium | `prisma/schema.prisma:321` | P1 |
-| 17 | Rate limiter is in-memory — doesn't work across multiple instances | 🟠 Medium | `src/lib/ratelimit.ts:15` | P4/P8 |
-| 18 | No pagination on list endpoints — `take: 50` returns incomplete data | 🟠 Medium | 8/36 routes | P8 |
-| 19 | Hardcoded `authorName: 'علی احمدی'` in publish route | 🟡 Low | `src/app/api/publish/route.ts:84` | P1 |
-| 20 | Worker duplicates Prisma schema — drift risk | 🟡 Low | `publish-worker/prisma/` + `prisma-schema.prisma` | P6 |
+| #   | Risk                                                                                   | Severity    | Evidence                                          | Phase |
+| --- | -------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------- | ----- |
+| 1   | Auth middleware disabled — all routes publicly accessible                              | 🔴 Critical | `src/middleware.ts:20-26`                         | P1    |
+| 2   | Demo-mode workspace fallback — unauthenticated users read/write first tenant's data    | 🔴 Critical | `src/lib/server.ts:25-31`                         | P1    |
+| 3   | 0/36 API routes use the secure `requireWorkspaceApi()` guard                           | 🔴 Critical | `grep requireWorkspace src/app/api/ → 0`          | P1/P5 |
+| 4   | Platform bot tokens stored in plaintext                                                | 🔴 Critical | `prisma/schema.prisma:157`                        | P5    |
+| 5   | `typescript.ignoreBuildErrors: true` ships 156 type errors                             | 🔴 Critical | `next.config.ts:5-7`                              | P1    |
+| 6   | CSP `frame-ancestors *` + `X-Frame-Options: ALLOWALL` — clickjacking                   | 🔴 Critical | `next.config.ts:20,34`                            | P1    |
+| 7   | CSP `script-src 'unsafe-eval' 'unsafe-inline'` — XSS                                   | 🔴 High     | `next.config.ts:27`                               | P1    |
+| 8   | Realtime socket.io has no auth — anyone can subscribe to any workspace                 | 🔴 High     | `mini-services/realtime/index.ts:111-136`         | P7    |
+| 9   | `POST /emit` on realtime has no auth — anyone can broadcast fake job status            | 🔴 High     | `mini-services/realtime/index.ts:58-84`           | P7    |
+| 10  | No fetch timeout on adapters — hung platform API blocks worker indefinitely            | 🔴 High     | All `adapters/*.ts`                               | P6    |
+| 11  | No graceful shutdown in worker — in-flight jobs lost on deploy/restart                 | 🔴 High     | `publish-worker/index.ts:285-288`                 | P6    |
+| 12  | No `/api/health` endpoint — orchestrators can't probe app health                       | 🟠 Medium   | Missing entirely                                  | P2    |
+| 13  | AI prompt injection — user `topic` concatenated raw into LLM prompt                    | 🟠 Medium   | `src/lib/ai/gemini.ts:181,193,242,257`            | P5    |
+| 14  | No CI/CD pipeline — no automated tests/scan on PR                                      | 🟠 Medium   | No `.github/workflows/`                           | P3    |
+| 15  | No Dockerfile / containerization story                                                 | 🟠 Medium   | Missing entirely                                  | P3    |
+| 16  | `PublishJob.idempotencyKey` is `@@index` not `@@unique` — duplicate publishes possible | 🟠 Medium   | `prisma/schema.prisma:321`                        | P1    |
+| 17  | Rate limiter is in-memory — doesn't work across multiple instances                     | 🟠 Medium   | `src/lib/ratelimit.ts:15`                         | P4/P8 |
+| 18  | No pagination on list endpoints — `take: 50` returns incomplete data                   | 🟠 Medium   | 8/36 routes                                       | P8    |
+| 19  | Hardcoded `authorName: 'علی احمدی'` in publish route                                   | 🟡 Low      | `src/app/api/publish/route.ts:84`                 | P1    |
+| 20  | Worker duplicates Prisma schema — drift risk                                           | 🟡 Low      | `publish-worker/prisma/` + `prisma-schema.prisma` | P6    |
 
 ---
 
@@ -207,68 +209,68 @@ Key gaps:
 
 ### P0 — Blocking (must fix before ANY external exposure) — ~1 week
 
-| ID | Task | Effort | Phase |
-|---|---|---|---|
-| P0-1 | Re-enable auth middleware (`src/middleware.ts`) | 2h | 1 |
-| P0-2 | Remove demo-mode fallback; migrate 31 routes to `requireWorkspaceApi()` | 4h | 1 |
-| P0-3 | Set `ignoreBuildErrors: false`; fix 25 `src/` type errors | 6h | 1 |
-| P0-4 | Tighten CSP (`frame-ancestors 'self'`, remove `unsafe-eval`) | 2h | 1 |
-| P0-5 | Make `PublishJob.idempotencyKey` `@@unique` | 30min | 1 |
-| P0-6 | Fix hardcoded `authorName` (fetch from session) | 30min | 1 |
-| P0-7 | Remove `unsafe-eval` from `script-src` in production | 1h | 1 |
-| P0-8 | Sanitize AI error messages (don't leak `err.message`) | 30min | 1 |
-| P0-9 | Create `.env.example` | 1h | 1 |
-| P0-10 | Fix corrupted Persian string in instagram adapter (`允许` → `مجاز است`) | 5min | 1 |
+| ID    | Task                                                                    | Effort | Phase |
+| ----- | ----------------------------------------------------------------------- | ------ | ----- |
+| P0-1  | Re-enable auth middleware (`src/middleware.ts`)                         | 2h     | 1     |
+| P0-2  | Remove demo-mode fallback; migrate 31 routes to `requireWorkspaceApi()` | 4h     | 1     |
+| P0-3  | Set `ignoreBuildErrors: false`; fix 25 `src/` type errors               | 6h     | 1     |
+| P0-4  | Tighten CSP (`frame-ancestors 'self'`, remove `unsafe-eval`)            | 2h     | 1     |
+| P0-5  | Make `PublishJob.idempotencyKey` `@@unique`                             | 30min  | 1     |
+| P0-6  | Fix hardcoded `authorName` (fetch from session)                         | 30min  | 1     |
+| P0-7  | Remove `unsafe-eval` from `script-src` in production                    | 1h     | 1     |
+| P0-8  | Sanitize AI error messages (don't leak `err.message`)                   | 30min  | 1     |
+| P0-9  | Create `.env.example`                                                   | 1h     | 1     |
+| P0-10 | Fix corrupted Persian string in instagram adapter (`允许` → `مجاز است`) | 5min   | 1     |
 
 ### P1 — Critical infrastructure (must fix before launch) — ~4 weeks
 
-| ID | Task | Effort | Phase |
-|---|---|---|---|
-| P1-1 | Add `/api/health` endpoint | 1h | 2 |
-| P1-2 | Add pino structured logging + request IDs | 4h | 2 |
-| P1-3 | Add Sentry error tracking | 2h | 2 |
-| P1-4 | Create Dockerfile (multi-stage, non-root) | 4h | 3 |
-| P1-5 | Create `docker-compose.yml` (app + worker + realtime + postgres + redis) | 4h | 3 |
-| P1-6 | Create `compose.production.yaml` (immutable images, no bind mounts) | 2h | 3 |
-| P1-7 | Add GitHub Actions CI (lint, typecheck, test, build, prisma check) | 4h | 3 |
-| P1-8 | Migrate SQLite → PostgreSQL | 4h | 4 |
-| P1-9 | Set up Prisma migrations (`prisma migrate`) | 4h | 4 |
-| P1-10 | Configure PgBouncer connection pooling | 2h | 4 |
-| P1-11 | Encrypt platform tokens (AES-256-GCM with `AUTH_SECRET`) | 4h | 5 |
-| P1-12 | Enforce `requireWorkspaceApi()` on all 31 workspace-scoped routes | 4h | 5 |
-| P1-13 | Enforce `can()` RBAC on mutating routes | 4h | 5 |
-| P1-14 | Add AI prompt-injection defenses (XML tag wrapping) | 2h | 5 |
-| P1-15 | Add worker graceful shutdown (SIGTERM handler) | 2h | 6 |
-| P1-16 | Add fetch timeouts (`AbortSignal.timeout(30_000)`) to all adapters | 2h | 6 |
-| P1-17 | Add worker health endpoint + audit log writes | 3h | 6 |
-| P1-18 | Add realtime socket.io auth (JWT handshake + room auth) | 4h | 7 |
-| P1-19 | Add Redis adapter to realtime (horizontal scaling) | 2h | 7 |
-| P1-20 | Secure `POST /emit` with shared secret | 1h | 7 |
+| ID    | Task                                                                     | Effort | Phase |
+| ----- | ------------------------------------------------------------------------ | ------ | ----- |
+| P1-1  | Add `/api/health` endpoint                                               | 1h     | 2     |
+| P1-2  | Add pino structured logging + request IDs                                | 4h     | 2     |
+| P1-3  | Add Sentry error tracking                                                | 2h     | 2     |
+| P1-4  | Create Dockerfile (multi-stage, non-root)                                | 4h     | 3     |
+| P1-5  | Create `docker-compose.yml` (app + worker + realtime + postgres + redis) | 4h     | 3     |
+| P1-6  | Create `compose.production.yaml` (immutable images, no bind mounts)      | 2h     | 3     |
+| P1-7  | Add GitHub Actions CI (lint, typecheck, test, build, prisma check)       | 4h     | 3     |
+| P1-8  | Migrate SQLite → PostgreSQL                                              | 4h     | 4     |
+| P1-9  | Set up Prisma migrations (`prisma migrate`)                              | 4h     | 4     |
+| P1-10 | Configure PgBouncer connection pooling                                   | 2h     | 4     |
+| P1-11 | Encrypt platform tokens (AES-256-GCM with `AUTH_SECRET`)                 | 4h     | 5     |
+| P1-12 | Enforce `requireWorkspaceApi()` on all 31 workspace-scoped routes        | 4h     | 5     |
+| P1-13 | Enforce `can()` RBAC on mutating routes                                  | 4h     | 5     |
+| P1-14 | Add AI prompt-injection defenses (XML tag wrapping)                      | 2h     | 5     |
+| P1-15 | Add worker graceful shutdown (SIGTERM handler)                           | 2h     | 6     |
+| P1-16 | Add fetch timeouts (`AbortSignal.timeout(30_000)`) to all adapters       | 2h     | 6     |
+| P1-17 | Add worker health endpoint + audit log writes                            | 3h     | 6     |
+| P1-18 | Add realtime socket.io auth (JWT handshake + room auth)                  | 4h     | 7     |
+| P1-19 | Add Redis adapter to realtime (horizontal scaling)                       | 2h     | 7     |
+| P1-20 | Secure `POST /emit` with shared secret                                   | 1h     | 7     |
 
 ### P2 — Production quality (must fix for scale) — ~5 weeks
 
-| ID | Task | Effort | Phase |
-|---|---|---|---|
-| P2-1 | Migrate worker polling → BullMQ (Redis queue) | 8h | 6 |
-| P2-2 | Add cursor pagination to all list endpoints | 6h | 8 |
-| P2-3 | Migrate rate limiter → `@upstash/ratelimit` (Redis-backed) | 3h | 8 |
-| P2-4 | Add Zod validation to remaining 20 routes | 4h | 8 |
-| P2-5 | Add per-platform concurrency semaphore to worker | 2h | 6 |
-| P2-6 | Migrate media storage to S3/R2 (presigned URLs) | 6h | 9 |
-| P2-7 | Add magic-byte validation to media upload | 2h | 9 |
-| P2-8 | Add ClamAV malware scan on upload | 4h | 9 |
-| P2-9 | Add per-workspace storage quota | 2h | 9 |
-| P2-10 | Add API route tests (supertest-style) | 8h | 10 |
-| P2-11 | Add adapter tests (mock `fetch`) | 6h | 10 |
-| P2-12 | Add worker tests (retry, circuit breaker, idempotency) | 6h | 10 |
-| P2-13 | Add Playwright E2E for critical flows | 8h | 10 |
-| P2-14 | Add Lighthouse CI performance budgets | 4h | 10 |
-| P2-15 | Dynamic imports for Tiptap/Recharts/syntax-highlighter | 3h | 10 |
-| P2-16 | Add OpenTelemetry tracing | 6h | 2 |
-| P2-17 | Add Prometheus metrics endpoint | 4h | 2 |
-| P2-18 | Add backup/restore scripts for PostgreSQL | 4h | 3 |
-| P2-19 | Add rollback script (re-deploy previous image) | 2h | 3 |
-| P2-20 | Add staging acceptance checklist | 2h | 3 |
+| ID    | Task                                                       | Effort | Phase |
+| ----- | ---------------------------------------------------------- | ------ | ----- |
+| P2-1  | Migrate worker polling → BullMQ (Redis queue)              | 8h     | 6     |
+| P2-2  | Add cursor pagination to all list endpoints                | 6h     | 8     |
+| P2-3  | Migrate rate limiter → `@upstash/ratelimit` (Redis-backed) | 3h     | 8     |
+| P2-4  | Add Zod validation to remaining 20 routes                  | 4h     | 8     |
+| P2-5  | Add per-platform concurrency semaphore to worker           | 2h     | 6     |
+| P2-6  | Migrate media storage to S3/R2 (presigned URLs)            | 6h     | 9     |
+| P2-7  | Add magic-byte validation to media upload                  | 2h     | 9     |
+| P2-8  | Add ClamAV malware scan on upload                          | 4h     | 9     |
+| P2-9  | Add per-workspace storage quota                            | 2h     | 9     |
+| P2-10 | Add API route tests (supertest-style)                      | 8h     | 10    |
+| P2-11 | Add adapter tests (mock `fetch`)                           | 6h     | 10    |
+| P2-12 | Add worker tests (retry, circuit breaker, idempotency)     | 6h     | 10    |
+| P2-13 | Add Playwright E2E for critical flows                      | 8h     | 10    |
+| P2-14 | Add Lighthouse CI performance budgets                      | 4h     | 10    |
+| P2-15 | Dynamic imports for Tiptap/Recharts/syntax-highlighter     | 3h     | 10    |
+| P2-16 | Add OpenTelemetry tracing                                  | 6h     | 2     |
+| P2-17 | Add Prometheus metrics endpoint                            | 4h     | 2     |
+| P2-18 | Add backup/restore scripts for PostgreSQL                  | 4h     | 3     |
+| P2-19 | Add rollback script (re-deploy previous image)             | 2h     | 3     |
+| P2-20 | Add staging acceptance checklist                           | 2h     | 3     |
 
 ---
 
@@ -279,6 +281,7 @@ Key gaps:
 **Goal:** Eliminate the 5 blocking security issues. After this phase, the app is safe to expose to a trusted beta group (still single-instance SQLite).
 
 **Tasks:**
+
 1. Re-enable auth middleware — uncomment matcher in `src/middleware.ts:14-18`, remove no-op. Test signin flow in non-iframe context.
 2. Remove demo-mode fallback — change `src/lib/server.ts:30` to `return null`. Migrate 31 routes from `getWorkspaceId()` to `requireWorkspaceApi()`.
 3. Set `typescript.ignoreBuildErrors: false` in `next.config.ts:5`. Fix the 25 `src/` type errors.
@@ -294,6 +297,7 @@ Key gaps:
 13. Delete root-level `verify-*.png` / `debug-*.png` files (~80 files).
 
 **Acceptance criteria:**
+
 - [ ] `src/middleware.ts` matcher covers all routes except `/api/auth`, `/_next`, static assets.
 - [ ] `grep "getWorkspaceId" src/app/api/` returns 0 results.
 - [ ] `grep "requireWorkspaceApi" src/app/api/` returns ≥31 results.
@@ -313,6 +317,7 @@ Key gaps:
 **Why it matters:** Without observability, you're flying blind. A user reports "publishing is broken" and you have no logs, no metrics, no trace to diagnose. Mean-time-to-detect (MTTD) is hours; with observability it's minutes.
 
 **Tasks:**
+
 1. Add `pino` 9.x for structured JSON logging. Replace all `console.log`/`console.error` in `src/app/api/`, `mini-services/*`.
 2. Add request-ID middleware — generate `X-Request-Id` header per request, include in all logs.
 3. Add `src/app/api/health/route.ts` — returns `{ok:true, db: <connected>, uptime: <s>, version: <sha>}`.
@@ -324,6 +329,7 @@ Key gaps:
 9. Add worker structured logging (pino) with job ID, workspace ID, platform, attempt count.
 
 **Acceptance criteria:**
+
 - [ ] `GET /api/health` returns 200 with `{ok:true, db:true, uptime: <s>}`.
 - [ ] `GET /api/readyz` returns 503 when DB is down.
 - [ ] All API logs are JSON with `{timestamp, level, requestId, route, ...}`.
@@ -340,6 +346,7 @@ Key gaps:
 **Why it matters:** Without containers, deployment is "SSH in and run `bun run dev`". Without CI, type errors and regressions ship to production. Immutable images enable instant rollback.
 
 **Tasks:**
+
 1. Create `Dockerfile` (multi-stage):
    - Stage 1 (`builder`): `bun install`, `bun run build` → produces `.next/standalone/`
    - Stage 2 (`runner`): copy standalone + static + public + prisma/ → minimal image, non-root user `nextjs:nodejs`
@@ -367,6 +374,7 @@ Key gaps:
 8. Create `docs/STAGING_ACCEPTANCE.md` — checklist for promoting staging → production.
 
 **Acceptance criteria:**
+
 - [ ] `docker compose up` starts all 5 services, all pass health checks within 60s.
 - [ ] `docker compose -f compose.production.yaml config` validates.
 - [ ] CI pipeline runs on every PR, blocks merge on failing checks.
@@ -383,6 +391,7 @@ Key gaps:
 **Why it matters:** SQLite is single-writer — under concurrent publishes + dashboard queries, it will hit `SQLITE_BUSY` errors. PostgreSQL handles concurrent reads/writes, supports real migrations, and scales horizontally. PgBouncer pools connections (Prisma opens ~10-20 connections per instance; 3 instances = 60 connections; Postgres default max is 100).
 
 **Tasks:**
+
 1. Update `prisma/schema.prisma` `datasource.provider` from `sqlite` to `postgresql`.
 2. Update `DATABASE_URL` format: `postgresql://user:pass@localhost:5432/nashrino?schema=public`.
 3. Generate initial migration: `bunx prisma migrate dev --name init` — creates `prisma/migrations/` directory.
@@ -397,6 +406,7 @@ Key gaps:
 12. Update worker's `REALTIME_EMIT_URL` to use `process.env.REALTIME_EMIT_URL`.
 
 **Acceptance criteria:**
+
 - [ ] `prisma migrate deploy` runs cleanly on a fresh Postgres instance.
 - [ ] `prisma migrate status` shows no pending migrations.
 - [ ] App connects to Postgres via PgBouncer (check logs for connection count).
@@ -412,12 +422,17 @@ Key gaps:
 **Why it matters:** Plaintext tokens mean a DB dump leaks all connected Telegram/Instagram/LinkedIn accounts. RBAC prevents a `viewer` from inviting members or approving content. Prompt injection can exfiltrate the system prompt or generate harmful content.
 
 **Tasks:**
+
 1. **Token encryption** — create `src/lib/crypto.ts`:
    ```ts
    import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
    const KEY = crypto.scryptSync(process.env.AUTH_SECRET!, 'salt', 32)
-   export function encrypt(plaintext: string): string { /* AES-256-GCM, return iv:ciphertext:tag */ }
-   export function decrypt(ciphertext: string): string { /* ... */ }
+   export function encrypt(plaintext: string): string {
+     /* AES-256-GCM, return iv:ciphertext:tag */
+   }
+   export function decrypt(ciphertext: string): string {
+     /* ... */
+   }
    ```
 2. Update `Platform.tokenSecret` read/write paths to encrypt/decrypt transparently.
 3. Add Prisma migration to encrypt existing tokens (one-time script).
@@ -440,6 +455,7 @@ Key gaps:
 9. Add audit log writes for sensitive actions: token connect, member invite, content approve/reject, publish.
 
 **Acceptance criteria:**
+
 - [ ] `SELECT tokenSecret FROM Platform` returns encrypted ciphertext, not plaintext.
 - [ ] Decryption works transparently — adapters still publish successfully.
 - [ ] `POST /api/members/invite` returns 403 for `viewer` role.
@@ -458,6 +474,7 @@ Key gaps:
 **Why it matters:** Without graceful shutdown, every deploy kills in-flight publishes (user sees "failed" when the post actually went through). Without fetch timeouts, a hung platform API blocks the worker indefinitely. Without audit logs, you can't trace why a publish failed.
 
 **Tasks:**
+
 1. **Graceful shutdown** — add `SIGTERM`/`SIGINT` handler:
    ```ts
    let shuttingDown = false
@@ -485,6 +502,7 @@ Key gaps:
 10. **Fix LinkedIn image upload** — pass full-res `mediaUrl`, not `thumbnailUrl`.
 
 **Acceptance criteria:**
+
 - [ ] `docker compose stop worker` finishes within 30s with no in-flight jobs lost.
 - [ ] Adapter `fetch()` calls timeout after 30s (test with a mock slow server).
 - [ ] Telegram 429 response uses `retry_after` for backoff (not generic exponential).
@@ -501,6 +519,7 @@ Key gaps:
 **Why it matters:** Currently anyone can subscribe to any workspace's job-status events. `POST /emit` has no auth — anyone can broadcast fake "success" events. Single-process socket.io can't scale beyond one instance.
 
 **Tasks:**
+
 1. **JWT handshake auth** — socket.io `auth` callback:
    ```ts
    io.use((socket, next) => {
@@ -516,7 +535,7 @@ Key gaps:
    socket.on('subscribe', async (data) => {
      const { workspaceId } = data
      const isMember = await db.workspaceMember.findFirst({
-       where: { workspaceId, userId: socket.data.session.userId }
+       where: { workspaceId, userId: socket.data.session.userId },
      })
      if (!isMember) return socket.emit('error', { message: 'forbidden' })
      socket.join(`workspace:${workspaceId}`)
@@ -539,6 +558,7 @@ Key gaps:
 8. **Structured logging** — pino with `{event, workspaceId, socketId}`.
 
 **Acceptance criteria:**
+
 - [ ] Connection without JWT token is rejected.
 - [ ] Subscribe to non-member workspace is rejected.
 - [ ] `POST /emit` without `X-Emit-Secret` returns 401.
@@ -554,6 +574,7 @@ Key gaps:
 **Why it matters:** `take: 50` returns incomplete data for large workspaces. In-memory rate limiter doesn't work across instances. 20 routes still lack Zod validation.
 
 **Tasks:**
+
 1. **Cursor pagination** — add `paginationSchema` to all list endpoints:
    ```ts
    export const paginationSchema = z.object({
@@ -591,6 +612,7 @@ Key gaps:
 8. **Error response standardization** — all errors return `{error: string, code: string, requestId: string}`. Never leak `err.message`.
 
 **Acceptance criteria:**
+
 - [ ] All list endpoints accept `?cursor=` and return `{data, nextCursor}`.
 - [ ] Rate limiter works across 2 app instances (test: hit instance A 30 times, hit instance B — should be rate-limited).
 - [ ] `grep "validateBody\|validateParams" src/app/api/` returns ≥36 results.
@@ -607,6 +629,7 @@ Key gaps:
 **Why it matters:** Local disk doesn't scale. Browser-supplied `Content-Type` is spoofable. No malware scan. No quota = unlimited storage cost.
 
 **Tasks:**
+
 1. **S3 presigned URL upload**:
    - `POST /api/media/presign` — returns `{uploadUrl, key, mediaId}`.
    - Client uploads directly to S3 (bypasses Next.js server — no 10MB body limit).
@@ -620,6 +643,7 @@ Key gaps:
 8. **LinkedIn image fix** — pass full-res S3 URL to LinkedIn adapter (not thumbnail).
 
 **Acceptance criteria:**
+
 - [ ] Upload flow: `POST /api/media/presign` → client PUT to S3 → `POST /api/media/confirm` → `Media` record created.
 - [ ] Magic-byte validation rejects a `.exe` renamed to `.jpg`.
 - [ ] ClamAV rejects an EICAR test file.
@@ -636,6 +660,7 @@ Key gaps:
 **Why it matters:** Without tests, every change risks regression. Without performance budgets, bundle size creeps up and page load slows. Without E2E, you don't know if critical flows work end-to-end.
 
 **Tasks:**
+
 1. **API route tests** — for each of the 36 routes:
    - Auth required (401 without session)
    - Workspace scoping (403 for non-member)
@@ -689,6 +714,7 @@ Key gaps:
    ```
 
 **Acceptance criteria:**
+
 - [ ] 36 API route tests pass.
 - [ ] 5 adapter test suites pass (one per platform).
 - [ ] 4 worker tests pass.
@@ -703,100 +729,100 @@ Key gaps:
 
 ### 7.1 Auth module (`src/lib/auth.ts`, `auth-guards.ts`, `password.ts`, `middleware.ts`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Re-enable middleware | Route protection | 1 |
-| Remove demo-mode fallback in `server.ts` | Multi-tenant isolation | 1 |
-| Migrate 31 routes to `requireWorkspaceApi()` | Secure workspace scoping | 1/5 |
-| Enforce `can()` RBAC on mutating routes | Role-based access | 5 |
-| Add token rotation strategy for OAuth providers | Refresh tokens | 5 |
-| Consider NextAuth v5 (Auth.js) migration | Future-proofing | Future |
+| Change                                          | Why                      | Phase  |
+| ----------------------------------------------- | ------------------------ | ------ |
+| Re-enable middleware                            | Route protection         | 1      |
+| Remove demo-mode fallback in `server.ts`        | Multi-tenant isolation   | 1      |
+| Migrate 31 routes to `requireWorkspaceApi()`    | Secure workspace scoping | 1/5    |
+| Enforce `can()` RBAC on mutating routes         | Role-based access        | 5      |
+| Add token rotation strategy for OAuth providers | Refresh tokens           | 5      |
+| Consider NextAuth v5 (Auth.js) migration        | Future-proofing          | Future |
 
 ### 7.2 API routes (`src/app/api/`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Zod validation on all 36 routes | Input safety | 1/8 |
-| Cursor pagination on list endpoints | Data completeness | 8 |
-| Rate limiting (Redis-backed) on all sensitive routes | Abuse prevention | 8 |
-| Standardize error responses (`{error, code, requestId}`) | Consistency | 2/8 |
-| Fix N+1 in `/api/platforms` and `/api/dashboard/summary` | Performance | 8 |
-| Remove hardcoded `authorName` | Correctness | 1 |
-| Remove duplicate `jalaliToGregorian` in `publish/route.ts` | Code dedup | 1 |
+| Change                                                     | Why               | Phase |
+| ---------------------------------------------------------- | ----------------- | ----- |
+| Zod validation on all 36 routes                            | Input safety      | 1/8   |
+| Cursor pagination on list endpoints                        | Data completeness | 8     |
+| Rate limiting (Redis-backed) on all sensitive routes       | Abuse prevention  | 8     |
+| Standardize error responses (`{error, code, requestId}`)   | Consistency       | 2/8   |
+| Fix N+1 in `/api/platforms` and `/api/dashboard/summary`   | Performance       | 8     |
+| Remove hardcoded `authorName`                              | Correctness       | 1     |
+| Remove duplicate `jalaliToGregorian` in `publish/route.ts` | Code dedup        | 1     |
 
 ### 7.3 Worker (`mini-services/publish-worker/`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Graceful shutdown (SIGTERM) | No lost jobs on deploy | 6 |
-| Fetch timeouts (`AbortSignal.timeout(30s)`) | No hung adapters | 6 |
-| Per-platform semaphore (`p-limit`) | Respect platform rate limits | 6 |
-| Migrate DB-polling → BullMQ | Better observability + reliability | 6 |
-| Audit log writes | Traceability | 6 |
-| Health endpoint | Orchestrator probes | 6 |
-| Structured logging (pino) | Observability | 2/6 |
-| Delete duplicate Prisma schema | Drift prevention | 6 |
-| Fix LinkedIn image upload (full-res, not thumbnail) | Quality | 6 |
-| Fix Instagram corrupted Persian string | UX | 1 |
+| Change                                              | Why                                | Phase |
+| --------------------------------------------------- | ---------------------------------- | ----- |
+| Graceful shutdown (SIGTERM)                         | No lost jobs on deploy             | 6     |
+| Fetch timeouts (`AbortSignal.timeout(30s)`)         | No hung adapters                   | 6     |
+| Per-platform semaphore (`p-limit`)                  | Respect platform rate limits       | 6     |
+| Migrate DB-polling → BullMQ                         | Better observability + reliability | 6     |
+| Audit log writes                                    | Traceability                       | 6     |
+| Health endpoint                                     | Orchestrator probes                | 6     |
+| Structured logging (pino)                           | Observability                      | 2/6   |
+| Delete duplicate Prisma schema                      | Drift prevention                   | 6     |
+| Fix LinkedIn image upload (full-res, not thumbnail) | Quality                            | 6     |
+| Fix Instagram corrupted Persian string              | UX                                 | 1     |
 
 ### 7.4 Realtime (`mini-services/realtime/`)
 
-| Change | Why | Phase |
-|---|---|---|
-| JWT handshake auth | Connection auth | 7 |
-| Room authorization (membership check) | Per-workspace isolation | 7 |
-| Secure `POST /emit` with shared secret | Prevent fake events | 7 |
-| Redis adapter (`@socket.io/redis-adapter`) | Horizontal scaling | 7 |
-| Tighten CORS to `NEXTAUTH_URL` | Security | 7 |
-| Configurable port (`REALTIME_PORT` env) | Containerization | 7 |
-| Structured logging | Observability | 2/7 |
+| Change                                     | Why                     | Phase |
+| ------------------------------------------ | ----------------------- | ----- |
+| JWT handshake auth                         | Connection auth         | 7     |
+| Room authorization (membership check)      | Per-workspace isolation | 7     |
+| Secure `POST /emit` with shared secret     | Prevent fake events     | 7     |
+| Redis adapter (`@socket.io/redis-adapter`) | Horizontal scaling      | 7     |
+| Tighten CORS to `NEXTAUTH_URL`             | Security                | 7     |
+| Configurable port (`REALTIME_PORT` env)    | Containerization        | 7     |
+| Structured logging                         | Observability           | 2/7   |
 
 ### 7.5 AI module (`src/lib/ai/`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Prompt-injection defense (XML tag wrapping) | Security | 5 |
-| Fetch timeouts on all LLM calls | Reliability | 5 |
-| Rate limiting on all AI routes | Abuse prevention | 5/8 |
-| Sanitize error messages | No secret leaks | 1 |
-| Split `gemini.ts` (855 lines) into `prompts/` directory | Maintainability | Future |
-| Add per-workspace AI quota | Cost control | Future |
+| Change                                                  | Why              | Phase  |
+| ------------------------------------------------------- | ---------------- | ------ |
+| Prompt-injection defense (XML tag wrapping)             | Security         | 5      |
+| Fetch timeouts on all LLM calls                         | Reliability      | 5      |
+| Rate limiting on all AI routes                          | Abuse prevention | 5/8    |
+| Sanitize error messages                                 | No secret leaks  | 1      |
+| Split `gemini.ts` (855 lines) into `prompts/` directory | Maintainability  | Future |
+| Add per-workspace AI quota                              | Cost control     | Future |
 
 ### 7.6 Media (`src/app/api/media/`, `src/components/editor/media-uploader.tsx`)
 
-| Change | Why | Phase |
-|---|---|---|
-| S3 presigned URL uploads | Scalability | 9 |
-| Magic-byte validation | Security | 9 |
-| ClamAV malware scan | Security | 9 |
-| Per-workspace storage quota | Cost control | 9 |
-| CDN for serving | Performance | 9 |
-| LinkedIn full-res image fix | Quality | 9 |
+| Change                      | Why          | Phase |
+| --------------------------- | ------------ | ----- |
+| S3 presigned URL uploads    | Scalability  | 9     |
+| Magic-byte validation       | Security     | 9     |
+| ClamAV malware scan         | Security     | 9     |
+| Per-workspace storage quota | Cost control | 9     |
+| CDN for serving             | Performance  | 9     |
+| LinkedIn full-res image fix | Quality      | 9     |
 
 ### 7.7 Database (`prisma/schema.prisma`, `src/lib/db.ts`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Migrate SQLite → PostgreSQL | Scale | 4 |
-| Set up Prisma migrations (`prisma migrate`) | Schema evolution | 4 |
-| Configure PgBouncer connection pooling | Connection limits | 4 |
-| Encrypt `Platform.tokenSecret` (AES-256-GCM) | Security | 5 |
-| `PublishJob.idempotencyKey` → `@@unique` | Dedup enforcement | 1 |
-| `AuditLog.metadata` → `Json?` | Type safety | 4 |
-| Add missing `@@index([workspaceId, scheduledAt])` on Content | Query perf | 4 |
-| Add missing `@@index([workspaceId, status])` on Platform | Query perf | 4 |
-| Gate Prisma query logging behind `LOG_QUERIES=1` (done ✓) | Performance | 1 |
+| Change                                                       | Why               | Phase |
+| ------------------------------------------------------------ | ----------------- | ----- |
+| Migrate SQLite → PostgreSQL                                  | Scale             | 4     |
+| Set up Prisma migrations (`prisma migrate`)                  | Schema evolution  | 4     |
+| Configure PgBouncer connection pooling                       | Connection limits | 4     |
+| Encrypt `Platform.tokenSecret` (AES-256-GCM)                 | Security          | 5     |
+| `PublishJob.idempotencyKey` → `@@unique`                     | Dedup enforcement | 1     |
+| `AuditLog.metadata` → `Json?`                                | Type safety       | 4     |
+| Add missing `@@index([workspaceId, scheduledAt])` on Content | Query perf        | 4     |
+| Add missing `@@index([workspaceId, status])` on Platform     | Query perf        | 4     |
+| Gate Prisma query logging behind `LOG_QUERIES=1` (done ✓)    | Performance       | 1     |
 
 ### 7.8 Frontend (`src/components/`, `src/app/`)
 
-| Change | Why | Phase |
-|---|---|---|
-| Dynamic import Tiptap, Recharts, syntax-highlighter | Bundle size | 10 |
-| `React.lazy` for view components | Route-level splitting | 10 |
-| Add `staleTime` to TanStack Query defaults | Reduce refetch storms | 10 |
-| Remove dead `examples/` directory | Code hygiene | 1 |
-| Remove root-level screenshots | Repo hygiene | 1 |
-| Fix `playwright.config.ts` `timezone` → `timezoneId` | Test config | 1 |
+| Change                                               | Why                   | Phase |
+| ---------------------------------------------------- | --------------------- | ----- |
+| Dynamic import Tiptap, Recharts, syntax-highlighter  | Bundle size           | 10    |
+| `React.lazy` for view components                     | Route-level splitting | 10    |
+| Add `staleTime` to TanStack Query defaults           | Reduce refetch storms | 10    |
+| Remove dead `examples/` directory                    | Code hygiene          | 1     |
+| Remove root-level screenshots                        | Repo hygiene          | 1     |
+| Fix `playwright.config.ts` `timezone` → `timezoneId` | Test config           | 1     |
 
 ---
 
@@ -804,19 +830,19 @@ Key gaps:
 
 ### Performance budgets
 
-| Metric | Budget | Current | How to measure |
-|---|---|---|---|
-| Initial JS bundle (gzipped) | <350KB | ~500KB+ (estimated) | `bundle-analyzer` |
-| Per-route chunk (gzipped) | <200KB | Unknown | `bundle-analyzer` |
-| Lighthouse Performance (dashboard) | ≥90 | Unknown | Lighthouse CI |
-| Lighthouse Accessibility | ≥95 | Unknown | Lighthouse CI |
-| API p95 latency (read) | <200ms | Unknown | Sentry performance |
-| API p95 latency (write) | <500ms | Unknown | Sentry performance |
-| Worker queue delay (p95) | <10s | ~2s (polling) | Worker metrics |
-| Image size (thumbnail) | <50KB | ~20KB (sharp WebP) | Already good |
-| Image size (original) | <500KB | Up to 10MB | Client-side resize |
-| Time to Interactive (dashboard) | <3s | Unknown | Lighthouse |
-| Cumulative Layout Shift | <0.1 | Unknown | Lighthouse |
+| Metric                             | Budget | Current             | How to measure     |
+| ---------------------------------- | ------ | ------------------- | ------------------ |
+| Initial JS bundle (gzipped)        | <350KB | ~500KB+ (estimated) | `bundle-analyzer`  |
+| Per-route chunk (gzipped)          | <200KB | Unknown             | `bundle-analyzer`  |
+| Lighthouse Performance (dashboard) | ≥90    | Unknown             | Lighthouse CI      |
+| Lighthouse Accessibility           | ≥95    | Unknown             | Lighthouse CI      |
+| API p95 latency (read)             | <200ms | Unknown             | Sentry performance |
+| API p95 latency (write)            | <500ms | Unknown             | Sentry performance |
+| Worker queue delay (p95)           | <10s   | ~2s (polling)       | Worker metrics     |
+| Image size (thumbnail)             | <50KB  | ~20KB (sharp WebP)  | Already good       |
+| Image size (original)              | <500KB | Up to 10MB          | Client-side resize |
+| Time to Interactive (dashboard)    | <3s    | Unknown             | Lighthouse         |
+| Cumulative Layout Shift            | <0.1   | Unknown             | Lighthouse         |
 
 ### Performance tasks
 
@@ -849,37 +875,38 @@ Key gaps:
 
 ### Security checklist
 
-| # | Check | Current | Target | Phase |
-|---|---|---|---|---|
-| 1 | Auth middleware enabled | ❌ Disabled | ✅ Enabled | 1 |
-| 2 | No demo-mode fallback | ❌ Present | ✅ Removed | 1 |
-| 3 | All routes use `requireWorkspaceApi()` | ❌ 0/36 | ✅ 31/31 | 1/5 |
-| 4 | RBAC `can()` enforced | ❌ 0/36 | ✅ All mutating | 5 |
-| 5 | CSP `frame-ancestors 'self'` | ❌ `*` | ✅ `'self'` | 1 |
-| 6 | CSP no `unsafe-eval` in prod | ❌ Present | ✅ Removed | 1 |
-| 7 | `X-Frame-Options: SAMEORIGIN` | ❌ `ALLOWALL` | ✅ `SAMEORIGIN` | 1 |
-| 8 | Platform tokens encrypted | ❌ Plaintext | ✅ AES-256-GCM | 5 |
-| 9 | `NEXTAUTH_SECRET` required in prod | ✅ Throws (done ✓) | ✅ | 1 |
-| 10 | Demo credentials not in prod seed | ⚠️ In seed | ✅ Gated by `NODE_ENV` | 1 |
-| 11 | Rate limiting (Redis-backed) | ❌ In-memory | ✅ `@upstash/ratelimit` | 8 |
-| 12 | AI prompt-injection defense | ❌ Raw concat | ✅ XML tag wrapping | 5 |
-| 13 | AI error messages sanitized | ❌ Leaks `err.message` | ✅ Generic Persian | 1 |
-| 14 | Realtime socket.io auth | ❌ None | ✅ JWT handshake | 7 |
-| 15 | `POST /emit` auth | ❌ None | ✅ Shared secret | 7 |
-| 16 | Media magic-byte validation | ❌ Trusts `Content-Type` | ✅ `sharp().metadata()` | 9 |
-| 17 | Media malware scan | ❌ None | ✅ ClamAV | 9 |
-| 18 | Audit logs for sensitive actions | ❌ None | ✅ `AuditLog` table | 5/6 |
-| 19 | `.env.example` documents all vars | ❌ Missing | ✅ Created | 1 |
-| 20 | No secrets in git history | ✅ Purged (done ✓) | ✅ | 1 |
-| 21 | HTTPS-only in production | ❌ Unknown | ✅ Caddy auto-TLS | 3 |
-| 22 | HSTS header | ❌ Missing | ✅ `max-age=63072000; includeSubDomains; preload` | 3 |
-| 23 | CSRF protection on POST | ⚠️ NextAuth only | ✅ Same-site cookies + CSRF token | 5 |
-| 24 | Webhook signature verification | ❌ N/A (no webhooks yet) | ✅ HMAC verification | Future |
-| 25 | Password policy (min 8 chars, complexity) | ❌ None | ✅ Zod schema | 5 |
+| #   | Check                                     | Current                  | Target                                            | Phase  |
+| --- | ----------------------------------------- | ------------------------ | ------------------------------------------------- | ------ |
+| 1   | Auth middleware enabled                   | ❌ Disabled              | ✅ Enabled                                        | 1      |
+| 2   | No demo-mode fallback                     | ❌ Present               | ✅ Removed                                        | 1      |
+| 3   | All routes use `requireWorkspaceApi()`    | ❌ 0/36                  | ✅ 31/31                                          | 1/5    |
+| 4   | RBAC `can()` enforced                     | ❌ 0/36                  | ✅ All mutating                                   | 5      |
+| 5   | CSP `frame-ancestors 'self'`              | ❌ `*`                   | ✅ `'self'`                                       | 1      |
+| 6   | CSP no `unsafe-eval` in prod              | ❌ Present               | ✅ Removed                                        | 1      |
+| 7   | `X-Frame-Options: SAMEORIGIN`             | ❌ `ALLOWALL`            | ✅ `SAMEORIGIN`                                   | 1      |
+| 8   | Platform tokens encrypted                 | ❌ Plaintext             | ✅ AES-256-GCM                                    | 5      |
+| 9   | `NEXTAUTH_SECRET` required in prod        | ✅ Throws (done ✓)       | ✅                                                | 1      |
+| 10  | Demo credentials not in prod seed         | ⚠️ In seed               | ✅ Gated by `NODE_ENV`                            | 1      |
+| 11  | Rate limiting (Redis-backed)              | ❌ In-memory             | ✅ `@upstash/ratelimit`                           | 8      |
+| 12  | AI prompt-injection defense               | ❌ Raw concat            | ✅ XML tag wrapping                               | 5      |
+| 13  | AI error messages sanitized               | ❌ Leaks `err.message`   | ✅ Generic Persian                                | 1      |
+| 14  | Realtime socket.io auth                   | ❌ None                  | ✅ JWT handshake                                  | 7      |
+| 15  | `POST /emit` auth                         | ❌ None                  | ✅ Shared secret                                  | 7      |
+| 16  | Media magic-byte validation               | ❌ Trusts `Content-Type` | ✅ `sharp().metadata()`                           | 9      |
+| 17  | Media malware scan                        | ❌ None                  | ✅ ClamAV                                         | 9      |
+| 18  | Audit logs for sensitive actions          | ❌ None                  | ✅ `AuditLog` table                               | 5/6    |
+| 19  | `.env.example` documents all vars         | ❌ Missing               | ✅ Created                                        | 1      |
+| 20  | No secrets in git history                 | ✅ Purged (done ✓)       | ✅                                                | 1      |
+| 21  | HTTPS-only in production                  | ❌ Unknown               | ✅ Caddy auto-TLS                                 | 3      |
+| 22  | HSTS header                               | ❌ Missing               | ✅ `max-age=63072000; includeSubDomains; preload` | 3      |
+| 23  | CSRF protection on POST                   | ⚠️ NextAuth only         | ✅ Same-site cookies + CSRF token                 | 5      |
+| 24  | Webhook signature verification            | ❌ N/A (no webhooks yet) | ✅ HMAC verification                              | Future |
+| 25  | Password policy (min 8 chars, complexity) | ❌ None                  | ✅ Zod schema                                     | 5      |
 
 ### Security tasks by phase
 
 **Phase 1 (P0):**
+
 - Re-enable middleware
 - Remove demo-mode fallback
 - Tighten CSP (`frame-ancestors 'self'`, remove `unsafe-eval`)
@@ -889,6 +916,7 @@ Key gaps:
 - Gate demo credentials behind `NODE_ENV !== 'production'`
 
 **Phase 5:**
+
 - Token encryption (AES-256-GCM)
 - RBAC enforcement
 - AI prompt-injection defense
@@ -897,10 +925,12 @@ Key gaps:
 - Audit logs
 
 **Phase 7:**
+
 - Realtime auth
 - `POST /emit` shared secret
 
 **Phase 9:**
+
 - Media validation
 - ClamAV scan
 
@@ -942,11 +972,11 @@ CMD ["bun", "server.js"]
 services:
   app:
     build: .
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     env_file: .env
     depends_on: [postgres, redis]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -956,18 +986,18 @@ services:
     env_file: .env
     depends_on: [postgres, redis]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3002/health']
       interval: 30s
       timeout: 5s
       retries: 3
 
   realtime:
     build: ./mini-services/realtime
-    ports: ["3003:3003"]
+    ports: ['3003:3003']
     env_file: .env
     depends_on: [redis]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3003/health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -978,20 +1008,20 @@ services:
       POSTGRES_DB: nashrino
       POSTGRES_USER: nashrino
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes: ["pg_data:/var/lib/postgresql/data"]
-    ports: ["5432:5432"]
+    volumes: ['pg_data:/var/lib/postgresql/data']
+    ports: ['5432:5432']
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nashrino"]
+      test: ['CMD-SHELL', 'pg_isready -U nashrino']
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    volumes: ["redis_data:/data"]
-    ports: ["6379:6379"]
+    volumes: ['redis_data:/data']
+    ports: ['6379:6379']
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1020,9 +1050,9 @@ services:
     deploy:
       replicas: 2
       resources:
-        limits: { memory: 1G, cpus: "1.0" }
+        limits: { memory: 1G, cpus: '1.0' }
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/health']
       interval: 30s
       timeout: 5s
       retries: 3
@@ -1034,7 +1064,7 @@ services:
     env_file: .env.production
     deploy:
       resources:
-        limits: { memory: 512M, cpus: "0.5" }
+        limits: { memory: 512M, cpus: '0.5' }
 
   realtime:
     image: ghcr.io/reza96ah-ship-it/publish-realtime:${IMAGE_TAG}
@@ -1045,22 +1075,22 @@ services:
     image: postgres:16-alpine
     restart: always
     env_file: .env.production
-    volumes: ["pg_data:/var/lib/postgresql/data"]
+    volumes: ['pg_data:/var/lib/postgresql/data']
     networks: [internal]
     deploy:
       resources:
-        limits: { memory: 2G, cpus: "2.0" }
+        limits: { memory: 2G, cpus: '2.0' }
 
   redis:
     image: redis:7-alpine
     restart: always
-    volumes: ["redis_data:/data"]
+    volumes: ['redis_data:/data']
     networks: [internal]
 
   caddy:
     image: caddy:2-alpine
     restart: always
-    ports: ["80:80", "443:443"]
+    ports: ['80:80', '443:443']
     volumes:
       - ./Caddyfile.prod:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -1069,11 +1099,11 @@ services:
 
   migrate:
     image: ghcr.io/reza96ah-ship-it/publish:${IMAGE_TAG}
-    command: ["bunx", "prisma", "migrate", "deploy"]
+    command: ['bunx', 'prisma', 'migrate', 'deploy']
     env_file: .env.production
     depends_on:
       postgres: { condition: service_healthy }
-    restart: "no"
+    restart: 'no'
 
 networks:
   internal:
@@ -1169,7 +1199,7 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env: { POSTGRES_PASSWORD: test }
-        ports: ["5432:5432"]
+        ports: ['5432:5432']
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -1177,7 +1207,7 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7-alpine
-        ports: ["6379:6379"]
+        ports: ['6379:6379']
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
@@ -1220,32 +1250,32 @@ jobs:
 
 ### Test coverage targets
 
-| Test type | Current | Target | Phase |
-|---|---|---|---|
-| Unit tests (jalali, validations) | 11 | 50+ (add Zod schemas, lib functions) | 10 |
-| API route tests | 0 | 36 (one per route) | 10 |
-| Adapter tests (mock fetch) | 0 | 5 (one per platform) | 10 |
-| Worker tests | 0 | 4 (retry, circuit breaker, idempotency, visibility) | 10 |
-| Realtime tests | 0 | 3 (auth, room auth, emit auth) | 10 |
-| Playwright E2E | 3 | 15+ (critical flows) | 10 |
-| Contract tests | 0 | Future | Future |
+| Test type                        | Current | Target                                              | Phase  |
+| -------------------------------- | ------- | --------------------------------------------------- | ------ |
+| Unit tests (jalali, validations) | 11      | 50+ (add Zod schemas, lib functions)                | 10     |
+| API route tests                  | 0       | 36 (one per route)                                  | 10     |
+| Adapter tests (mock fetch)       | 0       | 5 (one per platform)                                | 10     |
+| Worker tests                     | 0       | 4 (retry, circuit breaker, idempotency, visibility) | 10     |
+| Realtime tests                   | 0       | 3 (auth, room auth, emit auth)                      | 10     |
+| Playwright E2E                   | 3       | 15+ (critical flows)                                | 10     |
+| Contract tests                   | 0       | Future                                              | Future |
 
 ### Playwright E2E test plan
 
-| Test | Flow | Phase |
-|---|---|---|
-| Login | `POST /api/auth/callback/credentials` → dashboard renders | 10 |
-| Dashboard load | All 6 panels render with data | 10 |
-| Compose + schedule | Type caption → Jalali picker → schedule → toast | 10 |
-| Calendar drag-drop | Drag job chip → drop on new day → API PATCH | 10 |
-| Media upload | Drag file → upload → appears in library | 10 |
-| Inbox reply | Select message → type reply → mark read | 10 |
-| Channel connection | Enter Telegram token → validate → status active | 10 |
-| AI caption | Enter topic → generate → stream appears | 10 |
-| RTL mobile layout | Mobile viewport → no horizontal overflow | 10 |
-| Dark mode | Toggle → theme persists | 10 |
-| Persian digits | Numbers render in Persian digits | 10 |
-| Jalali date format | Today's date renders in Jalali | 10 |
+| Test               | Flow                                                      | Phase |
+| ------------------ | --------------------------------------------------------- | ----- |
+| Login              | `POST /api/auth/callback/credentials` → dashboard renders | 10    |
+| Dashboard load     | All 6 panels render with data                             | 10    |
+| Compose + schedule | Type caption → Jalali picker → schedule → toast           | 10    |
+| Calendar drag-drop | Drag job chip → drop on new day → API PATCH               | 10    |
+| Media upload       | Drag file → upload → appears in library                   | 10    |
+| Inbox reply        | Select message → type reply → mark read                   | 10    |
+| Channel connection | Enter Telegram token → validate → status active           | 10    |
+| AI caption         | Enter topic → generate → stream appears                   | 10    |
+| RTL mobile layout  | Mobile viewport → no horizontal overflow                  | 10    |
+| Dark mode          | Toggle → theme persists                                   | 10    |
+| Persian digits     | Numbers render in Persian digits                          | 10    |
+| Jalali date format | Today's date renders in Jalali                            | 10    |
 
 ---
 
@@ -1303,45 +1333,45 @@ A phase is "done" when ALL of its acceptance criteria are met AND:
 
 ### Final scorecard target
 
-| Category | Current | Target |
-|---|---|---|
-| Backend architecture | 4 | **9** |
-| Database design | 6 | **9** |
-| API quality | 4 | **9** |
-| Auth/security | 2 | **9** |
-| Worker reliability | 6 | **9** |
-| Realtime reliability | 5 | **9** |
-| Performance | 5 | **8** |
-| Observability | 2 | **9** |
-| CI/CD | 1 | **9** |
-| Docker/deployment | 2 | **9** |
-| Test coverage | 3 | **8** |
+| Category                 | Current  | Target   |
+| ------------------------ | -------- | -------- |
+| Backend architecture     | 4        | **9**    |
+| Database design          | 6        | **9**    |
+| API quality              | 4        | **9**    |
+| Auth/security            | 2        | **9**    |
+| Worker reliability       | 6        | **9**    |
+| Realtime reliability     | 5        | **9**    |
+| Performance              | 5        | **8**    |
+| Observability            | 2        | **9**    |
+| CI/CD                    | 1        | **9**    |
+| Docker/deployment        | 2        | **9**    |
+| Test coverage            | 3        | **8**    |
 | **Production readiness** | **2/10** | **9/10** |
 
 ---
 
 ## Appendix A — Recommended stack additions
 
-| Package | Version | Purpose | Phase |
-|---|---|---|---|
-| `pino` | 9.x | Structured logging | 2 |
-| `pino-http` | 10.x | HTTP request logging | 2 |
-| `@sentry/nextjs` | 8.x | Error tracking + performance | 2 |
-| `prom-client` | 15.x | Prometheus metrics | 2 |
-| `@opentelemetry/sdk-node` | 1.x | Distributed tracing | 2 |
-| `@upstash/ratelimit` | 2.x | Redis-backed rate limiting | 8 |
-| `@upstash/redis` | 1.x | Redis client for ratelimit | 8 |
-| `bullmq` | 5.x | Redis-backed job queue | 6 |
-| `ioredis` | 5.x | Redis client for BullMQ | 6 |
-| `@socket.io/redis-adapter` | 8.x | Socket.io horizontal scaling | 7 |
-| `@aws-sdk/client-s3` | 3.x | S3 presigned URLs | 9 |
-| `@aws-sdk/s3-request-presigner` | 3.x | S3 presigned URLs | 9 |
-| `clamav.js` | 1.x | Malware scanning | 9 |
-| `p-limit` | 6.x | Per-platform concurrency semaphore | 6 |
-| `next-test-api-route-handler` | 4.x | API route testing | 10 |
-| `@next/bundle-analyzer` | 15.x | Bundle size analysis | 10 |
-| `@lhci/cli` | 0.14.x | Lighthouse CI | 10 |
-| `postgres` | 3.x | PostgreSQL driver (if not using Prisma) | 4 |
+| Package                         | Version | Purpose                                 | Phase |
+| ------------------------------- | ------- | --------------------------------------- | ----- |
+| `pino`                          | 9.x     | Structured logging                      | 2     |
+| `pino-http`                     | 10.x    | HTTP request logging                    | 2     |
+| `@sentry/nextjs`                | 8.x     | Error tracking + performance            | 2     |
+| `prom-client`                   | 15.x    | Prometheus metrics                      | 2     |
+| `@opentelemetry/sdk-node`       | 1.x     | Distributed tracing                     | 2     |
+| `@upstash/ratelimit`            | 2.x     | Redis-backed rate limiting              | 8     |
+| `@upstash/redis`                | 1.x     | Redis client for ratelimit              | 8     |
+| `bullmq`                        | 5.x     | Redis-backed job queue                  | 6     |
+| `ioredis`                       | 5.x     | Redis client for BullMQ                 | 6     |
+| `@socket.io/redis-adapter`      | 8.x     | Socket.io horizontal scaling            | 7     |
+| `@aws-sdk/client-s3`            | 3.x     | S3 presigned URLs                       | 9     |
+| `@aws-sdk/s3-request-presigner` | 3.x     | S3 presigned URLs                       | 9     |
+| `clamav.js`                     | 1.x     | Malware scanning                        | 9     |
+| `p-limit`                       | 6.x     | Per-platform concurrency semaphore      | 6     |
+| `next-test-api-route-handler`   | 4.x     | API route testing                       | 10    |
+| `@next/bundle-analyzer`         | 15.x    | Bundle size analysis                    | 10    |
+| `@lhci/cli`                     | 0.14.x  | Lighthouse CI                           | 10    |
+| `postgres`                      | 3.x     | PostgreSQL driver (if not using Prisma) | 4     |
 
 ## Appendix B — Anti-patterns to avoid
 

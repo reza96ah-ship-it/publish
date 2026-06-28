@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 /**
  * Web Vitals reporter — sends LCP/INP/CLS/FCP/TTFB to /api/vitals.
@@ -7,15 +7,15 @@
  *   <WebVitals />
  */
 
-import { useEffect } from "react"
-import { onLCP, onINP, onCLS, onFCP, onTTFB, type Metric } from "web-vitals"
+import { useEffect } from 'react'
+import { onLCP, onINP, onCLS, onFCP, onTTFB, type Metric } from 'web-vitals'
 
 export function WebVitals() {
   useEffect(() => {
     const report = (metric: Metric) => {
-      fetch("/api/vitals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      fetch('/api/vitals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: metric.name,
           value: metric.value,

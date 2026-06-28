@@ -1,18 +1,18 @@
 /**
  * LinkedIn Posts API adapter — REAL implementation.
- * 
+ *
  * Official docs: https://learn.microsoft.com/linkedin/marketing/integrations/community-management/posts/api/create-post
  * Auth docs: https://learn.microsoft.com/linkedin/shared/authentication/authorization-code-flow
- * 
+ *
  * Auth: OAuth 2.0 (3-legged). Access token (60 days, must refresh).
  * Permissions: w_member_social (post as member), r_organization_social + w_organization_social (post as org)
  * URL: https://api.linkedin.com/v2/{endpoint}
- * 
+ *
  * Two-step image upload:
  *   1. POST /v2/assets?action=registerUpload → get uploadUrl + asset URN
  *   2. PUT <uploadUrl> with binary image data
  *   3. POST /v2/posts with content.media.id = asset URN
- * 
+ *
  * Rate limits: 100K calls/day app-level, ~90 posts/day per member.
  * Token refresh: POST /oauth/v2/accessToken with refresh_token (60-day cycle).
  */
@@ -55,7 +55,10 @@ export class LinkedInAdapter implements ChannelAdapter {
     }
   }
 
-  async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
+  async validateReadiness(
+    content: AdapterContent,
+    account: AdapterAccount
+  ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
     if (text.length > LI_TEXT_LIMIT) {
@@ -86,7 +89,7 @@ export class LinkedInAdapter implements ChannelAdapter {
     const now = Date.now()
     const { account, content, platformCaption } = job
     const token = account.token
-    const authorUrn = account.targetId  // urn:li:person:{id} or urn:li:organization:{id}
+    const authorUrn = account.targetId // urn:li:person:{id} or urn:li:organization:{id}
 
     if (!token) {
       return {
@@ -199,7 +202,7 @@ export class LinkedInAdapter implements ChannelAdapter {
   private async uploadImage(
     token: string,
     authorUrn: string,
-    media: { url: string; type?: string },
+    media: { url: string; type?: string }
   ): Promise<string> {
     // Step 1: Register upload
     const registerRes = await fetch(`${LI_API}/assets?action=registerUpload`, {
@@ -218,8 +221,10 @@ export class LinkedInAdapter implements ChannelAdapter {
     const register = await registerRes.json()
     if (register.status && register.code) throw this.makeError(register)
 
-    const uploadUrl = register.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl
-    const asset = register.value.asset  // urn:li:digitalmediaAsset:{id}
+    const uploadUrl =
+      register.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']
+        .uploadUrl
+    const asset = register.value.asset // urn:li:digitalmediaAsset:{id}
 
     // Step 2: Download image from URL and upload to LinkedIn
     const imgRes = await fetch(media.url)

@@ -8,26 +8,26 @@
  * IMPORTANT: z-ai-web-dev-sdk MUST be used in backend code only.
  */
 
-import ZAI from "z-ai-web-dev-sdk";
+import ZAI from 'z-ai-web-dev-sdk'
 
-let _zai: ZAI | null = null;
+let _zai: ZAI | null = null
 
 export async function getZAI(): Promise<ZAI> {
   if (!_zai) {
-    _zai = await ZAI.create();
+    _zai = await ZAI.create()
   }
-  return _zai;
+  return _zai
 }
 
-export type Platform = "instagram" | "telegram" | "linkedin" | "rubika" | "bale" | "eitaa";
+export type Platform = 'instagram' | 'telegram' | 'linkedin' | 'rubika' | 'bale' | 'eitaa'
 
 export interface WorkspaceContext {
-  name?: string;
-  brandVoice?: string;
-  contentGuidelines?: string;
-  defaultHashtags?: string;
-  captionFooter?: string;
-  persianDigits?: boolean;
+  name?: string
+  brandVoice?: string
+  contentGuidelines?: string
+  defaultHashtags?: string
+  captionFooter?: string
+  persianDigits?: boolean
 }
 
 /**
@@ -38,22 +38,22 @@ export async function generateCaption(
   topic: string,
   platform: Platform,
   workspace?: WorkspaceContext,
-  tone?: "formal" | "friendly" | "playful" | "professional",
+  tone?: 'formal' | 'friendly' | 'playful' | 'professional'
 ): Promise<string> {
-  const zai = await getZAI();
-  const system = buildCaptionSystem(platform, workspace, tone);
+  const zai = await getZAI()
+  const system = buildCaptionSystem(platform, workspace, tone)
 
   const completion = await zai.chat.completions.create({
-    model: "glm-4-plus",
+    model: 'glm-4-plus',
     messages: [
-      { role: "assistant", content: system },
-      { role: "user", content: `موضوع: ${topic}\n\nکپشن را بنویس.` },
+      { role: 'assistant', content: system },
+      { role: 'user', content: `موضوع: ${topic}\n\nکپشن را بنویس.` },
     ],
-    thinking: { type: "disabled" },
+    thinking: { type: 'disabled' },
     temperature: 0.75,
-  });
+  })
 
-  return completion.choices?.[0]?.message?.content ?? "";
+  return completion.choices?.[0]?.message?.content ?? ''
 }
 
 /**
@@ -64,42 +64,42 @@ export async function* streamCaption(
   topic: string,
   platform: Platform,
   workspace?: WorkspaceContext,
-  tone?: "formal" | "friendly" | "playful" | "professional",
+  tone?: 'formal' | 'friendly' | 'playful' | 'professional'
 ): AsyncGenerator<string, void, unknown> {
-  const zai = await getZAI();
-  const system = buildCaptionSystem(platform, workspace, tone);
+  const zai = await getZAI()
+  const system = buildCaptionSystem(platform, workspace, tone)
 
   const completion = await zai.chat.completions.create({
-    model: "glm-4-plus",
+    model: 'glm-4-plus',
     messages: [
-      { role: "assistant", content: system },
-      { role: "user", content: `موضوع: ${topic}\n\nکپشن را بنویس.` },
+      { role: 'assistant', content: system },
+      { role: 'user', content: `موضوع: ${topic}\n\nکپشن را بنویس.` },
     ],
-    thinking: { type: "disabled" },
+    thinking: { type: 'disabled' },
     temperature: 0.75,
     stream: true,
-  });
+  })
 
   // The SDK returns a ReadableStream when stream:true
   // Parse SSE frames: "data: {json}\n\n"
-  const reader = (completion as any).getReader?.();
+  const reader = (completion as any).getReader?.()
   if (reader) {
-    const decoder = new TextDecoder();
-    let buffer = "";
+    const decoder = new TextDecoder()
+    let buffer = ''
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") return;
+        if (line.startsWith('data: ')) {
+          const jsonStr = line.slice(6).trim()
+          if (jsonStr === '[DONE]') return
           try {
-            const json = JSON.parse(jsonStr);
-            const delta = json.choices?.[0]?.delta?.content;
-            if (delta) yield delta as string;
+            const json = JSON.parse(jsonStr)
+            const delta = json.choices?.[0]?.delta?.content
+            if (delta) yield delta as string
           } catch {
             // Skip malformed JSON
           }
@@ -108,8 +108,8 @@ export async function* streamCaption(
     }
   } else {
     // Fallback: if stream isn't supported, return the full response
-    const text = await generateCaption(topic, platform, workspace, tone);
-    yield text;
+    const text = await generateCaption(topic, platform, workspace, tone)
+    yield text
   }
 }
 
@@ -120,15 +120,15 @@ export async function* streamCaption(
 export async function suggestHashtags(
   topic: string,
   platform: Platform,
-  existingHashtags?: string,
+  existingHashtags?: string
 ): Promise<string[]> {
-  const zai = await getZAI();
+  const zai = await getZAI()
 
   const completion = await zai.chat.completions.create({
-    model: "glm-4-plus",
+    model: 'glm-4-plus',
     messages: [
       {
-        role: "assistant",
+        role: 'assistant',
         content: `تو یک متخصص هشتگ‌های شبکه‌های اجتماعی برای مخاطبان ایرانی هستی.
 برای موضوع داده شده، ۱۰ هشتگ مرتبط پیشنهاد بده — ترکیبی از فارسی و انگلیسی.
 هشتگ‌های ترند ایرانی و مرتبط با موضوع را انتخاب کن.
@@ -136,21 +136,21 @@ export async function suggestHashtags(
 مثال: #اینستاگرام, #بازاریابی, #دیجیتال_مارکتینگ, #برندینگ`,
       },
       {
-        role: "user",
-        content: `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || "ندارد"}\n\n۱۰ هشتگ پیشنهادی:`,
+        role: 'user',
+        content: `موضوع: ${topic}\nپلتفرم: ${platform}\nهشتگ‌های موجود: ${existingHashtags || 'ندارد'}\n\n۱۰ هشتگ پیشنهادی:`,
       },
     ],
-    thinking: { type: "disabled" },
+    thinking: { type: 'disabled' },
     temperature: 0.8,
-  });
+  })
 
-  const text = completion.choices?.[0]?.message?.content ?? "";
+  const text = completion.choices?.[0]?.message?.content ?? ''
   // Parse hashtags from comma-separated list
   return text
     .split(/[,\n]/)
-    .map((s: string) => s.trim().replace(/^["'\d.\-\s]+/, ""))
-    .filter((s: string) => s.startsWith("#") && s.length > 1)
-    .slice(0, 10);
+    .map((s: string) => s.trim().replace(/^["'\d.\-\s]+/, ''))
+    .filter((s: string) => s.startsWith('#') && s.length > 1)
+    .slice(0, 10)
 }
 
 /**
@@ -160,32 +160,32 @@ export async function suggestHashtags(
 function buildCaptionSystem(
   platform: Platform,
   ws?: WorkspaceContext,
-  tone?: "formal" | "friendly" | "playful" | "professional",
+  tone?: 'formal' | 'friendly' | 'playful' | 'professional'
 ): string {
   const platformLabels: Record<Platform, string> = {
-    instagram: "اینستاگرام (پست فید)",
-    telegram: "تلگرام (کانال)",
-    linkedin: "لینکدین (پست)",
-    rubika: "روبیکا (کانال)",
-    bale: "بله (کانال)",
-    eitaa: "ایتا (کانال)",
-  };
+    instagram: 'اینستاگرام (پست فید)',
+    telegram: 'تلگرام (کانال)',
+    linkedin: 'لینکدین (پست)',
+    rubika: 'روبیکا (کانال)',
+    bale: 'بله (کانال)',
+    eitaa: 'ایتا (کانال)',
+  }
 
   const platformRules: Record<Platform, string> = {
-    instagram: "طول: ۱۵۰–۴۰۰ کاراکتر. حداکثر ۳۰ هشتگ در انتها. CTA: نظرت رو کامنت کن.",
-    telegram: "طول: تا ۱۰۲۴ کاراکتر. متن خوانا با پاراگراف‌های کوتاه. از ایموجی استفاده کن.",
-    linkedin: "طول: ۳۰۰–۸۰۰ کاراکتر. لحن حرفه‌ای. سوال در پایان برای تعامل.",
-    rubika: "طول: تا ۱۰۲۴ کاراکتر. متن ساده و مستقیم.",
-    bale: "طول: تا ۱۰۲۴ کاراکتر. متن خوانا با ایموجی.",
-    eitaa: "طول: تا ۱۰۲۴ کاراکتر. متن ساده و مستقیم.",
-  };
+    instagram: 'طول: ۱۵۰–۴۰۰ کاراکتر. حداکثر ۳۰ هشتگ در انتها. CTA: نظرت رو کامنت کن.',
+    telegram: 'طول: تا ۱۰۲۴ کاراکتر. متن خوانا با پاراگراف‌های کوتاه. از ایموجی استفاده کن.',
+    linkedin: 'طول: ۳۰۰–۸۰۰ کاراکتر. لحن حرفه‌ای. سوال در پایان برای تعامل.',
+    rubika: 'طول: تا ۱۰۲۴ کاراکتر. متن ساده و مستقیم.',
+    bale: 'طول: تا ۱۰۲۴ کاراکتر. متن خوانا با ایموجی.',
+    eitaa: 'طول: تا ۱۰۲۴ کاراکتر. متن ساده و مستقیم.',
+  }
 
   const toneLabels: Record<string, string> = {
-    formal: "رسمی",
-    friendly: "صمیمی",
-    playful: "شاد و بازیگوش",
-    professional: "حرفه‌ای",
-  };
+    formal: 'رسمی',
+    friendly: 'صمیمی',
+    playful: 'شاد و بازیگوش',
+    professional: 'حرفه‌ای',
+  }
 
   return `تو یک متخصص تولید محتوای فارسی برای شبکه‌های اجتماعی هستی.
 کپشن‌هایی که می‌نویسی باید طبیعی، اصیل و کاملاً فارسی باشند — نه ترجمه‌شده از انگلیسی.
@@ -199,11 +199,11 @@ function buildCaptionSystem(
 
 پلتفرم هدف: ${platformLabels[platform]}
 ${platformRules[platform]}
-${tone ? `لحن: ${toneLabels[tone]}` : ""}
-${ws?.brandVoice ? `لحن برند: ${ws.brandVoice}` : ""}
-${ws?.contentGuidelines ? `دستورالعمل‌های محتوایی: ${ws.contentGuidelines}` : ""}
-${ws?.defaultHashtags ? `هشتگ‌های پایه (حتماً در انتها): ${ws.defaultHashtags}` : ""}
-${ws?.captionFooter ? `امضای پایانی: ${ws.captionFooter}` : ""}
+${tone ? `لحن: ${toneLabels[tone]}` : ''}
+${ws?.brandVoice ? `لحن برند: ${ws.brandVoice}` : ''}
+${ws?.contentGuidelines ? `دستورالعمل‌های محتوایی: ${ws.contentGuidelines}` : ''}
+${ws?.defaultHashtags ? `هشتگ‌های پایه (حتماً در انتها): ${ws.defaultHashtags}` : ''}
+${ws?.captionFooter ? `امضای پایانی: ${ws.captionFooter}` : ''}
 
 ساختار خروجی:
 ۱. hook یک‌خطی جذاب
@@ -212,5 +212,5 @@ ${ws?.captionFooter ? `امضای پایانی: ${ws.captionFooter}` : ""}
 ۴. خط خالی
 ۵. هشتگ‌ها
 
-فقط کپشن را برگرد — بدون توضیح اضافه، بدون عبارت «این کپشن...».`;
+فقط کپشن را برگرد — بدون توضیح اضافه، بدون عبارت «این کپشن...».`
 }

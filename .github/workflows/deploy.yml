@@ -15,9 +15,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Image tag to deploy (default: commit SHA)"
+        description: 'Image tag to deploy (default: commit SHA)'
         required: false
-        default: ""
+        default: ''
 
 concurrency:
   group: deploy-production

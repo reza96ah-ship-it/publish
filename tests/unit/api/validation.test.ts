@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { validateBody, validateParams, validateId, publishSchema, aiCaptionSchema, memberInviteSchema, rescheduleSchema, cursorPaginationSchema } from '@/lib/validations'
+import {
+  validateBody,
+  validateParams,
+  validateId,
+  publishSchema,
+  aiCaptionSchema,
+  memberInviteSchema,
+  rescheduleSchema,
+  cursorPaginationSchema,
+} from '@/lib/validations'
 
 describe('API Validation — publishSchema', () => {
   it('rejects empty title', () => {

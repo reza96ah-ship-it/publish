@@ -53,22 +53,22 @@ bun run typecheck     # tsc --noEmit
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| **Runtime** | Node.js 24 LTS (prod), Bun 1.2 (dev) |
-| **Framework** | Next.js 16 (App Router, RSC, standalone output) |
-| **Language** | TypeScript (strict mode) |
-| **Styling** | Tailwind CSS 4 + shadcn/ui (New York) |
-| **Database** | PostgreSQL 18 (prod), SQLite (dev) |
-| **ORM** | Prisma |
-| **Auth** | NextAuth.js v4 (Credentials provider, JWT sessions) |
-| **Realtime** | socket.io + Redis adapter |
-| **Queue** | BullMQ (planned) — currently DB-polling |
-| **AI** | GapGPT (gpt-5-mini) → Google Gemini → z-ai fallback chain |
-| **Editor** | Tiptap v3 |
-| **Charts** | Recharts |
-| **Motion** | Framer Motion |
-| **Calendar** | Jalali (Solar Hijri) — bespoke `src/lib/jalali.ts` |
+| Layer         | Technology                                                |
+| ------------- | --------------------------------------------------------- |
+| **Runtime**   | Node.js 24 LTS (prod), Bun 1.2 (dev)                      |
+| **Framework** | Next.js 16 (App Router, RSC, standalone output)           |
+| **Language**  | TypeScript (strict mode)                                  |
+| **Styling**   | Tailwind CSS 4 + shadcn/ui (New York)                     |
+| **Database**  | PostgreSQL 18 (prod), SQLite (dev)                        |
+| **ORM**       | Prisma                                                    |
+| **Auth**      | NextAuth.js v4 (Credentials provider, JWT sessions)       |
+| **Realtime**  | socket.io + Redis adapter                                 |
+| **Queue**     | BullMQ (planned) — currently DB-polling                   |
+| **AI**        | GapGPT (gpt-5-mini) → Google Gemini → z-ai fallback chain |
+| **Editor**    | Tiptap v3                                                 |
+| **Charts**    | Recharts                                                  |
+| **Motion**    | Framer Motion                                             |
+| **Calendar**  | Jalali (Solar Hijri) — bespoke `src/lib/jalali.ts`        |
 
 See [`docs/VERSION_BASELINE_2026.md`](docs/VERSION_BASELINE_2026.md) for full version pins.
 
@@ -127,18 +127,18 @@ See [`docs/ARCHITECTURE_MODULAR_MONOLITH.md`](docs/ARCHITECTURE_MODULAR_MONOLITH
 
 ### 10-phase roadmap
 
-| Phase | Focus | Effort | Issues |
-|---|---|---|---|
-| **1** | P0 Safety Blockers | 1 week | [#2-#11](https://github.com/reza96ah-ship-it/publish/milestone/1) |
-| **2** | Observability + Health | 3 days | [milestone #2](https://github.com/reza96ah-ship-it/publish/milestone/2) |
-| **3** | Docker + CI/CD | 4 days | [milestone #3](https://github.com/reza96ah-ship-it/publish/milestone/3) |
-| **4** | PostgreSQL Migration | 4 days | [milestone #4](https://github.com/reza96ah-ship-it/publish/milestone/4) |
-| **5** | Token Encryption + RBAC | 3 days | [milestone #5](https://github.com/reza96ah-ship-it/publish/milestone/5) |
-| **6** | Worker Hardening | 4 days | [milestone #6](https://github.com/reza96ah-ship-it/publish/milestone/6) |
-| **7** | Realtime Auth + Redis | 3 days | [milestone #7](https://github.com/reza96ah-ship-it/publish/milestone/7) |
-| **8** | API Quality | 4 days | [milestone #8](https://github.com/reza96ah-ship-it/publish/milestone/8) |
-| **9** | Media: S3 + Validation | 4 days | [milestone #9](https://github.com/reza96ah-ship-it/publish/milestone/9) |
-| **10** | Testing + Performance | 5 days | [milestone #10](https://github.com/reza96ah-ship-it/publish/milestone/10) |
+| Phase  | Focus                   | Effort | Issues                                                                    |
+| ------ | ----------------------- | ------ | ------------------------------------------------------------------------- |
+| **1**  | P0 Safety Blockers      | 1 week | [#2-#11](https://github.com/reza96ah-ship-it/publish/milestone/1)         |
+| **2**  | Observability + Health  | 3 days | [milestone #2](https://github.com/reza96ah-ship-it/publish/milestone/2)   |
+| **3**  | Docker + CI/CD          | 4 days | [milestone #3](https://github.com/reza96ah-ship-it/publish/milestone/3)   |
+| **4**  | PostgreSQL Migration    | 4 days | [milestone #4](https://github.com/reza96ah-ship-it/publish/milestone/4)   |
+| **5**  | Token Encryption + RBAC | 3 days | [milestone #5](https://github.com/reza96ah-ship-it/publish/milestone/5)   |
+| **6**  | Worker Hardening        | 4 days | [milestone #6](https://github.com/reza96ah-ship-it/publish/milestone/6)   |
+| **7**  | Realtime Auth + Redis   | 3 days | [milestone #7](https://github.com/reza96ah-ship-it/publish/milestone/7)   |
+| **8**  | API Quality             | 4 days | [milestone #8](https://github.com/reza96ah-ship-it/publish/milestone/8)   |
+| **9**  | Media: S3 + Validation  | 4 days | [milestone #9](https://github.com/reza96ah-ship-it/publish/milestone/9)   |
+| **10** | Testing + Performance   | 5 days | [milestone #10](https://github.com/reza96ah-ship-it/publish/milestone/10) |
 
 ---
 
@@ -146,26 +146,26 @@ See [`docs/ARCHITECTURE_MODULAR_MONOLITH.md`](docs/ARCHITECTURE_MODULAR_MONOLITH
 
 See [`.env.example`](.env.example) for the full list. Key ones:
 
-| Var | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | ✅ | PostgreSQL connection string (prod) or SQLite path (dev) |
-| `NEXTAUTH_SECRET` | ✅ | JWT signing secret (`openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | ✅ | App base URL |
-| `GAPGPT_API_KEY` | Optional | Primary AI provider |
-| `GEMINI_API_KEY` | Optional | Fallback AI provider |
-| `REDIS_URL` | Phase 6+ | Redis for BullMQ, rate limiting, socket.io adapter |
+| Var               | Required | Description                                              |
+| ----------------- | -------- | -------------------------------------------------------- |
+| `DATABASE_URL`    | ✅       | PostgreSQL connection string (prod) or SQLite path (dev) |
+| `NEXTAUTH_SECRET` | ✅       | JWT signing secret (`openssl rand -base64 32`)           |
+| `NEXTAUTH_URL`    | ✅       | App base URL                                             |
+| `GAPGPT_API_KEY`  | Optional | Primary AI provider                                      |
+| `GEMINI_API_KEY`  | Optional | Fallback AI provider                                     |
+| `REDIS_URL`       | Phase 6+ | Redis for BullMQ, rate limiting, socket.io adapter       |
 
 ---
 
 ## Supported platforms
 
-| Platform | Status | API |
-|---|---|---|
-| **Telegram** | ✅ Real | Bot API (`sendMessage`) |
-| **Bale** | ✅ Real | Bot API (Telegram-compatible) |
-| **Rubika** | ✅ Real | Bot API (`sendMessage`) |
+| Platform      | Status  | API                                |
+| ------------- | ------- | ---------------------------------- |
+| **Telegram**  | ✅ Real | Bot API (`sendMessage`)            |
+| **Bale**      | ✅ Real | Bot API (Telegram-compatible)      |
+| **Rubika**    | ✅ Real | Bot API (`sendMessage`)            |
 | **Instagram** | ✅ Real | Meta Graph API (container publish) |
-| **LinkedIn** | ✅ Real | Posts API (UGC posts) |
+| **LinkedIn**  | ✅ Real | Posts API (UGC posts)              |
 
 **No scraping, no password login automation, no unofficial DM.** Instagram personal accounts use manual/reminder mode.
 

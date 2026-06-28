@@ -1,21 +1,21 @@
 /**
  * Instagram Graph API adapter — REAL implementation.
- * 
+ *
  * Official docs: https://developers.facebook.com/docs/instagram-api
  * Content Publishing guide: https://developers.facebook.com/docs/instagram-api/guides/content-publishing
- * 
+ *
  * Auth: OAuth 2.0 via Facebook Login. Requires Instagram Business/Creator account + Facebook Page.
  * URL: https://graph.facebook.com/v21.0/{endpoint}
- * 
+ *
  * Two-step publish process:
  *   1. POST /{ig-user-id}/media → create media container → returns { id }
  *   2. POST /{ig-user-id}/media_publish?creation_id={container_id} → publish
- * 
+ *
  * Media types: IMAGE, VIDEO, REEL, CAROUSEL (2-10 items)
  * Caption limit: 2200 chars, 30 hashtags
  * Rate limit: 200 calls/hour per user
  * Token: long-lived (60 days, must refresh before expiry)
- * 
+ *
  * Permissions needed: instagram_basic, instagram_content_publish, pages_show_list,
  *   pages_read_engagement, instagram_manage_insights
  */
@@ -42,7 +42,11 @@ export class InstagramAdapter implements ChannelAdapter {
     const token = account.token
     const igUserId = account.targetId
     if (!token || !igUserId) {
-      return { healthy: false, status: 'disconnected', lastError: 'توکن یا شناسه کاربر اینستاگرام تنظیم نشده است' }
+      return {
+        healthy: false,
+        status: 'disconnected',
+        lastError: 'توکن یا شناسه کاربر اینستاگرام تنظیم نشده است',
+      }
     }
     try {
       const res = await fetch(
@@ -50,7 +54,11 @@ export class InstagramAdapter implements ChannelAdapter {
       )
       const data = await res.json()
       if (data.error) {
-        return { healthy: false, status: 'expired', lastError: data.error.message || 'توکن منقضی شده است' }
+        return {
+          healthy: false,
+          status: 'expired',
+          lastError: data.error.message || 'توکن منقضی شده است',
+        }
       }
       return { healthy: true, status: 'active', lastError: null }
     } catch (err) {
@@ -58,10 +66,13 @@ export class InstagramAdapter implements ChannelAdapter {
     }
   }
 
-  async validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult> {
+  async validateReadiness(
+    content: AdapterContent,
+    account: AdapterAccount
+  ): Promise<ReadinessResult> {
     const issues = []
     const caption = this.buildCaption(content)
-    
+
     if (caption.length > IG_CAPTION_LIMIT) {
       issues.push({
         code: 'caption_too_long',
@@ -139,7 +150,7 @@ export class InstagramAdapter implements ChannelAdapter {
         // Single media
         const m = mediaItems[0]
         containerId = await this.createMediaContainer(token, igUserId, m, caption)
-        
+
         // For video/reel, wait for processing
         if (m.type === 'video' || m.type === 'reel') {
           await this.waitForProcessing(token, containerId)
@@ -204,7 +215,7 @@ export class InstagramAdapter implements ChannelAdapter {
     igUserId: string,
     media: { type: string; url: string },
     caption?: string,
-    isCarouselItem = false,
+    isCarouselItem = false
   ): Promise<string> {
     const body: any = {
       access_token: token,
@@ -243,7 +254,7 @@ export class InstagramAdapter implements ChannelAdapter {
     token: string,
     igUserId: string,
     childIds: string[],
-    caption: string,
+    caption: string
   ): Promise<string> {
     const res = await fetch(`${GRAPH_API}/${igUserId}/media`, {
       method: 'POST',
@@ -268,7 +279,7 @@ export class InstagramAdapter implements ChannelAdapter {
       const data = await res.json()
       if (data.status_code === 'FINISHED') return
       if (data.status_code === 'ERROR') throw new Error('پردازش ویدیوی اینستاگرام ناموفق بود')
-      await new Promise((r) => setTimeout(r, 5000))  // wait 5s
+      await new Promise((r) => setTimeout(r, 5000)) // wait 5s
     }
     throw new Error('زمان پردازش ویدیوی اینستاگرام به پایان رسید')
   }

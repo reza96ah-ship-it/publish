@@ -19,6 +19,7 @@
 ## Dev bypass
 
 In development (`NODE_ENV !== 'production'`):
+
 - Middleware `authorized()` callback returns `true` (no auth check)
 - `requireWorkspaceApi()` falls back to first workspace (demo mode)
 - `DISABLE_AUTH` env var can force-disable auth in any environment
@@ -26,6 +27,7 @@ In development (`NODE_ENV !== 'production'`):
 ## Call sites to audit for migration
 
 ### `getServerSession()` call sites (11 files)
+
 - `src/lib/auth-guards.ts` — `requireWorkspaceApi()`, `requireAuth()`, `requireWorkspace()`, `requireRole()`
 - `src/lib/auth.ts` — `authorize()`, `jwt()` callback, `session()` callback
 - `src/lib/server.ts` — `getWorkspace()`, `getUserId()`
@@ -33,7 +35,9 @@ In development (`NODE_ENV !== 'production'`):
 - `src/app/auth/signin/signin-form.tsx` — client-side CSRF token fetch
 
 ### `requireWorkspaceApi()` call sites (31 API routes)
+
 All routes in `src/app/api/` that call `requireWorkspaceApi()`:
+
 - `ai/caption`, `ai/hashtags`, `ai/drafts`, `ai/drafts/[id]`, `ai/caption-multi`
 - `analytics`, `analytics/real`
 - `calendar`, `campaigns`, `content`, `content/[id]/approve`, `content/[id]/reject`,
@@ -47,6 +51,7 @@ All routes in `src/app/api/` that call `requireWorkspaceApi()`:
 - `workspace`
 
 ### `can()` RBAC call sites (5 routes)
+
 - `publish/route.ts` — `content.publish`
 - `publish-jobs/[id]/route.ts` — `job.schedule`
 - `content/[id]/approve/route.ts` — `content.review`
@@ -56,6 +61,7 @@ All routes in `src/app/api/` that call `requireWorkspaceApi()`:
 ## Migration to Better Auth (post-launch)
 
 ### Benefits
+
 - Multi-tenant workspace support (built-in organization plugin)
 - Passkey / 2FA plugins
 - Bun-native compatibility
@@ -63,6 +69,7 @@ All routes in `src/app/api/` that call `requireWorkspaceApi()`:
 - NextAuth v4 entering maintenance mode
 
 ### Migration steps
+
 1. Install `better-auth` + `@better-auth/prisma`
 2. Create `src/lib/better-auth.ts` config with Prisma adapter
 3. Map NextAuth Credentials provider → Better Auth email/password plugin
@@ -75,6 +82,7 @@ All routes in `src/app/api/` that call `requireWorkspaceApi()`:
 10. Migrate existing user passwords (scrypt hash format compatible)
 
 ### Safety net
+
 - Auth integration tests (#65) act as migration safety net
 - All 5 RBAC `can()` tests must pass after migration
 - All 31 `requireWorkspaceApi()` routes must return correct 401/403

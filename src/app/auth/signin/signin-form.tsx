@@ -1,29 +1,29 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Coffee, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
+import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { Coffee, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react'
 
 interface SignInFormProps {
-  callbackUrl: string;
+  callbackUrl: string
 }
 
 export function SignInForm({ callbackUrl }: SignInFormProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [csrfToken, setCsrfToken] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [csrfToken, setCsrfToken] = useState('')
+  const [loading, setLoading] = useState(false)
 
   // Fetch CSRF token CLIENT-SIDE — this sets the next-auth.csrf-token COOKIE
   // on the user's browser. The server-side getCsrfToken() does NOT set the
   // cookie on the browser (it sets it on the server's HTTP client), which
   // causes CSRF validation to fail on form POST.
   useEffect(() => {
-    fetch("/api/auth/csrf")
+    fetch('/api/auth/csrf')
       .then((res) => res.json())
       .then((data) => setCsrfToken(data.csrfToken))
-      .catch(() => {});
-  }, []);
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="min-h-dvh flex items-center justify-center p-6 bg-canvas">
@@ -45,13 +45,11 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
         {/* Native form POST — browser handles cookies + redirect natively */}
         <div className="n-card p-6">
           <h2 className="text-[15px] font-[600] text-ink-primary mb-1">ورود به حساب</h2>
-          <p className="text-[11.5px] text-ink-tertiary mb-5">برای ادامه وارد حساب کاربری خود شوید</p>
+          <p className="text-[11.5px] text-ink-tertiary mb-5">
+            برای ادامه وارد حساب کاربری خود شوید
+          </p>
 
-          <form
-            action="/api/auth/callback/credentials"
-            method="POST"
-            className="space-y-4"
-          >
+          <form action="/api/auth/callback/credentials" method="POST" className="space-y-4">
             {/* Client-fetched CSRF token (cookie is set on browser) */}
             <input type="hidden" name="csrfToken" value={csrfToken} />
             {/* Relative callback URL */}
@@ -59,7 +57,9 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
 
             {/* Email */}
             <div>
-              <label className="text-[12px] font-[600] text-ink-secondary mb-1.5 block">ایمیل</label>
+              <label className="text-[12px] font-[600] text-ink-secondary mb-1.5 block">
+                ایمیل
+              </label>
               <div className="relative">
                 <Mail className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary pointer-events-none" />
                 <input
@@ -79,7 +79,9 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
 
             {/* Password */}
             <div>
-              <label className="text-[12px] font-[600] text-ink-secondary mb-1.5 block">رمز عبور</label>
+              <label className="text-[12px] font-[600] text-ink-secondary mb-1.5 block">
+                رمز عبور
+              </label>
               <div className="relative">
                 <Lock className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary pointer-events-none" />
                 <input
@@ -116,7 +118,14 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
           {/* Demo credentials hint */}
           <div className="mt-5 pt-4 border-t border-border">
             <p className="text-[10.5px] text-ink-tertiary text-center">
-              دمو: <span className="num-tabular font-[600]" dir="ltr">demo@nashrino.ir</span> / <span className="num-tabular font-[600]" dir="ltr">demo1234</span>
+              دمو:{' '}
+              <span className="num-tabular font-[600]" dir="ltr">
+                demo@nashrino.ir
+              </span>{' '}
+              /{' '}
+              <span className="num-tabular font-[600]" dir="ltr">
+                demo1234
+              </span>
             </p>
           </div>
         </div>
@@ -126,5 +135,5 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
         </p>
       </motion.div>
     </div>
-  );
+  )
 }

@@ -57,12 +57,19 @@ export async function GET(req: NextRequest) {
 
 function statusLabel(s: string) {
   switch (s) {
-    case 'processing': return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
-    case 'success': return 'ظ…ظ†طھط´ط± ط´ط¯'
-    case 'failed': return 'ظ†ط§ظ…ظˆظپظ‚'
-    case 'action': return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
-    case 'scheduled': return 'ط¨ط±ظ†ط§ظ…ظ‡â€Œط±غŒط²غŒ ط´ط¯ظ‡'
-    case 'pending': return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
-    default: return s
+    case 'processing':
+      return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
+    case 'success':
+      return 'ظ…ظ†طھط´ط± ط´ط¯'
+    case 'failed':
+      return 'ظ†ط§ظ…ظˆظپظ‚'
+    case 'action':
+      return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
+    case 'scheduled':
+      return 'ط¨ط±ظ†ط§ظ…ظ‡â€Œط±غŒط²غŒ ط´ط¯ظ‡'
+    case 'pending':
+      return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
+    default:
+      return s
   }
 }
