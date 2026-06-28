@@ -65,7 +65,8 @@ jobs:
             }
             core.info(`✓ CI run ${run.id} for SHA ${run.head_sha} succeeded — deployment authorized`)
             core.setOutput('should_deploy', 'true')
-            core.setOutput('ci_sha', run.head_sha.substring(0, 7))
+            // Full SHA for actions/checkout ref; short form derived in Set image tag step
+            core.setOutput('ci_sha', run.head_sha)
 
   build-and-push:
     name: Build + Push Images
@@ -102,7 +103,8 @@ jobs:
             echo "sha=$INPUT_TAG" >> $GITHUB_OUTPUT
           else
             # Issue #141: use the exact CI-passed SHA, not 'latest'
-            SHA="$CI_SHA"
+            # CI_SHA is the full 40-char SHA; truncate to 7 for the Docker tag
+            SHA="${CI_SHA:0:7}"
             if [ -z "$SHA" ]; then
               SHA=$(git rev-parse --short HEAD)
             fi
@@ -112,12 +114,14 @@ jobs:
 
       - name: Verify SHA being deployed matches SHA that passed CI
         if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          CI_SHA: ${{ needs.verify-ci-success.outputs.ci_sha }}
+          DEPLOY_SHA: ${{ steps.meta.outputs.sha }}
         run: |
-          CI_SHA="${{ needs.verify-ci-success.outputs.ci_sha }}"
-          DEPLOY_SHA="${{ steps.meta.outputs.sha }}"
+          # CI_SHA is the full SHA; DEPLOY_SHA is the 7-char short form — compare prefix
           echo "CI passed SHA: $CI_SHA"
           echo "Deploying SHA: $DEPLOY_SHA"
-          if [ "$CI_SHA" != "$DEPLOY_SHA" ]; then
+          if [[ "$CI_SHA" != "$DEPLOY_SHA"* ]]; then
             echo "::error::SHA mismatch — refusing to deploy a SHA that didn't pass CI"
             exit 1
           fi
