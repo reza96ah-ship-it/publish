@@ -1,12 +1,22 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
 import { PlatformIcon, PanelHeader, LinkAction, EmptyState } from './shared'
-import { Radio, AlertTriangle, CheckCircle2, Clock3, RefreshCw } from 'lucide-react'
-import { useAppStore } from '@/lib/store'
+import {
+  Radio,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  RefreshCw,
+  RotateCcw,
+  WifiOff,
+  X,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 interface PulseJob {
   id: string
@@ -19,6 +29,7 @@ interface PulseJob {
   schedule: string | null
   processLabel: string
   progress: number
+  errorCategory: string | null
   assignee: string
   assigneeAvatar: string
   campaign: string
@@ -28,6 +39,7 @@ interface PulseJob {
 }
 
 export function PublishingPulse() {
+  const queryClient = useQueryClient()
   const { data } = useQuery<PulseJob[]>({
     queryKey: ['dashboard-pulse'],
     queryFn: () => api.get<PulseJob[]>('/api/dashboard/pulse'),
@@ -35,6 +47,25 @@ export function PublishingPulse() {
   })
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
+
+  // #113: retry / cancel mutations — refetch pulse on success
+  const retryMutation = useMutation({
+    mutationFn: (jobId: string) => api.patch(`/api/publish-jobs/${jobId}`, { action: 'retry' }),
+    onSuccess: () => {
+      toast.success('کار برای تلاش مجدد به صف بازگردانده شد')
+      queryClient.invalidateQueries({ queryKey: ['dashboard-pulse'] })
+    },
+    onError: () => toast.error('خطا در تلاش مجدد'),
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: (jobId: string) => api.patch(`/api/publish-jobs/${jobId}`, { action: 'cancel' }),
+    onSuccess: () => {
+      toast.success('انتشار لغو شد')
+      queryClient.invalidateQueries({ queryKey: ['dashboard-pulse'] })
+    },
+    onError: () => toast.error('خطا در لغو انتشار'),
+  })
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -47,7 +78,13 @@ export function PublishingPulse() {
 
       <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-1.5">
         {data?.map((job) => (
-          <PulseItem key={job.id} job={job} />
+          <PulseItem
+            key={job.id}
+            job={job}
+            onRetry={() => retryMutation.mutate(job.id)}
+            onCancel={() => cancelMutation.mutate(job.id)}
+            onReconnect={() => navigateTo('/channels')}
+          />
         ))}
         {(!data || data.length === 0) && (
           <EmptyState
@@ -61,7 +98,17 @@ export function PublishingPulse() {
   )
 }
 
-function PulseItem({ job }: { job: PulseJob }) {
+function PulseItem({
+  job,
+  onRetry,
+  onCancel,
+  onReconnect,
+}: {
+  job: PulseJob
+  onRetry: () => void
+  onCancel: () => void
+  onReconnect: () => void
+}) {
   const Icon =
     job.type === 'live'
       ? RefreshCw
@@ -140,6 +187,43 @@ function PulseItem({ job }: { job: PulseJob }) {
           <div className="mt-1 flex items-center gap-1 text-[10px] text-ink-tertiary">
             <Clock3 className="size-2.5" strokeWidth={2} />
             <span>{job.schedule ? relativeTime(new Date(job.schedule)) : job.processLabel}</span>
+          </div>
+        )}
+
+        {/* #113: repair actions for failed / action_required jobs */}
+        {job.type === 'action' && (
+          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            {job.errorCategory !== 'auth' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[10px]"
+                onClick={onRetry}
+              >
+                <RotateCcw className="size-2.5 me-1" />
+                تلاش مجدد
+              </Button>
+            )}
+            {job.errorCategory === 'auth' && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[10px]"
+                onClick={onReconnect}
+              >
+                <WifiOff className="size-2.5 me-1" />
+                اتصال مجدد
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] text-ink-tertiary"
+              onClick={onCancel}
+            >
+              <X className="size-2.5 me-1" />
+              لغو
+            </Button>
           </div>
         )}
       </div>

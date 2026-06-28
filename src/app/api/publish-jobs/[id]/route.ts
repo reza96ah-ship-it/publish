@@ -8,7 +8,10 @@ import { enqueuePublishJob } from '@/lib/queue'
 export const dynamic = 'force-dynamic'
 
 type PatchBody =
-  { action: 'retry' } | { action: 'discard' } | { action: 'reschedule'; scheduledAt: string }
+  | { action: 'retry' }
+  | { action: 'discard' }
+  | { action: 'cancel' }
+  | { action: 'reschedule'; scheduledAt: string }
 
 /**
  * PATCH /api/publish-jobs/[id]
@@ -124,8 +127,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     })
   }
 
+  // ── cancel ── (#113: user-facing clean cancellation)
+  if (body.action === 'cancel') {
+    const updated = await db.publishJob.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+        processLabel: 'لغو شد',
+        scheduledAt: null,
+        completedAt: new Date(),
+      },
+    })
+    return NextResponse.json({
+      ok: true,
+      jobId: updated.id,
+      status: updated.status,
+      message: 'انتشار لغو شد',
+    })
+  }
+
   return NextResponse.json(
-    { error: 'action نامعتبر است (retry، discard یا reschedule)' },
+    { error: 'action نامعتبر است (retry، cancel، discard یا reschedule)' },
     { status: 400 }
   )
 }

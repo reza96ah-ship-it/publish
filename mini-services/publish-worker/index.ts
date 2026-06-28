@@ -29,6 +29,14 @@ import { writeAuditLog } from './lib/audit'
 import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
+import {
+  buildFingerprint,
+  findPreviousSuccess,
+  startAttempt,
+  markProviderSuccess,
+  markLocalSuccess,
+  markFailure,
+} from './lib/attempt-ledger'
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
 const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'
@@ -58,7 +66,25 @@ const worker = new Worker(
       throw new Error(`PublishJob ${jobId} not found`)
     }
 
-    // Idempotency: if already has externalId, skip
+    // MISS-02: check attempt ledger BEFORE calling the provider.
+    // If a previous attempt already reached provider_success, we have the
+    // providerPostId — reconcile local state and skip the provider call to
+    // prevent a duplicate post.
+    const previousSuccess = await findPreviousSuccess(job.id)
+    if (previousSuccess) {
+      const extId = previousSuccess.providerPostId ?? job.externalId ?? ''
+      console.log(
+        `[worker] job ${job.id} — previous provider_success found, reconciling (${extId})`
+      )
+      await updateJobStatus(job, 'success', 100, 'منتشر شد (تأیید همخوانی)', null, extId)
+      if (previousSuccess.outcome !== 'local_success') {
+        await markLocalSuccess(previousSuccess.id)
+      }
+      await checkContentPublished(job.contentId)
+      return { status: 'success', externalId: extId }
+    }
+
+    // Existing idempotency guard (externalId already set in PublishJob)
     if (job.externalId) {
       console.log(`[worker] job ${job.id} already published (externalId=${job.externalId})`)
       await updateJobStatus(job, 'success', 100, 'منتشر شد (تأیید همخوانی)', null, job.externalId)
@@ -104,17 +130,33 @@ const worker = new Worker(
       },
     }
 
-    // Emit progress
+    // MISS-02: open an attempt ledger record BEFORE calling the provider
+    const fingerprint = buildFingerprint(job.platform.id, job.content.id, bullJob.attemptsMade)
+    const attemptId = await startAttempt({
+      publishJobId: job.id,
+      attemptNumber: bullJob.attemptsMade,
+      requestFingerprint: fingerprint,
+    })
+
     await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
 
     // Publish via adapter
     const result = await getAdapter(job.platform.type)?.publish(adapterJob)
 
     if (!result) {
+      await markFailure(attemptId, {
+        outcome: 'outcome_unknown',
+        safeUserMessage: 'آداپتور یافت نشد',
+      })
       throw new Error(`آداپتور پلتفرم «${job.platform.type}» یافت نشد`)
     }
 
     if (result.status === 'success') {
+      // MISS-02: record provider_success BEFORE updating local DB.
+      // If the process crashes here, the next retry will find this record
+      // and reconcile without calling the provider again.
+      await markProviderSuccess(attemptId, result.externalId ?? '')
+
       circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
       await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId)
 
@@ -126,6 +168,9 @@ const worker = new Worker(
 
       // Check if all jobs for this content are done
       await checkContentPublished(job.contentId)
+
+      // MISS-02: local DB committed — finalize the ledger record
+      await markLocalSuccess(attemptId)
 
       await emit(job, 'success', 100, 'منتشر شد', null)
       await writeAuditLog({
@@ -145,12 +190,21 @@ const worker = new Worker(
     const needsAction = result.errorCategory === 'auth'
 
     if (needsAction) {
-      // Non-retryable — mark as action needed and stop BullMQ from retrying
+      await markFailure(attemptId, {
+        outcome: 'permanent_failure',
+        errorCategory: result.errorCategory,
+        safeUserMessage: result.error,
+      })
       await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
       throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
     }
 
-    // Retryable — BullMQ will retry with exponential backoff
+    // Retryable failure
+    await markFailure(attemptId, {
+      outcome: 'retryable_failure',
+      errorCategory: result.errorCategory,
+      safeUserMessage: result.error,
+    })
     await updateJobStatus(
       job,
       'processing',
@@ -171,8 +225,10 @@ const worker = new Worker(
   {
     connection,
     concurrency: CONCURRENCY,
+    // #112: allow up to 30s for in-progress jobs to complete on SIGTERM
+    stopTimeout: 30_000,
     limiter: {
-      max: 10, // max 10 jobs per second
+      max: 10,
       duration: 1000,
     },
   }
@@ -457,10 +513,12 @@ let shuttingDown = false
 async function shutdown(signal: string) {
   if (shuttingDown) return
   shuttingDown = true
-  console.log(`\n[worker] ${signal} received, closing worker...`)
+  // #112: log clearly so ops can confirm graceful drain in logs
+  console.log(`\n[worker] ${signal} — graceful shutdown started (stopTimeout=30s)`)
   stopOutboxDispatcher()
-  await worker.close()
-  console.log('[worker] worker closed, exiting')
+  await worker.close() // waits up to stopTimeout for in-progress jobs
+  await publishQueue.close() // close queue's Redis connection
+  console.log('[worker] shutdown complete')
   process.exit(0)
 }
 
