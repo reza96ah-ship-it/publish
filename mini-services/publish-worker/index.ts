@@ -139,10 +139,8 @@ const worker = new Worker(
     // Failure — throw so BullMQ retries with backoff
     circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
 
-    const needsAction =
-      result.error?.includes('احراز') ||
-      result.error?.includes('توکن') ||
-      result.error?.includes('مجوز')
+    // BUG-05: typed errorCategory instead of matching Persian error strings
+    const needsAction = result.errorCategory === 'auth'
 
     if (needsAction) {
       // Non-retryable — mark as action needed and stop BullMQ from retrying
@@ -196,10 +194,8 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       include: { platform: true },
     })
     if (dbJob && dbJob.status !== 'success' && dbJob.status !== 'action') {
-      const needsAction =
-        err.message.includes('احراز') ||
-        err.message.includes('توکن') ||
-        err.message.includes('مجوز')
+      // BUG-05: check UnrecoverableError type (thrown only for auth failures above)
+      const needsAction = err instanceof UnrecoverableError
       await markFailed(dbJob, err.message, false, needsAction)
     }
   } catch (dbErr) {

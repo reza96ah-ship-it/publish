@@ -117,8 +117,8 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
 
   // No session — try dev bypass, otherwise 401
   if (!session?.user) {
-    // Dev-only: fall back to first workspace (demo mode for Z.ai preview)
-    if (process.env.NODE_ENV !== 'production') {
+    // Explicit opt-in bypass via DISABLE_AUTH=1 (never set in production)
+    if (process.env.DISABLE_AUTH === '1') {
       const ws = await db.workspace.findFirst({ orderBy: { createdAt: 'asc' } })
       if (ws) {
         return {
