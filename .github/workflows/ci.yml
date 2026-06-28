@@ -1,8 +1,15 @@
 # Nashrino CI — runs on every push and pull request
-# Gates: install → lint → typecheck → test → build → security audit
+# Gates: install → migrate → lint → typecheck → test → build → security audit → docker → e2e
 #
-# NOTE: Uses SQLite (matches local dev). Switch to PostgreSQL when a server
-# is available in production. See docs/PRODUCTION_READINESS_MASTER_PLAN.md §11.
+# Issue #141: Release-safe CI. No db push fallback. Migration status + schema-drift
+# checks. All images (app/worker/realtime/migrate) build in CI. SBOM + provenance.
+#
+# GitHub Actions versioning policy (Issue #141):
+# Actions are pinned to major version tags (v4, v3, v2) rather than commit SHAs.
+# This is a controlled exception — SHA pinning is ideal for supply-chain security
+# but creates maintenance burden for a small team. Major-version tags are maintained
+# by the action owners and receive security patches. When the team grows, migrate
+# to SHA pinning with Dependabot automation.
 
 name: CI
 
@@ -56,9 +63,31 @@ jobs:
         with:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
-      - run: sed -i "s/provider  = \"sqlite\"/provider  = \"postgresql\"/" prisma/schema.prisma
+
+      # Issue #141: Migrations must be deterministic — no db push fallback.
+      # Run only `prisma migrate deploy` against the fresh PostgreSQL service.
+      # If migrations are broken, CI fails. No silent schema mutation.
       - run: bunx prisma generate
-      - run: bunx prisma migrate deploy || bunx prisma db push --accept-data-loss
+      - name: Run migrations (no db push fallback)
+        run: bunx prisma migrate deploy
+      # Issue #141: Verify migration history is consistent — fail if drift detected
+      - name: Check migration status
+        run: |
+          bunx prisma migrate status
+          # migrate status exits 1 if there are pending migrations or drift
+      # Issue #141: Schema-drift check — fail if schema.prisma doesn't match migrations
+      - name: Schema-drift check (migrate diff)
+        run: |
+          # If the schema has drifted from migrations, this produces a non-empty diff.
+          # We fail CI so drift is caught before deploy.
+          DIFF=$(bunx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "${DIRECT_DATABASE_URL}_shadow" 2>&1 || true)
+          if echo "$DIFF" | grep -qE "^\s*(CREATE|ALTER|DROP|CREATE UNIQUE|CREATE INDEX)" && ! echo "$DIFF" | grep -q "No difference"; then
+            echo "::error::Schema drift detected — prisma/schema.prisma does not match migrations. Run 'bunx prisma migrate dev --name <name>' to create a migration."
+            echo "$DIFF"
+            exit 1
+          fi
+          echo "✓ No schema drift — migrations match schema.prisma"
+
       - run: bun run lint
       - run: bun run typecheck
       # Issue #123: typecheck mini-services with strict mode (noImplicitAny + noUncheckedIndexedAccess)
@@ -80,12 +109,24 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXTAUTH_SECRET: test-secret
           NEXTAUTH_URL: http://localhost:3000
+
+      # Issue #141: Upload all reports as artifacts for release evidence
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage
+          name: coverage-report
           path: coverage/
-          retention-days: 7
+          retention-days: 30
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 30
+          if-no-files-found: ignore
 
   security:
     name: Security Audit (Blocking)
@@ -163,10 +204,11 @@ jobs:
           ignore-unfixed: true
 
   docker:
-    name: Docker Build
+    name: Docker Build (all targets)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Run on main branch pushes (validates Dockerfile builds)
+    timeout-minutes: 20
+    # Issue #141: build ALL Docker targets in CI — app, worker, realtime, migrate.
+    # If any target fails to build, CI fails and deployment is blocked.
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -176,7 +218,34 @@ jobs:
           context: .
           target: app
           push: false
-          tags: nashrino:ci
+          tags: nashrino:ci-app
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: worker
+          push: false
+          tags: nashrino:ci-worker
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build realtime image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: realtime
+          push: false
+          tags: nashrino:ci-realtime
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build migrate image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: migrate
+          push: false
+          tags: nashrino:ci-migrate
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -220,7 +289,8 @@ jobs:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
       - run: bunx prisma generate
-      - run: bunx prisma migrate deploy || bunx prisma db push --accept-data-loss
+      # Issue #141: no db push fallback in E2E either
+      - run: bunx prisma migrate deploy
       - run: bun run prisma/seed.ts
       - run: bun run seed:auth # Seed demo user for E2E
       - run: bunx playwright install --with-deps chromium

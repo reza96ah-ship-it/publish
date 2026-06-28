@@ -96,13 +96,17 @@ services:
     networks: [default, internal]
 
   migrate:
-    image: ${IMAGE_TAG:-ghcr.io/reza96ah-ship-it/publish:latest}
+    # Issue #141: dedicated migration image with pinned Prisma CLI toolchain.
+    # Not the app image — the migrate Docker target ships only what's needed.
+    image: ${IMAGE_TAG_MIGRATE:-ghcr.io/reza96ah-ship-it/publish-migrate:latest}
     restart: 'no'
     env_file:
       - path: .env.production
         required: false
     environment:
       NODE_ENV: production
+      # Issue #141: migrations use the DIRECT connection (not PgBouncer)
+      # because prisma migrate deploy needs DDL privileges.
       DATABASE_URL: ${DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10}
       DIRECT_DATABASE_URL: ${DIRECT_DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@postgres:5432/nashrino?schema=public}
     command: ['bunx', 'prisma', 'migrate', 'deploy']
