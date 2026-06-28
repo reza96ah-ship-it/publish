@@ -34,11 +34,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Gate: only proceed if the triggering CI run succeeded
+  # Gate: only proceed if the triggering CI run succeeded.
+  # Runs on both workflow_run and workflow_dispatch — the script distinguishes them.
+  # Previously had if: github.event_name == 'workflow_run' which caused the job to be
+  # SKIPPED on workflow_dispatch, making build-and-push (which needs this job) also skip.
   verify-ci-success:
     name: Verify CI Success
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_run' }}
     outputs:
       ci_sha: ${{ steps.verify.outputs.ci_sha }}
       should_deploy: ${{ steps.verify.outputs.should_deploy }}
@@ -70,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: verify-ci-success
-    if: ${{ needs.verify-ci-success.outputs.should_deploy == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ needs.verify-ci-success.outputs.should_deploy == 'true' }}
     permissions:
       contents: read
       packages: write
@@ -84,15 +86,24 @@ jobs:
 
       - name: Set image tag
         id: meta
+        env:
+          # Pass user-supplied input through an env var, not inline ${{ }},
+          # to prevent shell injection via crafted tag values.
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          CI_SHA: ${{ needs.verify-ci-success.outputs.ci_sha }}
         run: |
-          if [ -n "${{ github.event.inputs.tag }}" ]; then
-            # Manual rollback/redeploy with explicit tag
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-            echo "sha=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_TAG" ]; then
+            # Validate: only allow characters safe in a Docker tag
+            if ! echo "$INPUT_TAG" | grep -qE '^[a-zA-Z0-9._-]+$'; then
+              echo "::error::Invalid tag format '$INPUT_TAG' — only alphanumeric, '.', '-', '_' are allowed"
+              exit 1
+            fi
+            echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
+            echo "sha=$INPUT_TAG" >> $GITHUB_OUTPUT
           else
             # Issue #141: use the exact CI-passed SHA, not 'latest'
-            SHA="${{ needs.verify-ci-success.outputs.ci_sha }}"
-            if [ -z "$SHA" ] || [ "$SHA" = "" ]; then
+            SHA="$CI_SHA"
+            if [ -z "$SHA" ]; then
               SHA=$(git rev-parse --short HEAD)
             fi
             echo "tag=$SHA" >> $GITHUB_OUTPUT
@@ -226,20 +237,34 @@ jobs:
 
       - name: Deploy via SSH
         if: steps.production-secrets.outputs.configured == 'true'
+        env:
+          # Pass the deploy tag via env var to prevent shell injection on the remote.
+          # appleboy/ssh-action forwards env vars listed in `envs` to the SSH session.
+          DEPLOY_TAG: ${{ needs.build-and-push.outputs.tag }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: DEPLOY_TAG
           script: |
             cd /opt/nashrino
             git pull origin main
-            export IMAGE_TAG=ghcr.io/reza96ah-ship-it/publish:${{ needs.build-and-push.outputs.tag }}
-            export IMAGE_TAG_WORKER=ghcr.io/reza96ah-ship-it/publish-worker:${{ needs.build-and-push.outputs.tag }}
-            export IMAGE_TAG_REALTIME=ghcr.io/reza96ah-ship-it/publish-realtime:${{ needs.build-and-push.outputs.tag }}
-            export IMAGE_TAG_MIGRATE=ghcr.io/reza96ah-ship-it/publish-migrate:${{ needs.build-and-push.outputs.tag }}
-            # Issue #141: record previous image tags for rollback
-            docker compose -f compose.production.yaml config | grep 'image:' | sort -u > /tmp/pre-deploy-images.txt || true
+            # Snapshot currently-running image refs BEFORE pulling new images.
+            # These are read by the rollback step (a new SSH session with no env vars).
+            docker inspect --format '{{.Config.Image}}' \
+              $(docker compose -f compose.production.yaml ps -q app 2>/dev/null) \
+              2>/dev/null > /tmp/prev-app.txt || echo "" > /tmp/prev-app.txt
+            docker inspect --format '{{.Config.Image}}' \
+              $(docker compose -f compose.production.yaml ps -q worker 2>/dev/null) \
+              2>/dev/null > /tmp/prev-worker.txt || echo "" > /tmp/prev-worker.txt
+            docker inspect --format '{{.Config.Image}}' \
+              $(docker compose -f compose.production.yaml ps -q realtime 2>/dev/null) \
+              2>/dev/null > /tmp/prev-realtime.txt || echo "" > /tmp/prev-realtime.txt
+            export IMAGE_TAG="ghcr.io/reza96ah-ship-it/publish:${DEPLOY_TAG}"
+            export IMAGE_TAG_WORKER="ghcr.io/reza96ah-ship-it/publish-worker:${DEPLOY_TAG}"
+            export IMAGE_TAG_REALTIME="ghcr.io/reza96ah-ship-it/publish-realtime:${DEPLOY_TAG}"
+            export IMAGE_TAG_MIGRATE="ghcr.io/reza96ah-ship-it/publish-migrate:${DEPLOY_TAG}"
             docker compose -f compose.production.yaml pull
             # Run migrations first (migrate service exits when done)
             docker compose -f compose.production.yaml up migrate
@@ -289,11 +314,24 @@ jobs:
           script: |
             cd /opt/nashrino
             echo "❌ Deploy failed — rolling back to previous images"
-            # Revert to previous image tags
-            docker compose -f compose.production.yaml up -d --no-deps app worker realtime
-            sleep 10
-            docker compose -f compose.production.yaml ps
-            echo "Rollback complete. Previous images are serving traffic."
+            # Read the image refs written by the deploy step before any pull.
+            # We can't rely on environment variables since each ssh-action step
+            # opens a fresh SSH session.
+            PREV_APP=$(head -1 /tmp/prev-app.txt 2>/dev/null)
+            PREV_WORKER=$(head -1 /tmp/prev-worker.txt 2>/dev/null)
+            PREV_REALTIME=$(head -1 /tmp/prev-realtime.txt 2>/dev/null)
+            if [ -n "$PREV_APP" ]; then
+              export IMAGE_TAG="$PREV_APP"
+              export IMAGE_TAG_WORKER="$PREV_WORKER"
+              export IMAGE_TAG_REALTIME="$PREV_REALTIME"
+              docker compose -f compose.production.yaml up -d --no-deps app worker realtime
+              sleep 10
+              docker compose -f compose.production.yaml ps
+              echo "Rollback complete — previous images are serving traffic."
+            else
+              echo "::error::No previous image snapshot found — manual rollback required"
+              exit 1
+            fi
 
       - name: Notify on failure
         if: failure()

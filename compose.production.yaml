@@ -105,9 +105,11 @@ services:
         required: false
     environment:
       NODE_ENV: production
-      # Issue #141: migrations use the DIRECT connection (not PgBouncer)
-      # because prisma migrate deploy needs DDL privileges.
-      DATABASE_URL: ${DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10}
+      # Migrations MUST use a direct connection — PgBouncer's transaction-pooling
+      # mode cannot sustain the advisory locks Prisma needs for DDL.
+      # Previously this defaulted to pgbouncer:6432 which silently fails DDL
+      # when DIRECT_DATABASE_URL is not set in the environment.
+      DATABASE_URL: ${DIRECT_DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@postgres:5432/nashrino?schema=public}
       DIRECT_DATABASE_URL: ${DIRECT_DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@postgres:5432/nashrino?schema=public}
     command: ['bunx', 'prisma', 'migrate', 'deploy']
     depends_on:
