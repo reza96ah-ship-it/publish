@@ -93,19 +93,20 @@ test.describe('Issue #128 — RTL layout checks', () => {
     await page.goto('/auth/signin')
     await page.waitForLoadState('networkidle')
 
-    // Find all buttons that contain only an icon (no text)
-    const iconButtons = page.locator('button:has(svg):not(:has-text))')
+    // Find all buttons that contain only an icon (no visible text)
+    // Bug fix: removed stray ')' from end of selector string
+    const iconButtons = page.locator('button:has(svg):not(:has-text(""))')
     const count = await iconButtons.count()
 
     for (let i = 0; i < count; i++) {
       const btn = iconButtons.nth(i)
-      const label = await btn.getAttribute('aria-label')
       // Skip Next.js dev tools buttons (they're not user-facing)
       if (await btn.evaluate((el) => el.closest('[data-nextjs-dev-tools]'))) continue
-      if (label) {
-        // aria-label should contain Persian characters
-        expect(label).toMatch(/[\u0600-\u06FF]/)
-      }
+      const label = await btn.getAttribute('aria-label')
+      // Bug fix: require aria-label to be present (not just check its content if it exists)
+      // An icon button without any label is an accessibility failure, not a skip
+      expect(label, `icon button at index ${i} is missing aria-label`).toBeTruthy()
+      expect(label).toMatch(/[\u0600-\u06FF]/)
     }
   })
 
@@ -135,7 +136,9 @@ test.describe('Issue #128 — RTL layout checks', () => {
     const liveRegions = page.locator('[aria-live], [role="status"], [role="alert"]')
     const count = await liveRegions.count()
     // Should have at least one live region for announcements
-    expect(count).toBeGreaterThanOrEqual(0)
+    // Bug fix: >= 0 is always true; the app has an aria-live announce region from
+    // src/lib/aria-live.tsx — if this fails, that region was removed accidentally
+    expect(count).toBeGreaterThanOrEqual(1)
   })
 })
 

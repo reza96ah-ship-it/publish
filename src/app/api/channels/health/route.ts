@@ -100,12 +100,14 @@ export async function GET() {
       ? Math.ceil((tokenExpiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
       : null
 
+    // Normalise to lowercase — OAuth providers (Facebook/LinkedIn) may return
+    // scopes in any case; our REQUIRED_SCOPES constants are all lowercase.
     const grantedScopes = p.tokenScopes
-      ? p.tokenScopes.split(',').map((s) => s.trim()).filter(Boolean)
+      ? p.tokenScopes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
       : []
 
     const requiredScopes = REQUIRED_SCOPES[p.type] ?? []
-    const missingScopes = requiredScopes.filter((s) => !grantedScopes.includes(s))
+    const missingScopes = requiredScopes.filter((s) => !grantedScopes.includes(s.toLowerCase()))
 
     const stats = statsByPlatform.get(p.id) ?? { total: 0, failed: 0 }
     const failureRate = stats.total > 0 ? (stats.failed / stats.total) * 100 : 0

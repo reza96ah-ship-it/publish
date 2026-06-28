@@ -604,7 +604,7 @@ export function ComposeView() {
               <Input
                 dir="rtl"
                 value={hashtags}
-                onChange={(e) => startTransition(() => setHashtags(e.target.value))}
+                onChange={(e) => setHashtags(e.target.value)}
                 placeholder="#برند_من #محصول_جدید"
               />
             </div>
@@ -657,7 +657,7 @@ export function ComposeView() {
                 <Input
                   dir="rtl"
                   value={note}
-                  onChange={(e) => startTransition(() => setNote(e.target.value))}
+                  onChange={(e) => setNote(e.target.value)}
                   placeholder="یادداشت خصوصی تیم…"
                   className="h-9"
                 />
