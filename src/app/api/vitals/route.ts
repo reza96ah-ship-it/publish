@@ -1,11 +1,13 @@
-﻿/**
- * POST /api/vitals â€” receive Core Web Vitals from the browser.
+/**
+ * POST /api/vitals — receive Core Web Vitals from the browser.
  *
- * Logs LCP, INP, CLS, FCP, TTFB to the server console (Prometheus in prod).
- * Non-blocking â€” always returns 204.
+ * Issue #127: observes LCP/INP/CLS/FCP/TTFB into the Prometheus
+ * webVitalsHistogram so dashboards can track p75 against budgets
+ * (LCP <2.5s, INP <200ms, CLS <0.1). Non-blocking — always returns 204.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { webVitalsHistogram } from '@/lib/metrics'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,15 +16,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { name, value, rating, id } = body
 
-    // Log vitals (replace with Prometheus metrics in prod)
+    if (typeof name !== 'string' || typeof value !== 'number') {
+      return new NextResponse(null, { status: 400 })
+    }
+
+    // Log vitals in dev for debugging
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[vitals] ${name}: ${Math.round(value)}ms (${rating}) id=${id}`)
     }
 
-    // In production, push to Prometheus / Sentry
-    // TODO: metrics.vitalsHistogram.observe({ name }, value)
+    // Issue #127: observe into Prometheus histogram.
+    // CLS is unitless (0-1); LCP/INP/FCP/TTFB are in ms → convert to seconds.
+    const isCls = name === 'CLS'
+    const seconds = isCls ? value : value / 1000
+    webVitalsHistogram.observe(
+      { metric: name, rating: typeof rating === 'string' ? rating : 'unknown' },
+      seconds
+    )
   } catch {
-    // Non-blocking â€” don't fail the request
+    // Non-blocking — don't fail the request
   }
 
   return new NextResponse(null, { status: 204 })

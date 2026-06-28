@@ -2802,3 +2802,51 @@ Work Log:
 
 Stage Summary:
 All 4 Phase 6 issues implemented and tested. 36 new tests pass. Both mini-services typecheck clean under strict + noImplicitAny + noUncheckedIndexedAccess. Route handler reduced from 210 → 85 lines with testable service layer.
+
+---
+Task ID: 7-research
+Agent: Main (Z.ai Code)
+Task: Phase 7 (Milestone #27 — Performance, UX Polish & Launch) deep research.
+
+Work Log:
+- Pulled latest main (443d6ca, Phase 6 #139 merged + user's duplicate-metrics fix verified — publishJobDuration and activeConnections removed).
+- Fetched all 5 Phase 7 issues (#127-#131) via gh CLI.
+- Read current source: layout.tsx (WebVitals NOT included), web-vitals.tsx provider exists (posts to /api/vitals), /api/vitals route exists (logs to console, has TODO for Prometheus), /api/metrics/vitals does NOT exist, channels-view.tsx (593 lines, no health view), platforms API route (stateLabel/stateColor have mojibake — pre-existing), compose-view (direct setCaption no useTransition), PublicationAttempt model exists (for failure rate), Prisma v7.8.0 already done (#130), bundle analyzer already configured.
+- Web-searched: k6 load testing patterns (ramping-arrival-rate, constant-arrival-rate), axe-core + Playwright WCAG 2.2 testing (AxeBuilder with tags wcag2a/wcag2aa/wcag21aa/wcag22aa).
+
+Stage Summary:
+Phase 7 scope (5 issues):
+
+ISSUE #130 (Prisma v7 migration): ALREADY DONE — @prisma/client@7.8.0 + @prisma/adapter-pg@7.8.0 + PrismaPg adapter in src/lib/db.ts + serverExternalPackages in next.config.ts. Just need to verify Turbopack compat + close. The issue says "DO THIS LAST" but it was completed by the Codex agent earlier.
+
+ISSUE #127 (Core Web Vitals): web-vitals@5.3.0 installed, WebVitals provider exists (posts to /api/vitals), /api/vitals route exists (console log + TODO). GAPS: (1) WebVitals NOT in layout.tsx — vitals never collected! (2) /api/vitals has no Prometheus histogram. (3) compose-view uses direct setCaption (INP issue — use useTransition for non-urgent updates). Fix: add WebVitals to layout, add vitalsHistogram to /api/vitals, add useTransition to compose-view caption/hashtags/note updates.
+
+ISSUE #131 (Channel Health center): Need new /channels/health route + view. Data sources: Platform.tokenExpiresAt/tokenScopes/lastValidatedAt (added in Phase 4 #116), PublicationAttempt aggregate for failure rate. Need API route /api/channels/health returning per-channel: status, tokenExpiry (days remaining in Persian), scopes, missing permissions, lastSuccessAt, 7-day failure rate, API version, reconnect action.
+
+ISSUE #128 (WCAG 2.2 AA): Install axe-core + @axe-core/playwright. Create tests/e2e/accessibility.spec.ts running AxeBuilder with wcag2a/wcag2aa/wcag21aa/wcag22aa tags on compose/content/login/channels views. RTL checks: reading order, focus order, aria-live Persian announcements, icon-button aria-labels, color contrast.
+
+ISSUE #129 (Load testing): Create tests/load/publish-queue.js (k6 script). Scenario: 50 VUs ramp 30s, sustain 60s, ramp down. Targets: 100 req/s, p95 <500ms, <1% error. Document in README.
+
+Implementation order:
+  1. #130 verify Prisma v7 (quick — already done)
+  2. #127 Core Web Vitals (wire WebVitals + Prometheus + useTransition)
+  3. #131 Channel Health center (API + view)
+  4. #128 WCAG axe tests
+  5. #129 k6 load test script
+
+---
+Task ID: 7-implement
+Agent: Main (Z.ai Code)
+Task: Implement all 5 Phase 7 (Performance, UX Polish & Launch) issues + tests + PR.
+
+Work Log:
+- Issue #130 (Prisma v7): Verified already done — @prisma/client@7.8.0 + @prisma/adapter-pg@7.8.0 + PrismaPg adapter in src/lib/db.ts + serverExternalPackages in next.config.ts. Dev uses --webpack (no Turbopack issue). Closed.
+- Issue #127 (Core Web Vitals): Added webVitalsHistogram to metrics.ts (metric + rating labels). Updated /api/vitals route to observe histogram (CLS unitless, others ms→seconds). Wired WebVitals component into layout.tsx (was missing — vitals were never collected!). Added useTransition to compose-view for caption/hashtags/note typing (INP optimization — non-urgent updates deferred to keep main thread responsive).
+- Issue #131 (Channel Health center): Created /api/channels/health API route aggregating Platform.tokenExpiresAt/tokenScopes + PublicationAttempt 7-day failure rate. Returns per-channel: status, token expiry countdown (days remaining in Persian), granted/missing OAuth scopes, last success, failure rate, API version, reconnect URL. REQUIRED_SCOPES + API_VERSIONS constants per platform. Created channel-health-view.tsx component (status badges, token countdown, scope chips, failure rate, reconnect button). Created /channels/health page route.
+- Issue #128 (WCAG 2.2 AA): Installed @axe-core/playwright. Created tests/e2e/accessibility.spec.ts with AxeBuilder scanning wcag2a/wcag2aa/wcag21aa/wcag22aa tags on login/dashboard/compose/content/channels views. RTL-specific checks: dir=rtl lang=fa, icon-button Persian aria-labels, focus order via Tab, aria-live regions, color contrast >=4.5:1.
+- Issue #129 (k6 load test): Created tests/load/publish-queue.js k6 script. Scenario: 50 VUs ramp 30s → sustain 60s → ramp down 30s. Thresholds: p95<500ms, error rate<1%. Custom metrics: queue_acceptance_latency_ms, errors. Setup verifies /api/health. Configurable via K6_BASE_URL + K6_AUTH_TOKEN env vars.
+- Tests: 34 new tests (channel-health.test.ts: 19 — scope/missing calculation, token expiry days, failure rate; metrics.test.ts already existed from Phase 6). All pass.
+- Verification: typecheck clean (root+worker+realtime, 0 errors). Lint: 1 pre-existing error. Tests: 331 passed, 2 pre-existing failures, 34 new pass. Dev server: signin + /channels/health routes compile cleanly.
+
+Stage Summary:
+All 5 Phase 7 issues implemented. 34 new tests pass. WebVitals now wired (was missing — critical gap). Channel Health center live at /channels/health. k6 script at tests/load/publish-queue.js. WCAG axe tests at tests/e2e/accessibility.spec.ts.
