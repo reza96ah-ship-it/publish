@@ -78,14 +78,6 @@ export const publishDurationHistogram = new Histogram({
   registers: [registry],
 })
 
-export const publishJobDuration = new Histogram({
-  name: 'nashrino_publish_job_duration_seconds',
-  help: 'Publish job execution duration in seconds',
-  labelNames: ['platform'] as const,
-  buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120],
-  registers: [registry],
-})
-
 export const queueDepth = new Gauge({
   name: 'nashrino_queue_depth',
   help: 'Number of pending jobs in the queue',
@@ -97,12 +89,6 @@ export const queueDepth = new Gauge({
 export const activeSocketsGauge = new Gauge({
   name: 'nashrino_active_sockets',
   help: 'Active WebSocket connections to the realtime service',
-  registers: [registry],
-})
-
-export const activeConnections = new Gauge({
-  name: 'nashrino_active_connections',
-  help: 'Active WebSocket connections',
   registers: [registry],
 })
 
