@@ -35,13 +35,18 @@ export const publishSchema = z.object({
   campaignId: z.string().optional(),
   campaignName: z.string().optional(),
   mediaIds: z.array(z.string()).optional().default([]),
-  platformTypes: z.array(platformTypeSchema).optional(),
+  // BUG-08: use explicit channel UUIDs instead of platform type strings
+  channelIds: z.array(z.string().uuid('شناسه کانال نامعتبر است')).optional(),
   platformCaptions: z.record(z.string(), z.string()).optional(),
   scheduleMode: z.enum(['now', 'schedule', 'queue']).optional().default('now'),
-  scheduleDate: z.string().optional(),
-  scheduleTime: z.string().optional(),
+  // BUG-01: unified ISO timestamp instead of split Jalali date+time fields
+  scheduledAt: z
+    .string()
+    .refine((s) => !isNaN(Date.parse(s)), 'تاریخ زمان‌بندی نامعتبر است')
+    .optional()
+    .nullable(),
   thumbnail: z.string().nullable().optional(),
-  mode: z.enum(['publish', 'review']).optional().default('publish'),
+  mode: z.enum(['publish', 'review', 'draft']).optional().default('publish'),
 })
 
 // ── AI ──────────────────────────────────────────────────────────────────────

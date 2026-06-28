@@ -63,6 +63,9 @@ export interface ReadinessResult {
 
 export type PublishOutcome = 'success' | 'failed' | 'action'
 
+// BUG-05: typed error category replaces Persian string-matching in the worker
+export type ErrorCategory = 'auth' | 'rate_limit' | 'not_found' | 'network' | 'unknown'
+
 export interface PublishResult {
   externalId: string | null
   rawResponse: Record<string, unknown>
@@ -70,6 +73,8 @@ export interface PublishResult {
   error: string | null
   /** whether the error is transient (5xx, 429, network) and should be retried */
   retryable: boolean
+  /** structured error category — worker uses this instead of Persian string matching */
+  errorCategory?: ErrorCategory
   /** simulated step labels for UI progression (mock mode) */
   steps?: { label: string; at: number }[]
 }

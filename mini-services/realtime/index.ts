@@ -34,7 +34,8 @@ const NEXTAUTH_SECRET =
 const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*' // tighten in production
 const REDIS_URL = process.env.REDIS_URL || ''
 
-const isDev = process.env.NODE_ENV !== 'production'
+// BUG-15: explicit opt-in flag instead of NODE_ENV so staging can run with auth
+const isDev = process.env.DISABLE_AUTH === '1'
 
 // ── Types ────────────────────────────────────────────────────────────────
 type JobStatus = 'pending' | 'processing' | 'success' | 'failed' | 'action'

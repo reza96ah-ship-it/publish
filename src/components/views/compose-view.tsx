@@ -96,13 +96,14 @@ interface PublishPayload {
   campaignId?: string
   campaignName: string
   mediaIds: string[]
-  platformTypes: string[]
+  // BUG-08: explicit channel UUIDs instead of platform type strings
+  channelIds: string[]
   platformCaptions: Record<string, string>
   scheduleMode: 'now' | 'schedule' | 'queue'
-  scheduleDate?: string // ISO yyyy-mm-dd (gregorian, for API contract)
-  scheduleTime?: string // HH:mm
-  scheduledAt?: string | null // full ISO
+  // BUG-01: single ISO timestamp (no more split scheduleDate + scheduleTime)
+  scheduledAt?: string | null
   thumbnail: string | null
+  mode?: 'publish' | 'review' | 'draft'
 }
 
 const IG_LIMIT = 2200
@@ -154,11 +155,17 @@ export function ComposeView() {
     )
   }
 
-  const togglePlatform = (type: string) => {
-    setSelectedPlatforms((cur) =>
-      cur.includes(type) ? cur.filter((x) => x !== type) : [...cur, type]
-    )
+  // BUG-08: toggle by channel ID, not platform type
+  const togglePlatform = (id: string) => {
+    setSelectedPlatforms((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
   }
+
+  // Derive types from selected IDs for preview components that expect type strings
+  const selectedPlatformTypes = [
+    ...new Set(
+      (platforms ?? []).filter((p) => selectedPlatforms.includes(p.id)).map((p) => p.type)
+    ),
+  ]
 
   const queryClient = useQueryClient()
 
@@ -185,19 +192,17 @@ export function ComposeView() {
         title: payload.title,
         body: payload.caption || null,
         hashtags: payload.hashtags || null,
+        // BUG-14: "now" mode queues the job — it is NOT published yet
         status:
-          payload.scheduleMode === 'now'
-            ? 'published'
-            : payload.scheduleMode === 'schedule'
-              ? 'scheduled'
-              : 'draft',
+          payload.mode === 'draft' ? 'draft' : payload.mode === 'review' ? 'review' : 'scheduled',
         authorName: null,
         thumbnail: payload.thumbnail,
         campaign: payload.campaignName,
-        platforms: payload.platformTypes,
+        // BUG-08: channelIds are UUIDs now; server returns type info on refresh
+        platforms: payload.channelIds,
         scheduledAt:
           payload.scheduleMode === 'schedule' && payload.scheduledAt ? payload.scheduledAt : null,
-        publishedAt: payload.scheduleMode === 'now' ? new Date().toISOString() : null,
+        publishedAt: null,
         updatedAt: new Date().toISOString(),
       }
       queryClient.setQueryData<ContentItem[]>(['content'], (old) => [optimistic, ...(old ?? [])])
@@ -222,7 +227,28 @@ export function ComposeView() {
     }
 
     if (action === 'draft') {
-      toast.success('پیش‌نویس ذخیره شد.')
+      // BUG-07: actually save the draft via API instead of showing a fake toast
+      const campaignName = campaigns?.find((c) => c.id === campaignId)?.name ?? 'بدون کمپین'
+      const draftPayload: PublishPayload = {
+        title: title || 'پیش‌نویس بدون عنوان',
+        caption,
+        hashtags,
+        note,
+        campaignId: campaignId || undefined,
+        campaignName,
+        mediaIds: selectedMedia.map((m) => m.id),
+        channelIds: selectedPlatforms,
+        platformCaptions,
+        scheduleMode,
+        scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
+        thumbnail: selectedMedia[0]?.thumbnail ?? null,
+        mode: 'draft',
+      }
+      const toastId = toast.loading('در حال ذخیره پیش‌نویس…')
+      publishMutation.mutate(draftPayload, {
+        onSuccess: () => toast.success('پیش‌نویس ذخیره شد', { id: toastId }),
+        onError: (err) => toast.error(err.message || 'خطا در ذخیره پیش‌نویس', { id: toastId }),
+      })
       return
     }
     if (action === 'review') {
@@ -236,13 +262,13 @@ export function ComposeView() {
         campaignId: campaignId || undefined,
         campaignName,
         mediaIds: selectedMedia.map((m) => m.id),
-        platformTypes: selectedPlatforms,
+        channelIds: selectedPlatforms,
         platformCaptions,
         scheduleMode,
         scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
         thumbnail: selectedMedia[0]?.thumbnail ?? null,
-      } as PublishPayload & { mode: string }
-      ;(payload as any).mode = 'review'
+        mode: 'review',
+      }
 
       const toastId = toast.loading('در حال ارسال برای بررسی…')
       publishMutation.mutate(payload, {
@@ -276,11 +302,12 @@ export function ComposeView() {
       campaignId: campaignId || undefined,
       campaignName,
       mediaIds: selectedMedia.map((m) => m.id),
-      platformTypes: selectedPlatforms,
+      channelIds: selectedPlatforms,
       platformCaptions,
       scheduleMode,
       scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
       thumbnail: selectedMedia[0]?.thumbnail ?? null,
+      mode: 'publish',
     }
 
     const toastId = toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…')
@@ -317,7 +344,9 @@ export function ComposeView() {
     >
       <SectionTitle
         icon={PenLine}
-        badge={<span className="text-[11px] text-ink-tertiary">پیش‌نویس خودکار ذخیره می‌شود</span>}
+        badge={
+          <span className="text-[11px] text-ink-tertiary">دکمه ذخیره پیش‌نویس را فراموش نکنید</span>
+        }
       >
         ساخت محتوای جدید
       </SectionTitle>
@@ -329,39 +358,39 @@ export function ComposeView() {
           <span className="text-[12px] font-[600] text-ink-secondary">انتخاب پلتفرم‌ها</span>
           <span className="text-[10px] text-ink-tertiary ms-auto">
             {selectedPlatforms.length > 0
-              ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم انتخاب شده`
-              : 'حداقل یک پلتفرم انتخاب کنید'}
+              ? `${toPersianDigits(selectedPlatforms.length)} کانال انتخاب شده`
+              : 'حداقل یک کانال انتخاب کنید'}
           </span>
         </div>
+        {/* BUG-08: show actual connected channel instances (with IDs), not hardcoded types */}
         <div className="flex items-center gap-2 flex-wrap">
-          {['instagram', 'telegram', 'linkedin', 'rubika'].map((type) => {
-            const isSelected = selectedPlatforms.includes(type)
-            return (
-              <button
-                key={type}
-                onClick={() => togglePlatform(type)}
-                className={cn(
-                  'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all',
-                  isSelected
-                    ? 'border-accent/30 bg-accent-soft text-accent'
-                    : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
-                )}
-                aria-pressed={isSelected}
-              >
-                <PlatformIcon platform={type} className="size-4" />
-                <span>
-                  {type === 'instagram'
-                    ? 'اینستاگرام'
-                    : type === 'telegram'
-                      ? 'تلگرام'
-                      : type === 'linkedin'
-                        ? 'لینکدین'
-                        : 'روبیکا'}
-                </span>
-                {isSelected && <Check className="size-3.5" strokeWidth={2.5} />}
-              </button>
-            )
-          })}
+          {(platforms ?? []).length === 0 ? (
+            <p className="text-[11px] text-ink-tertiary">هیچ کانالی متصل نیست</p>
+          ) : (
+            (platforms ?? []).map((p) => {
+              const isSelected = selectedPlatforms.includes(p.id)
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => togglePlatform(p.id)}
+                  disabled={p.state === 'disconnected'}
+                  className={cn(
+                    'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all',
+                    isSelected
+                      ? 'border-accent/30 bg-accent-soft text-accent'
+                      : p.state === 'disconnected'
+                        ? 'border-border bg-surface-subtle text-ink-tertiary opacity-50 cursor-not-allowed'
+                        : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
+                  )}
+                  aria-pressed={isSelected}
+                >
+                  <PlatformIcon platform={p.type} className="size-4" />
+                  <span>{p.name}</span>
+                  {isSelected && <Check className="size-3.5" strokeWidth={2.5} />}
+                </button>
+              )
+            })
+          )}
         </div>
       </div>
 
@@ -536,8 +565,8 @@ export function ComposeView() {
               <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
               <span className="text-[10px] text-ink-tertiary ms-auto">
                 {selectedPlatforms.length > 0
-                  ? `${toPersianDigits(selectedPlatforms.length)} پلتفرم`
-                  : 'پلتفرمی انتخاب نشده'}
+                  ? `${toPersianDigits(selectedPlatforms.length)} کانال`
+                  : 'کانالی انتخاب نشده'}
               </span>
             </div>
             <PlatformPreviewTabs
@@ -545,7 +574,7 @@ export function ComposeView() {
               title={title}
               hashtags={hashtags}
               media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
-              selectedPlatforms={selectedPlatforms}
+              selectedPlatforms={selectedPlatformTypes}
             />
 
             {/* Schedule info (always visible below tabs) */}

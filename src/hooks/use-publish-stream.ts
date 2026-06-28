@@ -1,23 +1,29 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { io, type Socket } from 'socket.io-client'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 
 let socket: Socket | null = null
+let socketToken: string | null = null
 
-function getSocket(authToken?: string | null): Socket {
+function getSocket(authToken: string | null): Socket {
+  // Reconnect with a new token if the token changed (e.g. after re-login)
+  if (socket && socketToken !== authToken) {
+    socket.disconnect()
+    socket = null
+  }
   if (socket) return socket
-  // Connect via the Caddy gateway with XTransformPort for the realtime service
-  // P7.1: pass NextAuth session token for JWT handshake auth
+
+  socketToken = authToken
   socket = io('/?XTransformPort=3003', {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     auth: {
-      token: authToken || undefined, // undefined = dev bypass (no token)
+      token: authToken || undefined,
     },
   })
   return socket
@@ -35,35 +41,49 @@ interface JobStatusPayload {
 
 /**
  * Subscribes to realtime job status updates from the publish worker.
- * On any job status change, invalidates the relevant queries so the
- * Publishing Pulse, dashboard summary, and content library refresh.
  *
- * P7.1: passes NextAuth session token for JWT auth on socket.io connection.
- * In dev (no session), connects without token (realtime dev bypass).
- *
- * @param workspaceId - The active workspace ID (null = not connected)
+ * BUG-02 fix: NextAuth v4 sessions are JWE-encrypted — (session as any)?.token
+ * is never a verifiable JWT on the client. We now fetch a short-lived HS256 JWT
+ * from /api/realtime-token (server-side, has session access) and pass that to
+ * the socket.io handshake instead.
  */
 export function usePublishStream(workspaceId: string | null | undefined): void {
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
+  const [realtimeToken, setRealtimeToken] = useState<string | null>(null)
+
+  // Fetch a verifiable JWT whenever the session becomes available
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setRealtimeToken(null)
+      return
+    }
+    let cancelled = false
+    fetch('/api/realtime-token')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { token?: string } | null) => {
+        if (!cancelled && data?.token) setRealtimeToken(data.token)
+      })
+      .catch(() => null)
+    return () => {
+      cancelled = true
+    }
+  }, [status])
 
   useEffect(() => {
     if (!workspaceId) return
+    // Wait until we have a token (or confirmed unauthenticated for dev bypass)
+    if (status === 'loading') return
 
-    // Get the NextAuth session token (JWT) for socket.io auth
-    // next-auth stores it in a cookie; we can get it via the session provider
-    const authToken = (session as any)?.token || null
-    const s = getSocket(authToken)
+    const s = getSocket(realtimeToken)
 
     const onConnect = () => {
       s.emit('subscribe', { workspaceId })
     }
     const onStatus = (_payload: JobStatusPayload) => {
-      // Invalidate all job-related queries so the UI reflects the new state
       queryClient.invalidateQueries({ queryKey: ['publish-jobs'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-pulse'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
-      // If the job succeeded or failed, also refresh content + metrics
       if (
         _payload.status === 'success' ||
         _payload.status === 'failed' ||
@@ -78,7 +98,6 @@ export function usePublishStream(workspaceId: string | null | undefined): void {
     s.on('job:status', onStatus)
     s.on('job:progress', onStatus)
 
-    // If already connected, subscribe immediately
     if (s.connected) {
       s.emit('subscribe', { workspaceId })
     }
@@ -89,5 +108,5 @@ export function usePublishStream(workspaceId: string | null | undefined): void {
       s.off('job:progress', onStatus)
       s.emit('unsubscribe', { workspaceId })
     }
-  }, [workspaceId, queryClient, session])
+  }, [workspaceId, queryClient, realtimeToken, status])
 }

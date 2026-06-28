@@ -20,13 +20,12 @@ export default withAuth({
   },
   callbacks: {
     authorized: ({ token }) => {
-      // Dev bypass: allows the Z.ai preview iframe to load without a session.
-      // In production, this branch is never taken.
-      if (process.env.NODE_ENV !== 'production') {
+      // BUG-15: explicit opt-in via DISABLE_AUTH=1 instead of NODE_ENV check.
+      // NODE_ENV !== 'production' is true in every test/staging/preview env,
+      // making it impossible to test auth flows outside production.
+      if (process.env.DISABLE_AUTH === '1') {
         return true
       }
-      // Production: require a valid NextAuth JWT token.
-      // If null/missing, the user is redirected to /auth/signin.
       return !!token
     },
   },
