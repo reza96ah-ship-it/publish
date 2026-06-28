@@ -3,7 +3,6 @@ import { db } from '@/lib/db'
 import { requireWorkspaceApi, can } from '@/lib/auth-guards'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { enqueuePublishJob } from '@/lib/queue'
 import { randomUUID } from 'crypto'
 import { validateBody, publishSchema } from '@/lib/validations'
 
@@ -16,11 +15,9 @@ interface PublishRequest {
   note?: string
   campaignId?: string
   mediaIds?: string[]
-  // BUG-08: explicit channel UUIDs instead of type strings
   channelIds?: string[]
   platformCaptions?: Record<string, string>
   scheduleMode: 'now' | 'schedule' | 'queue'
-  // BUG-01: unified ISO timestamp
   scheduledAt?: string | null
   mode?: 'publish' | 'review' | 'draft'
 }
@@ -30,7 +27,7 @@ export async function POST(req: Request) {
   if (guard.error) return guard.error
   const workspaceId = guard.workspace.id
 
-  // BUG-10: require content.publish permission — viewers and guests cannot publish
+  // BUG-10: require content.publish permission
   if (guard.session && !can(guard.role, 'content.publish')) {
     return NextResponse.json({ error: 'دسترسی کافی برای انتشار ندارید' }, { status: 403 })
   }
@@ -61,7 +58,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'حداقل یک کانال باید انتخاب شود' }, { status: 400 })
   }
 
-  // BUG-08: resolve channels by explicit UUID, not by platform type
   const channels =
     mode !== 'draft' && body.channelIds && body.channelIds.length > 0
       ? await db.platform.findMany({
@@ -83,11 +79,14 @@ export async function POST(req: Request) {
       : []
   const thumbnailUrl = media[0]?.thumbnailUrl ?? media[0]?.url ?? null
 
-  // BUG-01: scheduledAt comes as a single ISO string — no Jalali parsing needed
   const scheduledAt = mode === 'publish' ? computeScheduledAt(body) : null
 
   const contentId = randomUUID()
 
+  // MISS-01: Content + PublishJobs + OutboxEvents in ONE transaction.
+  // The outbox dispatcher in publish-worker polls OutboxEvent and enqueues to BullMQ.
+  // This eliminates the DB+queue split — if Redis is down, events survive in Postgres
+  // and are delivered once Redis comes back.
   const result = await db.$transaction(async (tx) => {
     const content = await tx.content.create({
       data: {
@@ -132,40 +131,30 @@ export async function POST(req: Request) {
           },
         })
         jobs.push({ id: job.id, platform: p.type, idempotencyKey: job.idempotencyKey })
+
+        // MISS-01: write OutboxEvent in the same transaction — guarantees delivery
+        await tx.outboxEvent.create({
+          data: {
+            workspaceId,
+            aggregateType: 'content',
+            aggregateId: content.id,
+            eventType: 'publish_requested',
+            payload: {
+              jobId: job.id,
+              contentId: content.id,
+              platformId: p.id,
+              workspaceId,
+              scheduledAt: scheduledAt?.toISOString() ?? null,
+              idempotencyKey: job.idempotencyKey,
+            },
+            availableAt: scheduledAt ?? new Date(),
+          },
+        })
       }
     }
 
     return { content, jobs }
   })
-
-  // BUG-09: enqueue failure is no longer silently swallowed — return 503 if Redis is down
-  if (mode === 'publish' && result.jobs.length > 0) {
-    const failed: string[] = []
-    for (const job of result.jobs) {
-      try {
-        await enqueuePublishJob({
-          jobId: job.id,
-          idempotencyKey: job.idempotencyKey,
-          contentId: result.content.id,
-          platformId: channels.find((p) => p.type === job.platform)?.id ?? '',
-          workspaceId,
-          scheduledAt: scheduledAt ?? null,
-        })
-      } catch (err) {
-        console.error(`[publish] failed to enqueue BullMQ job ${job.id}:`, err)
-        failed.push(job.id)
-      }
-    }
-    if (failed.length > 0) {
-      return NextResponse.json(
-        {
-          error: 'صف انتشار در دسترس نیست — لطفاً دوباره تلاش کنید',
-          detail: `enqueue failed for ${failed.length} job(s)`,
-        },
-        { status: 503 }
-      )
-    }
-  }
 
   if (mode === 'review') {
     await db.notification.create({
@@ -211,10 +200,6 @@ export async function POST(req: Request) {
   )
 }
 
-/**
- * BUG-01: scheduledAt is now a single ISO 8601 string from the frontend.
- * No Jalali parsing — the client converts Jalali → Date before sending.
- */
 function computeScheduledAt(body: PublishRequest): Date | null {
   if (body.scheduleMode === 'schedule' && body.scheduledAt) {
     const d = new Date(body.scheduledAt)
