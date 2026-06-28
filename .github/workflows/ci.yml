@@ -75,24 +75,16 @@ jobs:
         run: |
           bunx prisma migrate status
           # migrate status exits 1 if there are pending migrations or drift
-      # Issue #141: Schema-drift check — fail if schema.prisma doesn't match migrations
+      # Issue #141: Schema-drift check — fail if schema.prisma doesn't match migrations.
+      # --exit-code makes prisma exit 2 when schemas differ (0 = match, 1 = error, 2 = diff).
+      # --shadow-database-url is NOT a valid flag for migrate diff in Prisma 7; the command
+      # computes the migration-state in-memory from the SQL files without a live connection.
       - name: Schema-drift check (migrate diff)
         run: |
-          # Build a properly-named shadow database URL by stripping the query string
-          # from DIRECT_DATABASE_URL and appending _shadow to the database name.
-          # "${DIRECT_DATABASE_URL}_shadow" was wrong: it appended to the query string,
-          # making ?schema=public_shadow (invalid) instead of a separate database.
-          BASE="${DIRECT_DATABASE_URL%%\?*}"
-          SHADOW_URL="${BASE}_shadow?schema=public"
           if ! DIFF=$(bunx prisma migrate diff \
             --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
-            --shadow-database-url "$SHADOW_URL" 2>&1); then
-            echo "::error::Schema drift check failed — shadow database connection error"
-            echo "$DIFF"
-            exit 1
-          fi
-          if echo "$DIFF" | grep -qE "^\s*(CREATE|ALTER|DROP)"; then
+            --exit-code 2>&1); then
             echo "::error::Schema drift detected — prisma/schema.prisma does not match migrations. Run 'bunx prisma migrate dev --name <name>' to create a migration."
             echo "$DIFF"
             exit 1
