@@ -22,7 +22,7 @@ async function main() {
       data: {
         email,
         name: 'کاربر دمو نشرینو',
-        passwordHash: hashPassword(password),
+        passwordHash: await hashPassword(password),
         emailVerified: new Date(),
       },
     })
@@ -31,7 +31,7 @@ async function main() {
     // Update password in case it changed
     user = await db.user.update({
       where: { id: user.id },
-      data: { passwordHash: hashPassword(password), emailVerified: new Date() },
+      data: { passwordHash: await hashPassword(password), emailVerified: new Date() },
     })
     console.log(`✓ Updated user password: ${email}`)
   }

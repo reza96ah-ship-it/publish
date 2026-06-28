@@ -10,9 +10,8 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   // Security headers — environment-aware.
-  // Development: relaxed (frame-ancestors *, unsafe-eval) so the Z.ai preview
-  //   iframe can render the app.
-  // Production: strict (frame-ancestors 'self', no unsafe-eval, HSTS).
+  // CSP is now set per-request in src/middleware.ts with a nonce (Issue #119).
+  // Other security headers stay here (they don't need per-request variation).
   async headers() {
     return [
       {
@@ -30,21 +29,6 @@ const nextConfig: NextConfig = {
                 },
               ]
             : []),
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              isProd
-                ? "script-src 'self' 'unsafe-inline'"
-                : "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com data:",
-              "img-src 'self' data: blob: https:",
-              "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:",
-              "media-src 'self' data:",
-              isProd ? "frame-ancestors 'self'" : 'frame-ancestors *',
-            ].join('; '),
-          },
         ],
       },
     ]
