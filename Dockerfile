@@ -38,6 +38,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+# Pull latest Debian security patches for the base image (fixes OS CVEs found by Trivy)
+RUN apt-get update -y && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
