@@ -91,6 +91,11 @@ jobs:
     name: Security Audit (Blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # CodeQL requires security-events: write to upload SARIF results to GitHub
+    # Code Scanning. contents: read is needed for checkout.
+    permissions:
+      contents: read
+      security-events: write
     # Issue #122: all security gates must be blocking — no continue-on-error.
     # If any step fails, the entire pipeline fails.
     steps:
