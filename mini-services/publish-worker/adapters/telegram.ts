@@ -22,16 +22,34 @@ import type {
   AdapterContent,
   AdapterAccount,
 } from './types'
+import { getCapabilities } from '../lib/provider-capabilities'
 
-const TG_TEXT_LIMIT = 4096
+// Issue #115: Telegram has TWO distinct limits — text-only messages (sendMessage)
+// allow 4096 chars, but media captions (sendPhoto/sendVideo/sendDocument) cap
+// at 1024. The previous code used 4096 for everything, so captions >1024 were
+// silently rejected by Telegram's API.
+// Source: https://core.telegram.org/bots/api#sendphoto (caption: 0-1024 characters)
+const TG_LIMITS = {
+  text: 4096,
+  photo_caption: 1024,
+  video_caption: 1024,
+  document_caption: 1024,
+} as const
 const TG_API_BASE = 'https://api.telegram.org/bot'
 
 /**
- * Escape text for Telegram MarkdownV2.
- * Telegram MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
+ * Issue #115: Escape user content for Telegram parse_mode=HTML.
+ * Telegram HTML mode renders <b>, <i>, <a>, etc. User content with angle
+ * brackets would inject formatting (e.g. a post containing "<b>" renders bold).
+ * Must escape: & < >
+ * Telegram also supports &apos; &quot; but those are only needed inside attributes.
+ * Source: https://core.telegram.org/bots/api#html-style
  */
-function escapeMarkdownV2(text: string): string {
-  return text.replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&')
+function escapeTelegramHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
 export class TelegramAdapter implements ChannelAdapter {
@@ -64,10 +82,15 @@ export class TelegramAdapter implements ChannelAdapter {
   ): Promise<ReadinessResult> {
     const issues = []
     const text = content.body ?? ''
-    if (text.length > TG_TEXT_LIMIT) {
+    // Issue #115: use capability registry as single source of truth.
+    // Media posts use caption limit (1024), text-only use text limit (4096).
+    const cap = getCapabilities('telegram')
+    const isMediaPost = (content.mediaItems?.length ?? 0) > 0
+    const limit = isMediaPost ? cap.maxCaptionLength : cap.maxTextLength
+    if (text.length > limit) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پیام تلگرام نباید از ${TG_TEXT_LIMIT} کاراکتر بیشتر باشد.`,
+        message: `متن پیام تلگرام نباید از ${limit} کاراکتر بیشتر باشد${isMediaPost ? ' (کپشن رسانه)' : ''}.`,
         platform: 'telegram',
       })
     }
@@ -117,8 +140,28 @@ export class TelegramAdapter implements ChannelAdapter {
     }
 
     // Build caption: title + body + hashtags
-    const caption = platformCaption || this.buildCaption(content)
+    const rawCaption = platformCaption || this.buildCaption(content)
     const mediaItems = content.mediaItems || []
+
+    // Issue #115: enforce caption limit BEFORE calling Telegram API.
+    // Media posts: 1024 chars. Text-only: 4096. Return early with a clear
+    // Persian error instead of letting Telegram reject it with an English message.
+    const isMediaPost = mediaItems.length > 0
+    const captionLimit = isMediaPost ? TG_LIMITS.photo_caption : TG_LIMITS.text
+    if (rawCaption.length > captionLimit) {
+      return {
+        externalId: null,
+        rawResponse: {},
+        status: 'action',
+        error: `متن تلگرام بیش از حد مجاز است (${rawCaption.length}/${captionLimit}). ${isMediaPost ? 'کپشن رسانه حداکثر ۱۰۲۴ کاراکتر است.' : 'متن پیام حداکثر ۴۰۹۶ کاراکتر است.'}`,
+        retryable: false,
+        steps: [{ label: 'بررسی طول متن', at: now }],
+      }
+    }
+
+    // Issue #115: escape user content for parse_mode=HTML to prevent injection.
+    // User content with <b>, <i>, <a> tags would render as formatting otherwise.
+    const caption = escapeTelegramHtml(rawCaption)
 
     try {
       let result: { messageId: string; raw: any }
