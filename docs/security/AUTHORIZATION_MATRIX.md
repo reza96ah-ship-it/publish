@@ -55,7 +55,8 @@
 |---|---|---|---|
 | `/api/publish` | POST | `content.publish` | `requirePermissionApi` |
 | `/api/compose-draft` | POST | `content.create` | `requirePermissionApi` |
-| `/api/content` | GET/POST | `content.create` | `requirePermissionApi` |
+| `/api/content` | GET | `content.create` OR `content.review` | `requireAnyPermissionApi` |
+| `/api/content` | POST | `content.create` | `requirePermissionApi` |
 | `/api/content/[id]/approve` | POST | `content.review` | `requirePermissionApi` |
 | `/api/content/[id]/reject` | POST | `content.review` | `requirePermissionApi` |
 | `/api/content/[id]/submit-review` | POST | `content.edit` | `requirePermissionApi` |
@@ -70,7 +71,7 @@
 | `/api/inbox/[id]/reply` | POST | `inbox.reply` | `requirePermissionApi` |
 | `/api/inbox/[id]/read` | POST | `inbox.reply` | `requirePermissionApi` |
 | `/api/inbox/[id]/assign` | POST | `inbox.assign` | `requirePermissionApi` |
-| `/api/media` | GET | `media.upload` | `requirePermissionApi` |
+| `/api/media` | GET | `media.upload` OR `content.review` | `requireAnyPermissionApi` |
 | `/api/media/presign` | POST | `media.upload` | `requirePermissionApi` |
 | `/api/media/upload` | POST | `media.upload` | `requirePermissionApi` |
 | `/api/media/confirm` | POST | `media.upload` | `requirePermissionApi` |
@@ -86,7 +87,7 @@
 | `/api/dashboard/metrics` | GET | `analytics.view` | `requirePermissionApi` |
 | `/api/dashboard/pulse` | GET | `analytics.view` | `requirePermissionApi` |
 | `/api/dashboard/action-center` | GET | `analytics.view` | `requirePermissionApi` |
-| `/api/notifications` | GET | `security.admin` | `requirePermissionApi` |
+| `/api/notifications` | GET | `analytics.view` | `requirePermissionApi` |
 | `/api/workspace` | GET/PATCH | `workspace.settings` | `requirePermissionApi` |
 | `/api/ai/drafts` | GET/POST | `content.create` | `requirePermissionApi` |
 | `/api/ai/drafts/[id]` | GET/DELETE | `content.create` | `requirePermissionApi` |

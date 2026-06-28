@@ -104,12 +104,16 @@ export type WorkspaceGuardSuccess = {
   workspace: Awaited<ReturnType<typeof db.workspace.findFirst>> & object
   session: Awaited<ReturnType<typeof getServerSession>>
   role: Role
+  userId: string
+  membershipId: string
 }
 
 export type WorkspaceGuardError = {
   error: NextResponse
   workspace: null
   session: Awaited<ReturnType<typeof getServerSession>>
+  userId: null
+  membershipId: null
 }
 
 export type WorkspaceGuardResult = WorkspaceGuardSuccess | WorkspaceGuardError
@@ -128,6 +132,8 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
           workspace: ws,
           session: null,
           role: 'admin' as Role, // dev mode = full access
+          userId: 'dev-admin',
+          membershipId: 'dev-membership',
         }
       }
     }
@@ -135,6 +141,19 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
       error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }),
       workspace: null,
       session: null,
+      userId: null,
+      membershipId: null,
+    }
+  }
+
+  const userId = (session.user as any).id as string | undefined
+  if (!userId) {
+    return {
+      error: NextResponse.json({ error: 'unauthorized', message: 'User ID missing from session' }, { status: 401 }),
+      workspace: null,
+      session,
+      userId: null,
+      membershipId: null,
     }
   }
 
@@ -144,14 +163,13 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
       error: NextResponse.json({ error: 'no_workspace' }, { status: 403 }),
       workspace: null,
       session,
+      userId: null,
+      membershipId: null,
     }
   }
 
   const membership = await db.workspaceMember.findFirst({
-    where: {
-      userId: (session.user as any).id,
-      workspaceId: wsId,
-    },
+    where: { userId, workspaceId: wsId },
     include: { workspace: true },
   })
 
@@ -160,6 +178,8 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
       error: NextResponse.json({ error: 'forbidden' }, { status: 403 }),
       workspace: null,
       session,
+      userId: null,
+      membershipId: null,
     }
   }
 
@@ -168,6 +188,8 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
     workspace: membership.workspace,
     session,
     role: membership.role as Role,
+    userId,
+    membershipId: membership.id,
   }
 }
 
@@ -253,7 +275,7 @@ export type PermissionGuardError = {
   session: Awaited<ReturnType<typeof getServerSession>>
   userId: null
   membershipId: null
-  workspaceId: null
+  workspaceId: null | undefined
 }
 
 export type PermissionGuardResult =
@@ -273,12 +295,7 @@ export async function requirePermissionApi(
   const guard = await requireWorkspaceApi()
 
   if (guard.error) {
-    return {
-      ...guard,
-      userId: null,
-      membershipId: null,
-      workspaceId: null,
-    }
+    return { ...guard, workspaceId: null }
   }
 
   // Issue #142: check permission using the centralized matrix
@@ -296,26 +313,15 @@ export async function requirePermissionApi(
     }
   }
 
-  // Extract userId from the session (cast to access the user object)
-  const session = guard.session as any
-  const userId = session?.user?.id ?? ''
-  // We need the membership ID — fetch it (requireWorkspaceApi already verified
-  // membership exists, but didn't return the membership ID)
-  const membership = await db.workspaceMember.findFirst({
-    where: {
-      userId,
-      workspaceId: guard.workspace.id,
-    },
-    select: { id: true },
-  })
-
+  // userId and membershipId are already resolved by requireWorkspaceApi —
+  // no second DB query needed.
   return {
     error: null,
     workspace: guard.workspace,
     session: guard.session,
     role: guard.role,
-    userId,
-    membershipId: membership?.id ?? '',
+    userId: guard.userId,
+    membershipId: guard.membershipId,
     workspaceId: guard.workspace.id,
   }
 }
@@ -330,12 +336,7 @@ export async function requireAnyPermissionApi(
   const guard = await requireWorkspaceApi()
 
   if (guard.error) {
-    return {
-      ...guard,
-      userId: null,
-      membershipId: null,
-      workspaceId: null,
-    }
+    return { ...guard, workspaceId: null }
   }
 
   const hasAny = permissions.some((p) => can(guard.role, p))
@@ -353,20 +354,13 @@ export async function requireAnyPermissionApi(
     }
   }
 
-  const session = guard.session as any
-  const userId = session?.user?.id ?? ''
-  const membership = await db.workspaceMember.findFirst({
-    where: { userId, workspaceId: guard.workspace.id },
-    select: { id: true },
-  })
-
   return {
     error: null,
     workspace: guard.workspace,
     session: guard.session,
     role: guard.role,
-    userId,
-    membershipId: membership?.id ?? '',
+    userId: guard.userId,
+    membershipId: guard.membershipId,
     workspaceId: guard.workspace.id,
   }
 }

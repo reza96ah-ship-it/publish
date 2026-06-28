@@ -1,12 +1,13 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requirePermissionApi } from '@/lib/auth-guards'
+import { requirePermissionApi, requireAnyPermissionApi } from '@/lib/auth-guards'
 import { validateParams, contentListQuerySchema, cursorPaginationSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const guard = await requirePermissionApi('content.create')
+  // Approvers need content.review (not content.create) to list items they must approve
+  const guard = await requireAnyPermissionApi(['content.create', 'content.review'])
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 

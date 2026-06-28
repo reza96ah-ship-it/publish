@@ -6,7 +6,8 @@ import { validateParams, cursorPaginationSchema } from '@/lib/validations'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const guard = await requirePermissionApi('security.admin')
+  // All active workspace members (admin/editor/approver) can see their notifications
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
