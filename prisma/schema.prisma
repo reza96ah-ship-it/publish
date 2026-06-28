@@ -185,6 +185,7 @@ model Platform {
   @@index([workspaceId, type])
   @@index([workspaceId, status])
   @@index([status])
+  @@index([tokenExpiresAt])
 }
 
 /* ─── Campaigns ─── */
