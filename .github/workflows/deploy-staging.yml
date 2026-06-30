@@ -3,14 +3,14 @@
 # Mirrors the production deploy workflow but targets the staging environment.
 # Triggers on every push to the `staging` branch (or manually).
 #
+# workflow_dispatch with a tag: SKIPS the build and redeploys the existing image.
+# workflow_dispatch without a tag / push to staging: builds new images and deploys.
+#
 # Required secrets (GitHub → Settings → Secrets):
 #   STAGING_SSH_HOST        — staging server IP/hostname
 #   STAGING_SSH_USER        — SSH user on staging (e.g. "deploy")
 #   STAGING_SSH_PRIVATE_KEY — SSH private key for staging
 #   STAGING_DOMAIN          — e.g. "staging.nashrino.example.com"
-#
-# Required variables (GitHub → Settings → Variables):
-#   (none — all customisation is via secrets above)
 
 name: Deploy (Staging)
 
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Image tag to deploy (commit SHA or "latest")'
+        description: 'Existing image tag to redeploy (leave blank to build from HEAD)'
         required: false
         default: ''
 
@@ -29,33 +29,49 @@ concurrency:
   cancel-in-progress: true   # staging allows cancellation; production does not
 
 jobs:
-  build-and-push:
-    name: Build + Push Images (staging)
+  # Resolve the image tag and decide whether a build is needed.
+  # Outputs flow to both build-and-push (gated) and deploy (always).
+  setup:
+    name: Resolve image tag
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      packages: write
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
+      needs_build: ${{ steps.meta.outputs.needs_build }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set image tag
+      - name: Determine tag and build need
         id: meta
         env:
           INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           if [ -n "$INPUT_TAG" ]; then
+            # Manual redeploy of an existing image — validate and skip build.
             if ! echo "$INPUT_TAG" | grep -qE '^[a-zA-Z0-9._-]+$'; then
-              echo "::error::Invalid tag '$INPUT_TAG'"
+              echo "::error::Invalid tag '$INPUT_TAG' — only alphanumeric, '.', '-', '_' are allowed"
               exit 1
             fi
             echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
+            echo "needs_build=false" >> $GITHUB_OUTPUT
+            echo "::notice::Redeploying existing image tag '$INPUT_TAG' — build skipped"
           else
             SHA=$(git rev-parse --short HEAD)
             echo "tag=staging-${SHA}" >> $GITHUB_OUTPUT
+            echo "needs_build=true" >> $GITHUB_OUTPUT
           fi
+
+  build-and-push:
+    name: Build + Push Images (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: setup
+    # Skip entirely when redeploying an existing tag via workflow_dispatch.
+    if: needs.setup.outputs.needs_build == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: docker/setup-buildx-action@v3
 
@@ -73,7 +89,7 @@ jobs:
           target: app
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}:${{ needs.setup.outputs.tag }}
             ghcr.io/${{ github.repository }}:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -85,7 +101,7 @@ jobs:
           target: worker
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-worker:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}-worker:${{ needs.setup.outputs.tag }}
             ghcr.io/${{ github.repository }}-worker:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -97,7 +113,7 @@ jobs:
           target: realtime
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-realtime:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}-realtime:${{ needs.setup.outputs.tag }}
             ghcr.io/${{ github.repository }}-realtime:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -109,7 +125,7 @@ jobs:
           target: migrate
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}-migrate:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}-migrate:${{ needs.setup.outputs.tag }}
             ghcr.io/${{ github.repository }}-migrate:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -118,7 +134,9 @@ jobs:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: build-and-push
+    needs: [setup, build-and-push]
+    # Run when setup succeeded AND build either succeeded or was skipped (redeploy path).
+    if: always() && needs.setup.result == 'success' && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -141,7 +159,7 @@ jobs:
       - name: Deploy to staging via SSH
         if: steps.staging-secrets.outputs.configured == 'true'
         env:
-          DEPLOY_TAG: ${{ needs.build-and-push.outputs.tag }}
+          DEPLOY_TAG: ${{ needs.setup.outputs.tag }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
@@ -157,7 +175,7 @@ jobs:
             export IMAGE_TAG_MIGRATE="ghcr.io/reza96ah-ship-it/publish-migrate:${DEPLOY_TAG}"
             docker compose -f compose.production.yaml pull
             docker compose -f compose.production.yaml up migrate
-            docker compose -f compose.production.yaml up -d app worker realtime
+            docker compose -f compose.production.yaml up -d app worker realtime caddy
             sleep 10
             docker compose -f compose.production.yaml ps
 
