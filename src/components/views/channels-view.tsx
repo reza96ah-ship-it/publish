@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -91,6 +92,24 @@ const AVAILABLE_PLATFORMS = [
 ] as const
 
 export function ChannelsView() {
+  const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+
+  // Show toast when returning from OAuth provider redirect
+  useEffect(() => {
+    const success = searchParams.get('oauth_success')
+    const error = searchParams.get('oauth_error')
+    if (success) {
+      toast.success('پلتفرم با موفقیت متصل شد')
+      queryClient.invalidateQueries({ queryKey: ['platforms'] })
+      // Clean URL without reload
+      window.history.replaceState({}, '', '/channels')
+    } else if (error) {
+      toast.error(`خطا در اتصال OAuth: ${decodeURIComponent(error)}`)
+      window.history.replaceState({}, '', '/channels')
+    }
+  }, [searchParams, queryClient])
+
   const { data: platforms, isLoading } = useQuery<Platform[]>({
     queryKey: ['platforms'],
     queryFn: () => api.get<Platform[]>('/api/platforms'),
@@ -538,10 +557,17 @@ function ConnectDialog({
                 <PlugZap className="size-8 text-accent mx-auto mb-2" />
                 <p className="text-[12px] font-[600] text-ink-primary">اتصال با OAuth</p>
                 <p className="text-[11px] text-ink-tertiary mt-1">
-                  برای اینستاگرام و لینکدین، اتصال از طریق OAuth انجام می‌شود.
+                  با کلیک روی دکمه به صفحه تأیید{' '}
+                  {selectedType === 'instagram' ? 'اینستاگرام' : 'لینکدین'} هدایت می‌شوید.
                 </p>
               </div>
-              <Button className="w-full" onClick={() => toast.info('OAuth به‌زودی فعال خواهد شد')}>
+              <Button
+                className="w-full"
+                onClick={() => {
+                  window.location.href = `/api/platforms/oauth/start?type=${selectedType}`
+                }}
+              >
+                <PlugZap className="size-4" />
                 اتصال با OAuth
               </Button>
             </div>
