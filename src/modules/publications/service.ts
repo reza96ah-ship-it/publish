@@ -128,7 +128,12 @@ export class PublicationsService {
   private computeScheduledAt(body: PublishRequest): Date | null {
     if (body.scheduleMode === 'schedule' && body.scheduledAt) {
       const d = new Date(body.scheduledAt)
-      return isNaN(d.getTime()) ? null : d
+      if (isNaN(d.getTime())) return null
+      // Reject timestamps more than 60s in the past (60s grace window for clock skew)
+      if (d.getTime() < Date.now() - 60_000) {
+        throw new ValidationError('زمان انتشار نمی‌تواند در گذشته باشد')
+      }
+      return d
     }
     return null
   }
