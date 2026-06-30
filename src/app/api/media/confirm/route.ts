@@ -202,10 +202,10 @@ export async function POST(req: NextRequest) {
   }
   if (detected.kind === 'video') {
     // Issue #146 follow-up: extract duration/codec via ffprobe and generate a
-    // real thumbnail frame via ffmpeg (both ship as prebuilt binaries through
-    // @ffprobe-installer/ffprobe + @ffmpeg-installer/ffmpeg — no system ffmpeg
-    // dependency). Best-effort: a probe/thumbnail failure does not reject the
-    // upload, it just leaves durationMs/codec/thumbnail null.
+    // real thumbnail frame via ffmpeg — both shell out to the system binary
+    // (see src/lib/video-probe.ts for why, not a bundled npm package). Best-effort:
+    // a probe/thumbnail failure does not reject the upload, it just leaves
+    // durationMs/codec/thumbnail null.
     try {
       const probeType = detected.type === 'mov' || detected.type === 'webm' ? detected.type : 'mp4'
       const probed = await probeVideo(buffer, probeType)

@@ -1,25 +1,35 @@
 /**
  * Video duration/codec extraction + thumbnail frame generation. (Issue #146 follow-up)
  *
- * Uses ffprobe/ffmpeg from @ffprobe-installer/ffprobe + @ffmpeg-installer/ffmpeg —
- * these npm packages ship a prebuilt static binary per platform, so the worker
- * doesn't depend on a system-installed ffmpeg (works the same in CI/prod/dev).
+ * Shells out to a system-installed `ffprobe`/`ffmpeg` (binary name/path configurable
+ * via FFPROBE_BIN/FFMPEG_BIN, default "ffprobe"/"ffmpeg" resolved from PATH).
+ *
+ * A prebuilt-binary npm package (e.g. @ffprobe-installer/ffprobe) was tried first and
+ * rejected: its Windows platform package is GPL-3.0-licensed (fails this repo's
+ * blocking license-checker CI gate), and the installer's dynamic `require()` of a
+ * platform-specific subpackage cannot be statically bundled by Next.js's route
+ * compiler ("Module not found" at build time). Shelling out to a system binary avoids
+ * both problems — the binary is installed via the OS package manager (apt, in
+ * Dockerfile and CI), never bundled into the JS output.
  *
  * Used by /api/media/confirm for video uploads: extracts duration (ms) + codec
  * name via ffprobe, and a real JPEG thumbnail frame (seeked to ~1s) via ffmpeg.
- * Both are best-effort — a probe/thumbnail failure does not reject the upload,
- * it just leaves durationMs/codec/thumbnail null (caller decides what to do).
+ * Both are best-effort — a probe/thumbnail failure (including ffmpeg/ffprobe not
+ * being installed) does not reject the upload, it just leaves durationMs/codec/
+ * thumbnail null (caller decides what to do).
  */
 
-import ffmpegPath from '@ffmpeg-installer/ffmpeg'
-import ffprobePath from '@ffprobe-installer/ffprobe'
-import ffmpeg from 'fluent-ffmpeg'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import fs from 'fs/promises'
 import os from 'os'
 import path from 'path'
 
-ffmpeg.setFfmpegPath(ffmpegPath.path)
-ffmpeg.setFfprobePath(ffprobePath.path)
+const execFileAsync = promisify(execFile)
+
+const FFPROBE_BIN = process.env.FFPROBE_BIN || 'ffprobe'
+const FFMPEG_BIN = process.env.FFMPEG_BIN || 'ffmpeg'
+const PROBE_TIMEOUT_MS = 15_000
 
 export interface VideoProbeResult {
   durationMs: number | null
@@ -28,10 +38,58 @@ export interface VideoProbeResult {
   thumbnail: Buffer | null
 }
 
+interface FfprobeStream {
+  codec_type?: string
+  codec_name?: string
+}
+
+interface FfprobeOutput {
+  format?: { duration?: string }
+  streams?: FfprobeStream[]
+}
+
 function extFor(detectedType: 'mp4' | 'mov' | 'webm'): string {
   if (detectedType === 'mov') return '.mov'
   if (detectedType === 'webm') return '.webm'
   return '.mp4'
+}
+
+async function runFfprobe(inputPath: string): Promise<{ durationMs: number | null; codec: string | null }> {
+  const { stdout } = await execFileAsync(
+    FFPROBE_BIN,
+    ['-v', 'error', '-print_format', 'json', '-show_format', '-show_streams', inputPath],
+    { timeout: PROBE_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 }
+  )
+
+  const data = JSON.parse(stdout) as FfprobeOutput
+
+  const durationSec = data.format?.duration ? parseFloat(data.format.duration) : NaN
+  const durationMs = Number.isFinite(durationSec) ? Math.round(durationSec * 1000) : null
+
+  const videoStream = (data.streams ?? []).find((s) => s.codec_type === 'video')
+  const codec = videoStream?.codec_name ?? null
+
+  return { durationMs, codec }
+}
+
+async function runFfmpegThumbnail(
+  inputPath: string,
+  thumbPath: string,
+  seekSeconds: number
+): Promise<void> {
+  await execFileAsync(
+    FFMPEG_BIN,
+    [
+      '-y',
+      '-ss', String(seekSeconds),
+      '-i', inputPath,
+      '-frames:v', '1',
+      '-vf', 'scale=400:-1',
+      '-q:v', '4',
+      thumbPath,
+    ],
+    { timeout: PROBE_TIMEOUT_MS }
+  )
 }
 
 /**
@@ -45,8 +103,7 @@ export async function probeVideo(
 ): Promise<VideoProbeResult> {
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nashrino-video-'))
   const inputPath = path.join(tmpDir, `input${extFor(detectedType)}`)
-  const thumbName = 'thumb.jpg'
-  const thumbPath = path.join(tmpDir, thumbName)
+  const thumbPath = path.join(tmpDir, 'thumb.jpg')
 
   try {
     await fs.writeFile(inputPath, buffer)
@@ -55,22 +112,9 @@ export async function probeVideo(
     let codec: string | null = null
 
     try {
-      const metadata = await new Promise<ffmpeg.FfprobeData>((resolve, reject) => {
-        ffmpeg.ffprobe(inputPath, (err: Error | null, data: ffmpeg.FfprobeData) =>
-          err ? reject(err) : resolve(data)
-        )
-      })
-
-      const durationSec = metadata?.format?.duration
-      durationMs =
-        typeof durationSec === 'number' && Number.isFinite(durationSec)
-          ? Math.round(durationSec * 1000)
-          : null
-
-      const videoStream = (metadata?.streams ?? []).find(
-        (s: ffmpeg.FfprobeStream) => s.codec_type === 'video'
-      )
-      codec = videoStream?.codec_name ?? null
+      const probed = await runFfprobe(inputPath)
+      durationMs = probed.durationMs
+      codec = probed.codec
     } catch (err) {
       console.error('[video-probe] ffprobe failed (non-fatal):', err)
     }
@@ -79,17 +123,7 @@ export async function probeVideo(
     try {
       // Seek to 1s, or to 0 if the video is shorter than that.
       const seekSeconds = durationMs && durationMs > 1000 ? 1 : 0
-      await new Promise<void>((resolve, reject) => {
-        ffmpeg(inputPath)
-          .on('end', () => resolve())
-          .on('error', (err: Error) => reject(err))
-          .screenshots({
-            timestamps: [seekSeconds],
-            filename: thumbName,
-            folder: tmpDir,
-            size: '400x?',
-          })
-      })
+      await runFfmpegThumbnail(inputPath, thumbPath, seekSeconds)
       thumbnail = await fs.readFile(thumbPath)
     } catch (err) {
       console.error('[video-probe] thumbnail extraction failed (non-fatal):', err)
