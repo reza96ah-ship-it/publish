@@ -127,6 +127,8 @@ model Workspace {
   notifications Notification[]
   drafts        ContentDraft[]
   invitations   WorkspaceInvitation[]
+  publications  Publication[]
+  revisions    ContentRevision[]
 }
 
 model WorkspaceMember {
@@ -276,6 +278,8 @@ model Content {
   jobs        PublishJob[]
   comments    ContentComment[]
   versions    ContentVersion[]
+  revisions  ContentRevision[]
+  publications Publication[]
 
   @@index([workspaceId])
   @@index([workspaceId, status])
@@ -283,6 +287,122 @@ model Content {
   @@index([campaignId])
   @@index([scheduledAt])
   @@index([status])
+}
+
+/* ─── Content Revisions (Issue #145: immutable version of content) ─── */
+
+// An immutable snapshot of the content at the time of publish/review submission.
+// The worker reads this — never the mutable Content row — so later edits don't
+// affect already-queued publications.
+model ContentRevision {
+  id          String   @id @default(cuid())
+  contentId   String
+  workspaceId String
+  title       String
+  body        String?
+  hashtags    String?
+  internalNote String?
+  authorName  String?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  content    Content          @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  workspace  Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  media      RevisionMedia[]
+  variants   ChannelVariant[]
+  publications Publication[]
+
+  @@index([contentId])
+  @@index([workspaceId])
+}
+
+/* ─── Channel Variants (Issue #145: per-channel caption overrides) ─── */
+
+// Destination-specific caption/body for one connected channel.
+// Keyed by revision + platform ID so each destination gets its own text.
+model ChannelVariant {
+  id          String   @id @default(cuid())
+  revisionId  String
+  platformId  String
+  caption     String?
+  // The effective caption the adapter receives (override or default from revision body)
+
+  revision   ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@unique([revisionId, platformId])
+  @@index([platformId])
+}
+
+/* ─── Revision Media (Issue #145: ordered media relations) ─── */
+
+// Ordered relation between a revision and media assets.
+// Replaces the old pattern of manufacturing a single photo from Content.thumbnailUrl.
+model RevisionMedia {
+  id          String   @id @default(cuid())
+  revisionId  String
+  mediaId     String   // references Media.id (validated asset)
+  position    Int      // 0-based ordering (first item = position 0)
+  role        String   @default("photo") // photo, video, reel, document
+  altText     String?
+
+  revision   ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Cascade)
+
+  @@unique([revisionId, position])
+  @@index([revisionId])
+  @@index([mediaId])
+}
+
+/* ─── Publication (Issue #145: first-class delivery record per destination) ─── */
+
+// One destination-specific delivery record with provider state and receipt.
+// Replaces the overloaded use of PublishJob as both intent and result.
+model Publication {
+  id                  String   @id @default(cuid())
+  workspaceId         String
+  contentId           String
+  revisionId          String
+  platformId          String
+  publishJobId        String?  // links to the legacy PublishJob for compatibility
+  campaignId          String?
+
+  // Publication state (typed enum)
+  status              String   @default("pending") // pending, processing, success, failed, action, scheduled, cancelled
+  processLabel        String   @default("در انتظار")
+  progress            Int      @default(0)
+
+  // Scheduling
+  scheduledAt         DateTime?
+
+  // Provider receipt
+  providerPostId      String?
+  providerAcknowledgedAt DateTime?
+
+  // Idempotency + reconciliation
+  requestFingerprint  String?  // sha256(platformId + contentId + revisionId)
+  providerOperationId String?
+  reconciliationStatus String? // null, confirmed_success, confirmed_failure, still_unknown
+
+  // Error data (safe, no secrets)
+  errorCategory       String?  // auth, rate_limit, network, not_found, unknown
+  errorMessage        String?  // safe Persian message
+
+  // Timestamps
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  content     Content     @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  attempts    PublicationAttempt[]
+
+  @@index([workspaceId])
+  @@index([contentId])
+  @@index([revisionId])
+  @@index([platformId])
+  @@index([status])
+  @@index([requestFingerprint])
 }
 
 model ContentComment {
@@ -376,6 +496,7 @@ model PublishJob {
 model PublicationAttempt {
   id                     String    @id @default(cuid())
   publishJobId           String
+  publicationId          String?   // Issue #145: links to the new Publication entity
   attemptNumber          Int
   requestFingerprint     String    // sha256(platformId + ':' + contentId + ':' + attemptNumber)
   providerOperationId    String?
@@ -389,8 +510,10 @@ model PublicationAttempt {
   completedAt            DateTime?
 
   job PublishJob @relation(fields: [publishJobId], references: [id], onDelete: Cascade)
+  publication Publication? @relation(fields: [publicationId], references: [id], onDelete: SetNull)
 
   @@index([publishJobId])
+  @@index([publicationId])
   @@index([requestFingerprint])
 }
 

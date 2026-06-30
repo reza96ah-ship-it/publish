@@ -134,21 +134,92 @@ const worker = new Worker(
     // Issue #126: record job start time for duration histogram
     const jobStartedAt = Date.now()
 
-    // Build adapter job
+    // Issue #145: Load the immutable revision + ordered media + channel variant caption.
+    // This replaces the old pattern of manufacturing a single photo from Content.thumbnailUrl.
+    // The worker now reads the revision (immutable snapshot) — never the mutable Content row.
+    let revisionData: {
+      title: string
+      body: string | null
+      hashtags: string | null
+      mediaItems: { type: 'photo' | 'video' | 'document'; url: string }[] | undefined
+      platformCaption: string | undefined
+    } | null = null
+
+    // Hoisted so success/failure paths can update the Publication record
+    let publication: any = null
+
+    try {
+      // Try to load the revision from the new Publication entity
+      publication = await (db as any).publication.findFirst({
+        where: { publishJobId: job.id },
+        include: {
+          revision: {
+            include: {
+              media: { orderBy: { position: 'asc' } },
+              variants: { where: { platformId: job.platform.id } },
+            },
+          },
+        },
+      })
+
+      if (publication?.revision) {
+        const rev = publication.revision
+
+        // Load the actual media URLs from the Media table
+        const mediaIds = rev.media.map((rm: any) => rm.mediaId)
+        const mediaRecords = mediaIds.length > 0
+          ? await db.media.findMany({
+              where: { id: { in: mediaIds } },
+              select: { id: true, url: true, thumbnailUrl: true, fileType: true },
+            })
+          : []
+
+        // Build ordered media items with REAL types (not all 'photo')
+        const mediaItems = rev.media.map((rm: any) => {
+          const media = mediaRecords.find((m: any) => m.id === rm.mediaId)
+          const url = media?.url ?? media?.thumbnailUrl ?? ''
+          const type = rm.role === 'video' ? 'video' as const
+            : rm.role === 'document' ? 'document' as const
+            : 'photo' as const
+          return { type, url }
+        }).filter((m: any) => m.url) // filter out missing media
+
+        // Get per-channel caption override (Issue #145: platformCaption)
+        const variant = rev.variants[0]
+        const platformCaption = variant?.caption ?? undefined
+
+        revisionData = {
+          title: rev.title,
+          body: rev.body,
+          hashtags: rev.hashtags,
+          mediaItems: mediaItems.length > 0 ? mediaItems : undefined,
+          platformCaption,
+        }
+      }
+    } catch (err) {
+      // If the revision lookup fails (e.g. legacy job without Publication), fall back to old behavior
+      console.log(`[worker] job ${job.id} — no revision found, using legacy content fields`)
+    }
+
+    // Build adapter job — Issue #145: use revision data if available, else fall back
     const adapterJob: AdapterJob = {
       id: job.id,
       idempotencyKey: job.idempotencyKey || job.id,
       retryCount: bullJob.attemptsMade,
       content: {
         id: job.content.id,
-        title: job.content.title,
-        body: job.content.body,
-        hashtags: job.content.hashtags,
+        title: revisionData?.title ?? job.content.title,
+        body: revisionData?.body ?? job.content.body,
+        hashtags: revisionData?.hashtags ?? job.content.hashtags,
         thumbnailUrl: job.content.thumbnailUrl,
-        mediaItems: job.content.thumbnailUrl
-          ? [{ type: 'photo' as const, url: job.content.thumbnailUrl }]
-          : undefined,
+        // Issue #145: use ordered validated media from the revision (not thumbnailUrl)
+        mediaItems: revisionData?.mediaItems
+          ?? (job.content.thumbnailUrl
+            ? [{ type: 'photo' as const, url: job.content.thumbnailUrl }]
+            : undefined),
       },
+      // Issue #145: populate platformCaption from the ChannelVariant
+      platformCaption: revisionData?.platformCaption,
       account: {
         id: job.platform.id,
         type: job.platform.type as PlatformType,
@@ -191,6 +262,23 @@ const worker = new Worker(
 
       circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
       await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId ?? undefined)
+
+      // Issue #145: keep the first-class Publication record in sync
+      if (publication) {
+        try {
+          await (db as any).publication.update({
+            where: { id: publication.id },
+            data: {
+              status: 'published',
+              providerPostId: result.externalId ?? null,
+              providerAcknowledgedAt: new Date(),
+              completedAt: new Date(),
+            },
+          })
+        } catch (err) {
+          console.error('[worker] failed to update Publication record on success:', err)
+        }
+      }
 
       // Update platform
       await db.platform.update({
@@ -242,6 +330,16 @@ const worker = new Worker(
         safeUserMessage: result.error ?? undefined,
       })
       publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
+      if (publication) {
+        try {
+          await (db as any).publication.update({
+            where: { id: publication.id },
+            data: { status: 'action_required', errorCategory: result.errorCategory ?? null, errorMessage: result.error ?? null, completedAt: new Date() },
+          })
+        } catch (err) {
+          console.error('[worker] failed to update Publication record on auth failure:', err)
+        }
+      }
       await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
       throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
     }
@@ -303,6 +401,23 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       // BUG-05: check UnrecoverableError type (thrown only for auth failures above)
       const needsAction = err instanceof UnrecoverableError
       await markFailed(dbJob, err.message, false, needsAction)
+
+      // Issue #145: keep Publication record in sync when all retries exhausted
+      try {
+        const pub = await (db as any).publication.findFirst({ where: { publishJobId: jobId } })
+        if (pub && pub.status !== 'published' && pub.status !== 'action_required') {
+          await (db as any).publication.update({
+            where: { id: pub.id },
+            data: {
+              status: needsAction ? 'action_required' : 'failed',
+              errorMessage: err.message,
+              completedAt: new Date(),
+            },
+          })
+        }
+      } catch (pubErr) {
+        console.error('[worker] failed to update Publication on final failure:', pubErr)
+      }
     }
   } catch (dbErr) {
     console.error('[worker] failed to update DB on job failure:', dbErr)

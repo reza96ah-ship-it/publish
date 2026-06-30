@@ -56,17 +56,29 @@ export class PublicationsRepository {
   }
 
   /**
-   * Find media by IDs within a workspace. Returns the first thumbnail/url.
+   * Find media by IDs within a workspace. Returns full media records (not just thumbnail).
+   * Issue #145: we need the real media type, URL, and thumbnail — not just one thumbnail URL.
+   */
+  async findMedia(
+    workspaceId: string,
+    mediaIds: string[]
+  ): Promise<{ id: string; url: string; thumbnailUrl: string | null; fileType: string }[]> {
+    if (mediaIds.length === 0) return []
+    const media = await db.media.findMany({
+      where: { id: { in: mediaIds }, workspaceId },
+      select: { id: true, url: true, thumbnailUrl: true, fileType: true },
+    })
+    return media
+  }
+
+  /**
+   * Legacy: find just the thumbnail URL (kept for backward compat).
    */
   async findMediaThumbnail(
     workspaceId: string,
     mediaIds: string[]
   ): Promise<string | null> {
-    if (mediaIds.length === 0) return null
-    const media = await db.media.findMany({
-      where: { id: { in: mediaIds }, workspaceId },
-      select: { thumbnailUrl: true, url: true },
-    })
+    const media = await this.findMedia(workspaceId, mediaIds)
     return media[0]?.thumbnailUrl ?? media[0]?.url ?? null
   }
 
@@ -93,6 +105,9 @@ export class PublicationsRepository {
       scheduledAt: Date | null
       channels: ChannelRow[]
       mode: 'publish' | 'review' | 'draft'
+      // Issue #145: ordered media + per-channel captions
+      mediaItems?: { id: string; position: number; role: string }[]
+      platformCaptions?: Record<string, string> // channelId → override caption
     }
   ): Promise<{ content: ContentRow; jobs: JobRow[] }> {
     const content = await tx.content.create({
@@ -111,11 +126,53 @@ export class PublicationsRepository {
       },
     })
 
+    // Issue #145: create an immutable ContentRevision (snapshot of the content at publish time)
+    const revisionId = crypto.randomUUID()
+    const revision = await (tx as any).contentRevision.create({
+      data: {
+        id: revisionId,
+        contentId: content.id,
+        workspaceId: params.workspaceId,
+        title: params.title,
+        body: params.caption,
+        hashtags: params.hashtags,
+        internalNote: params.note,
+        authorName: params.authorName,
+        version: 1,
+      },
+    })
+
+    // Issue #145: create ordered RevisionMedia links (replaces thumbnailUrl-as-media)
+    if (params.mediaItems && params.mediaItems.length > 0) {
+      for (const m of params.mediaItems) {
+        await (tx as any).revisionMedia.create({
+          data: {
+            revisionId: revision.id,
+            mediaId: m.id,
+            position: m.position,
+            role: m.role,
+          },
+        })
+      }
+    }
+
     // Link content to each channel
     for (const ch of params.channels) {
       await tx.contentPlatform.create({
         data: { contentId: content.id, platformId: ch.id },
       })
+
+      // Issue #145: create ChannelVariant for per-channel caption overrides
+      const overrideCaption = params.platformCaptions?.[ch.id]
+      if (overrideCaption !== undefined) {
+        await (tx as any).channelVariant.create({
+          data: {
+            revisionId: revision.id,
+            platformId: ch.id,
+            caption: overrideCaption,
+          },
+        })
+      }
     }
 
     const jobs: JobRow[] = []
@@ -140,6 +197,27 @@ export class PublicationsRepository {
         })
         jobs.push({ id: job.id, platform: ch.type, idempotencyKey: job.idempotencyKey })
 
+        // Issue #145: create a first-class Publication record for this destination
+        const publicationId = crypto.randomUUID()
+        const { createHash } = await import('crypto')
+        const requestFingerprint = createHash('sha256')
+          .update(`${ch.id}:${content.id}:${revision.id}`)
+          .digest('hex')
+        await (tx as any).publication.create({
+          data: {
+            id: publicationId,
+            workspaceId: params.workspaceId,
+            contentId: content.id,
+            revisionId: revision.id,
+            platformId: ch.id,
+            publishJobId: job.id,
+            campaignId: params.campaignId,
+            status: 'pending',
+            scheduledAt: params.scheduledAt,
+            requestFingerprint,
+          },
+        })
+
         // MISS-01: write OutboxEvent in the same transaction
         await tx.outboxEvent.create({
           data: {
@@ -154,6 +232,9 @@ export class PublicationsRepository {
               workspaceId: params.workspaceId,
               scheduledAt: params.scheduledAt?.toISOString() ?? null,
               idempotencyKey: job.idempotencyKey,
+              // Issue #145: include publication + revision IDs for the worker
+              publicationId,
+              revisionId: revision.id,
             },
             availableAt: params.scheduledAt ?? new Date(),
           },
