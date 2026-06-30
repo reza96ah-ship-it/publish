@@ -6,7 +6,7 @@
  */
 
 import { registerProviderAuthAdapter, getProviderAuthAdapter } from './types'
-import { TelegramAuthAdapter, BaleAuthAdapter, RubikaAuthAdapter } from './bot-token-adapters'
+import { TelegramAuthAdapter, BaleAuthAdapter, RubikaAuthAdapter, EitaaAuthAdapter } from './bot-token-adapters'
 import { InstagramAuthAdapter, LinkedInAuthAdapter } from './oauth-adapters'
 
 // Register all adapters (runs once on module load)
@@ -18,8 +18,7 @@ function registerAll(): void {
   registerProviderAuthAdapter(new RubikaAuthAdapter())
   registerProviderAuthAdapter(new InstagramAuthAdapter())
   registerProviderAuthAdapter(new LinkedInAuthAdapter())
-  // Eitaa uses Rubika adapter (same API)
-  registerProviderAuthAdapter(new RubikaAuthAdapter()) // registered as 'rubika', eitaa uses same
+  registerProviderAuthAdapter(new EitaaAuthAdapter())
   registered = true
 }
 

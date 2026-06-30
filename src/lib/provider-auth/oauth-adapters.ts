@@ -45,22 +45,23 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
       scope: scopes,
       state: input.state,
     })
-    if (input.codeVerifier) {
-      // PKCE: generate code challenge from verifier
-      const { createHash } = await import('crypto')
-      const codeChallenge = createHash('sha256')
-        .update(input.codeVerifier)
-        .digest('base64url')
-      params.set('code_challenge', codeChallenge)
-      params.set('code_challenge_method', 'S256')
-    }
+    // PKCE: always required — auto-generate verifier if caller didn't supply one
+    const { createHash, randomBytes } = await import('crypto')
+    const codeVerifier = input.codeVerifier ?? randomBytes(32).toString('base64url')
+    const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url')
+    params.set('code_challenge', codeChallenge)
+    params.set('code_challenge_method', 'S256')
     return {
       authorizationUrl: `https://api.instagram.com/oauth/authorize?${params}`,
       state: input.state,
+      codeVerifier,
     }
   }
 
   async exchangeCode(input: AuthCallbackInput): Promise<ProviderCredential> {
+    if (!input.codeVerifier) {
+      throw new Error('Instagram exchangeCode requires codeVerifier (PKCE is mandatory)')
+    }
     // Exchange authorization code for short-lived access token
     const tokenRes = await fetch(`${IG_GRAPH_API}/oauth/access_token`, {
       method: 'POST',
