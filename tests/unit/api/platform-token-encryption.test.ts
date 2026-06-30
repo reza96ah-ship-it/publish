@@ -14,6 +14,9 @@ vi.mock('@/lib/db', () => ({
     workspaceMember: {
       findFirst: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
   },
 }))
 
@@ -46,14 +49,31 @@ describe('platform token storage', () => {
     } as never)
     mockedDb.platform.update.mockResolvedValue({ id: 'platform_1' } as never)
     mockedDb.workspaceMember.findFirst.mockResolvedValue({ id: 'member_1' } as never)
+    // Issue #144: the connect route now calls fetch 3 times for Telegram with a targetId:
+    // 1. getMe → validate token
+    // 2. getChat → validate target exists
+    // 3. getChatMember → verify bot is admin
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ({
-        json: async () => ({
+      vi.fn()
+        // getMe
+        .mockResolvedValueOnce({
           ok: true,
-          result: { username: 'nashrino_bot', first_name: 'Nashrino' },
-        }),
-      }))
+          json: async () => ({
+            ok: true,
+            result: { id: 123456789, username: 'nashrino_bot', first_name: 'Nashrino' },
+          }),
+        })
+        // getChat
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ ok: true, result: { id: -100123, title: 'Nashrino' } }),
+        })
+        // getChatMember
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ ok: true, result: { status: 'administrator' } }),
+        })
     )
   })
 
