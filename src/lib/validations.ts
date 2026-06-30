@@ -36,7 +36,10 @@ export const publishSchema = z.object({
   campaignName: z.string().optional(),
   mediaIds: z.array(z.string()).optional().default([]),
   // BUG-08: use explicit channel UUIDs instead of platform type strings
-  channelIds: z.array(z.string().uuid('شناسه کانال نامعتبر است')).optional(),
+  channelIds: z
+    .array(z.string().uuid('شناسه کانال نامعتبر است'))
+    .min(1, 'حداقل یک کانال لازم است')
+    .optional(),
   platformCaptions: z.record(z.string(), z.string()).optional(),
   scheduleMode: z.enum(['now', 'schedule', 'queue']).optional().default('now'),
   // BUG-01: unified ISO timestamp instead of split Jalali date+time fields

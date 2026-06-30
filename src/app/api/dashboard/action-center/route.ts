@@ -24,7 +24,7 @@ export async function GET() {
         title: failed.title,
         context: failed.body ?? '',
         time: failed.createdAt,
-        action: 'ط¨ط±ط±ط³غŒ ظˆ طھظ„ط§ط´ ظ…ط¬ط¯ط¯',
+        action: 'بررسی و تلاش مجدد',
       }
     : null
 

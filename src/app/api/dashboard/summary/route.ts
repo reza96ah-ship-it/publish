@@ -12,7 +12,7 @@ export async function GET() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // P8.3: Fixed N+1 â€” use groupBy instead of findMany + filter
+  // P8.3: Fixed N+1 — use groupBy instead of findMany + filter
   const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] =
     await Promise.all([
       db.publishJob.groupBy({
@@ -52,10 +52,10 @@ export async function GET() {
         : 'healthy'
   const healthLabel =
     health === 'healthy'
-      ? 'ظ¾ط§غŒط¯ط§ط±'
+      ? 'پایدار'
       : health === 'warning'
-        ? 'ظ†غŒط§ط²ظ…ظ†ط¯ طھظˆط¬ظ‡'
-        : 'ط¨ط­ط±ط§ظ†غŒ'
+        ? 'نیازمند توجه'
+        : 'بحرانی'
   const healthColor =
     health === 'healthy'
       ? 'text-emerald-700 bg-emerald-50 border-emerald-200'

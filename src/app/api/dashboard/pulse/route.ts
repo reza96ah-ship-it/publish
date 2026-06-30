@@ -58,17 +58,17 @@ export async function GET() {
 function statusLabel(s: string) {
   switch (s) {
     case 'processing':
-      return 'ط¯ط± ط­ط§ظ„ ظ¾ط±ط¯ط§ط²ط´'
+      return 'در حال پردازش'
     case 'success':
-      return 'ظ…ظ†طھط´ط± ط´ط¯'
+      return 'منتشر شد'
     case 'failed':
-      return 'ظ†ط§ظ…ظˆظپظ‚'
+      return 'ناموفق'
     case 'action':
-      return 'ظ†غŒط§ط²ظ…ظ†ط¯ ط§ظ‚ط¯ط§ظ…'
+      return 'نیازمند اقدام'
     case 'scheduled':
-      return 'ط¯ط± طµظپ'
+      return 'در صف'
     case 'pending':
-      return 'ط¯ط± ط§ظ†طھط¸ط§ط±'
+      return 'در انتظار'
     default:
       return s
   }

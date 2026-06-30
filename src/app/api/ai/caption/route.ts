@@ -1,5 +1,5 @@
-﻿/**
- * POST /api/ai/caption â€” Streaming Persian caption generation.
+/**
+ * POST /api/ai/caption — Streaming Persian caption generation.
  *
  * Sends SSE heartbeat immediately + every 2s during reasoning to prevent
  * gateway 502 timeouts. Supports role, goal, length, variation params.
@@ -14,7 +14,7 @@ import {
   type ContentGoal,
   type CaptionLength,
 } from '@/lib/ai/gemini'
-import { getWorkspace } from '@/lib/server'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, aiCaptionSchema } from '@/lib/validations'
 import { aiRateLimit } from '@/lib/ratelimit'
 
@@ -46,6 +46,10 @@ const VALID_GOALS = ['sell', 'educate', 'review', 'announce', 'engage', 'inspire
 const VALID_LENGTHS = ['short', 'standard', 'long'] as const
 
 export async function POST(req: NextRequest) {
+  // Permission guard: content.create required
+  const guard = await requirePermissionApi('content.create')
+  if (guard.error) return guard.error
+
   try {
     // Rate limit: 15 AI requests per minute per IP
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
@@ -53,8 +57,7 @@ export async function POST(req: NextRequest) {
     if (!rateOk) {
       return Response.json(
         {
-          error:
-            'طھط¹ط¯ط§ط¯ ط¯ط±ط®ظˆط§ط³طھâ€Œظ‡ط§ ط²غŒط§ط¯ ط§ط³طھ â€” غŒع© ط¯ظ‚غŒظ‚ظ‡ طµط¨ط± ع©ظ†غŒط¯',
+          error: 'تعداد درخواست‌ها زیاد است — یک دقیقه صبر کنید',
         },
         { status: 429 }
       )
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     const raw = await req.json().catch(() => null)
     if (!raw)
-      return Response.json({ error: 'ط¨ط¯ظ†ظ‡ ط¯ط±ط®ظˆط§ط³طھ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
+      return Response.json({ error: 'بدنه درخواست نامعتبر' }, { status: 400 })
 
     const validation = validateBody(aiCaptionSchema, raw)
     if (!validation.success) {
@@ -76,13 +79,8 @@ export async function POST(req: NextRequest) {
     const validLength = length as CaptionLength | undefined
     const variationNum = variation ?? 0
 
-    // Get workspace context
-    let workspace: Awaited<ReturnType<typeof getWorkspace>> = null
-    try {
-      workspace = await getWorkspace()
-    } catch {
-      // Demo mode
-    }
+    // Workspace context from permission guard
+    const workspace = guard.workspace
 
     // Create SSE stream with heartbeat
     const encoder = new TextEncoder()
@@ -108,7 +106,7 @@ export async function POST(req: NextRequest) {
           for await (const chunk of streamCaption(
             topic,
             platform as Platform,
-            workspace ?? undefined,
+            workspace,
             validTone as Tone | undefined,
             validRole as CreatorRole | undefined,
             validGoal as ContentGoal | undefined,
@@ -132,7 +130,7 @@ export async function POST(req: NextRequest) {
           // (e.g., "GapGPT 401: Invalid API key").
           console.error('[ai/caption] stream error:', err)
           const errorData = JSON.stringify({
-            error: 'ط®ط·ط§ ط¯ط± طھظˆظ„غŒط¯ ع©ظ¾ط´ظ†. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯.',
+            error: 'خطا در تولید کپشن. لطفاً دوباره تلاش کنید.',
           })
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`))
         } finally {
@@ -155,8 +153,7 @@ export async function POST(req: NextRequest) {
     console.error('[ai/caption] route error:', err)
     return Response.json(
       {
-        error:
-          'ط®ط·ط§ ط¯ط± ظ¾ط±ط¯ط§ط²ط´ ط¯ط±ط®ظˆط§ط³طھ. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯.',
+        error: 'خطا در پردازش درخواست. لطفاً دوباره تلاش کنید.',
       },
       { status: 500 }
     )
