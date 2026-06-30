@@ -16,6 +16,7 @@ import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, memberInviteSchema } from '@/lib/validations'
 import { generateInvitationToken, normalizeEmail } from '@/lib/invitations'
+import { aiRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,13 @@ export async function POST(req: NextRequest) {
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
   const invitedById = guard.userId
+
+  // Rate limit: reuse aiRateLimit (15 requests per minute per IP)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
+  const { success: rateOk } = await aiRateLimit(ip)
+  if (!rateOk) {
+    return NextResponse.json({ error: 'تعداد درخواست‌ها بیش از حد مجاز است. کمی صبر کنید.' }, { status: 429 })
+  }
 
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر است' }, { status: 400 })

@@ -1,5 +1,5 @@
 ﻿/**
- * GET /api/analytics/real â€” fetch real analytics from platform APIs.
+ * GET /api/analytics/real — fetch real analytics from platform APIs.
  *
  * For platforms with valid tokens, calls:
  * - Telegram: getChatMemberCount (channel subscribers)

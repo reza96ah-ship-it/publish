@@ -1,5 +1,5 @@
 ﻿/**
- * POST /api/media/confirm â€” validate uploaded file + finalize Media record.
+ * POST /api/media/confirm — validate uploaded file + finalize Media record.
  *
  * Request: { mediaId: string, key: string }
  * Response: { ok: true, media: {...} }
@@ -23,8 +23,8 @@ import sharp from 'sharp'
 export const dynamic = 'force-dynamic'
 
 const confirmSchema = z.object({
-  mediaId: z.string().min(1, 'ط´ظ†ط§ط³ظ‡ ط±ط³ط§ظ†ظ‡ ط§ظ„ط²ط§ظ…غŒ ط§ط³طھ'),
-  key: z.string().min(1, 'ع©ظ„غŒط¯ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ ط§ظ„ط²ط§ظ…غŒ ط§ط³طھ'),
+  mediaId: z.string().min(1, 'شناسه رسانه الزامی است'),
+  key: z.string().min(1, 'کلید ذخیره‌سازی الزامی است'),
 })
 
 export async function POST(req: NextRequest) {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
 
   const validation = validateBody(confirmSchema, body)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
@@ -41,26 +41,26 @@ export async function POST(req: NextRequest) {
 
   // Verify media belongs to workspace
   const media = await db.media.findFirst({ where: { id: mediaId, workspaceId } })
-  if (!media) return NextResponse.json({ error: 'ط±ط³ط§ظ†ظ‡ غŒط§ظپطھ ظ†ط´ط¯' }, { status: 404 })
+  if (!media) return NextResponse.json({ error: 'رسانه یافت نشد' }, { status: 404 })
 
   // P9.2: Fetch the uploaded file and validate magic bytes
   const buffer = await fetchObjectHead(key)
   if (!buffer) {
     await db.media.delete({ where: { id: mediaId } })
     return NextResponse.json(
-      { error: 'ظپط§غŒظ„ ط¢ظ¾ظ„ظˆط¯ط´ط¯ظ‡ غŒط§ظپطھ ظ†ط´ط¯' },
+      { error: 'فایل آپلودشده یافت نشد' },
       { status: 404 }
     )
   }
 
   const validation_result = validateMagicBytes(buffer)
   if (!validation_result.valid) {
-    // Invalid file â€” delete from storage + DB
+    // Invalid file — delete from storage + DB
     await deleteObject(key)
     await db.media.delete({ where: { id: mediaId } })
     return NextResponse.json(
       {
-        error: 'ظپط§غŒظ„ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ â€” ظپط±ظ…طھ طھطµظˆغŒط± طھط£غŒغŒط¯ ظ†ط´ط¯',
+        error: '',
       },
       { status: 400 }
     )
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     console.warn('[media/confirm] thumbnail generation failed:', err)
-    // Non-fatal â€” use original as thumbnail
+    // Non-fatal — use original as thumbnail
   }
 
   // Update Media record with validated info

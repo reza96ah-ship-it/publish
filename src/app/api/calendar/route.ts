@@ -8,8 +8,8 @@ import { z } from 'zod'
 export const dynamic = 'force-dynamic'
 
 const calendarQuerySchema = z.object({
-  year: z.coerce.number().int().min(1300).max(1500, 'ط³ط§ظ„ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ'),
-  month: z.coerce.number().int().min(1).max(12, 'ظ…ط§ظ‡ ظ†ط§ظ…ط¹طھط¨ط± ط§ط³طھ'),
+  year: z.coerce.number().int().min(1300).max(1500, 'سال نامعتبر است'),
+  month: z.coerce.number().int().min(1).max(12, 'ماه نامعتبر است'),
 })
 
 export async function GET(req: Request) {
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     jobs.map((j) => ({
       id: j.id,
-      title: j.content?.title ?? 'ط¨ط¯ظˆظ† ط¹ظ†ظˆط§ظ†',
+      title: j.content?.title ?? 'بدون عنوان',
       thumbnail: j.content?.thumbnailUrl ?? j.thumbnailUrl ?? '',
       platform: j.platform?.type ?? 'unknown',
       status: j.status,

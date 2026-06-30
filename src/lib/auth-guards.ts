@@ -213,6 +213,7 @@ export type Permission =
   | 'inbox.assign'
   | 'member.invite'
   | 'member.remove'
+  | 'member.manage'
   | 'billing.manage'
   | 'security.admin' // Issue #142: operational dashboards + admin controls
   | 'analytics.view'
@@ -235,6 +236,7 @@ const MATRIX: Record<Permission, Role[]> = {
   'inbox.assign': ['admin', 'editor'],
   'member.invite': ['admin'],
   'member.remove': ['admin'],
+  'member.manage': ['admin'],
   'billing.manage': ['admin'],
   'security.admin': ['admin'],
   'analytics.view': ['admin', 'editor', 'approver'],
@@ -300,6 +302,17 @@ export async function requirePermissionApi(
 
   // Issue #142: check permission using the centralized matrix
   if (!can(guard.role, permission)) {
+    try {
+      await db.auditLog.create({
+        data: {
+          userId: guard.userId,
+          workspaceId: guard.workspace.id,
+          action: 'permission.denied',
+          resource: 'Permission',
+          metadata: { permission, role: guard.role },
+        },
+      })
+    } catch { /* audit write failure is non-fatal */ }
     return {
       error: NextResponse.json(
         { error: 'forbidden', message: 'دسترسی کافی برای این عملیات ندارید' },

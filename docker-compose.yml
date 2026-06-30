@@ -15,7 +15,6 @@ services:
       NODE_ENV: production
       HOSTNAME: '0.0.0.0'
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
-      DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
       REDIS_CACHE_URL: redis://redis-cache:6379
     depends_on:
       pgbouncer: { condition: service_healthy }
@@ -45,7 +44,6 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
-      DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
       REDIS_QUEUE_URL: redis://redis-queue:6379
       REALTIME_EMIT_URL: http://realtime:3003/emit
     depends_on:

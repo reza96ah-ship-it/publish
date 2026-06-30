@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       status: c.status,
       authorName: c.authorName,
       thumbnail: c.thumbnailUrl,
-      campaign: c.campaign?.name ?? 'ط¨ط¯ظˆظ† ع©ظ…ظ¾غŒظ†',
+      campaign: c.campaign?.name ?? 'بدون کمپین',
       platforms: c.platforms.map((p) => p.platform.type),
       scheduledAt: c.scheduledAt,
       publishedAt: c.publishedAt,

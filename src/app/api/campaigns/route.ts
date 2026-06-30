@@ -37,14 +37,14 @@ export async function GET() {
   )
 }
 
-// POST â€” create a new campaign
+// POST — create a new campaign
 export async function POST(req: NextRequest) {
   const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
 
   const validation = validateBody(campaignCreateSchema, body)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
