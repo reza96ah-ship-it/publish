@@ -46,19 +46,23 @@ export async function POST(req: NextRequest) {
     data: { revokedAt: new Date() },
   })
 
-  // Write audit event
-  await db.auditLog.create({
-    data: {
-      userId: guard.userId,
-      workspaceId,
-      action: 'invitation.revoked',
-      resource: 'WorkspaceInvitation',
-      metadata: {
-        invitationId: body.id,
-        email: invitation.emailNormalized,
+  // Write audit event — failure must not crash the happy path (revoke already committed)
+  try {
+    await db.auditLog.create({
+      data: {
+        userId: guard.userId,
+        workspaceId,
+        action: 'invitation.revoked',
+        resource: 'WorkspaceInvitation',
+        metadata: {
+          invitationId: body.id,
+          email: invitation.emailNormalized,
+        },
       },
-    },
-  })
+    })
+  } catch {
+    // audit write failure is non-fatal
+  }
 
   return NextResponse.json({ ok: true, message: 'دعوت‌نامه لغو شد' })
 }

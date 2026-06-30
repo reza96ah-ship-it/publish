@@ -91,8 +91,9 @@ export async function POST(req: NextRequest) {
     })
 
     if (existingMember) {
-      // Already a member — mark invitation as accepted if not already
-      if (!invitation.acceptedAt) {
+      // Already a member — re-read invitation inside tx to get current acceptedAt (not stale snapshot)
+      const currentInv = await tx.workspaceInvitation.findUnique({ where: { id: invitation.id } })
+      if (!currentInv?.acceptedAt) {
         await tx.workspaceInvitation.update({
           where: { id: invitation.id },
           data: {
@@ -138,21 +139,25 @@ export async function POST(req: NextRequest) {
     return { member, alreadyMember: false }
   })
 
-  // Write audit event
-  await db.auditLog.create({
-    data: {
-      userId,
-      workspaceId: invitation.workspaceId,
-      action: 'invitation.accepted',
-      resource: 'WorkspaceInvitation',
-      metadata: {
-        invitationId: invitation.id,
-        email: invitation.emailNormalized,
-        role: invitation.role,
-        alreadyMember: result.alreadyMember,
+  // Write audit event — failure must not crash the happy path (membership already committed)
+  try {
+    await db.auditLog.create({
+      data: {
+        userId,
+        workspaceId: invitation.workspaceId,
+        action: 'invitation.accepted',
+        resource: 'WorkspaceInvitation',
+        metadata: {
+          invitationId: invitation.id,
+          email: invitation.emailNormalized,
+          role: invitation.role,
+          alreadyMember: result.alreadyMember,
+        },
       },
-    },
-  })
+    })
+  } catch {
+    // audit write failure is non-fatal
+  }
 
   return NextResponse.json({
     ok: true,

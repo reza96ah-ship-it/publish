@@ -57,6 +57,13 @@ export async function POST(req: NextRequest) {
   const { plaintext, hash, expiresAt } = generateInvitationToken()
 
   if (existingInvitation) {
+    // Refuse to re-invite an email that already accepted — member exists
+    if (existingInvitation.acceptedAt) {
+      return NextResponse.json(
+        { error: 'این کاربر قبلاً دعوت‌نامه را پذیرفته است. برای تغییر نقش از مدیریت اعضا استفاده کنید.' },
+        { status: 409 }
+      )
+    }
     // Resend: update the existing invitation with a new token + expiry
     await db.workspaceInvitation.update({
       where: { id: existingInvitation.id },
@@ -65,25 +72,35 @@ export async function POST(req: NextRequest) {
         expiresAt,
         role,
         revokedAt: null,
-        acceptedAt: null,
-        acceptedById: null,
       },
     })
   } else {
-    // Create new invitation
-    await db.workspaceInvitation.create({
-      data: {
-        workspaceId,
-        emailNormalized,
-        role,
-        tokenHash: hash,
-        invitedById,
-        expiresAt,
-      },
-    })
+    // Create new invitation — catch concurrent duplicate (two admins invite same email)
+    try {
+      await db.workspaceInvitation.create({
+        data: {
+          workspaceId,
+          emailNormalized,
+          role,
+          tokenHash: hash,
+          invitedById,
+          expiresAt,
+        },
+      })
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        return NextResponse.json(
+          { error: 'یک دعوت‌نامه فعال برای این ایمیل وجود دارد' },
+          { status: 409 }
+        )
+      }
+      throw err
+    }
   }
 
   // Create notification for workspace admins
+  // Note: `name` is used for notification display only. The WorkspaceMember.name
+  // is set from the invitee's own auth profile (session.user.name) on accept.
   await db.notification.create({
     data: {
       workspaceId,
