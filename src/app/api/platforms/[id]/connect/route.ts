@@ -142,22 +142,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   })
 
-  // Write audit event
-  await db.auditLog.create({
-    data: {
-      userId: guard.userId,
-      workspaceId,
-      action: 'platform.connected',
-      resource: 'Platform',
-      metadata: {
-        platformId: id,
-        platformType: platform.type,
-        accountId,
-        scopes: grantedScopes,
-        expiresAt: realExpiresAt?.toISOString() ?? null,
+  // Write audit event — failure must not crash the happy path (platform already connected)
+  try {
+    await db.auditLog.create({
+      data: {
+        userId: guard.userId,
+        workspaceId,
+        action: 'platform.connected',
+        resource: 'Platform',
+        metadata: {
+          platformId: id,
+          platformType: platform.type,
+          accountId,
+          scopes: grantedScopes,
+          expiresAt: realExpiresAt?.toISOString() ?? null,
+        },
       },
-    },
-  })
+    })
+  } catch {
+    // audit write failure is non-fatal
+  }
 
   return NextResponse.json({
     ok: true,
