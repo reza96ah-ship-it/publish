@@ -34,6 +34,7 @@ model User {
   memberships   WorkspaceMember[]
   auditLogs     AuditLog[]
   accounts      Account[]
+  invitationsSent WorkspaceInvitation[] @relation("InvitedBy")
 }
 
 model Account {
@@ -125,6 +126,7 @@ model Workspace {
   analytics     AnalyticsSnapshot[]
   notifications Notification[]
   drafts        ContentDraft[]
+  invitations   WorkspaceInvitation[]
 }
 
 model WorkspaceMember {
@@ -145,6 +147,32 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
   @@index([workspaceId])
   @@index([userId])
+}
+
+/* ─── Workspace Invitations (Issue #143) ─── */
+
+// Replaces the fake userId pattern. Invitations store a hashed token and
+// create a real WorkspaceMember only when the invited user accepts.
+model WorkspaceInvitation {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  emailNormalized String   // lowercase + trimmed email for matching
+  role            String   @default("viewer") // admin, editor, approver, viewer
+  tokenHash       String   @unique // SHA-256 hash of the plaintext token (never store plaintext)
+  invitedById     String
+  expiresAt       DateTime // 7-day expiry (documented policy)
+  acceptedAt      DateTime?
+  acceptedById    String?  // the User who accepted (null until accepted)
+  revokedAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy   User      @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, emailNormalized]) // one active invitation per email per workspace
+  @@index([emailNormalized, expiresAt])
+  @@index([workspaceId, createdAt])
 }
 
 /* ─── Platform Connections ─── */

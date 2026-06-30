@@ -1,13 +1,10 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import {
-  validateBody,
   validateParams,
-  memberInviteSchema,
   cursorPaginationSchema,
 } from '@/lib/validations'
-import { randomUUID } from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,63 +45,30 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// POST â€” add a team member directly (similar to /api/members/invite but without invite token)
-export async function POST(req: NextRequest) {
-  // Issue #142: adding members requires member.invite permission (admin-only)
-  const guard = await requirePermissionApi('member.invite')
-  if (guard.error) return guard.error
-  const workspaceId = guard.workspaceId
-
-  const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })
-
-  const validation = validateBody(memberInviteSchema, body)
-  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
-  const { email, name, role } = validation.data
-
-  // Check duplicate
-  const existing = await db.workspaceMember.findFirst({ where: { workspaceId, email } })
-  if (existing)
-    return NextResponse.json(
-      { error: 'ط§غŒظ† ط¹ط¶ظˆ ظ‚ط¨ظ„ط§ظ‹ ط§ط¶ط§ظپظ‡ ط´ط¯ظ‡ ط§ط³طھ' },
-      { status: 409 }
-    )
-
-  const member = await db.workspaceMember.create({
-    data: {
-      workspaceId,
-      userId: randomUUID(), // temporary â€” replaced when user accepts
-      name: name || email.split('@')[0],
-      email,
-      role,
-    },
-  })
-
+// Issue #143: POST /api/members is DEPRECATED — direct member creation with
+// fabricated userId is removed. Use POST /api/members/invite to create
+// invitations instead. Invitations create real WorkspaceMember records only
+// when the invited user accepts.
+export async function POST() {
   return NextResponse.json(
     {
-      ok: true,
-      member: {
-        id: member.id,
-        name: member.name,
-        email: member.email,
-        role: member.role,
-        roleLabel: roleLabel(member.role),
-      },
+      error: 'ایجاد مستقیم عضو حذف شده است. از دعوت‌نامه استفاده کنید: POST /api/members/invite',
+      redirect: '/api/members/invite',
     },
-    { status: 201 }
+    { status: 410 }
   )
 }
 
 function roleLabel(r: string) {
   switch (r) {
     case 'admin':
-      return 'ظ…ط¯غŒط±'
+      return 'مدیر'
     case 'editor':
-      return 'ظˆغŒط±ط§ط³طھط§ط±'
+      return 'ویراستار'
     case 'approver':
-      return 'طھط£غŒغŒط¯ع©ظ†ظ†ط¯ظ‡'
+      return 'تأییدکننده'
     case 'viewer':
-      return 'ط¨غŒظ†ظ†ط¯ظ‡'
+      return 'بیننده'
     default:
       return r
   }
