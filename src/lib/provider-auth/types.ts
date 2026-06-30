@@ -70,6 +70,8 @@ export interface AuthStartResult {
   authorizationUrl: string
   /** The state token to verify in the callback */
   state: string
+  /** PKCE code verifier — present when the adapter auto-generated one */
+  codeVerifier?: string
 }
 
 export interface AuthCallbackInput {

@@ -41,6 +41,8 @@ const RUBIKA_API_BASE = 'https://botapi.rubika.ir/v3'
 
 export class RubikaAdapter implements ChannelAdapter {
   readonly platform: PlatformType = 'rubika'
+  protected readonly apiBase: string = RUBIKA_API_BASE
+  protected readonly platformLabel: string = 'روبیکا'
 
   async healthCheck(account: AdapterAccount): Promise<HealthResult> {
     const token = account.token
@@ -48,18 +50,18 @@ export class RubikaAdapter implements ChannelAdapter {
       return {
         healthy: false,
         status: 'disconnected',
-        lastError: 'توکن ربات روبیکا تنظیم نشده است',
+        lastError: `توکن ربات ${this.platformLabel} تنظیم نشده است`,
       }
     }
     try {
-      const res = await fetch(`${RUBIKA_API_BASE}/${token}/getMe`, { method: 'POST' })
+      const res = await fetch(`${this.apiBase}/${token}/getMe`, { method: 'POST' })
       const data = await res.json()
       if (data.status !== 'OK' && !data.ok) {
         return { healthy: false, status: 'error', lastError: data.message || 'توکن نامعتبر است' }
       }
       return { healthy: true, status: 'active', lastError: null }
     } catch (err) {
-      return { healthy: false, status: 'error', lastError: 'خطای شبکه در بررسی وضعیت ربات روبیکا' }
+      return { healthy: false, status: 'error', lastError: `خطای شبکه در بررسی وضعیت ربات ${this.platformLabel}` }
     }
   }
 
@@ -70,26 +72,26 @@ export class RubikaAdapter implements ChannelAdapter {
     const issues = []
     const text = content.body ?? ''
     // Issue #117: use capability registry as single source of truth
-    const cap = getCapabilities('rubika')
+    const cap = getCapabilities(this.platform)
     if (text.length > cap.maxTextLength) {
       issues.push({
         code: 'caption_too_long',
-        message: `متن پیام روبیکا نباید از ${cap.maxTextLength} کاراکتر بیشتر باشد.`,
-        platform: 'rubika',
+        message: `متن پیام ${this.platformLabel} نباید از ${cap.maxTextLength} کاراکتر بیشتر باشد.`,
+        platform: this.platform,
       })
     }
     if (!account.token) {
       issues.push({
         code: 'token_missing',
-        message: 'توکن ربات روبیکا تنظیم نشده است.',
-        platform: 'rubika',
+        message: `توکن ربات ${this.platformLabel} تنظیم نشده است.`,
+        platform: this.platform,
       })
     }
     if (!account.targetId && !account.username) {
       issues.push({
         code: 'target_missing',
-        message: 'شناسه چت روبیکا تنظیم نشده است.',
-        platform: 'rubika',
+        message: `شناسه چت ${this.platformLabel} تنظیم نشده است.`,
+        platform: this.platform,
       })
     }
     return { ready: issues.length === 0, issues }
@@ -106,7 +108,7 @@ export class RubikaAdapter implements ChannelAdapter {
         externalId: null,
         rawResponse: {},
         status: 'action',
-        error: 'توکن ربات روبیکا تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.',
+        error: `توکن ربات ${this.platformLabel} تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.`,
         retryable: false,
         steps: [{ label: 'بررسی توکن', at: now }],
       }
@@ -117,7 +119,7 @@ export class RubikaAdapter implements ChannelAdapter {
         externalId: null,
         rawResponse: {},
         status: 'action',
-        error: 'شناسه چت روبیکا تنظیم نشده است.',
+        error: `شناسه چت ${this.platformLabel} تنظیم نشده است.`,
         retryable: false,
         steps: [{ label: 'بررسی مقصد', at: now }],
       }
@@ -133,7 +135,7 @@ export class RubikaAdapter implements ChannelAdapter {
         : text
 
     try {
-      const res = await fetch(`${RUBIKA_API_BASE}/${token}/sendMessage`, {
+      const res = await fetch(`${this.apiBase}/${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,23 +155,23 @@ export class RubikaAdapter implements ChannelAdapter {
           error: null,
           retryable: false,
           steps: [
-            { label: 'ارسال به روبیکا', at: now },
+            { label: `ارسال به ${this.platformLabel}`, at: now },
             { label: 'منتشر شد', at: Date.now() },
           ],
         }
       }
 
       // Error
-      const errorMsg = data.message || data.description || 'خطای ناشناخته روبیکا'
+      const errorMsg = data.message || data.description || `خطای ناشناخته ${this.platformLabel}`
       const retryable = data.code === 429 || (data.code && data.code >= 500)
       return {
         externalId: null,
         rawResponse: data,
         status: retryable ? 'failed' : 'action',
-        error: `روبیکا: ${errorMsg}`,
+        error: `${this.platformLabel}: ${errorMsg}`,
         retryable,
         steps: [
-          { label: 'ارسال به روبیکا', at: now },
+          { label: `ارسال به ${this.platformLabel}`, at: now },
           { label: 'خطا', at: Date.now() },
         ],
       }
@@ -178,10 +180,10 @@ export class RubikaAdapter implements ChannelAdapter {
         externalId: null,
         rawResponse: { error: err.message },
         status: 'failed',
-        error: `روبیکا: خطای شبکه — ${err.message}`,
+        error: `${this.platformLabel}: خطای شبکه — ${err.message}`,
         retryable: true, // network errors are retryable
         steps: [
-          { label: 'ارسال به روبیکا', at: now },
+          { label: `ارسال به ${this.platformLabel}`, at: now },
           { label: 'خطا', at: Date.now() },
         ],
       }
