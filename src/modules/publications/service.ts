@@ -47,10 +47,18 @@ export class PublicationsService {
       throw new ChannelsNotFoundError()
     }
 
-    // Resolve media thumbnail
-    const thumbnailUrl = body.mediaIds?.length
-      ? await this.repo.findMediaThumbnail(workspaceId, body.mediaIds)
-      : null
+    // Resolve media — Issue #145: get full media records (not just thumbnail)
+    const mediaRecords = body.mediaIds?.length
+      ? await this.repo.findMedia(workspaceId, body.mediaIds)
+      : []
+    const thumbnailUrl = mediaRecords[0]?.thumbnailUrl ?? mediaRecords[0]?.url ?? null
+
+    // Issue #145: build ordered media items for the revision
+    const mediaItems = mediaRecords.map((m, i) => ({
+      id: m.id,
+      position: i,
+      role: m.fileType.startsWith('video/') ? 'video' : 'photo',
+    }))
 
     // Compute scheduled time
     const scheduledAt = mode === 'publish' ? this.computeScheduledAt(body) : null
@@ -58,7 +66,8 @@ export class PublicationsService {
     const contentId = randomUUID()
     const status = mode === 'review' ? 'review' : mode === 'draft' ? 'draft' : 'scheduled'
 
-    // Transactional: Content + ContentPlatform links + PublishJobs + OutboxEvents
+    // Transactional: Content + ContentRevision + RevisionMedia + ChannelVariants +
+    // ContentPlatform links + PublishJobs + Publications + OutboxEvents
     const result = await this.repo.transaction((tx) =>
       this.repo.createPublicationTx(tx, {
         contentId,
@@ -74,6 +83,9 @@ export class PublicationsService {
         scheduledAt,
         channels,
         mode,
+        // Issue #145: pass ordered media + per-channel captions
+        mediaItems,
+        platformCaptions: body.platformCaptions,
       })
     )
 
