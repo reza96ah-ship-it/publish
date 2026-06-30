@@ -1,14 +1,15 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi, requireAnyPermissionApi } from '@/lib/auth-guards'
 import { validateParams, cursorPaginationSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  // Approvers reviewing content need to see attached media (content.review)
+  const guard = await requireAnyPermissionApi(['media.upload', 'content.review'])
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())
   const queryCheck = validateParams(cursorPaginationSchema, query)

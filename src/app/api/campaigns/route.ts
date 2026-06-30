@@ -1,14 +1,14 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, campaignCreateSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi("analytics.view")
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const campaigns = await db.campaign.findMany({
     where: { workspaceId },
@@ -39,9 +39,9 @@ export async function GET() {
 
 // POST â€” create a new campaign
 export async function POST(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })

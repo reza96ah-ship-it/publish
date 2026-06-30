@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from 'next/server'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, publishSchema } from '@/lib/validations'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -16,7 +16,6 @@ import { db } from '@/lib/db'
 import { publishJobsAccepted } from '@/lib/metrics'
 import {
   publicationsService,
-  canPublish,
   PermissionDeniedError,
   InvalidBodyError,
   PublicationError,
@@ -27,16 +26,11 @@ import {
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  // 1. Auth guard — returns 401/403 JSON if unauthorized
-  const guard = await requireWorkspaceApi()
+  // Issue #142: requirePermissionApi combines workspace membership + content.publish permission
+  const guard = await requirePermissionApi('content.publish')
   if (guard.error) return guard.error
 
-  // 2. Permission check — content.publish required
-  if (guard.session && !canPublish(guard.role)) {
-    return NextResponse.json({ error: 'دسترسی کافی برای انتشار ندارید' }, { status: 403 })
-  }
-
-  // 3. Resolve author name for the content record
+  // Resolve author name for the content record
   const session = await getServerSession(authOptions)
   const authorName =
     (session?.user as any)?.name ||
@@ -58,7 +52,7 @@ export async function POST(req: Request) {
 
   // 5. Call the service layer (all business logic + DB transaction lives there)
   const auth: AuthContext = {
-    workspaceId: guard.workspace.id,
+    workspaceId: guard.workspaceId,
     userId: (session?.user as any)?.id ?? '',
     authorName,
     role: guard.role,

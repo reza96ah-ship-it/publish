@@ -3,7 +3,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 import { validateBody, inboxAssignSchema, validateId } from '@/lib/validations'
@@ -14,9 +14,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 })
   const id = idCheck.data
 
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('inbox.assign')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => ({}))
   const validation = validateBody(inboxAssignSchema, body)
