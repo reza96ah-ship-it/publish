@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 const VALID_ROLES = ['admin', 'editor', 'approver', 'viewer'] as const
 const roleChangeSchema = z.object({
-  role: z.enum(VALID_ROLES, { required_error: 'نقش الزامی است' }),
+  role: z.enum(VALID_ROLES),
 })
 
 // PATCH /api/members/[id] — change a member's role
