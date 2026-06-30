@@ -72,6 +72,7 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
         grant_type: 'authorization_code',
         redirect_uri: input.redirectUri,
         code: input.code,
+        code_verifier: input.codeVerifier,
       }),
     })
     const tokenData = await tokenRes.json()

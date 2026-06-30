@@ -1,6 +1,7 @@
 import type { ChannelAdapter, PlatformType } from './types'
 import { InstagramAdapter } from './instagram'
 import { RubikaAdapter } from './rubika'
+import { EitaaAdapter } from './eitaa'
 import { TelegramAdapter } from './telegram'
 import { LinkedInAdapter } from './linkedin'
 import { BaleAdapter } from './bale'
@@ -8,10 +9,10 @@ import { BaleAdapter } from './bale'
 const adapters: Record<PlatformType, ChannelAdapter> = {
   instagram: new InstagramAdapter(),
   rubika: new RubikaAdapter(),
+  eitaa: new EitaaAdapter(),
   telegram: new TelegramAdapter(),
   linkedin: new LinkedInAdapter(),
   bale: new BaleAdapter(),
-  eitaa: new RubikaAdapter(), // Eitaa uses a similar bot API; reuse until dedicated adapter
 }
 
 export function getAdapter(platform: string): ChannelAdapter | null {
