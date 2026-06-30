@@ -34,8 +34,10 @@ import type {
   ReadinessResult,
   AdapterContent,
   AdapterAccount,
+  ErrorCategory,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
+import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
 const RUBIKA_API_BASE = 'https://botapi.rubika.ir/v3'
 
@@ -54,7 +56,7 @@ export class RubikaAdapter implements ChannelAdapter {
       }
     }
     try {
-      const res = await fetch(`${this.apiBase}/${token}/getMe`, { method: 'POST' })
+      const res = await fetchWithTimeout(`${this.apiBase}/${token}/getMe`, { method: 'POST' })
       const data = await res.json()
       if (data.status !== 'OK' && !data.ok) {
         return { healthy: false, status: 'error', lastError: data.message || 'توکن نامعتبر است' }
@@ -110,6 +112,7 @@ export class RubikaAdapter implements ChannelAdapter {
         status: 'action',
         error: `توکن ربات ${this.platformLabel} تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.`,
         retryable: false,
+        errorCategory: 'auth',
         steps: [{ label: 'بررسی توکن', at: now }],
       }
     }
@@ -135,7 +138,7 @@ export class RubikaAdapter implements ChannelAdapter {
         : text
 
     try {
-      const res = await fetch(`${this.apiBase}/${token}/sendMessage`, {
+      const res = await fetchWithTimeout(`${this.apiBase}/${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -161,27 +164,51 @@ export class RubikaAdapter implements ChannelAdapter {
         }
       }
 
-      // Error
+      // Error — Issue #147 A: typed errorCategory from the provider's code.
       const errorMsg = data.message || data.description || `خطای ناشناخته ${this.platformLabel}`
-      const retryable = data.code === 429 || (data.code && data.code >= 500)
+      const code = data.code
+      let errorCategory: ErrorCategory = 'unknown'
+      if (code === 401 || code === 403) errorCategory = 'auth'
+      else if (code === 429) errorCategory = 'rate_limit'
+      else if (code === 404) errorCategory = 'not_found'
+      else if (typeof code === 'number' && code >= 500) errorCategory = 'network'
+      const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
       return {
         externalId: null,
         rawResponse: data,
         status: retryable ? 'failed' : 'action',
         error: `${this.platformLabel}: ${errorMsg}`,
         retryable,
+        errorCategory,
         steps: [
           { label: `ارسال به ${this.platformLabel}`, at: now },
           { label: 'خطا', at: Date.now() },
         ],
       }
     } catch (err: any) {
+      // Issue #147 D: timeout = ambiguous outcome, never blindly retried.
+      if (err instanceof FetchTimeoutError) {
+        return {
+          externalId: null,
+          rawResponse: { error: err.message },
+          status: 'failed',
+          error: `${this.platformLabel}: پاسخ در زمان مقرر دریافت نشد. وضعیت ارسال نامشخص است.`,
+          retryable: false,
+          errorCategory: 'network',
+          outcomeUnknown: true,
+          steps: [
+            { label: `ارسال به ${this.platformLabel}`, at: now },
+            { label: 'خطا', at: Date.now() },
+          ],
+        }
+      }
       return {
         externalId: null,
         rawResponse: { error: err.message },
         status: 'failed',
         error: `${this.platformLabel}: خطای شبکه — ${err.message}`,
         retryable: true, // network errors are retryable
+        errorCategory: 'network',
         steps: [
           { label: `ارسال به ${this.platformLabel}`, at: now },
           { label: 'خطا', at: Date.now() },

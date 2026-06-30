@@ -24,8 +24,10 @@ import type {
   ReadinessResult,
   AdapterContent,
   AdapterAccount,
+  ErrorCategory,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
+import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
 // Issue #115: Bale is Telegram-Bot-API-compatible, so it shares the same limits.
 // Text-only: 4096, media caption: 1024. Bale does NOT support parse_mode
@@ -45,7 +47,7 @@ export class BaleAdapter implements ChannelAdapter {
       return { healthy: false, status: 'disconnected', lastError: 'توکن ربات بله تنظیم نشده است' }
     }
     try {
-      const res = await fetch(`${BALE_API_BASE}${token}/getMe`)
+      const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/getMe`)
       const data = await res.json()
       if (!data.ok) {
         return {
@@ -107,6 +109,7 @@ export class BaleAdapter implements ChannelAdapter {
         status: 'action',
         error: 'توکن ربات بله تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.',
         retryable: false,
+        errorCategory: 'auth',
         steps: [{ label: 'بررسی توکن', at: now }],
       }
     }
@@ -172,13 +175,41 @@ export class BaleAdapter implements ChannelAdapter {
         ],
       }
     } catch (err: any) {
-      const retryable = err.code === 429 || (err.code && err.code >= 500)
+      // Issue #147 D: timeout = ambiguous outcome, never blindly retried.
+      if (err instanceof FetchTimeoutError) {
+        return {
+          externalId: null,
+          rawResponse: { error: err.message },
+          status: 'failed',
+          error: 'پاسخ بله در زمان مقرر دریافت نشد. وضعیت ارسال نامشخص است.',
+          retryable: false,
+          errorCategory: 'network',
+          outcomeUnknown: true,
+          steps: [
+            { label: 'ارسال به بله', at: now },
+            { label: 'خطا', at: Date.now() },
+          ],
+        }
+      }
+
+      // Issue #147 A: typed errorCategory (Bale is Telegram-Bot-API compatible).
+      const code = err.code
+      let errorCategory: ErrorCategory = 'unknown'
+      if (code === 401 || code === 403) errorCategory = 'auth'
+      else if (code === 429) errorCategory = 'rate_limit'
+      else if (code === 404) errorCategory = 'not_found'
+      else if (typeof code === 'number' && code >= 500) errorCategory = 'network'
+      const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
+      const retryAfterMs = typeof err.retryAfter === 'number' ? err.retryAfter * 1000 : undefined
+
       return {
         externalId: null,
         rawResponse: { error: err.message, code: err.code },
         status: retryable ? 'failed' : 'action',
         error: err.message,
         retryable,
+        errorCategory,
+        ...(retryAfterMs ? { retryAfterMs } : {}),
         steps: [
           { label: 'ارسال به بله', at: now },
           { label: 'خطا', at: Date.now() },
@@ -193,7 +224,7 @@ export class BaleAdapter implements ChannelAdapter {
   }
 
   private async sendMessage(token: string, chatId: string, text: string) {
-    const res = await fetch(`${BALE_API_BASE}${token}/sendMessage`, {
+    const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text }),
@@ -204,7 +235,7 @@ export class BaleAdapter implements ChannelAdapter {
   }
 
   private async sendPhoto(token: string, chatId: string, photoUrl: string, caption: string) {
-    const res = await fetch(`${BALE_API_BASE}${token}/sendPhoto`, {
+    const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, photo: photoUrl, caption }),
@@ -215,7 +246,7 @@ export class BaleAdapter implements ChannelAdapter {
   }
 
   private async sendVideo(token: string, chatId: string, videoUrl: string, caption: string) {
-    const res = await fetch(`${BALE_API_BASE}${token}/sendVideo`, {
+    const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/sendVideo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, video: videoUrl, caption }),
@@ -226,7 +257,7 @@ export class BaleAdapter implements ChannelAdapter {
   }
 
   private async sendDocument(token: string, chatId: string, documentUrl: string, caption: string) {
-    const res = await fetch(`${BALE_API_BASE}${token}/sendDocument`, {
+    const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/sendDocument`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, document: documentUrl, caption }),
@@ -242,7 +273,7 @@ export class BaleAdapter implements ChannelAdapter {
       media: m.url,
       caption: i === 0 ? caption : undefined,
     }))
-    const res = await fetch(`${BALE_API_BASE}${token}/sendMediaGroup`, {
+    const res = await fetchWithTimeout(`${BALE_API_BASE}${token}/sendMediaGroup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, media: mediaJson }),
