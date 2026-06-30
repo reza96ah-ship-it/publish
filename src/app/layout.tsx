@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Vazirmatn } from 'next/font/google'
+import { headers } from 'next/headers'
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
 import { Toaster as Sonner } from '@/components/ui/sonner'
@@ -33,11 +34,16 @@ export const metadata: Metadata = {
   authors: [{ name: 'Nashrino' }],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Reading headers() opts the entire app out of static rendering so that
+  // Next.js can inject the per-request CSP nonce (set by middleware via
+  // x-nonce) into its own <script> tags on every response.
+  await headers()
+
   return (
     <html lang="fa" dir="rtl" className={`${vazir.variable} antialiased`} suppressHydrationWarning>
       <body

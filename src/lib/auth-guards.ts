@@ -174,12 +174,29 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
   })
 
   if (!membership) {
+    // Workspace in JWT may be stale (e.g., seed reset the DB). Fall back to
+    // the user's first available workspace so a re-login isn't required.
+    const fallback = await db.workspaceMember.findFirst({
+      where: { userId },
+      include: { workspace: true },
+      orderBy: { createdAt: 'asc' },
+    })
+    if (!fallback) {
+      return {
+        error: NextResponse.json({ error: 'forbidden' }, { status: 403 }),
+        workspace: null,
+        session,
+        userId: null,
+        membershipId: null,
+      }
+    }
     return {
-      error: NextResponse.json({ error: 'forbidden' }, { status: 403 }),
-      workspace: null,
+      error: null,
+      workspace: fallback.workspace,
       session,
-      userId: null,
-      membershipId: null,
+      role: fallback.role as Role,
+      userId,
+      membershipId: fallback.id,
     }
   }
 
