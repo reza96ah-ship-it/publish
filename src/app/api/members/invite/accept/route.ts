@@ -105,15 +105,19 @@ export async function POST(req: NextRequest) {
       return { member: existingMember, alreadyMember: true }
     }
 
-    // Create the real WorkspaceMember with the real User.id
-    const member = await tx.workspaceMember.create({
-      data: {
+    // Create the real WorkspaceMember with the real User.id.
+    // Use upsert so a concurrent double-submit (two tabs, client retry) is idempotent:
+    // if the unique constraint fires, upsert re-reads the existing row instead of 500-ing.
+    const member = await tx.workspaceMember.upsert({
+      where: { workspaceId_userId: { workspaceId: invitation.workspaceId, userId } },
+      create: {
         workspaceId: invitation.workspaceId,
         userId, // real User.id — no more fake UUIDs
         name: (session.user as any).name || invitation.emailNormalized.split('@')[0],
         email: invitation.emailNormalized,
         role: invitation.role,
       },
+      update: {}, // already exists — keep current data, just return the row
     })
 
     // Mark invitation as accepted
