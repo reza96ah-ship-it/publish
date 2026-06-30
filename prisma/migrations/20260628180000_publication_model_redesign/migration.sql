@@ -76,7 +76,13 @@ CREATE INDEX "Publication_platformId_idx" ON "Publication"("platformId");
 CREATE INDEX "Publication_status_idx" ON "Publication"("status");
 CREATE INDEX "Publication_requestFingerprint_idx" ON "Publication"("requestFingerprint");
 
+-- AlterTable: PublicationAttempt — add optional link to the new Publication entity
+ALTER TABLE "PublicationAttempt" ADD COLUMN "publicationId" TEXT;
+CREATE INDEX "PublicationAttempt_publicationId_idx" ON "PublicationAttempt"("publicationId");
+
 -- AddForeignKey
+ALTER TABLE "PublicationAttempt" ADD CONSTRAINT "PublicationAttempt_publicationId_fkey"
+  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE SetNull ON UPDATE CASCADE;
 ALTER TABLE "ContentRevision" ADD CONSTRAINT "ContentRevision_contentId_fkey"
   FOREIGN KEY ("contentId") REFERENCES "Content"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ContentRevision" ADD CONSTRAINT "ContentRevision_workspaceId_fkey"
