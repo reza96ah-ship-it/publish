@@ -90,7 +90,7 @@ export function MediaUploader({
             continue
           }
 
-          const { uploadUrl, key, mediaId } = await presignRes.json()
+          const { uploadUrl, mediaId } = await presignRes.json()
 
           // Step 2: Upload directly to S3 (or local-upload in dev)
           const uploadRes = await fetch(uploadUrl, {
@@ -104,11 +104,13 @@ export function MediaUploader({
             continue
           }
 
-          // Step 3: Confirm upload + validate magic bytes
+          // Step 3: Confirm upload + validate magic bytes.
+          // The storage key is never sent here — the server derives it from
+          // the pending Media row, so a client can't confirm an arbitrary key.
           const confirmRes = await fetch('/api/media/confirm', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mediaId, key }),
+            body: JSON.stringify({ mediaId }),
           })
 
           if (!confirmRes.ok) {

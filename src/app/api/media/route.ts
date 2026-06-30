@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const items = await db.media.findMany({
     where: {
       workspaceId,
+      status: 'validated', // Issue #146: pending/rejected/deleting assets are never listed
       ...(cursor ? { id: { lt: cursor } } : {}),
     },
     orderBy: { id: 'desc' },

@@ -520,13 +520,17 @@ model PublicationAttempt {
 
 /* ─── Media Library ─── */
 
+// Issue #146: lifecycle-tracked media asset. A row is created at presign time as
+// "pending" and only becomes visible/usable (status="validated") after the
+// uploaded object has been fetched back from storage and its real content
+// (magic bytes, checksum, size, dimensions) has been verified server-side.
 model Media {
   id          String   @id @default(cuid())
   workspaceId String
   name        String
-  fileType    String   // image/jpeg, video/mp4, etc.
-  fileSize    Int      @default(0)
-  url         String
+  fileType    String   // declared content-type at presign time (image/jpeg, video/mp4, ...)
+  fileSize    Int      @default(0) // declared size at presign time, bytes
+  url         String   @default("") // public delivery URL — only meaningful once status="validated"
   thumbnailUrl String?
   folder      String   @default("عمومی")
   width       Int?
@@ -534,10 +538,30 @@ model Media {
   tags        String   @default("")
   createdAt   DateTime @default(now())
 
+  // Lifecycle state machine: pending -> uploaded -> validating -> validated | rejected
+  // (also: deleting -> deleted)
+  status        String    @default("pending")
+  uploaderId    String?
+  storageProvider String  @default("local") // local | s3
+  storageBucket String?
+  storageKey    String    @default("")
+  declaredType  String?   // content-type declared by the client at presign time
+  detectedType  String?   // real type detected from magic bytes during confirm
+  actualSize    Int?      // bytes actually written to storage (set after upload)
+  checksumAlgo  String?
+  checksumValue String?
+  durationMs    Int?      // video duration, when detectable
+  codec         String?   // video codec, when detectable
+  expiresAt     DateTime? // pending-upload deadline; cleanup removes rows past this with status != validated
+  validatedAt   DateTime?
+  rejectedReason String?
+
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([workspaceId, folder])
+  @@index([workspaceId, status])
+  @@index([status, expiresAt])
 }
 
 /* ─── Inbox ─── */

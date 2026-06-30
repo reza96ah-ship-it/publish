@@ -1,15 +1,22 @@
-﻿/**
- * POST /api/media/confirm — validate uploaded file + finalize Media record.
+/**
+ * POST /api/media/confirm — validate the uploaded object + finalize the Media record. (Issue #146)
  *
- * Request: { mediaId: string, key: string }
- * Response: { ok: true, media: {...} }
+ * Request: { mediaId: string }  — the storage key is NEVER trusted from the
+ * client; it is always read from the server-side "pending"/"uploaded" Media row.
  *
  * Validates:
- *   1. File exists at the S3 key (or local path in dev)
- *   2. Magic bytes match the declared file type (anti-polyglot attack)
- *   3. If invalid, deletes the file + Media record
+ *   1. The row belongs to this workspace and hasn't expired.
+ *   2. The object exists in storage and its real bytes match the checksum
+ *      recorded during upload (defense in depth against TOCTOU swaps).
+ *   3. Magic bytes match a supported format (anti-polyglot — filename/declared
+ *      content-type is never trusted).
+ *   4. The detected kind (image/video) matches what was declared at presign time.
+ *   5. Images: safe pixel-count decode limit; dimensions extracted from real pixels.
  *
- * If valid, generates a thumbnail (400أ—400 WebP) via sharp and updates the Media record.
+ * On any failure: the stored object is deleted and the row is marked
+ * "rejected" with a safe reason (not deleted — keeps an audit trail).
+ * On success: status becomes "validated" and a derived thumbnail is generated.
+ * Idempotent — re-confirming an already-validated row returns the same result.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,15 +24,58 @@ import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody } from '@/lib/validations'
 import { z } from 'zod'
-import { fetchObjectHead, validateMagicBytes, deleteObject, isS3Configured } from '@/lib/storage'
+import {
+  fetchObject,
+  deleteObject,
+  validateMagicBytes,
+  sha256,
+  buildDerivedKey,
+  putObject,
+  publicUrlFor,
+} from '@/lib/storage'
 import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
 
 const confirmSchema = z.object({
   mediaId: z.string().min(1, 'شناسه رسانه الزامی است'),
-  key: z.string().min(1, 'کلید ذخیره‌سازی الزامی است'),
 })
+
+// Decompression-bomb guard: refuse to decode images with an absurd pixel count
+// or any single dimension beyond a sane ceiling.
+const MAX_IMAGE_PIXELS = 40_000_000 // ~40MP (e.g. 8000x5000)
+const MAX_IMAGE_DIMENSION = 8000
+
+function toMediaPayload(m: {
+  id: string
+  name: string
+  fileType: string
+  fileSize: number
+  url: string
+  thumbnailUrl: string | null
+  width: number | null
+  height: number | null
+}) {
+  return {
+    id: m.id,
+    name: m.name,
+    fileType: m.fileType,
+    fileSize: m.fileSize,
+    url: m.url,
+    thumbnail: m.thumbnailUrl ?? m.url,
+    width: m.width,
+    height: m.height,
+  }
+}
+
+async function reject(mediaId: string, key: string, reason: string, message: string, status = 400) {
+  await deleteObject(key)
+  await db.media.update({
+    where: { id: mediaId },
+    data: { status: 'rejected', rejectedReason: reason },
+  })
+  return NextResponse.json({ error: message }, { status })
+}
 
 export async function POST(req: NextRequest) {
   const guard = await requirePermissionApi('media.upload')
@@ -37,83 +87,123 @@ export async function POST(req: NextRequest) {
 
   const validation = validateBody(confirmSchema, body)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
-  const { mediaId, key } = validation.data
+  const { mediaId } = validation.data
 
-  // Verify media belongs to workspace
+  // Object-level tenant auth — never trust a client-supplied key
   const media = await db.media.findFirst({ where: { id: mediaId, workspaceId } })
   if (!media) return NextResponse.json({ error: 'رسانه یافت نشد' }, { status: 404 })
 
-  // P9.2: Fetch the uploaded file and validate magic bytes
-  const buffer = await fetchObjectHead(key)
-  if (!buffer) {
-    await db.media.delete({ where: { id: mediaId } })
-    return NextResponse.json(
-      { error: 'فایل آپلودشده یافت نشد' },
-      { status: 404 }
-    )
+  // Idempotent: re-confirming an already-validated asset just returns the same result
+  if (media.status === 'validated') {
+    return NextResponse.json({ ok: true, media: toMediaPayload(media) })
   }
 
-  const validation_result = validateMagicBytes(buffer)
-  if (!validation_result.valid) {
-    // Invalid file — delete from storage + DB
-    await deleteObject(key)
-    await db.media.delete({ where: { id: mediaId } })
+  if (media.status === 'rejected') {
     return NextResponse.json(
-      {
-        error: '',
-      },
+      { error: 'این فایل قبلاً رد شده است. لطفاً دوباره آپلود کنید' },
       { status: 400 }
     )
   }
 
-  // Generate thumbnail via sharp (400أ—400 WebP)
-  let thumbnailUrl = media.url
-  let width = validation_result.width
-  let height = validation_result.height
-
-  try {
-    if (isS3Configured) {
-      // In production with S3, we'd upload the thumbnail separately.
-      // For now, use the original URL (CDN handles resizing via query params).
-      thumbnailUrl = media.url
-    } else {
-      // Dev: generate thumbnail locally
-      const fullBuffer = await fetchObjectHead(key)
-      if (fullBuffer) {
-        const thumbnail = await sharp(fullBuffer)
-          .resize(400, 400, { fit: 'cover' })
-          .webp({ quality: 80 })
-          .toBuffer()
-        // In dev, we can't easily serve the thumbnail separately, so use original
-        thumbnailUrl = media.url
-      }
-    }
-  } catch (err) {
-    console.warn('[media/confirm] thumbnail generation failed:', err)
-    // Non-fatal — use original as thumbnail
+  if (media.status !== 'uploaded') {
+    return NextResponse.json(
+      { error: 'فایل هنوز آپلود نشده است' },
+      { status: 400 }
+    )
   }
 
-  // Update Media record with validated info
+  if (media.expiresAt && media.expiresAt < new Date()) {
+    return reject(media.id, media.storageKey, 'expired', 'مهلت آپلود منقضی شده است', 410)
+  }
+
+  await db.media.update({ where: { id: media.id }, data: { status: 'validating' } })
+
+  const buffer = await fetchObject(media.storageKey)
+  if (!buffer) {
+    return reject(media.id, media.storageKey, 'object_missing', 'فایل آپلودشده یافت نشد', 404)
+  }
+
+  // Defense in depth: the bytes we validate must match what was hashed during upload
+  if (media.checksumValue && sha256(buffer) !== media.checksumValue) {
+    return reject(media.id, media.storageKey, 'checksum_mismatch', 'فایل آپلودشده دستکاری شده است', 400)
+  }
+  if (media.actualSize != null && buffer.length !== media.actualSize) {
+    return reject(media.id, media.storageKey, 'size_mismatch', 'حجم فایل مطابقت ندارد', 400)
+  }
+
+  const detected = validateMagicBytes(buffer)
+  if (!detected.valid || !detected.kind) {
+    return reject(media.id, media.storageKey, 'unsupported_format', 'فرمت فایل پشتیبانی نمی‌شود', 400)
+  }
+
+  const declaredKind = media.declaredType?.startsWith('video/') ? 'video' : 'image'
+  if (detected.kind !== declaredKind) {
+    return reject(
+      media.id,
+      media.storageKey,
+      'type_mismatch',
+      'نوع فایل واقعی با نوع اعلام‌شده مطابقت ندارد',
+      400
+    )
+  }
+
+  let width: number | null = detected.width ?? null
+  let height: number | null = detected.height ?? null
+  let thumbnailUrl: string | null = null
+
+  if (detected.kind === 'image') {
+    try {
+      const img = sharp(buffer, { limitInputPixels: MAX_IMAGE_PIXELS })
+      const metadata = await img.metadata()
+      width = metadata.width ?? width
+      height = metadata.height ?? height
+
+      if (
+        !width ||
+        !height ||
+        width > MAX_IMAGE_DIMENSION ||
+        height > MAX_IMAGE_DIMENSION ||
+        width * height > MAX_IMAGE_PIXELS
+      ) {
+        return reject(
+          media.id,
+          media.storageKey,
+          'image_too_large',
+          'ابعاد تصویر بیش از حد مجاز است',
+          400
+        )
+      }
+
+      const thumbBuffer = await sharp(buffer, { limitInputPixels: MAX_IMAGE_PIXELS })
+        .resize(400, 400, { fit: 'cover', position: 'center' })
+        .webp({ quality: 80 })
+        .toBuffer()
+
+      const thumbKey = buildDerivedKey(media.storageKey, 'thumb.webp')
+      thumbnailUrl = await putObject(thumbKey, thumbBuffer, 'image/webp')
+    } catch {
+      return reject(media.id, media.storageKey, 'decode_failed', 'پردازش تصویر ناموفق بود', 400)
+    }
+  }
+  // Video: signature-validated above. Duration/codec extraction and thumbnail
+  // generation require a sandboxed media probe (ffprobe) not available in this
+  // environment — durationMs/codec remain null and the original is used as
+  // its own "thumbnail" placeholder. Tracked as a follow-up.
+
+  const publicUrl = publicUrlFor(media.storageKey)
+
   const updated = await db.media.update({
-    where: { id: mediaId },
+    where: { id: media.id },
     data: {
-      thumbnailUrl,
-      width: width ?? null,
-      height: height ?? null,
+      status: 'validated',
+      detectedType: detected.type,
+      width,
+      height,
+      url: publicUrl,
+      thumbnailUrl: thumbnailUrl ?? publicUrl,
+      validatedAt: new Date(),
     },
   })
 
-  return NextResponse.json({
-    ok: true,
-    media: {
-      id: updated.id,
-      name: updated.name,
-      fileType: updated.fileType,
-      fileSize: updated.fileSize,
-      url: updated.url,
-      thumbnail: updated.thumbnailUrl ?? updated.url,
-      width: updated.width,
-      height: updated.height,
-    },
-  })
+  return NextResponse.json({ ok: true, media: toMediaPayload(updated) })
 }

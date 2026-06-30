@@ -31,6 +31,7 @@ import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
 import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
+import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import {
   publishJobsCompleted,
   publishJobsFailed,
@@ -175,11 +176,13 @@ const worker = new Worker(
       if (publication?.revision) {
         const rev = publication.revision
 
-        // Load the actual media URLs from the Media table
+        // Load the actual media URLs from the Media table. Issue #146: only
+        // status="validated" assets carry a real, server-verified URL — never
+        // hand the provider adapter a pending/rejected/unvalidated record.
         const mediaIds = rev.media.map((rm: any) => rm.mediaId)
         const mediaRecords = mediaIds.length > 0
           ? await db.media.findMany({
-              where: { id: { in: mediaIds } },
+              where: { id: { in: mediaIds }, status: 'validated' },
               select: { id: true, url: true, thumbnailUrl: true, fileType: true },
             })
           : []
@@ -691,6 +694,7 @@ async function shutdown(signal: string) {
   stopOutboxDispatcher()
   stopTokenExpiryScanner()
   stopInvitationCleanup()
+  stopMediaCleanup()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   console.log('[worker] shutdown complete')
@@ -712,3 +716,5 @@ startTokenExpiryScanner()
 // Issue #143: daily cleanup of expired workspace invitations — ensures the
 // @@unique([workspaceId, emailNormalized]) constraint doesn't block re-invites.
 startInvitationCleanup()
+// Issue #146: hourly cleanup of abandoned media uploads (presign expired without confirm)
+startMediaCleanup()

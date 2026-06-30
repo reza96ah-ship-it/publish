@@ -49,6 +49,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+# Issue #146: local-dev media storage falls back to public/uploads/ — must be
+# writable by the non-root runtime user.
+RUN mkdir -p ./public/uploads && chown -R nextjs:nodejs ./public/uploads
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
