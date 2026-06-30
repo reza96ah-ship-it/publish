@@ -397,6 +397,7 @@ model Publication {
   revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
   attempts    PublicationAttempt[]
 
+  @@unique([revisionId, platformId])
   @@index([workspaceId])
   @@index([contentId])
   @@index([revisionId])
