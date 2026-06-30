@@ -6,14 +6,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, inboxReplySchema } from '@/lib/validations'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('inbox.reply')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })

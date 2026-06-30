@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import {
   validateBody,
   validateParams,
@@ -21,9 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 })
   const id = idCheck.data
 
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.edit')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // Validate ?parentId= query (optional)
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())
@@ -46,9 +46,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 })
   const id = idCheck.data
 
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.edit')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => ({}))
   const validation = validateBody(contentCommentSchema, body)

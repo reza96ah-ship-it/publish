@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody } from '@/lib/validations'
 import { z } from 'zod'
 import { createPresignedUpload } from '@/lib/storage'
@@ -41,9 +41,9 @@ const presignSchema = z.object({
 const STORAGE_QUOTA_BYTES = 500 * 1024 * 1024 // 500MB per workspace
 
 export async function POST(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('media.upload')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })

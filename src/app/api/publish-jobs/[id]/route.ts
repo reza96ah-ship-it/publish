@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { randomUUID } from 'crypto'
 import { rescheduleSchema, validateBody } from '@/lib/validations'
 import { enqueuePublishJob } from '@/lib/queue'
@@ -20,9 +20,9 @@ type PatchBody =
  * - reschedule: change scheduledAt to a new future timestamp (used by calendar drag-drop)
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('job.schedule')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const { id } = await params
   let raw: unknown

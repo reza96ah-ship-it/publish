@@ -1,13 +1,13 @@
 ﻿import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('platform.manage')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // P8.3: Fixed N+1 â€” single groupBy query instead of count per platform
   const platforms = await db.platform.findMany({

@@ -4,16 +4,17 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { randomUUID } from 'crypto'
 import { validateBody, memberInviteSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  // Issue #142: inviting members requires member.invite permission (admin-only)
+  const guard = await requirePermissionApi('member.invite')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'ط¨ط¯ظ†ظ‡ ظ†ط§ظ…ط¹طھط¨ط±' }, { status: 400 })

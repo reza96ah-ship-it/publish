@@ -17,7 +17,7 @@
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,9 +42,9 @@ const API_VERSIONS: Record<string, string> = {
 }
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('platform.manage')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const platforms = await db.platform.findMany({
     where: { workspaceId },

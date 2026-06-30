@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateId } from '@/lib/validations'
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -14,9 +14,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 })
   const id = idCheck.data
 
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const draft = await db.content.findFirst({
     where: { id, workspaceId, status: 'draft' },

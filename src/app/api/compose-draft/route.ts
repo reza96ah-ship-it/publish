@@ -13,14 +13,14 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const session = await getServerSession(authOptions)
   const authorId = (session?.user as any)?.id as string | undefined
@@ -34,9 +34,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('content.create')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   const session = await getServerSession(authOptions)
   const authorId = (session?.user as any)?.id as string | undefined

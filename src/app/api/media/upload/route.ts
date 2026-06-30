@@ -13,7 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireWorkspaceApi } from '@/lib/auth-guards'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateParams, mediaUploadQuerySchema } from '@/lib/validations'
 import sharp from 'sharp'
 import { randomUUID } from 'crypto'
@@ -28,9 +28,9 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 export async function POST(req: NextRequest) {
-  const guard = await requireWorkspaceApi()
+  const guard = await requirePermissionApi('media.upload')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspace.id
+  const workspaceId = guard.workspaceId
 
   // Validate ?fileName= query string (max 200 chars, optional)
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())
