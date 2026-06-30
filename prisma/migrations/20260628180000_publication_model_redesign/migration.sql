@@ -82,7 +82,7 @@ CREATE INDEX "PublicationAttempt_publicationId_idx" ON "PublicationAttempt"("pub
 
 -- AddForeignKey
 ALTER TABLE "PublicationAttempt" ADD CONSTRAINT "PublicationAttempt_publicationId_fkey"
-  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE SetNull ON UPDATE CASCADE;
+  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "ContentRevision" ADD CONSTRAINT "ContentRevision_contentId_fkey"
   FOREIGN KEY ("contentId") REFERENCES "Content"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "ContentRevision" ADD CONSTRAINT "ContentRevision_workspaceId_fkey"

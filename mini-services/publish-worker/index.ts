@@ -145,9 +145,12 @@ const worker = new Worker(
       platformCaption: string | undefined
     } | null = null
 
+    // Hoisted so success/failure paths can update the Publication record
+    let publication: any = null
+
     try {
       // Try to load the revision from the new Publication entity
-      const publication = await (db as any).publication.findFirst({
+      publication = await (db as any).publication.findFirst({
         where: { publishJobId: job.id },
         include: {
           revision: {
@@ -260,6 +263,23 @@ const worker = new Worker(
       circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
       await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId ?? undefined)
 
+      // Issue #145: keep the first-class Publication record in sync
+      if (publication) {
+        try {
+          await (db as any).publication.update({
+            where: { id: publication.id },
+            data: {
+              status: 'published',
+              providerPostId: result.externalId ?? null,
+              providerAcknowledgedAt: new Date(),
+              completedAt: new Date(),
+            },
+          })
+        } catch (err) {
+          console.error('[worker] failed to update Publication record on success:', err)
+        }
+      }
+
       // Update platform
       await db.platform.update({
         where: { id: job.platform.id },
@@ -310,6 +330,16 @@ const worker = new Worker(
         safeUserMessage: result.error ?? undefined,
       })
       publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
+      if (publication) {
+        try {
+          await (db as any).publication.update({
+            where: { id: publication.id },
+            data: { status: 'action_required', errorCategory: result.errorCategory ?? null, errorMessage: result.error ?? null, completedAt: new Date() },
+          })
+        } catch (err) {
+          console.error('[worker] failed to update Publication record on auth failure:', err)
+        }
+      }
       await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
       throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
     }
@@ -371,6 +401,23 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       // BUG-05: check UnrecoverableError type (thrown only for auth failures above)
       const needsAction = err instanceof UnrecoverableError
       await markFailed(dbJob, err.message, false, needsAction)
+
+      // Issue #145: keep Publication record in sync when all retries exhausted
+      try {
+        const pub = await (db as any).publication.findFirst({ where: { publishJobId: jobId } })
+        if (pub && pub.status !== 'published' && pub.status !== 'action_required') {
+          await (db as any).publication.update({
+            where: { id: pub.id },
+            data: {
+              status: needsAction ? 'action_required' : 'failed',
+              errorMessage: err.message,
+              completedAt: new Date(),
+            },
+          })
+        }
+      } catch (pubErr) {
+        console.error('[worker] failed to update Publication on final failure:', pubErr)
+      }
     }
   } catch (dbErr) {
     console.error('[worker] failed to update DB on job failure:', dbErr)

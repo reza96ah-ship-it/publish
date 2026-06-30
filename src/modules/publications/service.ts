@@ -48,12 +48,19 @@ export class PublicationsService {
     }
 
     // Resolve media — Issue #145: get full media records (not just thumbnail)
-    const mediaRecords = body.mediaIds?.length
+    const rawMedia = body.mediaIds?.length
       ? await this.repo.findMedia(workspaceId, body.mediaIds)
       : []
+
+    // Preserve user-selected order: findMany with IN clause doesn't guarantee order
+    const mediaIdOrder = body.mediaIds ?? []
+    const mediaRecords = mediaIdOrder
+      .map((id) => rawMedia.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => m !== undefined)
+
     const thumbnailUrl = mediaRecords[0]?.thumbnailUrl ?? mediaRecords[0]?.url ?? null
 
-    // Issue #145: build ordered media items for the revision
+    // Issue #145: build ordered media items for the revision (position = user-selected order)
     const mediaItems = mediaRecords.map((m, i) => ({
       id: m.id,
       position: i,
