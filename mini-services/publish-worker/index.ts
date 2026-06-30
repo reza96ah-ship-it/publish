@@ -30,6 +30,7 @@ import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
+import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
 import {
   publishJobsCompleted,
   publishJobsFailed,
@@ -689,6 +690,7 @@ async function shutdown(signal: string) {
   console.log(`\n[worker] ${signal} — graceful shutdown started (stopTimeout=30s)`)
   stopOutboxDispatcher()
   stopTokenExpiryScanner()
+  stopInvitationCleanup()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   console.log('[worker] shutdown complete')
@@ -707,3 +709,6 @@ startOutboxDispatcher()
 // Issue #116: start token expiry scanner — daily check for Instagram/LinkedIn
 // OAuth tokens expiring within 7 days; creates in-app notifications.
 startTokenExpiryScanner()
+// Issue #143: daily cleanup of expired workspace invitations — ensures the
+// @@unique([workspaceId, emailNormalized]) constraint doesn't block re-invites.
+startInvitationCleanup()
