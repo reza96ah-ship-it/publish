@@ -52,3 +52,28 @@ export class InvalidBodyError extends PublicationError {
     this.name = 'InvalidBodyError'
   }
 }
+
+// Issue #156: Job-specific error classes for publish-jobs route handler
+export class JobNotFoundError extends PublicationError {
+  constructor(jobId: string) {
+    super(`Job not found: ${jobId}`, 404)
+  }
+}
+
+export class JobNotCancellableError extends PublicationError {
+  constructor(jobId: string, status: string) {
+    super(`Job ${jobId} cannot be cancelled in status: ${status}`, 409)
+  }
+}
+
+export class JobConcurrentChangeError extends PublicationError {
+  constructor(jobId: string) {
+    super(`Job ${jobId} was modified by another process`, 409)
+  }
+}
+
+export class InvalidActionError extends PublicationError {
+  constructor(action: string) {
+    super(`Invalid action: ${action}`, 400)
+  }
+}

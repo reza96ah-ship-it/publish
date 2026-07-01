@@ -36,6 +36,15 @@ import type {
 // must be rejected (not silently no-op'd) once a job is here.
 const NON_CANCELLABLE_STATUSES = new Set(['success', 'cancelled', 'failed', 'action'])
 
+// Re-export error classes for route handlers (thin transport layer)
+export {
+  JobNotFoundError,
+  JobNotCancellableError,
+  JobConcurrentChangeError,
+  InvalidActionError,
+  ValidationError,
+} from './errors'
+
 export interface JobAuthContext {
   workspaceId: string
   userId: string
