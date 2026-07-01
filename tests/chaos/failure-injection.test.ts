@@ -4,11 +4,11 @@
  * This file implements TWO categories of chaos tests:
  *
  * 1. PROCESS-LEVEL chaos (implemented, runs in CI):
- *    - Database connection pool exhaustion / reconnect
- *    - Redis connection failure / reconnect
- *    - Worker crash during publication processing
- *    - Provider timeout / response loss simulation
- *    - Expired credentials during delayed job
+ *    - Database connection failure / reconnect simulation
+ *    - Database transaction rollback validation
+ *    - Redis error classification
+ *    - Provider timeout / response loss normalization
+ *    - Expired credentials classification (prevents retry loop)
  *
  * 2. INFRASTRUCTURE-LEVEL chaos (requires docker-compose orchestration):
  *    - PostgreSQL container stop/start
@@ -21,119 +21,133 @@
  * They are documented here for game-day execution and future CI enhancement.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { db } from '@/lib/db'
+import { describe, it, expect, vi } from 'vitest'
+import { PrismaClient } from '@prisma/client'
+import { db } from '../../src/lib/db'
+import { classifyError, safeErrorMessage } from '../../mini-services/publish-worker/lib/outbox-dispatcher'
+import { normalizePublishResult } from '../../mini-services/publish-worker/lib/retry-directive'
 
 // ── Category 1: Process-level chaos (runs in CI) ─────────────
 
 describe('Issue #153 Tier 7 — Process-level failure injection', () => {
   describe('PostgreSQL connection failure / reconnect', () => {
     it('query fails gracefully when database is unreachable', async () => {
-      // Save original DATABASE_URL
-      const originalUrl = process.env.DATABASE_URL
-
       // Simulate unreachable database by using an invalid URL
-      // We test the error handling path, not the actual connection
-      try {
-        // Verify that db client exists and has the expected interface
-        expect(db).toBeDefined()
-        expect(db.$queryRaw).toBeDefined()
-        expect(db.$executeRaw).toBeDefined()
-        expect(db.$transaction).toBeDefined()
-      } finally {
-        // Restore original URL
-        if (originalUrl) process.env.DATABASE_URL = originalUrl
-      }
+      // We test that the client throws a connection/initialization error
+      const badDb = new PrismaClient({
+        datasources: {
+          db: { url: 'postgresql://invalid_user:invalid_pass@localhost:9999/invalid_db?connect_timeout=1' },
+        },
+      })
+      await expect(badDb.$queryRaw`SELECT 1`).rejects.toThrow()
+      await badDb.$disconnect()
     })
 
     it('transaction rollback on error preserves consistency', async () => {
-      // Test that a failed transaction rolls back cleanly
-      // This verifies the transaction boundary is correct
-      const mockTx = {
-        publication: {
-          create: vi.fn().mockRejectedValue(new Error('simulated DB error')),
-          findUnique: vi.fn(),
-        },
-      }
+      // If DATABASE_URL is not set (e.g. in environments with no test DB), skip
+      if (!process.env.DATABASE_URL) return
 
-      // The transaction should propagate the error
+      const uniqueTitle = 'transaction-rollback-chaos-' + Date.now()
+
+      // Attempt transaction that violates foreign key constraints
       await expect(
-        (async () => {
-          try {
-            await mockTx.publication.create()
-          } catch (e) {
-            throw e
-          }
-        })()
-      ).rejects.toThrow('simulated DB error')
+        db.$transaction(async (tx) => {
+          // This will fail because workspaceId doesn't exist
+          await tx.content.create({
+            data: {
+              workspaceId: 'workspace-does-not-exist-will-fail-anyway',
+              title: uniqueTitle,
+            },
+          })
+        })
+      ).rejects.toThrow()
 
-      // findUnique should NOT have been called (rollback)
-      expect(mockTx.publication.findUnique).not.toHaveBeenCalled()
+      // Verify that no content with this title exists (successful rollback)
+      const found = await db.content.findFirst({
+        where: { title: uniqueTitle },
+      })
+      expect(found).toBeNull()
     })
   })
 
   describe('Redis connection failure / reconnect', () => {
-    it('BullMQ queue handles Redis connection loss', async () => {
-      // Verify that the queue module exports a valid Queue constructor
-      // In production, BullMQ retries Redis connection with backoff
-      const queue = await import('@/lib/queue')
-      expect(queue.publishQueue).toBeDefined()
-      expect(typeof queue.enqueuePublishJob).toBe('function')
+    it('outbox dispatcher correctly classifies Redis errors', () => {
+      const err = new Error('ECONNREFUSED 127.0.0.1:6379')
+      expect(classifyError(err)).toBe('redis')
+      
+      const safeMsg = safeErrorMessage('redis', err.message)
+      expect(safeMsg).toContain('Redis')
+      expect(safeMsg).not.toContain('127.0.0.1') // no host leakage
     })
 
-    it('outbox dispatcher marks events as retry_wait on Redis failure', async () => {
-      // When Redis is unavailable, the outbox dispatcher should:
-      // 1. Not crash
-      // 2. Mark the event as retry_wait with errorCategory='redis'
-      // 3. Set availableAt to now + backoff
-      // This is verified in the outbox dispatcher unit tests (PR #173)
-      expect(true).toBe(true) // covered by outbox-dispatcher.test.ts
-    })
-  })
+    it('outbox dispatcher correctly classifies DB errors', () => {
+      const err = new Error('PG_CONNECTION_ERROR host=db.internal:5432')
+      expect(classifyError(err)).toBe('db')
 
-  describe('Worker crash windows', () => {
-    it('crash after claim but before enqueue is recovered after lease expiry', async () => {
-      // This is covered by outbox-dispatcher.test.ts in PR #173:
-      // - Lease expires → event returns to pending
-      // - Another dispatcher can claim it
-      // - No duplicate provider publication
-      expect(true).toBe(true) // covered by outbox-dispatcher.test.ts
-    })
-
-    it('crash after enqueue but before delivered does not create duplicate', async () => {
-      // Covered by duplicate-prevention.test.ts in PR #174:
-      // - Stable fingerprint means findSuccessByFingerprint catches re-enqueued jobs
-      // - Provider idempotency key prevents duplicate provider posts
-      expect(true).toBe(true) // covered by duplicate-prevention.test.ts
+      const safeMsg = safeErrorMessage('db', err.message)
+      expect(safeMsg).toContain('پایگاه داده')
+      expect(safeMsg).not.toContain('db.internal') // no internal detail leakage
     })
   })
 
   describe('Provider timeout / response loss', () => {
-    it('timeout classifies as outcome_unknown, not failure', async () => {
-      // The retry-directive normalizes timeouts to errorCategory='timeout'
-      // which the worker maps to outcome_unknown (not retryable without reconciliation)
-      const { normalizePublishResult } = await import(
-        '../../mini-services/publish-worker/lib/retry-directive'
-      )
-      expect(normalizePublishResult).toBeDefined()
-      // Timeout should NOT be classified as a permanent failure
+    it('timeout classifies as outcome_unknown, not failure', () => {
+      const result = normalizePublishResult({
+        status: 'failed',
+        retryable: false,
+        outcomeUnknown: true,
+        errorCategory: 'timeout',
+        error: 'Request timed out after 10s',
+      })
+      expect(result.kind).toBe('outcome_unknown')
+      expect(result.category).toBe('timeout')
+      expect(result.safeMessage).toBe('Request timed out after 10s')
     })
 
-    it('malformed response classifies as outcome_unknown', async () => {
-      // Malformed responses (partial JSON, unexpected schema) should
-      // be classified as outcome_unknown, not provider_success
-      expect(true).toBe(true) // covered by provider-contracts.test.ts
+    it('malformed response classifies as outcome_unknown', () => {
+      const result = normalizePublishResult({
+        status: 'failed',
+        retryable: false,
+        outcomeUnknown: true,
+        errorCategory: 'unknown',
+        error: 'Malformed JSON from provider',
+      })
+      expect(result.kind).toBe('outcome_unknown')
+      expect(result.category).toBe('unknown')
+      expect(result.safeMessage).toBe('Malformed JSON from provider')
+    })
+
+    it('rate limit with retryAfterMs classifies as retry with date', () => {
+      const now = Date.now()
+      const result = normalizePublishResult({
+        status: 'failed',
+        retryable: true,
+        retryAfterMs: 5000,
+        errorCategory: 'rate_limit',
+        error: 'Rate limit exceeded',
+      })
+      expect(result.kind).toBe('retry')
+      expect(result.category).toBe('rate_limit')
+      if (result.kind === 'retry' && result.retryAt) {
+        expect(result.retryAt.getTime()).toBeGreaterThanOrEqual(now + 4900)
+      } else {
+        expect.fail('Expected retryAt date')
+      }
     })
   })
 
   describe('Expired credentials during delayed job', () => {
-    it('expired token causes auth error, not retry loop', async () => {
-      // When a scheduled job fires and the platform token has expired:
-      // 1. Worker checks platform.status === 'expired' before calling adapter
-      // 2. Throws UnrecoverableError with errorCategory='auth'
-      // 3. Publication moves to failed state, not retry loop
-      // This is covered by the token-expiry-scanner tests (PR #116)
-      expect(true).toBe(true) // covered by token-expiry-scanner.test.ts
+    it('expired token causes auth error, not retry loop', () => {
+      // Auth errors should normalize to action_required, which translates
+      // to UnrecoverableError in the worker, preventing a needless retry loop
+      const result = normalizePublishResult({
+        status: 'action',
+        retryable: false,
+        errorCategory: 'auth',
+        error: 'Platform credentials expired',
+      })
+      expect(result.kind).toBe('action_required')
+      expect(result.category).toBe('auth')
     })
   })
 })
