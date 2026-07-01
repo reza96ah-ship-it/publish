@@ -98,7 +98,36 @@ export interface ChannelAdapter {
   healthCheck(account: AdapterAccount): Promise<HealthResult>
   validateReadiness(content: AdapterContent, account: AdapterAccount): Promise<ReadinessResult>
   publish(job: AdapterJob): Promise<PublishResult>
+  /**
+   * Issue #149: Optional reconciliation for unknown-outcome publications.
+   * Called when the worker can't determine if a provider accepted the post.
+   * Returns confirmed_success, confirmed_failure, or still_unknown.
+   */
+  reconcile?(input: ReconcileInput): Promise<ReconcileOutcome>
 }
+
+/**
+ * Issue #149: Reconciliation input — passed to the adapter when
+ * checking if a provider received/accepted a post after an ambiguous outcome.
+ */
+export interface ReconcileInput {
+  /** The publication's stable operation ID (sent to the provider if supported) */
+  publicationOperationId?: string
+  /** The provider post ID if one was returned before the ambiguous outcome */
+  providerPostId?: string
+  /** The account credential (decrypted) */
+  account: AdapterAccount
+  /** The content that was being published */
+  content: AdapterContent
+}
+
+/**
+ * Issue #149: Reconciliation outcome — one of three possible results.
+ */
+export type ReconcileOutcome =
+  | { kind: 'confirmed_success'; providerPostId: string }
+  | { kind: 'confirmed_failure'; reason: string }
+  | { kind: 'still_unknown'; nextCheckAt?: Date }
 
 /**
  * Base error class for adapter failures.

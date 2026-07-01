@@ -380,6 +380,8 @@ model Publication {
   // Idempotency + reconciliation
   requestFingerprint  String?  // sha256(platformId + contentId + revisionId)
   providerOperationId String?
+  // Issue #149: stable logical operation identity — one per Publication, never changes across retries
+  publicationOperationId String? @unique // stable idempotency key for provider calls
   reconciliationStatus String? // null, confirmed_success, confirmed_failure, still_unknown
 
   // Error data (safe, no secrets)

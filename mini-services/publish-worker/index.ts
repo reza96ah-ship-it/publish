@@ -39,11 +39,14 @@ import {
 } from './lib/metrics'
 import {
   buildFingerprint,
+  generateOperationId,
   findPreviousSuccess,
+  findSuccessByFingerprint,
   startAttempt,
   markProviderSuccess,
   markLocalSuccess,
   markFailure,
+  recordReconciliation,
 } from './lib/attempt-ledger'
 import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
 import { platformRateLimiter } from './lib/rate-limiter'
@@ -166,11 +169,15 @@ const worker = new Worker(
     if (job.platform.status === 'expired') {
       const authError = `توکن ${job.platform.type} منقضی شده است. لطفاً حساب را مجدداً متصل کنید.`
       console.log(`[worker] job ${job.id} skipped — platform ${job.platform.type} token expired`)
-      const fingerprint = buildFingerprint(job.platform.id, job.content.id, bullJob.attemptsMade)
+      // Issue #149: stable fingerprint (no attemptNumber) — same across retries
+      const revisionId = publication?.revision?.id ?? job.content.id
+      const fingerprint = buildFingerprint(job.platform.id, job.content.id, revisionId)
       const attemptId = await startAttempt({
         publishJobId: job.id,
         attemptNumber: bullJob.attemptsMade,
         requestFingerprint: fingerprint,
+        publicationOperationId: publication?.publicationOperationId ?? undefined,
+        publicationId: publication?.id,
       })
       await markFailure(attemptId, {
         outcome: 'permanent_failure',
@@ -290,13 +297,31 @@ const worker = new Worker(
       },
     }
 
-    // MISS-02: open an attempt ledger record BEFORE calling the provider
-    const fingerprint = buildFingerprint(job.platform.id, job.content.id, bullJob.attemptsMade)
+    // Issue #149: open an attempt ledger record BEFORE calling the provider.
+    // Use STABLE fingerprint (platformId + contentId + revisionId) — NOT attemptNumber.
+    // This means retries for the same publication share the same fingerprint,
+    // allowing findSuccessByFingerprint to detect prior successes.
+    const revisionId = publication?.revision?.id ?? job.content.id
+    const fingerprint = buildFingerprint(job.platform.id, job.content.id, revisionId)
+    const operationId = publication?.publicationOperationId ?? generateOperationId(job.platform.id, job.content.id, revisionId)
     const attemptId = await startAttempt({
       publishJobId: job.id,
       attemptNumber: bullJob.attemptsMade,
       requestFingerprint: fingerprint,
+      publicationOperationId: operationId,
+      publicationId: publication?.id,
     })
+
+    // Issue #149: also check by fingerprint (catches cases where the job was re-enqueued)
+    const fingerprintSuccess = await findSuccessByFingerprint(fingerprint)
+    if (fingerprintSuccess) {
+      const extId = fingerprintSuccess.providerPostId ?? job.externalId ?? ''
+      console.log(`[worker] job ${job.id} — previous success by fingerprint, reconciling (${extId})`)
+      await updateJobStatus(job, 'success', 100, 'منتشر شد (تأیید همخوانی)', null, extId)
+      await markLocalSuccess(attemptId)
+      await checkContentPublished(job.contentId)
+      return { status: 'success', externalId: extId }
+    }
 
     await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
 
