@@ -78,6 +78,8 @@ CMD ["sh", "-c", "bun run scripts/validate-migrate.ts && bunx prisma migrate dep
 FROM oven/bun:1.2-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
+# Issue #157: install OpenSSL for Prisma engine (prevents Rust panic on prisma generate)
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 # Copy deps from the deps stage (not builder — avoids running next build)
@@ -93,7 +95,10 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
-RUN bunx prisma generate
+# Issue #157: use npx (node) for prisma generate — Bun's worker_threads is incomplete
+# for Prisma 7.x generate command (NotImplementedError: worker_threads.Worker option "stdout")
+RUN apt-get update -y && apt-get install -y --no-install-recommends nodejs npm && rm -rf /var/lib/apt/lists/*
+RUN npx prisma generate
 USER nextjs
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
