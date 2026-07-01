@@ -23,7 +23,7 @@ import {
   cleanupTestWorkspace,
   cleanupTestUser,
   testId,
-} from './helpers'
+} from '../helpers'
 
 // Skip integration tests if no DATABASE_URL is set (e.g., in pure unit test CI)
 const SKIP = !process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith('file:')

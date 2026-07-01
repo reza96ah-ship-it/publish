@@ -76,9 +76,9 @@ describe('Issue #153 Tier 7 — Process-level failure injection', () => {
     it('BullMQ queue handles Redis connection loss', async () => {
       // Verify that the queue module exports a valid Queue constructor
       // In production, BullMQ retries Redis connection with backoff
-      const { getQueue } = await import('@/lib/queue')
-      expect(getQueue).toBeDefined()
-      expect(typeof getQueue).toBe('function')
+      const queue = await import('@/lib/queue')
+      expect(queue.publishQueue).toBeDefined()
+      expect(typeof queue.enqueuePublishJob).toBe('function')
     })
 
     it('outbox dispatcher marks events as retry_wait on Redis failure', async () => {
@@ -112,10 +112,10 @@ describe('Issue #153 Tier 7 — Process-level failure injection', () => {
     it('timeout classifies as outcome_unknown, not failure', async () => {
       // The retry-directive normalizes timeouts to errorCategory='timeout'
       // which the worker maps to outcome_unknown (not retryable without reconciliation)
-      const { normalizeErrorCategory } = await import(
-        '@/lib/retry-directive'
+      const { normalizePublishResult } = await import(
+        '../../mini-services/publish-worker/lib/retry-directive'
       )
-      expect(normalizeErrorCategory).toBeDefined()
+      expect(normalizePublishResult).toBeDefined()
       // Timeout should NOT be classified as a permanent failure
     })
 
