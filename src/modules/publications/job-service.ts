@@ -15,12 +15,14 @@ import { PublishJobRepository } from './job-repository'
 import { enqueuePublishJob, publishQueue } from '@/lib/queue'
 import { writeAuditLog } from '@/lib/audit'
 import { checkContentPublished } from '@/lib/content-aggregate'
+import { db } from '@/lib/db'
 import {
   JobNotFoundError,
   JobNotCancellableError,
   JobConcurrentChangeError,
   InvalidActionError,
   ValidationError,
+  ReconciliationRequiredError,
 } from './job-errors'
 import type {
   JobAction,
@@ -133,6 +135,18 @@ export class PublishJobService {
     _auth: JobAuthContext,
     job: PublishJobRow
   ): Promise<RetryJobResult> {
+    // Issue #149: Prevent blind retry if previous attempt outcome is unknown
+    const publication = await db.publication.findFirst({
+      where: { publishJobId: job.id },
+      select: { id: true, reconciliationStatus: true },
+    })
+    if (publication?.reconciliationStatus === 'still_unknown') {
+      throw new ReconciliationRequiredError(
+        'وضعیت انتشار قبلی نامشخص است و هنوز حل نشده — تلاش مجدد خودکار مجاز نیست. لطفاً از بخش «حل دستی» استفاده کنید.',
+        publication.id
+      )
+    }
+
     const oldKey = job.idempotencyKey
     const newKey = randomUUID()
     const updated = await this.repo.retry(job.id, newKey)
@@ -271,3 +285,12 @@ export class PublishJobService {
     }
   }
 }
+
+export {
+  JobNotFoundError,
+  JobNotCancellableError,
+  JobConcurrentChangeError,
+  InvalidActionError,
+  ValidationError,
+  ReconciliationRequiredError,
+} from './job-errors'

@@ -41,3 +41,12 @@ export class ValidationError extends PublicationError {
     this.name = 'ValidationError'
   }
 }
+
+export class ReconciliationRequiredError extends PublicationError {
+  publicationId: string
+  constructor(message: string, publicationId: string) {
+    super(message, 409, message)
+    this.name = 'ReconciliationRequiredError'
+    this.publicationId = publicationId
+  }
+}
