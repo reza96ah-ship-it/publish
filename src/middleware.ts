@@ -61,7 +61,9 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/health') ||
     pathname.startsWith('/api/readyz') ||
-    pathname.startsWith('/api/metrics') ||
+    // Issue #151: /api/metrics removed from public paths — Prometheus endpoints
+    // should be restricted by network policy or reverse-proxy, not exposed publicly.
+    // If metrics must be scraped without auth, configure network-level protection.
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||

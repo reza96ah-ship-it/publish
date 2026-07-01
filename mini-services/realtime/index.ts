@@ -25,14 +25,32 @@ import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient } from 'redis'
 import { realtimeRegistry, activeSocketsGauge } from './lib/metrics'
 
-// ── Config ───────────────────────────────────────────────────────────────
+// ── Config (Issue #151: fail-closed in production) ───────────────────────
 const PORT = parseInt(process.env.REALTIME_PORT || '3003', 10)
-const EMIT_SECRET = process.env.EMIT_SECRET || 'nashrino-dev-emit-secret'
-const NEXTAUTH_SECRET =
-  process.env.AUTH_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  'nashrino-dev-secret-change-in-production'
-const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || '*' // tighten in production
+const isProduction = process.env.NODE_ENV === 'production'
+
+// Issue #151: in production, required secrets MUST be set — no dev fallbacks.
+// In development, we allow fallbacks for convenience.
+function requireSecret(name: string, devDefault: string): string {
+  const val = process.env[name]
+  if (val) return val
+  if (isProduction) {
+    console.error(`[realtime] FATAL: ${name} is not set. Refusing to start in production.`)
+    process.exit(1)
+  }
+  console.warn(`[realtime] WARNING: ${name} not set — using dev default. DO NOT USE IN PRODUCTION.`)
+  return devDefault
+}
+
+const EMIT_SECRET = requireSecret('EMIT_SECRET', 'nashrino-dev-emit-secret')
+// Issue #151: use a SEPARATE secret for realtime JWT signing (not NextAuth's secret)
+const REALTIME_JWT_SECRET = requireSecret('REALTIME_JWT_SECRET', process.env.NEXTAUTH_SECRET || 'nashrino-dev-jwt-secret')
+// Issue #151: CORS must be an explicit allowlist in production — no wildcard
+const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || (isProduction ? '' : '*')
+if (isProduction && (!CORS_ORIGIN || CORS_ORIGIN === '*')) {
+  console.error('[realtime] FATAL: REALTIME_CORS_ORIGIN must be set to an explicit allowlist in production.')
+  process.exit(1)
+}
 // #111: REDIS_CACHE_URL for Socket.io adapter (allkeys-lru policy); falls back to REDIS_URL
 const REDIS_URL = process.env.REDIS_CACHE_URL || process.env.REDIS_URL || ''
 
@@ -67,10 +85,15 @@ interface SessionData {
 const ALLOWED_EVENTS = ['job:status', 'job:progress'] as const
 const roomFor = (workspaceId: string): string => `workspace:${workspaceId}`
 
-// ── JWT verification (lightweight — no external dep) ────────────────────
-// We use NextAuth's JWT format: header.payload.signature (HMAC-SHA256)
-// We verify the signature using NEXTAUTH_SECRET, same as NextAuth does.
+// ── JWT verification (Issue #151: enhanced with iss/aud/jti/purpose claims) ─
+// Uses REALTIME_JWT_SECRET (separate from NextAuth's secret).
+// Pins to HS256 algorithm. Verifies iss, aud, exp, purpose claims.
 import { createHmac, timingSafeEqual } from 'crypto'
+
+// Issue #151: expected JWT claims for realtime tokens
+const JWT_ISSUER = 'nashrino-realtime'
+const JWT_AUDIENCE = 'nashrino-realtime-service'
+const JWT_PURPOSE = 'realtime-socket'
 
 function base64UrlDecode(str: string): string {
   const padded = str.replace(/-/g, '+').replace(/_/g, '/')
@@ -84,11 +107,17 @@ function verifyJwt(token: string): SessionData | null {
     if (parts.length !== 3) return null
 
     const [headerB64, payloadB64, signatureB64] = parts
-    // noUncheckedIndexedAccess: destructured values are string | undefined
     if (!headerB64 || !payloadB64 || !signatureB64) return null
 
-    // Verify signature
-    const expectedSig = createHmac('sha256', NEXTAUTH_SECRET)
+    // Issue #151: verify header — pin to HS256 algorithm only
+    const header = JSON.parse(base64UrlDecode(headerB64))
+    if (header.alg !== 'HS256') {
+      console.warn('[realtime] JWT rejected: unsupported algorithm', header.alg)
+      return null
+    }
+
+    // Verify signature using REALTIME_JWT_SECRET (separate from NextAuth)
+    const expectedSig = createHmac('sha256', REALTIME_JWT_SECRET)
       .update(`${headerB64}.${payloadB64}`)
       .digest('base64url')
 
@@ -99,13 +128,33 @@ function verifyJwt(token: string): SessionData | null {
     // Decode payload
     const payload = JSON.parse(base64UrlDecode(payloadB64))
 
+    // Issue #151: verify required claims
+    if (payload.iss !== JWT_ISSUER) {
+      console.warn('[realtime] JWT rejected: wrong issuer', payload.iss)
+      return null
+    }
+    if (payload.aud !== JWT_AUDIENCE) {
+      console.warn('[realtime] JWT rejected: wrong audience', payload.aud)
+      return null
+    }
+    if (payload.purpose !== JWT_PURPOSE) {
+      console.warn('[realtime] JWT rejected: wrong purpose', payload.purpose)
+      return null
+    }
+
     // Check expiry
     if (payload.exp && Date.now() >= payload.exp * 1000) {
       return null
     }
 
+    // Issue #151: check nbf (not-before) with 5s skew tolerance
+    if (payload.nbf && Date.now() < (payload.nbf - 5) * 1000) {
+      console.warn('[realtime] JWT rejected: future issue time (nbf)')
+      return null
+    }
+
     return {
-      userId: payload.userId || payload.sub || '',
+      userId: payload.sub || payload.userId || '',
       activeWorkspaceId: payload.activeWorkspaceId || null,
     }
   } catch {
@@ -181,14 +230,34 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       return sendJson(res, 200, { ok: true, event, room, subscribers })
     }
 
-    // GET / or /health — liveness probe
+    // GET / or /health — liveness + readiness probe
     if (req.method === 'GET' && (req.url === '/' || req.url?.split('?')[0] === '/health')) {
+      // Issue #151: report ACTUAL Redis adapter state, not just URL presence
+      const redisState = redisAdapterReady ? 'connected' : (REDIS_URL ? 'degraded' : 'disabled')
       return sendJson(res, 200, {
         ok: true,
         service: 'nashrino-realtime',
         port: PORT,
         sockets: io.engine.clientsCount,
-        redis: REDIS_URL ? 'connected' : 'disabled',
+        // Issue #151: actual adapter state, not just URL config
+        redis: redisState,
+        // Issue #151: don't expose secret/config details
+        configOk: isProduction ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN) : true,
+      })
+    }
+
+    // GET /readyz — readiness probe (Issue #151: separate from liveness)
+    if (req.method === 'GET' && req.url?.split('?')[0] === '/readyz') {
+      const checks: Record<string, boolean> = {
+        process: true,
+        redis: redisAdapterReady,
+        config: isProduction ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN) : true,
+      }
+      const allReady = Object.values(checks).every(v => v === true)
+      return sendJson(res, allReady ? 200 : 503, {
+        ok: allReady,
+        status: allReady ? 'ready' : 'not_ready',
+        checks,
       })
     }
 
@@ -307,6 +376,8 @@ io.engine.on(
 )
 
 // P7.4: Redis adapter for horizontal scaling
+// Issue #151: track actual adapter readiness (not just URL presence)
+let redisAdapterReady = false
 if (REDIS_URL) {
   const pubClient = createClient({ url: REDIS_URL })
   const subClient = pubClient.duplicate()
@@ -317,11 +388,17 @@ if (REDIS_URL) {
   ])
     .then(() => {
       io.adapter(createAdapter(pubClient, subClient))
+      redisAdapterReady = true // Issue #151: mark as ready only after successful connect
       console.log('[redis] adapter enabled — realtime can scale horizontally')
     })
     .catch((err) => {
       console.error('[redis] adapter setup failed:', err)
+      redisAdapterReady = false
     })
+
+  // Issue #151: track disconnect/reconnect for accurate readiness
+  pubClient.on('error', () => { redisAdapterReady = false })
+  pubClient.on('ready', () => { redisAdapterReady = true })
 } else {
   console.log('[redis] disabled (REDIS_URL not set) — single-instance only')
 }
