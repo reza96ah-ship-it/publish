@@ -357,7 +357,7 @@ export async function replayOutboxEvent(eventId: string, replayedByUserId: strin
       aggregateType: original.aggregateType,
       aggregateId: original.aggregateId,
       eventType: original.eventType,
-      payload: original.payload,
+      payload: original.payload as any, // Prisma JSON type
       traceParent: original.traceParent,
       status: 'pending',
       attemptCount: 0,
