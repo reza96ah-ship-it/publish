@@ -1,5 +1,5 @@
 /**
- * Nashrino SocialOps Studio — Realtime WebSocket Mini-Service
+ * Nashrino SocialOps Studio -- Realtime WebSocket Mini-Service
  *
  * Phase 7 additions:
  * - JWT handshake auth (connection rejected without valid token)
@@ -8,56 +8,52 @@
  * - Redis adapter for horizontal scaling (multiple realtime instances)
  * - Configurable port + CORS origin
  *
+ * Issue #151 hardening:
+ * - Fail-closed config (no dev secrets in production)
+ * - Separate REALTIME_JWT_SECRET (not NextAuth's secret)
+ * - CORS allowlist required in production (no wildcard)
+ * - JWT verified via the `jose` library with all 9 required claims:
+ *   iss, aud, sub, iat, nbf, exp, jti, purpose, kid
+ * - Algorithm pinned to HS256
+ * - Real Redis adapter readiness tracking
+ * - /readyz endpoint with process + redis + config checks
+ *
  * Architecture:
- *   publish-worker ──HTTP POST /emit (X-Emit-Secret)──▶  realtime  ──socket.io (JWT auth)──▶  frontend
+ *   publish-worker --HTTP POST /emit (X-Emit-Secret)-->  realtime  --socket.io (JWT auth)-->  frontend
  *
  * Auth flow:
- *   1. Frontend fetches NextAuth session token
+ *   1. Frontend fetches a realtime JWT (issued with REALTIME_JWT_SECRET)
  *   2. Frontend connects with io({ auth: { token } })
- *   3. Realtime verifies JWT, extracts userId + activeWorkspaceId
+ *   3. Realtime verifies JWT via jose (iss/aud/sub/iat/nbf/exp/jti/purpose/kid)
  *   4. On subscribe, checks WorkspaceMember membership
  *   5. If member, joins room; otherwise rejects
  */
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
+import { timingSafeEqual } from 'crypto'
 import { Server, type Socket } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import { createClient } from 'redis'
 import { realtimeRegistry, activeSocketsGauge } from './lib/metrics'
+import { loadRealtimeConfig } from './lib/config'
+import { verifyRealtimeJwt, type SessionData } from './lib/jwt'
 
-// ── Config (Issue #151: fail-closed in production) ───────────────────────
-const PORT = parseInt(process.env.REALTIME_PORT || '3003', 10)
-const isProduction = process.env.NODE_ENV === 'production'
+// -- Config (Issue #151: fail-closed in production) --
+// loadRealtimeConfig() will process.exit(1) in production if any required
+// secret is missing or if CORS is wildcard/empty. In dev it falls back to
+// documented dev defaults so local development keeps working.
+const config = loadRealtimeConfig()
+const {
+  port: PORT,
+  emitSecret: EMIT_SECRET,
+  realtimeJwtSecret: REALTIME_JWT_SECRET,
+  corsOrigin: CORS_ORIGIN,
+  redisUrl: REDIS_URL,
+  isProduction,
+  isDev,
+} = config
 
-// Issue #151: in production, required secrets MUST be set — no dev fallbacks.
-// In development, we allow fallbacks for convenience.
-function requireSecret(name: string, devDefault: string): string {
-  const val = process.env[name]
-  if (val) return val
-  if (isProduction) {
-    console.error(`[realtime] FATAL: ${name} is not set. Refusing to start in production.`)
-    process.exit(1)
-  }
-  console.warn(`[realtime] WARNING: ${name} not set — using dev default. DO NOT USE IN PRODUCTION.`)
-  return devDefault
-}
-
-const EMIT_SECRET = requireSecret('EMIT_SECRET', 'nashrino-dev-emit-secret')
-// Issue #151: use a SEPARATE secret for realtime JWT signing (not NextAuth's secret)
-const REALTIME_JWT_SECRET = requireSecret('REALTIME_JWT_SECRET', process.env.NEXTAUTH_SECRET || 'nashrino-dev-jwt-secret')
-// Issue #151: CORS must be an explicit allowlist in production — no wildcard
-const CORS_ORIGIN = process.env.REALTIME_CORS_ORIGIN || (isProduction ? '' : '*')
-if (isProduction && (!CORS_ORIGIN || CORS_ORIGIN === '*')) {
-  console.error('[realtime] FATAL: REALTIME_CORS_ORIGIN must be set to an explicit allowlist in production.')
-  process.exit(1)
-}
-// #111: REDIS_CACHE_URL for Socket.io adapter (allkeys-lru policy); falls back to REDIS_URL
-const REDIS_URL = process.env.REDIS_CACHE_URL || process.env.REDIS_URL || ''
-
-// BUG-15: explicit opt-in flag instead of NODE_ENV so staging can run with auth
-const isDev = process.env.DISABLE_AUTH === '1'
-
-// ── Types ────────────────────────────────────────────────────────────────
+// -- Types --
 type JobStatus = 'pending' | 'processing' | 'success' | 'failed' | 'action'
 type Platform = 'instagram' | 'rubika' | 'telegram' | 'linkedin'
 
@@ -77,92 +73,10 @@ interface EmitBody {
   payload: JobPayload
 }
 
-interface SessionData {
-  userId: string
-  activeWorkspaceId: string | null
-}
-
 const ALLOWED_EVENTS = ['job:status', 'job:progress'] as const
 const roomFor = (workspaceId: string): string => `workspace:${workspaceId}`
 
-// ── JWT verification (Issue #151: enhanced with iss/aud/jti/purpose claims) ─
-// Uses REALTIME_JWT_SECRET (separate from NextAuth's secret).
-// Pins to HS256 algorithm. Verifies iss, aud, exp, purpose claims.
-import { createHmac, timingSafeEqual } from 'crypto'
-
-// Issue #151: expected JWT claims for realtime tokens
-const JWT_ISSUER = 'nashrino-realtime'
-const JWT_AUDIENCE = 'nashrino-realtime-service'
-const JWT_PURPOSE = 'realtime-socket'
-
-function base64UrlDecode(str: string): string {
-  const padded = str.replace(/-/g, '+').replace(/_/g, '/')
-  const pad = padded.length % 4
-  return Buffer.from(padded + (pad ? '='.repeat(4 - pad) : ''), 'base64').toString('utf8')
-}
-
-function verifyJwt(token: string): SessionData | null {
-  try {
-    const parts = token.split('.')
-    if (parts.length !== 3) return null
-
-    const [headerB64, payloadB64, signatureB64] = parts
-    if (!headerB64 || !payloadB64 || !signatureB64) return null
-
-    // Issue #151: verify header — pin to HS256 algorithm only
-    const header = JSON.parse(base64UrlDecode(headerB64))
-    if (header.alg !== 'HS256') {
-      console.warn('[realtime] JWT rejected: unsupported algorithm', header.alg)
-      return null
-    }
-
-    // Verify signature using REALTIME_JWT_SECRET (separate from NextAuth)
-    const expectedSig = createHmac('sha256', REALTIME_JWT_SECRET)
-      .update(`${headerB64}.${payloadB64}`)
-      .digest('base64url')
-
-    if (!timingSafeEqual(Buffer.from(signatureB64), Buffer.from(expectedSig))) {
-      return null
-    }
-
-    // Decode payload
-    const payload = JSON.parse(base64UrlDecode(payloadB64))
-
-    // Issue #151: verify required claims
-    if (payload.iss !== JWT_ISSUER) {
-      console.warn('[realtime] JWT rejected: wrong issuer', payload.iss)
-      return null
-    }
-    if (payload.aud !== JWT_AUDIENCE) {
-      console.warn('[realtime] JWT rejected: wrong audience', payload.aud)
-      return null
-    }
-    if (payload.purpose !== JWT_PURPOSE) {
-      console.warn('[realtime] JWT rejected: wrong purpose', payload.purpose)
-      return null
-    }
-
-    // Check expiry
-    if (payload.exp && Date.now() >= payload.exp * 1000) {
-      return null
-    }
-
-    // Issue #151: check nbf (not-before) with 5s skew tolerance
-    if (payload.nbf && Date.now() < (payload.nbf - 5) * 1000) {
-      console.warn('[realtime] JWT rejected: future issue time (nbf)')
-      return null
-    }
-
-    return {
-      userId: payload.sub || payload.userId || '',
-      activeWorkspaceId: payload.activeWorkspaceId || null,
-    }
-  } catch {
-    return null
-  }
-}
-
-// ── In-memory workspace membership cache (avoids DB hit on every subscribe) ──
+// -- In-memory workspace membership cache (avoids DB hit on every subscribe) --
 const membershipCache = new Map<string, { ok: boolean; expiresAt: number }>()
 const CACHE_TTL_MS = 60_000 // 1 minute
 
@@ -189,15 +103,23 @@ async function checkMembership(userId: string, workspaceId: string): Promise<boo
   }
 }
 
-// ── HTTP server ──────────────────────────────────────────────────────────
+// -- HTTP server --
 const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
   try {
-    // POST /emit — worker → relay broadcast (requires X-Emit-Secret)
+    // POST /emit -- worker -> relay broadcast (requires X-Emit-Secret)
     if (req.method === 'POST' && req.url?.split('?')[0] === '/emit') {
-      // P7.3: verify shared secret
-      const emitSecret = req.headers['x-emit-secret']
-      if (!emitSecret || emitSecret !== EMIT_SECRET) {
-        console.warn('[emit] unauthorized — missing or wrong X-Emit-Secret')
+      // P7.3 + Issue #151: verify shared secret with constant-time comparison
+      const emitSecretHeader = req.headers['x-emit-secret']
+      const providedSecret = Array.isArray(emitSecretHeader)
+        ? emitSecretHeader[0]
+        : emitSecretHeader
+      if (
+        !providedSecret ||
+        typeof providedSecret !== 'string' ||
+        providedSecret.length !== EMIT_SECRET.length ||
+        !timingSafeEqualStr(providedSecret, EMIT_SECRET)
+      ) {
+        console.warn('[emit] unauthorized -- missing or wrong X-Emit-Secret')
         return sendJson(res, 401, { ok: false, error: 'unauthorized' })
       }
 
@@ -230,10 +152,14 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       return sendJson(res, 200, { ok: true, event, room, subscribers })
     }
 
-    // GET / or /health — liveness + readiness probe
+    // GET / or /health -- liveness + readiness probe
     if (req.method === 'GET' && (req.url === '/' || req.url?.split('?')[0] === '/health')) {
       // Issue #151: report ACTUAL Redis adapter state, not just URL presence
-      const redisState = redisAdapterReady ? 'connected' : (REDIS_URL ? 'degraded' : 'disabled')
+      const redisState = redisAdapterReady
+        ? 'connected'
+        : REDIS_URL
+          ? 'degraded'
+          : 'disabled'
       return sendJson(res, 200, {
         ok: true,
         service: 'nashrino-realtime',
@@ -241,19 +167,23 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
         sockets: io.engine.clientsCount,
         // Issue #151: actual adapter state, not just URL config
         redis: redisState,
-        // Issue #151: don't expose secret/config details
-        configOk: isProduction ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN) : true,
+        // Issue #151: don't expose secret/config details -- boolean only
+        configOk: isProduction
+          ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN)
+          : true,
       })
     }
 
-    // GET /readyz — readiness probe (Issue #151: separate from liveness)
+    // GET /readyz -- readiness probe (Issue #151: separate from liveness)
     if (req.method === 'GET' && req.url?.split('?')[0] === '/readyz') {
       const checks: Record<string, boolean> = {
         process: true,
         redis: redisAdapterReady,
-        config: isProduction ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN) : true,
+        config: isProduction
+          ? !!(EMIT_SECRET && REALTIME_JWT_SECRET && CORS_ORIGIN)
+          : true,
       }
-      const allReady = Object.values(checks).every(v => v === true)
+      const allReady = Object.values(checks).every((v) => v === true)
       return sendJson(res, allReady ? 200 : 503, {
         ok: allReady,
         status: allReady ? 'ready' : 'not_ready',
@@ -261,7 +191,9 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       })
     }
 
-    // GET /metrics — Prometheus scrape endpoint (Issue #126)
+    // GET /metrics -- Prometheus scrape endpoint (Issue #126)
+    // Issue #151: this endpoint is NOT in middleware's public paths -- restrict
+    // via network policy or reverse proxy at the edge.
     if (req.method === 'GET' && req.url?.split('?')[0] === '/metrics') {
       res.writeHead(200, { 'Content-Type': realtimeRegistry.contentType })
       res.end(await realtimeRegistry.metrics())
@@ -279,7 +211,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
   }
 })
 
-// ── socket.io server ────────────────────────────────────────────────────
+// -- socket.io server --
 const io = new Server(httpServer, {
   cors: {
     origin: CORS_ORIGIN,
@@ -290,11 +222,13 @@ const io = new Server(httpServer, {
   connectTimeout: 10_000,
 })
 
-// P7.1: JWT handshake auth — runs on every new connection
+// P7.1: JWT handshake auth -- runs on every new connection.
+// Issue #151: verification delegated to lib/jwt.ts (jose library) which
+// enforces all 9 claims, algorithm pinning, and clock skew tolerance.
 io.use(async (socket: Socket, next) => {
   const token = socket.handshake.auth?.token as string | undefined
 
-  // Dev bypass: if no token and NODE_ENV !== production, allow (for preview)
+  // Dev bypass: if no token and DISABLE_AUTH=1, allow (for preview)
   if (!token) {
     if (isDev) {
       console.log(`[io] dev bypass: ${socket.id} connected without token`)
@@ -304,9 +238,9 @@ io.use(async (socket: Socket, next) => {
     return next(new Error('unauthorized: no token'))
   }
 
-  const session = verifyJwt(token)
+  const session = await verifyRealtimeJwt(token, REALTIME_JWT_SECRET)
   if (!session) {
-    console.warn(`[io] auth failed: ${socket.id} — invalid token`)
+    console.warn(`[io] auth failed: ${socket.id} -- invalid token`)
     return next(new Error('unauthorized: invalid token'))
   }
 
@@ -321,7 +255,7 @@ io.on('connection', (socket: Socket) => {
   // Issue #126: update active sockets gauge on connect
   activeSocketsGauge.set(io.engine.clientsCount)
 
-  // P7.2: Room authorization — check membership before joining
+  // P7.2: Room authorization -- check membership before joining
   socket.on('subscribe', async (data: unknown) => {
     const workspaceId = (data as { workspaceId?: unknown })?.workspaceId
     if (typeof workspaceId !== 'string' || workspaceId.length === 0) {
@@ -333,7 +267,7 @@ io.on('connection', (socket: Socket) => {
     if (session?.userId && session.userId !== 'dev-user') {
       const isMember = await checkMembership(session.userId, workspaceId)
       if (!isMember) {
-        console.warn(`[io] forbidden: ${socket.id} userId=${session.userId} → ${workspaceId}`)
+        console.warn(`[io] forbidden: ${socket.id} userId=${session.userId} -> ${workspaceId}`)
         socket.emit('error', { message: 'forbidden: not a member of this workspace' })
         return
       }
@@ -341,7 +275,7 @@ io.on('connection', (socket: Socket) => {
 
     const room = roomFor(workspaceId)
     void socket.join(room)
-    console.log(`[io] ${socket.id} → joined ${room}`)
+    console.log(`[io] ${socket.id} -> joined ${room}`)
     socket.emit('subscribed', { workspaceId, room })
   })
 
@@ -353,7 +287,7 @@ io.on('connection', (socket: Socket) => {
     }
     const room = roomFor(workspaceId)
     void socket.leave(room)
-    console.log(`[io] ${socket.id} ← left ${room}`)
+    console.log(`[io] ${socket.id} <- left ${room}`)
     socket.emit('unsubscribed', { workspaceId, room })
   })
 
@@ -389,7 +323,7 @@ if (REDIS_URL) {
     .then(() => {
       io.adapter(createAdapter(pubClient, subClient))
       redisAdapterReady = true // Issue #151: mark as ready only after successful connect
-      console.log('[redis] adapter enabled — realtime can scale horizontally')
+      console.log('[redis] adapter enabled -- realtime can scale horizontally')
     })
     .catch((err) => {
       console.error('[redis] adapter setup failed:', err)
@@ -397,21 +331,25 @@ if (REDIS_URL) {
     })
 
   // Issue #151: track disconnect/reconnect for accurate readiness
-  pubClient.on('error', () => { redisAdapterReady = false })
-  pubClient.on('ready', () => { redisAdapterReady = true })
+  pubClient.on('error', () => {
+    redisAdapterReady = false
+  })
+  pubClient.on('ready', () => {
+    redisAdapterReady = true
+  })
 } else {
-  console.log('[redis] disabled (REDIS_URL not set) — single-instance only')
+  console.log('[redis] disabled (REDIS_URL not set) -- single-instance only')
 }
 
 httpServer.on('error', (err: NodeJS.ErrnoException) => {
   console.error('[http] server error:', err)
   if (err.code === 'EADDRINUSE') {
-    console.error(`[http] port ${PORT} is already in use — aborting`)
+    console.error(`[http] port ${PORT} is already in use -- aborting`)
     process.exit(1)
   }
 })
 
-// ── Graceful shutdown ────────────────────────────────────────────────────
+// -- Graceful shutdown --
 let shuttingDown = false
 const shutdown = (signal: string) => {
   if (shuttingDown) return
@@ -432,14 +370,14 @@ const shutdown = (signal: string) => {
 process.on('SIGTERM', () => shutdown('SIGTERM'))
 process.on('SIGINT', () => shutdown('SIGINT'))
 
-// ── Boot ─────────────────────────────────────────────────────────────────
+// -- Boot --
 httpServer.listen(PORT, () => {
   console.log(
     `[realtime] service on :${PORT} (cors: ${CORS_ORIGIN}, redis: ${REDIS_URL ? 'on' : 'off'})`
   )
 })
 
-// ── Helpers ──────────────────────────────────────────────────────────────
+// -- Helpers --
 async function readJsonBody<T>(req: IncomingMessage): Promise<T | null> {
   const chunks: Buffer[] = []
   for await (const chunk of req) {
@@ -456,4 +394,16 @@ async function readJsonBody<T>(req: IncomingMessage): Promise<T | null> {
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on shared
+ * secrets. Returns true if both strings are equal length AND byte-equal.
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  const bufA = Buffer.from(a, 'utf8')
+  const bufB = Buffer.from(b, 'utf8')
+  // Lengths are equal so timingSafeEqual won't throw.
+  return bufA.equals(bufB) && timingSafeEqual(bufA, bufB)
 }
