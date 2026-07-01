@@ -155,6 +155,40 @@ export function ComposeView() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Issue #152: restore saved draft on composer entry
+  const draftRestored = useRef(false)
+  useEffect(() => {
+    if (draftRestored.current) return
+    draftRestored.current = true
+
+    // Fetch saved draft and restore all fields
+    fetch('/api/compose-draft')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data?.draft) return
+        const draft = typeof data.draft === 'string' ? JSON.parse(data.draft) : data.draft
+        // Only restore if there's actual content to restore
+        if (!draft?.content?.title && !draft?.content?.caption && !draft?.channelIds?.length) return
+
+        const c = draft.content
+        if (c.title) setTitle(c.title)
+        if (c.caption) setCaption(c.caption)
+        if (c.hashtags) setHashtags(c.hashtags)
+        if (c.note) setNote(c.note)
+        if (c.campaignId) setCampaignId(c.campaignId)
+        if (c.scheduleMode) setScheduleMode(c.scheduleMode)
+        if (draft.channelIds?.length) setSelectedPlatforms(draft.channelIds)
+        if (draft.scheduledAt) {
+          const d = new Date(draft.scheduledAt)
+          if (!isNaN(d.getTime())) setScheduledAt(d)
+        }
+        // Issue #152: show restored indicator
+        setSaveState('saved')
+        setTimeout(() => setSaveState('idle'), 3000)
+      })
+      .catch(() => {})
+  }, [])
+
   // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
   useEffect(() => {
     if (!title && !caption && selectedPlatforms.length === 0) return
@@ -162,7 +196,9 @@ export function ComposeView() {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(async () => {
       try {
-        await fetch('/api/compose-draft', {
+        // Issue #152: check response.ok before showing saved — a 401/403/500
+        // response should NOT be shown as "saved"
+        const res = await fetch('/api/compose-draft', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -171,6 +207,11 @@ export function ComposeView() {
             scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
           }),
         })
+        if (!res.ok) {
+          // Issue #152: don't show "saved" on error responses
+          setSaveState('error')
+          return
+        }
         setSaveState('saved')
         // Reset to idle after 3s so the indicator doesn't stay permanently
         setTimeout(() => setSaveState('idle'), 3000)
@@ -259,11 +300,22 @@ export function ComposeView() {
 
   const hasCapabilityViolations = capabilityViolations.length > 0
 
-  // Issue #117: canPublish now respects capability violations
+  // Issue #152: canPublish no longer requires media globally.
+  // Text-only publication is allowed when ALL selected channels support text
+  // (capability registry says supportsText=true). Media is required only when
+  // any selected channel requires it (e.g. Instagram).
+  const anyChannelRequiresMedia = useMemo(
+    () =>
+      (platforms ?? [])
+        .filter((p) => selectedPlatforms.includes(p.id))
+        .some((p) => getCapabilities(p.type).requiresMedia),
+    [platforms, selectedPlatforms]
+  )
+
   const canPublish =
     title.trim().length > 0 &&
     selectedPlatforms.length > 0 &&
-    selectedMedia.length > 0 &&
+    (!anyChannelRequiresMedia || selectedMedia.length > 0) &&
     !hasCapabilityViolations
 
   // Optimistic publish: append the new content to the ["content"] cache before the
@@ -322,12 +374,25 @@ export function ComposeView() {
         toast.error(`${first.platformName}: ${first.issues[0].message}`)
       } else if (selectedPlatforms.length === 0) {
         toast.error('حداقل یک پلتفرم انتخاب کنید.')
-      } else if (selectedMedia.length === 0) {
-        toast.error('برای انتشار، حداقل یک رسانه لازم است.')
+      } else if (anyChannelRequiresMedia && selectedMedia.length === 0) {
+        // Issue #152: only require media when a selected channel needs it
+        toast.error('یکی از پلتفرم‌های انتخابی به رسانه نیاز دارد.')
       } else {
-        toast.error('برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.')
+        toast.error('برای انتشار، عنوان و حداقل یک پلتفرم لازم است.')
       }
       return
+    }
+
+    // Issue #152: validate schedule mode requires a future timestamp
+    if (action === 'publish' && scheduleMode === 'schedule') {
+      if (!scheduledAt) {
+        toast.error('برای زمان‌بندی، باید تاریخ و ساعت آینده را انتخاب کنید.')
+        return
+      }
+      if (scheduledAt.getTime() <= Date.now()) {
+        toast.error('زمان‌بندی باید در آینده باشد.')
+        return
+      }
     }
 
     if (action === 'draft') {
@@ -415,11 +480,15 @@ export function ComposeView() {
     }
 
     const toastId = toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…')
-    announce('در حال انتشار...')
+    announce('در حال ارسال به صف انتشار...')
     publishMutation.mutate(payload, {
       onSuccess: (res) => {
         toast.success(res.message, { id: toastId })
-        announce('محتوا با موفقیت منتشر شد')
+        // Issue #152: say "queued" not "published" — content is accepted into
+        // the publishing queue, NOT yet published to the provider.
+        // Actual publication success is announced via realtime when the worker
+        // confirms the provider accepted the post.
+        announce('محتوا به صف انتشار ارسال شد — در انتظار انتشار توسط ارائه‌دهنده')
         // Reset form
         setTitle('')
         setCaption('')
