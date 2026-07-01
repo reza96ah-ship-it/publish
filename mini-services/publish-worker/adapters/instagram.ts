@@ -18,6 +18,17 @@
  *
  * Permissions needed: instagram_basic, instagram_content_publish, pages_show_list,
  *   pages_read_engagement, instagram_manage_insights
+ *
+ * Issue #149 — idempotency key: VERIFIED (2026-07, Meta Graph API content
+ * publishing docs) that neither POST /{ig-user-id}/media nor
+ * POST /{ig-user-id}/media_publish accepts a client-supplied idempotency key
+ * or dedupe token. `job.publicationOperationId`/`job.idempotencyKey` are
+ * therefore NOT forwarded to Instagram's HTTP requests — there is nothing on
+ * their side to send it to. A retried media_publish call after an ambiguous
+ * timeout risks a second live post; duplicate prevention for Instagram
+ * relies entirely on this codebase's own fingerprint/ledger checks
+ * (mini-services/publish-worker/lib/attempt-ledger.ts) and on NOT retrying
+ * outcomeUnknown results (see the FetchTimeoutError branch below).
  */
 
 import type {

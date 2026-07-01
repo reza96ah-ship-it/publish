@@ -17,7 +17,16 @@ export const connection = {
   url: REDIS_URL,
 }
 
-export const publishQueue = new Queue('publish-jobs', { connection })
+// Issue #149: configure BullMQ job retention — bounded but sufficient for dedupe.
+// Completed jobs kept for 24h (dedupe evidence), failed for 7 days (investigation).
+// Never rely solely on Redis retention — durable identity is in PostgreSQL.
+export const publishQueue = new Queue('publish-jobs', {
+  connection,
+  defaultJobOptions: {
+    removeOnComplete: { count: 1000, age: 24 * 3600 }, // keep 1000 or 24h
+    removeOnFail: { count: 5000, age: 7 * 24 * 3600 }, // keep 5000 or 7 days
+  },
+})
 
 export async function enqueuePublishJob(opts: {
   jobId: string

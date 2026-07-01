@@ -203,6 +203,16 @@ export class PublicationsRepository {
         const requestFingerprint = createHash('sha256')
           .update(`${ch.id}:${content.id}:${revision.id}`)
           .digest('hex')
+        // Issue #149: generate the stable publicationOperationId ONCE, at creation
+        // time, and persist it immediately. This is the durable idempotency key
+        // sent to providers across all retries — it must never be recomputed as a
+        // fallback later (recomputing-not-persisting was the original gap: the
+        // worker derived the same value on every run but never wrote it back).
+        const publicationOperationId =
+          'pub_' + createHash('sha256')
+            .update(`${ch.id}:${content.id}:${revision.id}`)
+            .digest('hex')
+            .substring(0, 32)
         await (tx as any).publication.create({
           data: {
             id: publicationId,
@@ -215,6 +225,7 @@ export class PublicationsRepository {
             status: 'pending',
             scheduledAt: params.scheduledAt,
             requestFingerprint,
+            publicationOperationId,
           },
         })
 

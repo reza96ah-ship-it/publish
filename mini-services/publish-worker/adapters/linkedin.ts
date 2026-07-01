@@ -30,6 +30,19 @@
  *
  * Rate limits: 100K calls/day app-level, ~90 posts/day per member.
  * Token refresh: POST /oauth/v2/accessToken with refresh_token (60-day cycle).
+ *
+ * Issue #149 — idempotency key: VERIFIED (2026-07, Microsoft Learn Posts API
+ * docs) that LinkedIn's POST /rest/posts has NO client-supplied idempotency
+ * key / dedupe token of any kind. The docs explicitly say only post
+ * *deletion* is idempotent ("Deletion requests for a previously deleted UGC
+ * Post will return a 204") — creation is not, and accepts no request ID/nonce
+ * field to dedupe against. `X-Restli-Method` (seen elsewhere in LinkedIn's
+ * API) only disambiguates PARTIAL_UPDATE/BATCH_* semantics, it is unrelated
+ * to idempotency. `job.publicationOperationId`/`job.idempotencyKey` are
+ * therefore NOT forwarded to LinkedIn's HTTP request — there is nothing on
+ * their side to send it to. Duplicate prevention for LinkedIn relies
+ * entirely on this codebase's own fingerprint/ledger checks
+ * (mini-services/publish-worker/lib/attempt-ledger.ts).
  */
 
 import type {
