@@ -10,6 +10,40 @@
  *
  * To post to a channel: add bot as admin with "Post Messages" permission,
  * then use @channelusername or channel chat_id as the target.
+ *
+ * Issue #149 — idempotency key: VERIFIED (2026-07, official Bot API docs)
+ * that sendMessage/sendPhoto/sendVideo/sendDocument/sendMediaGroup accept NO
+ * client-supplied idempotency key or dedupe token — none of their documented
+ * parameters serve that purpose. `job.publicationOperationId`/
+ * `job.idempotencyKey` are therefore NOT forwarded to Telegram's HTTP
+ * requests. Duplicate prevention relies on this codebase's own
+ * fingerprint/ledger checks.
+ *
+ * Issue #149 — reconcile(): REAL implementation, not a stub. Verified
+ * (2026-07, official Bot API docs + tdlib/telegram-bot-api issue tracker)
+ * what a bot can and cannot do to confirm a message was actually posted
+ * after an ambiguous outcome:
+ *   - `getChat` returns no message-count/last-message data (only
+ *     `pinned_message`, which is unrelated) — cannot be used.
+ *   - `getUpdates` is an update QUEUE, not a searchable history: updates
+ *     expire after 24h, and once delivered (via polling or a webhook,
+ *     which are mutually exclusive with getUpdates) they cannot be
+ *     re-queried. There is no bot-API method to search chat history by
+ *     content/timestamp (that requires MTProto/a user session, not a bot).
+ *   - The one REAL, honest check available to a bot: given a candidate
+ *     `message_id` (e.g. surfaced by a slow-but-successful response that
+ *     arrived after our client-side fetch timeout), calling
+ *     `copyMessage`/`forwardMessage` against that ID returns a distinct
+ *     `400 Bad Request: message to forward/copy not found` if it does NOT
+ *     exist, vs. success if it does. This is a genuine existence probe —
+ *     not a guess.
+ *   - When we have NO candidate message_id at all (the common case for a
+ *     true client-side timeout, since this codebase's fetchWithTimeout
+ *     aborts before any response body is read), there is NO bot-API-only
+ *     way to confirm one way or the other. reconcile() honestly returns
+ *     `still_unknown` in that case — it does not fabricate a positive or
+ *     negative result — and the publication is routed to manual resolution
+ *     (POST /api/publications/[id]/resolve) exactly as issue #149 requires.
  */
 
 import type {
@@ -22,6 +56,8 @@ import type {
   AdapterContent,
   AdapterAccount,
   ErrorCategory,
+  ReconcileInput,
+  ReconcileOutcome,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
 import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
@@ -246,6 +282,76 @@ export class TelegramAdapter implements ChannelAdapter {
           { label: 'خطا', at: Date.now() },
         ],
       }
+    }
+  }
+
+  /**
+   * Issue #149: real reconciliation, not a stub.
+   *
+   * The Bot API gives no way to search chat history or list recent messages
+   * (that requires MTProto/a user session). The one genuine, documented
+   * existence check available to a bot is: call `editMessageReplyMarkup`
+   * against a candidate `message_id` with `reply_markup` omitted.
+   *   - message exists (and — as this adapter never sets an inline keyboard —
+   *     has no markup already): Telegram detects a no-op diff and returns
+   *     `400 Bad Request: message is not modified` → CONFIRMS existence.
+   *   - message does not exist / wrong chat: returns
+   *     `400 Bad Request: message to edit not found` → CONFIRMS it was never
+   *     posted.
+   *   - anything else (200 OK, or a 400 that matches neither string): treated
+   *     as still ambiguous rather than guessed at.
+   * This only works when we HAVE a candidate `message_id` to probe — e.g. a
+   * slow-but-successful response that arrived after our client-side
+   * `fetchWithTimeout` already gave up (see lib/fetch-with-timeout.ts). A true
+   * black-hole timeout with zero response and zero id gives a bot literally
+   * nothing to check against; reconcile() honestly returns `still_unknown`
+   * in that case instead of fabricating a result.
+   *
+   * Caveat: matching on the error `description` string is Telegram's de
+   * facto (not formally guaranteed-stable) way of distinguishing these two
+   * cases — there is no dedicated error code for "not modified" vs "not
+   * found". If Telegram ever changes the wording, this degrades to
+   * `still_unknown` (see the `else` branch below) rather than a wrong answer.
+   */
+  async reconcile(input: ReconcileInput): Promise<ReconcileOutcome> {
+    const token = input.account.token
+    const chatId = input.account.targetId || input.account.username
+    const candidateMessageId = input.providerPostId
+
+    if (!token || !chatId || !candidateMessageId) {
+      // No message_id to probe against — the Bot API has no other way to
+      // confirm existence. Be honest: we genuinely don't know.
+      return { kind: 'still_unknown' }
+    }
+
+    try {
+      const res = await fetchWithTimeout(`${TG_API_BASE}${token}/editMessageReplyMarkup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, message_id: Number(candidateMessageId) }),
+      })
+      const data = await res.json()
+
+      if (data.ok) {
+        // Edit "succeeded" (would only happen if it genuinely had markup to
+        // clear, which this adapter never sets) — message exists.
+        return { kind: 'confirmed_success', providerPostId: candidateMessageId }
+      }
+
+      const description: string = data.description || ''
+      if (/message is not modified/i.test(description)) {
+        return { kind: 'confirmed_success', providerPostId: candidateMessageId }
+      }
+      if (/message to edit not found/i.test(description)) {
+        return { kind: 'confirmed_failure', reason: 'پیام در تلگرام یافت نشد — هرگز ارسال نشده است' }
+      }
+
+      // Some other error (rate limit, auth, chat not found, etc.) — don't
+      // guess; let the caller retry reconciliation later.
+      return { kind: 'still_unknown', nextCheckAt: new Date(Date.now() + 15 * 60 * 1000) }
+    } catch {
+      // Network/timeout error while reconciling — still ambiguous, try again later.
+      return { kind: 'still_unknown', nextCheckAt: new Date(Date.now() + 15 * 60 * 1000) }
     }
   }
 

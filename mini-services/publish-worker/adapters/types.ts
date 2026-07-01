@@ -37,15 +37,48 @@ export interface AdapterContent {
 
 export interface AdapterJob {
   id: string
-  idempotencyKey: string
   retryCount: number
   content: AdapterContent
   account: AdapterAccount
   platformCaption?: string // per-platform override
-  // Issue #149: stable publication operation ID — sent to providers that
-  // support idempotency keys (LinkedIn, Instagram). Same value across all
-  // retries — never generate a new key for the same logical publication.
+  /**
+   * Issue #149: stable, per-Publication operation ID — generated once at
+   * Publication-creation time (src/modules/publications/repository.ts),
+   * persisted to `Publication.publicationOperationId`, and read (never
+   * recomputed) on every subsequent attempt. Same value across ALL retries
+   * for the same logical publication.
+   *
+   * IMPORTANT — verified against each provider's current official docs
+   * (2026-07): NONE of the 6 supported providers (LinkedIn, Instagram,
+   * Telegram, Bale, Rubika, Eitaa) accept a client-supplied idempotency key
+   * on their post-creation endpoint today:
+   *   - LinkedIn Posts API: only post *deletion* is documented as
+   *     idempotent; POST /rest/posts has no Idempotency-Key header or
+   *     dedupe field. `X-Restli-Method` exists but only disambiguates
+   *     PARTIAL_UPDATE/BATCH_* semantics, not idempotency.
+   *   - Instagram Graph API: /media and /media_publish accept no
+   *     client request key (confirmed unsupported in this codebase's own
+   *     adapter comments before this fix).
+   *   - Telegram/Bale (Telegram-Bot-API-compatible) and Rubika/Eitaa bot
+   *     APIs: sendMessage/sendPhoto/sendVideo/sendDocument/sendMediaGroup
+   *     accept no dedupe token of any kind.
+   * This field is still threaded through to every adapter (and forwarded
+   * into `rawResponse`/logs where applicable) so it is available: (a) to a
+   * future provider or API version that adds real idempotency-key support,
+   * and (b) as the stable correlation ID recorded in the attempt ledger and
+   * used by `reconcile()`. Duplicate prevention for these 6 providers is
+   * enforced entirely on OUR side — via the stable requestFingerprint +
+   * PublicationAttempt ledger checks in the worker (findSuccessByFingerprint /
+   * findUnresolvedUnknown) — not via a provider-side idempotency key.
+   */
   publicationOperationId?: string
+  /**
+   * Issue #149 (gap #2): same value as `publicationOperationId`, exposed
+   * under the generic name adapters/HTTP clients conventionally look for.
+   * Adapters that gain real provider-side idempotency support in the future
+   * should read this field to populate the appropriate header/body field.
+   */
+  idempotencyKey: string
 }
 
 export interface HealthResult {

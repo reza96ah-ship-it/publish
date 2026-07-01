@@ -95,6 +95,36 @@ export async function findSuccessByFingerprint(fingerprint: string): Promise<{
 }
 
 /**
+ * Issue #149 (gap #4): Find the most recent attempt for this fingerprint and
+ * report whether it is an UNRESOLVED `outcome_unknown` — i.e. the provider's
+ * acceptance of the last attempt is genuinely ambiguous and nobody (neither
+ * an automated reconcile() call nor a human via the manual-resolution route)
+ * has since confirmed success or failure.
+ *
+ * A blind retry after `outcome_unknown` risks creating a duplicate external
+ * post — the whole point of issue #149 is that this must be blocked and
+ * routed to reconciliation / manual resolution instead of another provider
+ * call. "Resolved" is defined as: a LATER attempt row for the same
+ * fingerprint exists with a terminal, non-unknown outcome (recordReconciliation
+ * appends such a row once reconcile() or the manual /resolve endpoint runs).
+ */
+export async function findUnresolvedUnknown(fingerprint: string): Promise<{
+  id: string
+  outcome: string
+  safeUserMessage: string | null
+  startedAt: Date
+} | null> {
+  const latest = await db.publicationAttempt.findFirst({
+    where: { requestFingerprint: fingerprint },
+    orderBy: { startedAt: 'desc' },
+    select: { id: true, outcome: true, safeUserMessage: true, startedAt: true },
+  })
+  if (!latest) return null
+  if (latest.outcome !== 'outcome_unknown') return null
+  return latest
+}
+
+/**
  * Start a new attempt. Issue #149: stores the STABLE fingerprint
  * (not attempt-specific) so retries are identifiable as the same operation.
  */

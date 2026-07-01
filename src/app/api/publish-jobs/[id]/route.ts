@@ -109,6 +109,30 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   // ── retry ──
   if (body.action === 'retry') {
+    // Issue #149 (gap #4): block blind retries when the last known outcome
+    // for this Publication is an UNRESOLVED outcome_unknown. Re-enqueuing
+    // here would be exactly the "blind retry after an ambiguous outcome"
+    // the issue requires we prevent — it can create a duplicate external
+    // post if the previous attempt actually succeeded provider-side.
+    // The operator must go through POST /api/publications/[id]/resolve
+    // (confirm_failure / duplicate_safe_retry / abandon) instead, which
+    // requires an audited reason and clears reconciliationStatus.
+    const publicationForRetryCheck = await db.publication.findFirst({
+      where: { publishJobId: job.id },
+      select: { id: true, reconciliationStatus: true },
+    })
+    if (publicationForRetryCheck?.reconciliationStatus === 'still_unknown') {
+      return NextResponse.json(
+        {
+          error:
+            'وضعیت انتشار قبلی نامشخص است و هنوز حل نشده — تلاش مجدد خودکار مجاز نیست. لطفاً از بخش «حل دستی» استفاده کنید.',
+          publicationId: publicationForRetryCheck.id,
+          requiresManualResolution: true,
+        },
+        { status: 409 }
+      )
+    }
+
     const oldKey = job.idempotencyKey
     const newKey = randomUUID()
     const updated = await db.publishJob.update({

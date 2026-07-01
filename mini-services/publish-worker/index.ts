@@ -32,6 +32,7 @@ import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispat
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
 import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
+import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
 import {
   publishJobsCompleted,
   publishJobsFailed,
@@ -42,6 +43,7 @@ import {
   generateOperationId,
   findPreviousSuccess,
   findSuccessByFingerprint,
+  findUnresolvedUnknown,
   startAttempt,
   markProviderSuccess,
   markLocalSuccess,
@@ -302,7 +304,63 @@ const worker = new Worker(
     // allowing findSuccessByFingerprint to detect prior successes.
     const revisionId = publication?.revision?.id ?? job.content.id
     const fingerprint = buildFingerprint(job.platform.id, job.content.id, revisionId)
-    const operationId = publication?.publicationOperationId ?? generateOperationId(job.platform.id, job.content.id, revisionId)
+
+    // Issue #149 (gap #1 fix): the publicationOperationId is generated ONCE —
+    // at Publication-creation time in src/modules/publications/repository.ts —
+    // and persisted immediately. It must be READ here, never silently
+    // recomputed-and-discarded. The `generateOperationId(...)` fallback below
+    // exists only for Publication rows created before this fix (legacy rows
+    // with publicationOperationId === null); when that fallback fires we
+    // persist it back to the DB immediately so every subsequent attempt
+    // (including ones after a worker restart) reads the SAME stored value
+    // instead of recomputing it from scratch on every run.
+    let operationId = publication?.publicationOperationId ?? null
+    if (!operationId) {
+      operationId = generateOperationId(job.platform.id, job.content.id, revisionId)
+      if (publication) {
+        try {
+          await (db as any).publication.update({
+            where: { id: publication.id },
+            data: { publicationOperationId: operationId },
+          })
+        } catch (err) {
+          // @unique constraint — another concurrent attempt already persisted one.
+          // Re-read it so every process converges on the same stored value.
+          console.error('[worker] failed to persist publicationOperationId, re-reading:', err)
+          const fresh = await (db as any).publication.findUnique({
+            where: { id: publication.id },
+            select: { publicationOperationId: true },
+          })
+          operationId = fresh?.publicationOperationId ?? operationId
+        }
+      }
+    }
+
+    // Issue #149 (gap #4 fix): block blind retries once the most recent attempt
+    // for this fingerprint is an UNRESOLVED outcome_unknown. Calling the
+    // provider again here is exactly the "blind retry after an ambiguous
+    // outcome" scenario issue #149 requires we prevent — it could create a
+    // second external post. Route to manual resolution (POST
+    // /api/publications/[id]/resolve) instead of the provider.
+    // "Resolved" = Publication.reconciliationStatus was cleared/updated by
+    // either an adapter reconcile() call (recordReconciliation) or the manual
+    // resolve endpoint — both are checked so an operator's `duplicate_safe_retry`
+    // (which resets reconciliationStatus to null but doesn't append a ledger
+    // row) also correctly unblocks the retry.
+    if (publication?.reconciliationStatus === 'still_unknown') {
+      const unresolved = await findUnresolvedUnknown(fingerprint)
+      if (unresolved) {
+        const blockedMessage =
+          'وضعیت انتشار قبلی نامشخص است و هنوز حل نشده — تلاش مجدد خودکار مسدود شد. نیازمند بررسی دستی.'
+        console.log(
+          `[worker] job ${job.id} — blocking blind retry: unresolved outcome_unknown from previous attempt`
+        )
+        await markFailed(job, blockedMessage, false, true)
+        await checkContentPublished(job.contentId)
+        throw new UnrecoverableError(blockedMessage)
+      }
+    }
+
     const attemptId = await startAttempt({
       publishJobId: job.id,
       attemptNumber: bullJob.attemptsMade,
@@ -324,9 +382,15 @@ const worker = new Worker(
 
     await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
 
-    // Issue #149: wire publicationOperationId to the adapter so providers
-    // that support idempotency keys (LinkedIn, Instagram) receive the same
-    // stable operation ID across all retries — never generating a new key.
+    // Issue #149: wire publicationOperationId to the adapter. NOTE (gap #2):
+    // as of this fix, NONE of the 6 providers (LinkedIn, Instagram, Telegram,
+    // Bale, Rubika, Eitaa) actually accept a client-supplied idempotency key
+    // on their post-creation endpoint — see the per-adapter comments in
+    // adapters/*.ts for the documentation citations. We still forward it so
+    // (a) the field is available to a future adapter/provider that adds real
+    // support, and (b) it's threaded through to reconcile() and the audit
+    // trail as the stable correlation ID for this logical operation — but it
+    // is NOT, today, a provider-native dedupe mechanism for any of them.
     adapterJob.publicationOperationId = operationId
     adapterJob.idempotencyKey = operationId
 
@@ -869,6 +933,7 @@ async function shutdown(signal: string) {
   stopTokenExpiryScanner()
   stopInvitationCleanup()
   stopMediaCleanup()
+  stopReconciliationScanner()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   console.log('[worker] shutdown complete')
@@ -892,3 +957,8 @@ startTokenExpiryScanner()
 startInvitationCleanup()
 // Issue #146: hourly cleanup of abandoned media uploads (presign expired without confirm)
 startMediaCleanup()
+// Issue #149: periodic reconciliation of outcome_unknown publications — calls
+// adapter.reconcile() where implemented (currently Telegram) so ambiguous
+// outcomes get resolved automatically instead of sitting stuck forever
+// waiting for a human to use POST /api/publications/[id]/resolve.
+startReconciliationScanner()
