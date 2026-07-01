@@ -136,9 +136,44 @@ export function ComposeView() {
   const [isPending, startTransition] = useTransition()
 
   // MISS-04: debounced autosave state
-  type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+  type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict'
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Issue #152: draft versioning & conflict resolution state
+  const draftVersion = useRef<number | null>(null)
+  const [showConflictModal, setShowConflictModal] = useState(false)
+  const [pendingLocalDraft, setPendingLocalDraft] = useState<any>(null)
+  const [pendingServerDraft, setPendingServerDraft] = useState<any>(null)
+
+  const applyDraft = useCallback((draft: any) => {
+    const c = draft.content
+    if (c?.title) setTitle(c.title)
+    if (c?.caption) setCaption(c.caption)
+    if (c?.hashtags) setHashtags(c.hashtags)
+    if (c?.note) setNote(c.note)
+    if (c?.campaignId) setCampaignId(c.campaignId)
+    if (c?.scheduleMode) setScheduleMode(c.scheduleMode)
+    if (draft.channelIds?.length) setSelectedPlatforms(draft.channelIds)
+    if (draft.scheduledAt) {
+      const d = new Date(draft.scheduledAt)
+      if (!isNaN(d.getTime())) setScheduledAt(d)
+    }
+    if (typeof draft.version === 'number') {
+      draftVersion.current = draft.version
+    }
+  }, [])
+
+  const handleSelectDraft = (type: 'local' | 'server') => {
+    const draft = type === 'local' ? pendingLocalDraft : pendingServerDraft
+    if (draft) {
+      applyDraft(draft)
+    }
+    setShowConflictModal(false)
+    if (type === 'server') {
+      localStorage.removeItem('nashrino_unsaved_draft')
+    }
+  }
 
   // AI sheet state
   const [aiSheetOpen, setAiSheetOpen] = useState(false)
@@ -155,6 +190,86 @@ export function ComposeView() {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
+  // Issue #152: restore saved draft on composer entry with local storage conflict detection
+  const draftRestored = useRef(false)
+  useEffect(() => {
+    if (draftRestored.current) return
+    draftRestored.current = true
+
+    // 1. Read local storage draft
+    let localDraft: any = null
+    try {
+      const rawLocal = localStorage.getItem('nashrino_unsaved_draft')
+      if (rawLocal) {
+        localDraft = JSON.parse(rawLocal)
+      }
+    } catch (e) {
+      console.error('Failed to parse local draft', e)
+    }
+
+    // 2. Fetch server draft
+    fetch('/api/compose-draft')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const serverDraftRaw = data?.draft
+        const serverDraft = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
+
+        const hasServer = serverDraft && (serverDraft.content?.title || serverDraft.content?.caption || serverDraft.channelIds?.length)
+        const hasLocal = localDraft && (localDraft.content?.title || localDraft.content?.caption || localDraft.channelIds?.length)
+
+        if (hasServer && hasLocal) {
+          // Check for meaningful differences to prompt a conflict resolution
+          const titleDiff = (serverDraft.content?.title || '') !== (localDraft.content?.title || '')
+          const captionDiff = (serverDraft.content?.caption || '') !== (localDraft.content?.caption || '')
+          const platformsDiff = JSON.stringify(serverDraft.channelIds || []) !== JSON.stringify(localDraft.channelIds || [])
+
+          if (titleDiff || captionDiff || platformsDiff) {
+            setPendingLocalDraft(localDraft)
+            setPendingServerDraft(serverDraft)
+            setShowConflictModal(true)
+            return
+          }
+        }
+
+        if (hasServer) {
+          applyDraft(serverDraft)
+        } else if (hasLocal) {
+          applyDraft(localDraft)
+        }
+
+        if (hasServer || hasLocal) {
+          setSaveState('saved')
+          setTimeout(() => setSaveState('idle'), 3000)
+        }
+      })
+      .catch(() => {
+        if (localDraft) {
+          applyDraft(localDraft)
+          setSaveState('saved')
+          setTimeout(() => setSaveState('idle'), 3000)
+        }
+      })
+  }, [applyDraft])
+
+  // Save unsaved changes to localStorage on any edit
+  useEffect(() => {
+    if (!title && !caption && selectedPlatforms.length === 0) {
+      localStorage.removeItem('nashrino_unsaved_draft')
+      return
+    }
+
+    localStorage.setItem(
+      'nashrino_unsaved_draft',
+      JSON.stringify({
+        content: { title, caption, hashtags, note, campaignId, scheduleMode },
+        channelIds: selectedPlatforms,
+        scheduledAt: scheduledAt?.toISOString() ?? null,
+        version: draftVersion.current,
+        updatedAt: new Date().toISOString(),
+      })
+    )
+  }, [title, caption, hashtags, note, campaignId, scheduleMode, selectedPlatforms, scheduledAt])
+
   // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
   useEffect(() => {
     if (!title && !caption && selectedPlatforms.length === 0) return
@@ -162,17 +277,34 @@ export function ComposeView() {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(async () => {
       try {
-        await fetch('/api/compose-draft', {
+        const res = await fetch('/api/compose-draft', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             content: { title, caption, hashtags, note, campaignId, scheduleMode },
             channelIds: selectedPlatforms,
             scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
+            version: draftVersion.current,
           }),
         })
+
+        if (res.status === 409) {
+          setSaveState('conflict')
+          toast.error('پیش‌نویس توسط پنجره دیگری ویرایش شده است. لطفا صفحه را بازنشانی کنید.')
+          return
+        }
+
+        if (!res.ok) {
+          setSaveState('error')
+          return
+        }
+
+        const resJson = await res.json()
+        if (resJson.version) {
+          draftVersion.current = resJson.version
+        }
+
         setSaveState('saved')
-        // Reset to idle after 3s so the indicator doesn't stay permanently
         setTimeout(() => setSaveState('idle'), 3000)
       } catch {
         setSaveState('error')
@@ -181,7 +313,6 @@ export function ComposeView() {
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms])
 
   const { data: campaigns } = useQuery<Campaign[]>({
@@ -259,11 +390,22 @@ export function ComposeView() {
 
   const hasCapabilityViolations = capabilityViolations.length > 0
 
-  // Issue #117: canPublish now respects capability violations
+  // Issue #152: canPublish no longer requires media globally.
+  // Text-only publication is allowed when ALL selected channels support text
+  // (capability registry says supportsText=true). Media is required only when
+  // any selected channel requires it (e.g. Instagram).
+  const anyChannelRequiresMedia = useMemo(
+    () =>
+      (platforms ?? [])
+        .filter((p) => selectedPlatforms.includes(p.id))
+        .some((p) => getCapabilities(p.type).requiresMedia),
+    [platforms, selectedPlatforms]
+  )
+
   const canPublish =
     title.trim().length > 0 &&
     selectedPlatforms.length > 0 &&
-    selectedMedia.length > 0 &&
+    (!anyChannelRequiresMedia || selectedMedia.length > 0) &&
     !hasCapabilityViolations
 
   // Optimistic publish: append the new content to the ["content"] cache before the
@@ -322,12 +464,25 @@ export function ComposeView() {
         toast.error(`${first.platformName}: ${first.issues[0].message}`)
       } else if (selectedPlatforms.length === 0) {
         toast.error('حداقل یک پلتفرم انتخاب کنید.')
-      } else if (selectedMedia.length === 0) {
-        toast.error('برای انتشار، حداقل یک رسانه لازم است.')
+      } else if (anyChannelRequiresMedia && selectedMedia.length === 0) {
+        // Issue #152: only require media when a selected channel needs it
+        toast.error('یکی از پلتفرم‌های انتخابی به رسانه نیاز دارد.')
       } else {
-        toast.error('برای انتشار، عنوان، حداقل یک رسانه و یک پلتفرم لازم است.')
+        toast.error('برای انتشار، عنوان و حداقل یک پلتفرم لازم است.')
       }
       return
+    }
+
+    // Issue #152: validate schedule mode requires a future timestamp
+    if (action === 'publish' && scheduleMode === 'schedule') {
+      if (!scheduledAt) {
+        toast.error('برای زمان‌بندی، باید تاریخ و ساعت آینده را انتخاب کنید.')
+        return
+      }
+      if (scheduledAt.getTime() <= Date.now()) {
+        toast.error('زمان‌بندی باید در آینده باشد.')
+        return
+      }
     }
 
     if (action === 'draft') {
@@ -415,11 +570,15 @@ export function ComposeView() {
     }
 
     const toastId = toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…')
-    announce('در حال انتشار...')
+    announce('در حال ارسال به صف انتشار...')
     publishMutation.mutate(payload, {
       onSuccess: (res) => {
         toast.success(res.message, { id: toastId })
-        announce('محتوا با موفقیت منتشر شد')
+        // Issue #152: say "queued" not "published" — content is accepted into
+        // the publishing queue, NOT yet published to the provider.
+        // Actual publication success is announced via realtime when the worker
+        // confirms the provider accepted the post.
+        announce('محتوا به صف انتشار ارسال شد — در انتظار انتشار توسط ارائه‌دهنده')
         // Reset form
         setTitle('')
         setCaption('')
@@ -440,35 +599,70 @@ export function ComposeView() {
   }
 
   return (
-    <motion.div
-      initial={false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-4"
-    >
-      <SectionTitle
-        icon={PenLine}
-        badge={
-          <span
-            className={cn(
-              'text-[11px]',
-              saveState === 'saved'
-                ? 'text-emerald-600'
-                : saveState === 'error'
-                  ? 'text-red-500'
-                  : 'text-ink-tertiary'
-            )}
-          >
-            {saveState === 'saving'
-              ? 'در حال ذخیره…'
-              : saveState === 'saved'
-                ? '✓ ذخیره شد'
-                : saveState === 'error'
-                  ? '⚠ خطا در ذخیره'
-                  : 'ذخیره خودکار'}
-          </span>
-        }
+    <>
+      {showConflictModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-right" dir="rtl">
+            <div className="flex items-center gap-3 text-amber-500">
+              <AlertTriangle className="size-6" />
+              <h3 className="text-[15px] font-[700] text-ink-primary">تغییرات همزمان یافت شد</h3>
+            </div>
+            <p className="text-[13px] text-ink-secondary leading-relaxed">
+              ما تغییرات ذخیره نشده‌ای از جلسه قبلی شما پیدا کردیم که با پیش‌نویس سرور متفاوت است. مایلید کدام یک را استفاده کنید؟
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSelectDraft('server')}
+              >
+                استفاده از پیش‌نویس سرور
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => handleSelectDraft('local')}
+              >
+                بازیابی تغییرات محلی
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <motion.div
+        initial={false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="space-y-4"
       >
+        <SectionTitle
+          icon={PenLine}
+          badge={
+            <span
+              className={cn(
+                'text-[11px]',
+                saveState === 'saved'
+                  ? 'text-emerald-600'
+                  : saveState === 'error'
+                    ? 'text-red-500'
+                    : saveState === 'conflict'
+                      ? 'text-amber-600 font-semibold'
+                      : 'text-ink-tertiary'
+              )}
+            >
+              {saveState === 'saving'
+                ? 'در حال ذخیره…'
+                : saveState === 'saved'
+                  ? '✓ ذخیره شد'
+                  : saveState === 'error'
+                    ? '⚠ خطا در ذخیره'
+                    : saveState === 'conflict'
+                      ? '⚠️ تداخل همزمانی'
+                      : 'ذخیره خودکار'}
+            </span>
+          }
+        >
         ساخت محتوای جدید
       </SectionTitle>
 
@@ -814,7 +1008,8 @@ export function ComposeView() {
         onHashtags={(tags) => setHashtags(tags.join(' '))}
       />
     </motion.div>
-  )
+  </>
+)
 }
 
 /* ── Step 1: Content ── */
