@@ -111,6 +111,15 @@ jobs:
           bunx prisma generate --schema=../../prisma/schema.prisma
           bunx tsc --noEmit
       - run: bun run test
+      # Issue #153: integration tests against real PostgreSQL + Redis
+      - name: Run integration tests (PG + Redis)
+        run: bun run test:integration
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public&connection_limit=10'
+          DIRECT_DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_test?schema=public'
+          REDIS_URL: 'redis://localhost:6379'
+          REDIS_QUEUE_URL: 'redis://localhost:6379'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
       - run: bun run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
@@ -300,5 +309,5 @@ jobs:
       - run: bunx prisma migrate deploy
       - run: bun run prisma/seed.ts
       - run: bun run seed:auth # Seed demo user for E2E
-      - run: bunx playwright install --with-deps chromium
+      - run: bunx playwright install --with-deps chromium firefox webkit
       - run: bun run test:e2e

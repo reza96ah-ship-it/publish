@@ -82,17 +82,32 @@ export default function () {
 
   queueAcceptanceLatency.add(latency)
 
+  // Issue #153: k6 must require authenticated functional success.
+  // 401 is NOT acceptable — it means the test isn't exercising the publish path.
+  // The test requires a valid K6_AUTH_TOKEN to pass.
   const success = check(res, {
-    'status is 201 or 401 (auth)': (r) => r.status === 201 || r.status === 401,
-    'response has contentId or error': (r) => {
+    'status is 201 (authenticated publish accepted)': (r) => r.status === 201,
+    'response has contentId': (r) => {
       try {
         const body = JSON.parse(r.body)
-        return body.contentId !== undefined || body.error !== undefined
+        return body.contentId !== undefined
+      } catch {
+        return false
+      }
+    },
+    'response has jobs array': (r) => {
+      try {
+        const body = JSON.parse(r.body)
+        return Array.isArray(body.jobs) && body.jobs.length > 0
       } catch {
         return false
       }
     },
   })
+
+  if (!success && res.status === 401) {
+    console.error('FAIL: got 401 — K6_AUTH_TOKEN is missing or invalid. Load test cannot pass without authentication.')
+  }
 
   errorRate.add(!success)
 
@@ -102,12 +117,22 @@ export default function () {
 
 // ── Setup — verify the server is reachable ────────────────────
 export function setup() {
+  // Issue #153: fail early if auth token is missing — load test cannot pass without it.
+  // k6 does not have a built-in "fail setup" but we can throw to abort the test.
+  if (!AUTH_TOKEN) {
+    console.error('FATAL: K6_AUTH_TOKEN is not set. Load test requires authentication.')
+    console.error('Obtain a JWT token by logging in via /api/auth/callback/credentials')
+    console.error('Then run: K6_AUTH_TOKEN=<token> k6 run tests/load/publish-queue.js')
+    throw new Error('K6_AUTH_TOKEN is required — load test cannot pass without authentication')
+  }
+
   const healthRes = http.get(`${BASE_URL}/api/health`)
   if (healthRes.status !== 200) {
     console.error(`Server not healthy at ${BASE_URL}/api/health — status: ${healthRes.status}`)
     console.error('Start the dev server first: bun run dev')
+    throw new Error('Server not healthy — cannot run load test')
   }
-  return { serverOk: healthRes.status === 200 }
+  return { serverOk: true }
 }
 
 // ── Teardown — print summary ──────────────────────────────────
