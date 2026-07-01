@@ -47,10 +47,11 @@ export async function POST(req: Request) {
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
 
-  const { content, channelIds, scheduledAt } = raw as {
+  const { content, channelIds, scheduledAt, version } = raw as {
     content: Record<string, unknown>
     channelIds: string[]
     scheduledAt: string | null
+    version?: number
   }
 
   if (!content || typeof content !== 'object') {
@@ -61,6 +62,18 @@ export async function POST(req: Request) {
     where: { workspaceId_authorId: { workspaceId, authorId } },
     select: { version: true },
   })
+
+  // Issue #152: Optimistic concurrency check
+  if (existing && typeof version === 'number' && version < existing.version) {
+    return NextResponse.json(
+      {
+        error: 'conflict',
+        message: 'پیش‌نویس توسط پنجره دیگری ویرایش شده است.',
+        version: existing.version,
+      },
+      { status: 409 }
+    )
+  }
 
   // Prisma's Json type requires casting via Prisma.InputJsonValue
   const contentJson = content as Parameters<typeof db.contentDraft.create>[0]['data']['content']
