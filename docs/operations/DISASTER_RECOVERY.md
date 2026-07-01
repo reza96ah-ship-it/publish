@@ -45,15 +45,23 @@
 - Manual: set `IMAGE_TAG=<previous-sha>` + `docker compose up -d`
 - DB migration rollback: forward-only (deploy previous code), compensating migration, or PITR
 
-## Game day checklist
+## Game day checklist (14 scenarios per issue #158)
 - [ ] PostgreSQL unavailable 5min — worker survives
+- [ ] PgBouncer unavailable — app degrades gracefully
 - [ ] Redis queue unavailable 5min — outbox reconstructs
+- [ ] Cache/realtime Redis unavailable — degrades without losing publishing truth
 - [ ] Worker crash during publication — no duplicate
+- [ ] Realtime service outage — reconnect storm handled
 - [ ] Provider timeout — outcome_unknown
-- [ ] Token expiry during delayed job — auth error
+- [ ] Provider outage (5xx sustained) — retry with backoff, then dead-letter
+- [ ] Token expiry during delayed job — auth error, not retry loop
+- [ ] Object storage unavailable — media upload fails gracefully
 - [ ] Failed migration — previous version continues
+- [ ] Unhealthy new release — auto-rollback
+- [ ] Partial deployment (app v2 + worker v1) — backward compatible
 - [ ] Deploy rollback — < 60s
 - [ ] Full restore — data integrity verified
+- [ ] Unknown provider outcome — reconciliation/manual resolution
 
 ### Last game day: NOT YET PERFORMED
 

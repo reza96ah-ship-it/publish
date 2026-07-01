@@ -31,3 +31,13 @@
 
 # Default: all files not matched above
 *                          @reza96ah-ship-it
+
+# Media + reliability code (issue #159)
+/src/lib/media/            @reza96ah-ship-it
+/src/lib/video-probe.ts    @reza96ah-ship-it
+/mini-services/publish-worker/lib/outbox-dispatcher.ts @reza96ah-ship-it
+/mini-services/publish-worker/lib/attempt-ledger.ts    @reza96ah-ship-it
+
+# Documentation — must stay truthful and current
+/docs/                     @reza96ah-ship-it
+/README.md                 @reza96ah-ship-it

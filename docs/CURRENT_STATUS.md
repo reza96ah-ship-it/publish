@@ -18,7 +18,7 @@
 | Observability | 8/10 | 9/10 | Prometheus metrics (20+), distributed tracing (W3C), SLOs (9), alerts (14), runbooks (12), dashboards (10) |
 | CI/CD | 8/10 | 9/10 | Release-safe CI (no db push); workflow_run deploy gate; SHA verification; SBOM + provenance; CODEOWNERS |
 | Docker/deployment | 8/10 | 9/10 | 4 Docker targets (app/worker/realtime/migrate); staging workflow; rollback on failure |
-| Test coverage | 6/10 | 8/10 | 500+ unit + contract tests; PG/Redis integration tests; provider contract fixtures; browser matrix (5 projects); chaos scaffolding |
+| Test coverage | 6/10 | 8/10 | 550 (auto-counted via `bun run test`) unit + contract tests; PG/Redis integration tests; provider contract fixtures; browser matrix (5 projects); chaos scaffolding |
 | **Production readiness** | **7/10** | **9/10** | Gates 1-8 in progress; remaining: staging soak, DR drills, security review, provider certification, documentation |
 
 ## Completed gates
