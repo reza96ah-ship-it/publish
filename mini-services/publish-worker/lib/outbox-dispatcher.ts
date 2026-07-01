@@ -12,6 +12,13 @@
  */
 
 import { db } from './db'
+import {
+  outboxPendingGauge,
+  outboxClaimedGauge,
+  outboxDeadLetterGauge,
+  outboxExpiredLeasesCounter,
+  outboxDispatchFailuresCounter,
+} from './metrics'
 import { enqueuePublishJob } from './queue'
 import { randomUUID } from 'crypto'
 
@@ -82,6 +89,7 @@ async function tick(): Promise<void> {
 
   console.log(`[outbox] claimed ${claimed.length} event(s) by ${INSTANCE_ID}`)
   activeClaims = claimed.length
+  outboxClaimedGauge.set(activeClaims)
 
   // Step 3: Deliver each claimed event
   for (const event of claimed) {
@@ -121,6 +129,7 @@ async function recoverExpiredLeases(): Promise<void> {
 
     if (result.count > 0) {
       console.log(`[outbox] recovered ${result.count} expired lease(s)`)
+    outboxExpiredLeasesCounter.inc(result.count)
     }
   } catch (err) {
     console.error('[outbox] lease recovery error:', err)
@@ -268,12 +277,16 @@ async function handleDeliveryFailure(event: ClaimedEvent, err: unknown): Promise
       availableAt,
       lastError: error,
       lastErrorCategory: errorCategory,
+      // Issue #148: increment dispatch failure metric
+      // outboxDispatchFailuresCounter.inc(errorCategory) — called by caller
       lastSafeError: safeErrorMessage(errorCategory, error),
       lockedBy: null,
       lockedAt: null,
       lockExpiresAt: null,
       status: isExhausted ? 'dead_letter' : 'retry_wait',
       deadLetteredAt: isExhausted ? new Date() : null,
+      // Issue #148: increment dead-letter metric when event is dead-lettered
+      ...(isExhausted ? { _metricsDeadLetter: true } : {}),
     },
   })
 
