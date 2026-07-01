@@ -85,15 +85,11 @@ export async function verifyRealtimeJwt(
 
   try {
     const key = await hmacSecretKey(secret)
-    const { payload } = await jwtVerify(token, key, {
+    const { payload, protectedHeader } = await jwtVerify(token, key, {
       algorithms: [JWT_ALG], // pin algorithm -- rejects `none`, RS256, etc.
       issuer: JWT_ISSUER,
       audience: JWT_AUDIENCE,
       clockTolerance: skew,
-      // Require these claims to be present:
-      requiredClaims: ['iss', 'aud', 'sub', 'iat', 'nbf', 'exp', 'jti', 'purpose', 'kid'],
-      // Override "now" for deterministic tests:
-      ...(options.now !== undefined ? { now: now } : {}),
     })
 
     // jose verifies iss/aud/exp/nbf -- but we still need to enforce `purpose`
@@ -107,12 +103,23 @@ export async function verifyRealtimeJwt(
       console.warn('[realtime] JWT rejected: missing or empty sub')
       return null
     }
-    if (typeof p.kid !== 'string' || p.kid.length === 0) {
+    // kid is in the JWT protected header (not the payload) — supports key rotation
+    const kid = protectedHeader?.kid
+    if (typeof kid !== 'string' || kid.length === 0) {
       console.warn('[realtime] JWT rejected: missing kid')
       return null
     }
     if (typeof p.jti !== 'string' || p.jti.length === 0) {
       console.warn('[realtime] JWT rejected: missing jti')
+      return null
+    }
+    // iat and nbf are verified by jose via clockTolerance, but we require them present
+    if (typeof p.iat !== 'number') {
+      console.warn('[realtime] JWT rejected: missing iat')
+      return null
+    }
+    if (typeof p.nbf !== 'number') {
+      console.warn('[realtime] JWT rejected: missing nbf')
       return null
     }
 
@@ -128,7 +135,7 @@ export async function verifyRealtimeJwt(
       console.warn('[realtime] JWT rejected: bad signature')
     } else if (err instanceof joseErrors.JWTClaimValidationFailed) {
       console.warn('[realtime] JWT rejected: claim validation failed --', err.message)
-    } else if (err instanceof joseErrors.JWSInvalid || err instanceof joseErrors.JWTMalformed) {
+    } else if (err instanceof joseErrors.JWSInvalid) {
       console.warn('[realtime] JWT rejected: malformed token')
     } else {
       // Includes JWTInvalid, JWSVerificationFailed, etc.

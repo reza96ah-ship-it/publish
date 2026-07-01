@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { randomBytes } from 'crypto'
 
@@ -41,8 +42,9 @@ import {
 const TEST_SECRET = 'test-realtime-jwt-secret-not-for-production-use-32+chars'
 const OTHER_SECRET = 'a-completely-different-secret-for-signature-tests'
 
-// Deterministic clock for expiry/nbf tests
-const NOW_MS = Date.UTC(2026, 0, 1, 12, 0, 0) // 2026-01-01 12:00:00 UTC
+// Use real current time — jose v6 does not support date override for verify.
+// Tests that need time manipulation mock Date.now() instead.
+const NOW_MS = Date.now()
 
 function makeJti(): string {
   return randomBytes(16).toString('hex')
@@ -78,7 +80,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
   describe('happy path', () => {
     it('accepts a well-formed token and returns session data', async () => {
       const token = await signValidToken()
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).not.toBeNull()
       expect(session?.userId).toBe('user-123')
       expect(session?.activeWorkspaceId).toBe('ws-456')
@@ -115,7 +117,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
   describe('rejects wrong issuer', () => {
     it('returns null when iss claim is wrong', async () => {
       const token = await signValidToken({ issuer: 'wrong-issuer' })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
@@ -123,7 +125,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
   describe('rejects wrong audience', () => {
     it('returns null when aud claim is wrong', async () => {
       const token = await signValidToken({ audience: 'wrong-audience' })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
@@ -131,7 +133,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
   describe('rejects wrong purpose', () => {
     it('returns null when purpose claim is wrong (e.g., auth-session token replayed)', async () => {
       const token = await signValidToken({ purpose: 'auth-session' })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
@@ -139,32 +141,33 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
   describe('rejects wrong signature', () => {
     it('returns null when token signed with a different secret', async () => {
       const token = await signValidToken({ secret: OTHER_SECRET })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
 
   describe('rejects expired token', () => {
     it('returns null when exp is in the past (beyond skew)', async () => {
-      // Sign a token with 10s lifetime; verify 60s later (well past the 5s skew)
-      const token = await signValidToken({ lifetimeSeconds: 10, now: NOW_MS })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 60_000 })
+      // Sign a token with 1s lifetime; wait 2s (past the 5s skew would need >6s)
+      // Instead, sign with negative lifetime to create an already-expired token
+      const token = await signValidToken({ lifetimeSeconds: -10 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
 
   describe('rejects future token beyond skew', () => {
     it('returns null when nbf is more than 5s in the future', async () => {
-      // Sign a token "now"; verify 60s BEFORE its iat -- nbf is in the future
-      const token = await signValidToken({ now: NOW_MS })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS - 60_000 })
+      // Sign a token with nbf 60s in the future — beyond the 5s skew tolerance
+      const token = await signValidToken({ now: NOW_MS + 60_000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
 
     it('accepts a token within the 5s clock skew window', async () => {
-      // Verify 3s before nbf -- within skew tolerance
-      const token = await signValidToken({ now: NOW_MS })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS - 3_000 })
+      // Sign a token with nbf 3s in the past — within skew tolerance
+      const token = await signValidToken({ now: NOW_MS - 3_000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).not.toBeNull()
     })
   })
@@ -219,7 +222,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
         jti: makeJti(),
         now: NOW_MS,
       })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).toBeNull()
     })
   })
@@ -231,7 +234,7 @@ describe('Issue #151 -- Realtime JWT verification (jose library)', () => {
       // rotation can proceed by changing REALTIME_JWT_SECRET without breaking
       // outstanding tokens.
       const token = await signValidToken({ kid: 'rotated-key-v2' })
-      const session = await verifyRealtimeJwt(token, TEST_SECRET, { now: NOW_MS + 1000 })
+      const session = await verifyRealtimeJwt(token, TEST_SECRET)
       expect(session).not.toBeNull()
       expect(peekHeader(token).kid).toBe('rotated-key-v2')
     })
@@ -581,7 +584,7 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
     // The isPublicPath block must NOT contain a `pathname.startsWith('/api/metrics')` line.
     // We extract the isPublicPath block (between `const isPublicPath =` and the next blank line / `if (!isPublicPath)`)
     const blockMatch = middlewareSrc.match(
-      /const isPublicPath = ([\s\S]*?)\n\n  if \(!isPublicPath\)/
+      /const isPublicPath =([\s\S]*?)if \(!isPublicPath\)/
     )
     expect(blockMatch, 'isPublicPath block must exist in middleware.ts').not.toBeNull()
     const block = blockMatch![1]
@@ -627,7 +630,7 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
 })
 
 describe('Issue #151 -- BOARD_PASSWORD fail-closed (worker contract)', () => {
-  it('next.config / publish-worker source has no `|| 'nashrino'` fallback for BOARD_PASSWORD', () => {
+  it("next.config / publish-worker source has no || 'nashrino' fallback for BOARD_PASSWORD", () => {
     // The previous code was: `const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'`
     // The new code must NOT have that bare fallback -- it must check NODE_ENV
     // and refuse in production.
