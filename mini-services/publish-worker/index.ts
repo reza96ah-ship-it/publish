@@ -52,19 +52,27 @@ import {
 } from './lib/attempt-ledger'
 import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
 import { platformRateLimiter } from './lib/rate-limiter'
+import { bootstrapServiceConfig } from '../../shared/config-validator'
+
+// Validate worker configuration on startup
+bootstrapServiceConfig('worker')
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
-const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'
+// Issue #151: fail-closed board password — no default 'nashrino' in production
+const BOARD_PASSWORD = (() => {
+  const pwd = process.env.BOARD_PASSWORD
+  if (pwd) return pwd
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[worker] FATAL: BOARD_PASSWORD is not set. Bull Board disabled.')
+    return null // board will reject all requests
+  }
+  console.warn('[worker] WARNING: BOARD_PASSWORD not set — using dev default. DO NOT USE IN PRODUCTION.')
+  return 'nashrino'
+})()
 const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '5', 10)
 
 // Issue #91: fail fast at startup if Redis is not configured.
-// A missing REDIS_QUEUE_URL means BullMQ would silently connect to localhost
-// and fail only on first job dispatch, hours after deploy.
 const REDIS_QUEUE_URL = process.env.REDIS_QUEUE_URL || process.env.REDIS_URL
-if (!REDIS_QUEUE_URL) {
-  console.error('[worker] FATAL: REDIS_QUEUE_URL (or REDIS_URL) is not set. Cannot start.')
-  process.exit(1)
-}
 
 const startTime = Date.now()
 
@@ -851,7 +859,8 @@ function startHealthServer() {
       const decoded = Buffer.from(auth.slice(6), 'base64').toString()
       const colonIdx = decoded.indexOf(':')
       const password = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : ''
-      if (password !== BOARD_PASSWORD) {
+      // Issue #151: fail-closed if BOARD_PASSWORD is null (not set in production)
+      if (!BOARD_PASSWORD || password !== BOARD_PASSWORD) {
         res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Bull Board"' })
         res.end('Invalid password')
         return

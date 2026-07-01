@@ -1,14 +1,23 @@
 /**
- * Next.js middleware — NextAuth route protection + nonce-based CSP (Issue #119).
+ * Next.js middleware -- NextAuth route protection + nonce-based CSP (Issue #119).
  *
  * Auth:
  *   Production: redirects unauthenticated users to /auth/signin.
  *   Development: bypasses auth (DISABLE_AUTH=1) for the Z.ai preview iframe.
  *
- * CSP (Issue #119):
- *   Generates a fresh nonce per request (Web Crypto API — Edge Runtime compatible)
+ * CSP (Issue #119 + Issue #151):
+ *   Generates a fresh nonce per request (Web Crypto API -- Edge Runtime compatible)
  *   and sets a strict Content-Security-Policy header. Replaces 'unsafe-inline'
  *   in script-src with 'nonce-{nonce}' + 'strict-dynamic'.
+ *
+ *   Issue #151: The CSP header is set on BOTH request AND response headers.
+ *   Next.js needs the CSP in the request headers so it can extract the nonce
+ *   during server-side rendering and apply it to framework-emitted scripts.
+ *   Previously we only set `x-nonce` on the request -- now we set the full
+ *   CSP header too, so Server Components reading `headers().get('Content-Security-Policy')`
+ *   see the same policy that will be enforced on the response.
+ *
+ *   https://nextjs.org/docs/app/guides/content-security-policy
  *
  * We can't use withAuth()'s default export because it wraps the request in a way
  * that prevents us from setting response headers. Instead we import getToken
@@ -19,8 +28,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 /**
- * Generate a cryptographically random nonce (base64, 18 bytes → 24 chars).
- * Uses the Web Crypto API (Edge Runtime compatible — Node.js 'crypto' is not).
+ * Generate a cryptographically random nonce (base64, 18 bytes -> 24 chars).
+ * Uses the Web Crypto API (Edge Runtime compatible -- Node.js 'crypto' is not).
  */
 function generateNonce(): string {
   const bytes = new Uint8Array(18)
@@ -54,6 +63,7 @@ function buildCsp(nonce: string, isProd: boolean): string {
 export async function middleware(req: NextRequest) {
   const nonce = generateNonce()
   const isProd = process.env.NODE_ENV === 'production'
+  const csp = buildCsp(nonce, isProd)
 
   // Auth check: skip for public paths (NextAuth callbacks, health, etc.)
   const { pathname } = req.nextUrl
@@ -61,7 +71,9 @@ export async function middleware(req: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.startsWith('/api/health') ||
     pathname.startsWith('/api/readyz') ||
-    pathname.startsWith('/api/metrics') ||
+    // Issue #151: /api/metrics removed from public paths -- Prometheus endpoints
+    // should be restricted by network policy or reverse-proxy, not exposed publicly.
+    // If metrics must be scraped without auth, configure network-level protection.
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||
@@ -76,22 +88,29 @@ export async function middleware(req: NextRequest) {
         const signInUrl = new URL('/auth/signin', req.url)
         signInUrl.searchParams.set('callbackUrl', pathname)
         const redirect = NextResponse.redirect(signInUrl)
-        redirect.headers.set('Content-Security-Policy', buildCsp(nonce, isProd))
+        redirect.headers.set('Content-Security-Policy', csp)
+        redirect.headers.set('x-nonce', nonce)
         return redirect
       }
     }
   }
 
-  // Inject nonce into request headers so Next.js can add it to script tags
+  // Issue #151: Inject BOTH the nonce AND the CSP into request headers.
+  // Next.js reads `x-nonce` from request headers and applies it to framework
+  // scripts during SSR. Setting `Content-Security-Policy` on the request
+  // headers as well lets Server Components and downstream middleware read
+  // the exact policy that will be enforced on the response -- this matches
+  // the official Next.js CSP nonce guide.
   const requestHeaders = new Headers(req.headers)
   requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
   })
 
-  // Set CSP + nonce on the response
-  response.headers.set('Content-Security-Policy', buildCsp(nonce, isProd))
+  // Set CSP + nonce on the response (enforced by the browser)
+  response.headers.set('Content-Security-Policy', csp)
   response.headers.set('x-nonce', nonce)
 
   return response
@@ -100,15 +119,19 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // Protect everything EXCEPT:
-    //   api/auth       — NextAuth callback endpoints (must be public)
-    //   api/webhooks   — Platform webhook receivers (verified separately)
-    //   api/health     — Liveness probe (orchestrator access)
-    //   api/readyz     — Readiness probe (orchestrator access)
-    //   api/metrics    — Prometheus metrics (scraped by monitoring)
-    //   auth           — The signin page itself
-    //   _next/static   — Next.js static assets
-    //   _next/image    — Next.js image optimizer
-    //   favicon.ico, robots.txt, logo.svg, logos/* — public assets
+    //   api/auth       -- NextAuth callback endpoints (must be public)
+    //   api/webhooks   -- Platform webhook receivers (verified separately)
+    //   api/health     -- Liveness probe (orchestrator access)
+    //   api/readyz     -- Readiness probe (orchestrator access)
+    //   api/metrics    -- Prometheus metrics (scraped by monitoring -- but
+    //                     Issue #151 removed it from isPublicPath so it now
+    //                     requires auth. The matcher still skips running
+    //                     middleware on it for performance; network policy
+    //                     or reverse-proxy must restrict access at the edge.)
+    //   auth           -- The signin page itself
+    //   _next/static   -- Next.js static assets
+    //   _next/image    -- Next.js image optimizer
+    //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
     '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
   ],
 }

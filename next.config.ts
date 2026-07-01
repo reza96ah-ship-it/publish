@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: isProd ? 'SAMEORIGIN' : 'ALLOWALL' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
+          // Issue #151: Permissions-Policy — restrict browser features
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+          // Issue #151: cache control for sensitive pages
+          { key: 'Cache-Control', value: 'no-store, must-revalidate' },
           ...(isProd
             ? [
                 {
