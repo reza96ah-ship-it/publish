@@ -8,7 +8,19 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.tsx'],
-    include: ['tests/unit/**/*.test.{ts,tsx}'],
+    // Issue #153: unit + contract tests in default run
+    // Integration tests (DB/Redis) run separately via test:integration
+    include: [
+      'tests/unit/**/*.test.{ts,tsx}',
+      'tests/contract/**/*.test.{ts,tsx}',
+    ],
+    // Exclude integration/chaos from default run (they need real services)
+    exclude: [
+      'tests/integration/**',
+      'tests/chaos/**',
+      'tests/e2e/**',
+      'node_modules/**',
+    ],
   },
   // Override the project's postcss.config.mjs (Tailwind v4 plugin) which Vite
   // cannot load as a string — tests don't need CSS processing anyway.
