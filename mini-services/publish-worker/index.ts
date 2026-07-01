@@ -170,14 +170,13 @@ const worker = new Worker(
       const authError = `توکن ${job.platform.type} منقضی شده است. لطفاً حساب را مجدداً متصل کنید.`
       console.log(`[worker] job ${job.id} skipped — platform ${job.platform.type} token expired`)
       // Issue #149: stable fingerprint (no attemptNumber) — same across retries
-      const revisionId = publication?.revision?.id ?? job.content.id
+      // Note: publication is loaded AFTER this block, so use job.content.id as fallback
+      const revisionId = job.content.id
       const fingerprint = buildFingerprint(job.platform.id, job.content.id, revisionId)
       const attemptId = await startAttempt({
         publishJobId: job.id,
         attemptNumber: bullJob.attemptsMade,
         requestFingerprint: fingerprint,
-        publicationOperationId: publication?.publicationOperationId ?? undefined,
-        publicationId: publication?.id,
       })
       await markFailure(attemptId, {
         outcome: 'permanent_failure',
