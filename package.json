@@ -17,7 +17,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "bun run scripts/validate-migrate.ts && prisma migrate deploy",
     "db:status": "prisma migrate status",
     "db:reset": "prisma migrate reset",
     "seed:auth": "bun run prisma/seed-auth.ts",

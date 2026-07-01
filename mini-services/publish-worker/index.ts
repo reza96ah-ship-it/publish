@@ -52,6 +52,10 @@ import {
 } from './lib/attempt-ledger'
 import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
 import { platformRateLimiter } from './lib/rate-limiter'
+import { bootstrapServiceConfig } from '../../shared/config-validator'
+
+// Validate worker configuration on startup
+bootstrapServiceConfig('worker')
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
 // Issue #151: fail-closed board password — no default 'nashrino' in production
@@ -68,13 +72,7 @@ const BOARD_PASSWORD = (() => {
 const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '5', 10)
 
 // Issue #91: fail fast at startup if Redis is not configured.
-// A missing REDIS_QUEUE_URL means BullMQ would silently connect to localhost
-// and fail only on first job dispatch, hours after deploy.
 const REDIS_QUEUE_URL = process.env.REDIS_QUEUE_URL || process.env.REDIS_URL
-if (!REDIS_QUEUE_URL) {
-  console.error('[worker] FATAL: REDIS_QUEUE_URL (or REDIS_URL) is not set. Cannot start.')
-  process.exit(1)
-}
 
 const startTime = Date.now()
 

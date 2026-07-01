@@ -70,7 +70,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-CMD ["bunx", "prisma", "migrate", "deploy"]
+COPY shared ./shared
+COPY scripts ./scripts
+CMD ["sh", "-c", "bun run scripts/validate-migrate.ts && bunx prisma migrate deploy"]
 
 # ── Stage 3b: worker (no Next.js build needed) ────────────────────────
 FROM oven/bun:1.2-slim AS worker
@@ -107,6 +109,7 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
+COPY shared ./shared
 COPY mini-services/realtime ./mini-services/realtime
 USER nextjs
 EXPOSE 3003
