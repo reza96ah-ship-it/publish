@@ -85,11 +85,48 @@ describe('Issue #156 — Architecture enforcement', () => {
   })
 
   describe('route handlers are thin', () => {
-    it('publish/route.ts is under 100 lines', () => {
-      const path = join(SRC_DIR, 'app', 'api', 'publish', 'route.ts')
-      if (!existsSync(path)) return
-      const content = readFile(path)
-      expect(content.split('\n').length).toBeLessThan(100)
+    // Issue #156: All route handlers should be thin (<100 lines).
+    // Route handlers should only do: auth → validate → service.method() → response mapping.
+    // Business logic belongs in services, data access in repositories.
+    const API_DIR = join(SRC_DIR, 'app', 'api')
+    const routeFiles = listTsFiles(API_DIR).filter(f => f.endsWith('route.ts'))
+
+    it('route files exist', () => {
+      expect(routeFiles.length).toBeGreaterThan(0)
     })
+
+    // Grace list: routes not yet migrated to thin handlers.
+    // These have TODO comments and will be migrated in follow-up PRs.
+    const GRACE_LIST = [
+      'inbox', // planned migration
+      'workspace', // planned migration
+      'calendar', // read-model, not a command handler
+      'dashboard', // read-model, not a command handler
+      'analytics', // read-model, not a command handler
+      'ai/caption', // AI routes — planned for AI module
+      'ai/caption-multi', // AI routes — planned for AI module
+      'ai/drafts', // AI routes — planned for AI module
+      'channels/health', // read-model endpoint
+      'media/local-upload', // complex upload logic — planned migration
+      'platforms/[id]/connect', // OAuth flow — complex but thin enough at 200
+      'platforms/oauth/callback', // OAuth callback — complex but thin enough at 200
+      'publish-jobs/[id]', // status endpoint — planned migration
+    ]
+
+    for (const file of routeFiles) {
+      const relPath = file.replace(process.cwd(), '')
+      const isGrace = GRACE_LIST.some(g => relPath.includes(`/api/${g}/`))
+
+      it(`${relPath} is under 100 lines${isGrace ? ' (grace — not yet migrated)' : ''}`, () => {
+        const content = readFile(file)
+        const lines = content.split('\n').length
+        if (isGrace) {
+          // Grace routes get 200 lines max — they'll be migrated later
+          expect(lines, `${relPath} has ${lines} lines (grace limit 200)`).toBeLessThan(200)
+        } else {
+          expect(lines, `${relPath} has ${lines} lines (limit 100)`).toBeLessThan(100)
+        }
+      })
+    }
   })
 })
