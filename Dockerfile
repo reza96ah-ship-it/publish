@@ -76,17 +76,23 @@ CMD ["bunx", "prisma", "migrate", "deploy"]
 FROM oven/bun:1.2-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
+# Issue #157: install OpenSSL for Prisma engine
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 # Copy deps from the deps stage (not builder — avoids running next build)
 COPY --from=deps /app/node_modules ./node_modules
+# Issue #157: Copy generated Prisma client from builder stage (which already
+# ran bunx prisma generate successfully). This avoids the Bun worker_threads
+# incompatibility with Prisma 7.x generate command.
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY package.json bun.lock ./
 COPY mini-services/publish-worker ./mini-services/publish-worker
 COPY prisma ./prisma
 COPY prisma.config.ts ./
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
-RUN bunx prisma generate
 USER nextjs
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
