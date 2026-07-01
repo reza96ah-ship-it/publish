@@ -42,6 +42,10 @@ export interface AdapterJob {
   content: AdapterContent
   account: AdapterAccount
   platformCaption?: string // per-platform override
+  // Issue #149: stable publication operation ID — sent to providers that
+  // support idempotency keys (LinkedIn, Instagram). Same value across all
+  // retries — never generate a new key for the same logical publication.
+  publicationOperationId?: string
 }
 
 export interface HealthResult {
