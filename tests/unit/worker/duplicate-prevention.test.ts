@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { buildFingerprint, generateOperationId } from '../../../mini-services/publish-worker/lib/attempt-ledger'
 
 /**
@@ -121,8 +123,7 @@ describe('Issue #149 — operationId wired to adapter', () => {
     //   const result = await getAdapter(job.platform.type)?.publish(adapterJob)
     //
     // We verify by reading the source code (contract test).
-    const fs = require('fs')
-    const path = require('path')
+    
     const workerSrc = fs.readFileSync(
       path.resolve(__dirname, '../../../mini-services/publish-worker/index.ts'),
       'utf8'
