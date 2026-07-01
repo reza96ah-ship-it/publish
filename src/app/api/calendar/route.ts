@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   }
   const { year, month } = paramCheck.data
 
-  // Window: that Jalali month â†’ gregorian range (start of month آ± 5 days buffer
+  // Window: that Jalali month → gregorian range (start of month آ± 5 days buffer
   // to catch jobs that fall on the boundary due to timezone offsets).
   const startGreg = jalaliToDate(year, month, 1)
   const endGreg = month < 12 ? jalaliToDate(year, month + 1, 1) : jalaliToDate(year + 1, 1, 1)
