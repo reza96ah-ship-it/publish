@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { randomBytes } from 'crypto'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 /**
  * Issue #151: Realtime hardening -- REAL integration tests.
@@ -575,8 +577,6 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
   it('/api/metrics is removed from the middleware public-paths list', () => {
     // Read the middleware source and assert /api/metrics is NOT in isPublicPath.
     // This is a regression guard: if someone re-adds it, this test fails.
-    const fs = require('fs')
-    const path = require('path')
     const middlewareSrc = fs.readFileSync(
       path.resolve(__dirname, '../../../src/middleware.ts'),
       'utf8'
@@ -592,8 +592,6 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
   })
 
   it('middleware sets Content-Security-Policy on BOTH request and response headers', () => {
-    const fs = require('fs')
-    const path = require('path')
     const middlewareSrc = fs.readFileSync(
       path.resolve(__dirname, '../../../src/middleware.ts'),
       'utf8'
@@ -605,8 +603,6 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
   })
 
   it('middleware sets x-nonce on request headers (for Next.js script nonce injection)', () => {
-    const fs = require('fs')
-    const path = require('path')
     const middlewareSrc = fs.readFileSync(
       path.resolve(__dirname, '../../../src/middleware.ts'),
       'utf8'
@@ -615,8 +611,6 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
   })
 
   it('next.config.ts defines Permissions-Policy and Cache-Control headers', () => {
-    const fs = require('fs')
-    const path = require('path')
     const nextCfg = fs.readFileSync(
       path.resolve(__dirname, '../../../next.config.ts'),
       'utf8'
@@ -634,8 +628,6 @@ describe('Issue #151 -- BOARD_PASSWORD fail-closed (worker contract)', () => {
     // The previous code was: `const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'`
     // The new code must NOT have that bare fallback -- it must check NODE_ENV
     // and refuse in production.
-    const fs = require('fs')
-    const path = require('path')
     const workerSrc = fs.readFileSync(
       path.resolve(__dirname, '../../../mini-services/publish-worker/index.ts'),
       'utf8'
