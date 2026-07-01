@@ -126,3 +126,67 @@ export const webVitalsHistogram = new Histogram({
   buckets: [0.05, 0.1, 0.15, 0.2, 0.25, 0.5, 0.75, 1, 2, 3, 5],
   registers: [registry],
 })
+
+// ── Issue #155: SLO/SLI metrics ────────────────────────────────
+
+// Duplicate post detection (target: zero)
+export const duplicatePostsTotal = new Counter({
+  name: 'nashrino_duplicate_posts_total',
+  help: 'Confirmed duplicate external posts (target: zero)',
+  labelNames: ['provider'] as const,
+  registers: [registry],
+})
+
+// Unknown outcome tracking (target: <1% after 1h)
+export const unknownOutcomesTotal = new Counter({
+  name: 'nashrino_unknown_outcomes_total',
+  help: 'Publications with unknown outcome (not yet reconciled)',
+  labelNames: ['provider', 'age_bucket'] as const, // age_bucket: <1h, 1h-24h, >24h
+  registers: [registry],
+})
+
+// Credential health gauge (target: 95% ready)
+export const credentialHealthGauge = new Gauge({
+  name: 'nashrino_credential_health',
+  help: 'Channel credential health: 1=active, 0=expired/revoked/invalid',
+  labelNames: ['provider', 'status'] as const,
+  registers: [registry],
+})
+
+// Outbox age (target: oldest pending < 60s)
+export const outboxAgeSeconds = new Gauge({
+  name: 'nashrino_outbox_age_seconds',
+  help: 'Age of the oldest pending outbox event in seconds',
+  registers: [registry],
+})
+
+// Schedule punctuality (target: p95 < 60s)
+export const scheduleDelaySeconds = new Histogram({
+  name: 'nashrino_schedule_delay_seconds',
+  help: 'Delay between scheduledAt and provider request, in seconds',
+  labelNames: ['provider'] as const,
+  buckets: [1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600],
+  registers: [registry],
+})
+
+// Reconciliation state tracking
+export const reconciliationStateGauge = new Gauge({
+  name: 'nashrino_reconciliation_state',
+  help: 'Publications in each reconciliation state',
+  labelNames: ['state'] as const, // pending, confirmed_success, confirmed_failure, still_unknown
+  registers: [registry],
+})
+
+// Dead-letter count (target: zero growth)
+export const deadLetterCount = new Gauge({
+  name: 'nashrino_dead_letter_count',
+  help: 'Number of dead-lettered outbox events',
+  registers: [registry],
+})
+
+// Expired lease count (target: zero)
+export const expiredLeaseCount = new Counter({
+  name: 'nashrino_expired_leases_total',
+  help: 'Number of outbox leases that expired (dispatcher crash recovery)',
+  registers: [registry],
+})
