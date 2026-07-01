@@ -107,3 +107,34 @@ describe('Issue #149 — Stable logical operation identity', () => {
     })
   })
 })
+
+describe('Issue #149 — operationId wired to adapter', () => {
+  it('adapterJob.publicationOperationId is set before adapter.publish() call', () => {
+    // This test verifies that the worker sets publicationOperationId on the
+    // adapterJob before calling adapter.publish(). This is critical for
+    // provider-native idempotency — the same operation ID must be sent to
+    // the provider across all retries.
+    //
+    // The worker code does:
+    //   adapterJob.publicationOperationId = operationId
+    //   adapterJob.idempotencyKey = operationId
+    //   const result = await getAdapter(job.platform.type)?.publish(adapterJob)
+    //
+    // We verify by reading the source code (contract test).
+    const fs = require('fs')
+    const path = require('path')
+    const workerSrc = fs.readFileSync(
+      path.resolve(__dirname, '../../../mini-services/publish-worker/index.ts'),
+      'utf8'
+    )
+    // Verify the wiring exists in the correct order
+    expect(workerSrc).toMatch(/adapterJob\.publicationOperationId\s*=\s*operationId/)
+    expect(workerSrc).toMatch(/adapterJob\.idempotencyKey\s*=\s*operationId/)
+    // Verify it happens before adapter.publish()
+    const wiringIndex = workerSrc.indexOf('adapterJob.publicationOperationId = operationId')
+    const publishIndex = workerSrc.indexOf("getAdapter(job.platform.type)?.publish(adapterJob)")
+    expect(wiringIndex).toBeGreaterThan(-1)
+    expect(publishIndex).toBeGreaterThan(-1)
+    expect(publishIndex).toBeGreaterThan(wiringIndex)
+  })
+})

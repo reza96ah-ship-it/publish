@@ -324,6 +324,12 @@ const worker = new Worker(
 
     await emit(job, 'job:progress', 20, 'آماده‌سازی محتوا', null)
 
+    // Issue #149: wire publicationOperationId to the adapter so providers
+    // that support idempotency keys (LinkedIn, Instagram) receive the same
+    // stable operation ID across all retries — never generating a new key.
+    adapterJob.publicationOperationId = operationId
+    adapterJob.idempotencyKey = operationId
+
     // Publish via adapter
     const result = await getAdapter(job.platform.type)?.publish(adapterJob)
 
