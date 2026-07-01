@@ -309,5 +309,5 @@ jobs:
       - run: bunx prisma migrate deploy
       - run: bun run prisma/seed.ts
       - run: bun run seed:auth # Seed demo user for E2E
-      - run: bunx playwright install --with-deps chromium
+      - run: bunx playwright install --with-deps chromium firefox webkit
       - run: bun run test:e2e

@@ -117,19 +117,22 @@ export default function () {
 
 // ── Setup — verify the server is reachable ────────────────────
 export function setup() {
-  // Issue #153: fail early if auth token is missing — load test cannot pass without it
+  // Issue #153: fail early if auth token is missing — load test cannot pass without it.
+  // k6 does not have a built-in "fail setup" but we can throw to abort the test.
   if (!AUTH_TOKEN) {
     console.error('FATAL: K6_AUTH_TOKEN is not set. Load test requires authentication.')
     console.error('Obtain a JWT token by logging in via /api/auth/callback/credentials')
     console.error('Then run: K6_AUTH_TOKEN=<token> k6 run tests/load/publish-queue.js')
+    throw new Error('K6_AUTH_TOKEN is required — load test cannot pass without authentication')
   }
 
   const healthRes = http.get(`${BASE_URL}/api/health`)
   if (healthRes.status !== 200) {
     console.error(`Server not healthy at ${BASE_URL}/api/health — status: ${healthRes.status}`)
     console.error('Start the dev server first: bun run dev')
+    throw new Error('Server not healthy — cannot run load test')
   }
-  return { serverOk: healthRes.status === 200 }
+  return { serverOk: true }
 }
 
 // ── Teardown — print summary ──────────────────────────────────

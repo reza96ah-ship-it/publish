@@ -23,6 +23,12 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },
+  // Override the project's postcss.config.mjs (Tailwind v4 plugin) which Vite
+  // cannot load as a string — integration tests don't need CSS processing.
+  // This fixes the CI failure: "Invalid PostCSS Plugin found at: plugins[0]"
+  css: {
+    postcss: { plugins: [] },
+  },
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
