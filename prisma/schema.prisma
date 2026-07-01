@@ -667,18 +667,29 @@ model OutboxEvent {
   aggregateType String    @default("content")
   aggregateId   String    // contentId
   eventType     String    @default("publish_requested")
-  payload       Json      // { jobId, contentId, platformId, workspaceId, scheduledAt, idempotencyKey }
+  payload       Json      // { jobId, contentId, platformId, workspaceId, scheduledAt, idempotencyKey, publicationId, revisionId }
   traceParent   String?
-  status        String    @default("pending") // pending, delivered, failed
+  // Issue #148: explicit state machine — pending, claimed, delivered, retry_wait, dead_letter, cancelled
+  status        String    @default("pending")
   attemptCount  Int       @default(0)
   availableAt   DateTime  @default(now())
+  // Issue #148: lease/fencing fields
   lockedAt      DateTime?
-  lockedBy      String?   // dispatcher instance ID for fencing
+  lockedBy      String?   // dispatcher instance ID
+  lockExpiresAt DateTime? // when the lease expires (for crash recovery)
   deliveredAt   DateTime?
+  // Issue #148: error classification
   lastError     String?
+  lastErrorCategory String? // redis, db, serialization, payload, config
+  lastSafeError String?     // safe user message (no secrets)
+  // Issue #148: dead-letter + replay
+  deadLetteredAt DateTime?
+  replayedFromId String?    // original event ID if this is a replay
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   @@index([status, availableAt])
   @@index([aggregateId])
+  // Issue #148: index for lease expiry recovery queries
+  @@index([status, lockExpiresAt])
 }

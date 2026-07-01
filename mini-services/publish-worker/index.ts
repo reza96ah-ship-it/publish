@@ -28,7 +28,7 @@ import { decrypt } from './lib/crypto'
 import { writeAuditLog } from './lib/audit'
 import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
-import { startOutboxDispatcher, stopOutboxDispatcher } from './lib/outbox-dispatcher'
+import { startOutboxDispatcher, stopOutboxDispatcher, getDispatcherHealth } from './lib/outbox-dispatcher'
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
 import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
@@ -737,6 +737,8 @@ function startHealthServer() {
           inFlightJobs,
           queueDepth,
           failedCount,
+          // Issue #148: outbox dispatcher health (separate from worker processing)
+          outbox: getDispatcherHealth(),
           timestamp: new Date().toISOString(),
         })
       )
