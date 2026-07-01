@@ -116,6 +116,8 @@ jobs:
           NEXT_TELEMETRY_DISABLED: '1'
           NEXTAUTH_SECRET: test-secret
           NEXTAUTH_URL: http://localhost:3000
+      # Issue #157: enforce per-route JS bundle budgets after build
+      - run: bun run scripts/check-bundle-budgets.ts
 
       # Issue #141: Upload all reports as artifacts for release evidence
       - uses: actions/upload-artifact@v4
