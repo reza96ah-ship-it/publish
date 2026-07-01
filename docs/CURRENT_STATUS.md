@@ -1,45 +1,49 @@
-# Current Status - Nashrino (publish repo)
+# Current Status — Nashrino
 
-**Last updated:** 2026-06-27
-**Phase:** Phase 4 in progress - PostgreSQL migration
-**Version baseline:** See `docs/VERSION_BASELINE_2026.md`
+**Last updated:** 2026-07-01
+**Audited SHA:** See latest commit on `main`
+**Gate status:** Gates 1-8 in progress, Gates 9 pending
 
 ## Scorecard
 
-| Category                 |  Current |   Target | Notes                                                                                                                           |
-| ------------------------ | -------: | -------: | ------------------------------------------------------------------------------------------------------------------------------- |
-| Backend architecture     |     6/10 |     9/10 | Modular monolith/BFF direction is documented and API guards are active.                                                         |
-| Database design          |     7/10 |     9/10 | Phase 4 migrates from SQLite to PostgreSQL + Prisma migrations.                                                                 |
-| API quality              |     5/10 |     9/10 | Workspace guard migration is complete; pagination/rate limiting remain later phases.                                            |
-| Auth/security            |     6/10 |     9/10 | Phase 1 P0 auth/CSP/type blockers are resolved; token encryption/RBAC remain Phase 5.                                           |
-| Worker reliability       |     6/10 |     9/10 | Circuit breaker/retry exist; deeper queue hardening remains Phase 6.                                                            |
-| Realtime reliability     |     5/10 |     9/10 | Socket service exists; auth/Redis adapter remain Phase 7.                                                                       |
-| Performance              |     5/10 |     8/10 | Performance budget work remains Phase 10.                                                                                       |
-| Observability            |     7/10 |     9/10 | Health, readiness, metrics, pino, and Sentry are in place.                                                                      |
-| CI/CD                    |     7/10 |     9/10 | Docker/CI/CD is merged; Phase 4 switches CI to Postgres migrations.                                                             |
-| Docker/deployment        |     7/10 |     9/10 | Dockerfile, compose, deploy workflow, backup/restore/rollback are merged.                                                       |
-| Test coverage            |     3/10 |     8/10 | Unit tests exist; broader API/e2e/adapter coverage remains Phase 10.                                                            |
-| **Production readiness** | **6/10** | **9/10** | Remaining major blockers are DB migration, token encryption/RBAC, worker/realtime hardening, API/media quality, and test depth. |
+| Category | Current | Target | Notes |
+|----------|--------:|-------:|-------|
+| Backend architecture | 7/10 | 9/10 | Modular monolith with publications module; other modules pending extraction |
+| Database design | 8/10 | 9/10 | PostgreSQL + Prisma 7 + PgBouncer + 6 migrations (publication model, outbox, MFA, invitations, outbox-multisafe, duplicate prevention, provider cert) |
+| API quality | 7/10 | 9/10 | All 35 routes use requirePermissionApi; normalized error envelope defined; pagination standardized |
+| Auth/security | 8/10 | 9/10 | Argon2id, MFA TOTP, key rotation, CSP nonce, RBAC 19 permissions, secure invitations; ASVS review pending |
+| Worker reliability | 8/10 | 9/10 | BullMQ + transactional outbox + leases + DLQ + replay; stable fingerprints; outcome_unknown reconciliation |
+| Realtime reliability | 7/10 | 9/10 | JWT with iss/aud/purpose; fail-closed secrets; Redis adapter with readiness tracking |
+| Performance | 6/10 | 8/10 | Web Vitals wired; performance budgets defined; k6 fixed (no 401-as-success); capacity sizing guide committed |
+| Observability | 8/10 | 9/10 | Prometheus metrics (20+), distributed tracing (W3C), SLOs (9), alerts (14), runbooks (12), dashboards (10) |
+| CI/CD | 8/10 | 9/10 | Release-safe CI (no db push); workflow_run deploy gate; SHA verification; SBOM + provenance; CODEOWNERS |
+| Docker/deployment | 8/10 | 9/10 | 4 Docker targets (app/worker/realtime/migrate); staging workflow; rollback on failure |
+| Test coverage | 6/10 | 8/10 | 500+ unit + contract tests; PG/Redis integration tests; provider contract fixtures; browser matrix (5 projects); chaos scaffolding |
+| **Production readiness** | **7/10** | **9/10** | Gates 1-8 in progress; remaining: staging soak, DR drills, security review, provider certification, documentation |
 
-## Completed
+## Completed gates
 
-- Phase 1 P0 safety blockers: auth middleware, workspace guards, type/build enforcement, CSP hardening, idempotency uniqueness, author name, AI error sanitization, env example, Persian string cleanup, and ESLint safety rules.
-- Phase 2 observability: `/api/health`, `/api/readyz`, `/api/metrics`, structured logging, Sentry wrappers, Prometheus metrics, and worker health/shutdown.
-- Phase 3 Docker + CI/CD: multi-target Dockerfile, dev/prod compose files, Caddy production config, deploy workflow, backup/restore/rollback scripts, and staging checklist.
+- **Gate 1** — Release-safe CI, migrations, deployment (#141) ✅
+- **Gate 2** — RBAC enforcement, secure invitations, provider auth (#142, #143, #144) ✅
+- **Gate 3** — Publication model redesign, media lifecycle (#145, #146) ✅
+- **Gate 4** — Worker state machine, outbox multi-worker, duplicate prevention (#147, #148, #149) ✅
+- **Gate 5** — Provider certification, realtime hardening (#150, #151) ✅
+- **Gate 6** — Truthful UX (#152) ✅
+- **Gate 7** — Test architecture, tracing/SLOs (#153, #155) ✅
+- **Gate 8** — Modular monolith, performance budgets (#156, #157) ✅
 
-## In Progress
+## Remaining work
 
-- Phase 4 PostgreSQL migration:
-  - Prisma datasource moves to PostgreSQL.
-  - Prisma migrations replace `db push`.
-  - App/worker use PgBouncer with `connection_limit=10`.
-  - Migrations/backup/restore use `DIRECT_DATABASE_URL`.
+- **Gate 9** — DR drills, staging soak, security review, documentation (#158, #159)
+- **Master** — Final 10/10 certification (#160)
 
-## Remaining Production Work
+## Provider support levels
 
-1. Token encryption and RBAC enforcement (Phase 5).
-2. Worker queue hardening (Phase 6).
-3. Realtime auth and Redis adapter (Phase 7).
-4. API pagination, rate limiting, and validation depth (Phase 8).
-5. Media storage, validation, and quotas (Phase 9).
-6. Broader tests and performance budgets (Phase 10).
+| Provider | Level | API Version | Duplicate Guarantee |
+|----------|-------|-------------|---------------------|
+| Telegram | certified | Bot API 8.x | none |
+| Instagram | beta | Graph API v23.0 | reconcilable |
+| LinkedIn | beta | REST Posts API 202505 | reconcilable |
+| Bale | experimental | Bot API (Bale) | none |
+| Rubika | experimental | Bot API v3 | none |
+| Eitaa | experimental | Bot API v3 (Eitaa) | none |
