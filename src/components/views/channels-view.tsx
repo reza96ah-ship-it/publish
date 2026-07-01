@@ -21,6 +21,7 @@ import {
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
 import { useAnnounceValue, announce } from '@/lib/aria-live'
+import { getCapabilities } from '@/lib/provider-capabilities'
 import {
   SectionTitle,
   PlatformIcon,
@@ -28,6 +29,7 @@ import {
   SkeletonCard,
   LoadingState,
   AnimatedTabs,
+  ProviderSupportBadge,
 } from '@/components/dashboard/shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -90,6 +92,7 @@ const AVAILABLE_PLATFORMS = [
   { id: 'rubika', label: 'روبیکا', method: 'bot' },
   { id: 'eitaa', label: 'ایتا', method: 'bot' },
 ] as const
+
 
 export function ChannelsView() {
   const searchParams = useSearchParams()
@@ -316,7 +319,10 @@ function PlatformCard({ platform }: { platform: Platform }) {
         <div className="flex items-center gap-3 min-w-0">
           <PlatformIcon platform={platform.type} className="size-11 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[14px] font-[600] text-ink-primary truncate">{platform.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[14px] font-[600] text-ink-primary truncate">{platform.name}</p>
+              <ProviderSupportBadge level={getCapabilities(platform.type).supportLevel} />
+            </div>
             <p className="text-[11px] text-ink-tertiary truncate">@{platform.username || '—'}</p>
           </div>
         </div>
@@ -546,6 +552,7 @@ function ConnectDialog({
                 >
                   <PlatformIcon platform={p.id} className="size-7" />
                   <span className="text-[11px] font-[700] text-ink-primary">{p.label}</span>
+                  <ProviderSupportBadge level={getCapabilities(p.id).supportLevel} />
                 </button>
               ))}
             </div>

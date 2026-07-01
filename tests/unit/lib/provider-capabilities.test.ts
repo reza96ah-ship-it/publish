@@ -5,15 +5,28 @@ import {
   validateAgainstCapabilities,
   type PlatformKey,
 } from '../../../src/lib/provider-capabilities'
-// Worker copy — must export identical data (single source of truth)
+// Worker entry point — re-exports the same shared module (see below). No
+// hand-maintained copy exists anymore (Issue #150), so this import is
+// expected to be reference-identical to the shared module's exports, not
+// just deep-equal.
 import {
   PROVIDER_CAPABILITIES as WORKER_CAPS,
   getCapabilities as workerGetCaps,
   validateAgainstCapabilities as workerValidate,
 } from '../../../mini-services/publish-worker/lib/provider-capabilities'
+// The single shared source of truth both entry points re-export from.
+import { PROVIDER_CAPABILITIES as SHARED_CAPS } from '../../../shared/provider-capabilities'
 
-describe('Issue #117 — Provider Capability Registry', () => {
-  describe('canonical + worker copies are identical (single source of truth)', () => {
+describe('Issue #117 / #150 — Provider Capability Registry (single shared module)', () => {
+  describe('app + worker entry points re-export the same shared module (no duplication)', () => {
+    it('app entry point is reference-identical to the shared module', () => {
+      expect(PROVIDER_CAPABILITIES).toBe(SHARED_CAPS)
+    })
+
+    it('worker entry point is reference-identical to the shared module', () => {
+      expect(WORKER_CAPS).toBe(SHARED_CAPS)
+    })
+
     it('exports the same PROVIDER_CAPABILITIES object', () => {
       expect(WORKER_CAPS).toEqual(PROVIDER_CAPABILITIES)
     })

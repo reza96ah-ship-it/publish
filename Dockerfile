@@ -81,6 +81,11 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copy deps from the deps stage (not builder — avoids running next build)
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
+# Issue #150: shared/ holds framework-free modules imported by both the app
+# (src/lib/*) and the worker (mini-services/publish-worker/lib/*) — e.g. the
+# provider capability registry. It has no Next.js/React/Prisma dependencies,
+# so it's cheap to include here without pulling in src/.
+COPY shared ./shared
 COPY mini-services/publish-worker ./mini-services/publish-worker
 COPY prisma ./prisma
 COPY prisma.config.ts ./

@@ -18,17 +18,6 @@
  *
  * Permissions needed: instagram_basic, instagram_content_publish, pages_show_list,
  *   pages_read_engagement, instagram_manage_insights
- *
- * Issue #149 — idempotency key: VERIFIED (2026-07, Meta Graph API content
- * publishing docs) that neither POST /{ig-user-id}/media nor
- * POST /{ig-user-id}/media_publish accepts a client-supplied idempotency key
- * or dedupe token. `job.publicationOperationId`/`job.idempotencyKey` are
- * therefore NOT forwarded to Instagram's HTTP requests — there is nothing on
- * their side to send it to. A retried media_publish call after an ambiguous
- * timeout risks a second live post; duplicate prevention for Instagram
- * relies entirely on this codebase's own fingerprint/ledger checks
- * (mini-services/publish-worker/lib/attempt-ledger.ts) and on NOT retrying
- * outcomeUnknown results (see the FetchTimeoutError branch below).
  */
 
 import type {
@@ -45,7 +34,11 @@ import type {
 import { getCapabilities } from '../lib/provider-capabilities'
 import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
-const GRAPH_API = 'https://graph.facebook.com/v21.0'
+// Issue #150: Graph API version is now configurable via env var.
+// Default: v23.0 (current as of 2025-07). Update INSTAGRAM_GRAPH_API_VERSION env var when Meta releases a new version.
+// Track deprecations: https://developers.facebook.com/docs/graph-api/changelog
+const IG_GRAPH_VERSION = process.env.INSTAGRAM_GRAPH_API_VERSION || 'v23.0'
+const GRAPH_API = `https://graph.facebook.com/${IG_GRAPH_VERSION}`
 // Issue #117: limits now come from the capability registry (single source of truth)
 
 export class InstagramAdapter implements ChannelAdapter {
@@ -225,13 +218,25 @@ export class InstagramAdapter implements ChannelAdapter {
         }
       }
 
-      // Issue #147 A: typed errorCategory from Meta's Graph API error codes.
-      // 190 = invalid/expired token (auth). 4, 32, 17 = app/user rate limits.
+      // Issue #150: comprehensive Meta error code normalization.
+      // Reference: https://developers.facebook.com/docs/graph-api/guides/error-handling
+      // Bug fix: code 2500 ("Error validating application" / invalid app-level
+      // auth) was listed in BOTH the auth and not_found branches below — since
+      // the auth check ran first, the not_found copy was dead code. 2500 is an
+      // application/auth validation error (see Meta's error-handling guide),
+      // so it belongs only in the auth branch. It is not used for "not found"
+      // conditions; code 100 (invalid parameter/object, e.g. invalid carousel
+      // size or media type per the Instagram Content Publishing error table)
+      // already covers that category.
       const code = err.code
+      const subcode = err.error_subcode
       let errorCategory: ErrorCategory = 'unknown'
-      if (code === 190) errorCategory = 'auth'
-      else if (code === 4 || code === 17 || code === 32) errorCategory = 'rate_limit'
+      if (code === 190 || code === 102 || code === 10) errorCategory = 'auth' // token expired/invalid
+      else if (code === 200 || code === 220 || code === 2500) errorCategory = 'auth' // permission / app validation denied
+      else if (code === 4 || code === 17 || code === 32 || code === 613) errorCategory = 'rate_limit'
+      else if (code === 100) errorCategory = 'not_found' // invalid parameter / object
       else if (typeof code === 'number' && code >= 500) errorCategory = 'network'
+      else if (subcode === 2201 || subcode === 2202) errorCategory = 'auth' // service unavailable / token
       const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
 
       return {

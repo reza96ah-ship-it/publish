@@ -7,6 +7,7 @@ import { toPersianDigits, formatCompact } from '@/lib/jalali'
 import { cn } from '@/lib/utils'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { ILLUSTRATIONS, type IllustrationKey } from '@/components/dashboard/illustrations'
+import { type ProviderSupportLevel } from '@/lib/provider-capabilities'
 
 /* ============================================================================
    SHARED DASHBOARD COMPONENTS v4
@@ -34,6 +35,32 @@ export function StatusBadge({ label, variant }: { label: string; variant: string
   return (
     <span
       className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${map[variant] ?? map.draft}`}
+    >
+      {label}
+    </span>
+  )
+}
+
+/**
+ * Issue #150: ProviderSupportBadge — show certified / beta / experimental
+ * next to any provider or channel selection surface.
+ */
+export function ProviderSupportBadge({ level }: { level: ProviderSupportLevel }) {
+  const label =
+    level === 'certified' ? 'تأییدشده' : level === 'beta' ? 'بتا' : 'آزمایشی'
+  const cls =
+    level === 'certified'
+      ? 'border-success/30 bg-success/10 text-success'
+      : level === 'beta'
+        ? 'border-warning/30 bg-warning/10 text-warning'
+        : 'border-border bg-surface-subtle text-ink-tertiary'
+  return (
+    <span
+      className={cn(
+        'text-[9px] font-[700] px-1.5 py-0.5 rounded-full border inline-flex items-center',
+        cls
+      )}
+      title={`سطح پشتیبانی: ${label}`}
     >
       {label}
     </span>
