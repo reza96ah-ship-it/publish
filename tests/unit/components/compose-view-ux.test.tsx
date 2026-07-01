@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 import { renderWithProviders } from '../../setup'
 import { ComposeView } from '../../../src/components/views/compose-view'
 
@@ -24,8 +26,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
       // The compose view should NOT require media when all selected channels
       // support text-only posts (Telegram, LinkedIn).
       // This is verified by reading the source code (contract test).
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -36,8 +36,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
     })
 
     it('shows per-channel media requirement message only when needed', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -49,8 +47,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
 
   describe('Task 2 — Durable autosave', () => {
     it('autosave checks response.ok before showing saved', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -61,8 +57,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
     })
 
     it('draft restoration fetches /api/compose-draft on mount', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -74,8 +68,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
 
   describe('Task 3 — Scheduling UX', () => {
     it('validates scheduledAt is in the future', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -85,8 +77,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
     })
 
     it('validates scheduledAt is present when schedule mode is selected', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -98,8 +88,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
 
   describe('Task 4 — Truthful publication feedback', () => {
     it('announces "queued" not "published" on API acceptance', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
@@ -110,8 +98,6 @@ describe('Issue #152 — Composer UX truthfulness', () => {
     })
 
     it('loading says "sending to queue" not "publishing"', () => {
-      const fs = require('fs')
-      const path = require('path')
       const src = fs.readFileSync(
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
