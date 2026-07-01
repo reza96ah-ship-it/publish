@@ -36,3 +36,50 @@ export const publishDurationHistogram = new Histogram({
   buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120],
   registers: [workerRegistry],
 })
+
+// Issue #148: Outbox operational metrics
+// These gauges/counters give operators visibility into outbox health.
+
+export const outboxPendingGauge = new (require('prom-client').Gauge)({
+  name: 'nashrino_outbox_pending_count',
+  help: 'Number of outbox events in pending state',
+  registers: [workerRegistry],
+})
+
+export const outboxClaimedGauge = new (require('prom-client').Gauge)({
+  name: 'nashrino_outbox_claimed_count',
+  help: 'Number of outbox events currently claimed (leased) by dispatchers',
+  registers: [workerRegistry],
+})
+
+export const outboxDeadLetterGauge = new (require('prom-client').Gauge)({
+  name: 'nashrino_outbox_dead_letter_count',
+  help: 'Number of outbox events in dead_letter state',
+  registers: [workerRegistry],
+})
+
+export const outboxOldestPendingAgeGauge = new (require('prom-client').Gauge)({
+  name: 'nashrino_outbox_oldest_pending_age_seconds',
+  help: 'Age in seconds of the oldest pending outbox event',
+  registers: [workerRegistry],
+})
+
+export const outboxExpiredLeasesCounter = new Counter({
+  name: 'nashrino_outbox_expired_leases_total',
+  help: 'Number of outbox leases that expired (dispatcher crash recovery)',
+  registers: [workerRegistry],
+})
+
+export const outboxDispatchFailuresCounter = new Counter({
+  name: 'nashrino_outbox_dispatch_failures_total',
+  help: 'Outbox dispatch failures by error category',
+  labelNames: ['category'] as const,
+  registers: [workerRegistry],
+})
+
+export const outboxDeliveryLatencyHistogram = new Histogram({
+  name: 'nashrino_outbox_delivery_latency_seconds',
+  help: 'Time from outbox event creation to delivery (enqueue to BullMQ)',
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 30, 60],
+  registers: [workerRegistry],
+})
