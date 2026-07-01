@@ -15,6 +15,13 @@ import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { publishJobsAccepted } from '@/lib/metrics'
 import {
+  extractFromHeaders,
+  startTrace,
+  withSpan,
+  type TraceContext,
+} from '@/lib/tracing'
+import { structuredLogger } from '@/lib/structured-logger'
+import {
   publicationsService,
   PermissionDeniedError,
   InvalidBodyError,
@@ -26,9 +33,18 @@ import {
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
-  // Issue #142: requirePermissionApi combines workspace membership + content.publish permission
-  const guard = await requirePermissionApi('content.publish')
-  if (guard.error) return guard.error
+  // Issue #155: accept incoming W3C trace context (or mint a new one) so the
+  // entire publish lifecycle can be correlated across API → DB → outbox →
+  // worker → provider → realtime.
+  const incomingTrace = extractFromHeaders(req.headers)
+  const trace: TraceContext = incomingTrace ?? startTrace('publish.request')
+
+  return withSpan(
+    'publish.route',
+    async () => {
+      // Issue #142: requirePermissionApi combines workspace membership + content.publish permission
+      const guard = await requirePermissionApi('content.publish')
+      if (guard.error) return guard.error
 
   // Resolve author name for the content record
   const session = await getServerSession(authOptions)
@@ -56,6 +72,7 @@ export async function POST(req: Request) {
     userId: (session?.user as any)?.id ?? '',
     authorName,
     role: guard.role,
+    trace,
   }
 
   try {
@@ -64,13 +81,44 @@ export async function POST(req: Request) {
     for (const job of result.jobs) {
       publishJobsAccepted.inc({ workspace: auth.workspaceId, platform: job.platform })
     }
+    structuredLogger.info({
+      trace,
+      operation: 'publish.route',
+      workspaceId: auth.workspaceId,
+      contentId: result.contentId,
+      outcome: 'success',
+      msg: `accepted ${result.jobs.length} publish job(s)`,
+      extra: { platforms: result.jobs.map((j) => j.platform) },
+    })
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
     // Map domain errors to HTTP responses
     if (err instanceof PublicationError) {
+      structuredLogger.warn({
+        trace,
+        operation: 'publish.route',
+        workspaceId: auth.workspaceId,
+        outcome: 'permanent_failure',
+        errorCategory: 'validation',
+        msg: err.userMessage ?? err.message,
+      })
       return NextResponse.json({ error: err.userMessage ?? err.message }, { status: err.statusCode })
     }
-    console.error('[publish] unexpected error:', err)
+    structuredLogger.error({
+      trace,
+      operation: 'publish.route',
+      workspaceId: auth.workspaceId,
+      outcome: 'permanent_failure',
+      errorCategory: 'internal',
+      msg: 'unexpected error in publish route',
+      extra: { error: err instanceof Error ? err.message : String(err) },
+    })
     return NextResponse.json({ error: 'خطای داخلی سرور' }, { status: 500 })
   }
+    },
+    {
+      workspaceId: '',
+      operation: 'publish.route',
+    }
+  )
 }

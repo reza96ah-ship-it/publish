@@ -36,3 +36,35 @@ export const publishDurationHistogram = new Histogram({
   buckets: [0.1, 0.5, 1, 2, 5, 10, 30, 60, 120],
   registers: [workerRegistry],
 })
+
+// Issue #155: SLO metrics for the worker
+// These are incremented at call sites in the worker to track SLOs.
+
+export const unknownOutcomesCounter = new Counter({
+  name: 'nashrino_unknown_outcomes_total',
+  help: 'Publications with unknown provider outcome (timeout, response loss)',
+  labelNames: ['platform'] as const,
+  registers: [workerRegistry],
+})
+
+export const scheduleDelayHistogram = new Histogram({
+  name: 'nashrino_schedule_delay_seconds',
+  help: 'Delay between scheduledAt and actual provider request (schedule punctuality)',
+  labelNames: ['platform'] as const,
+  buckets: [1, 5, 10, 30, 60, 120, 300, 600],
+  registers: [workerRegistry],
+})
+
+export const duplicateDetectionCounter = new Counter({
+  name: 'nashrino_duplicate_detections_total',
+  help: 'Duplicate external posts prevented by fingerprint check',
+  labelNames: ['platform'] as const,
+  registers: [workerRegistry],
+})
+
+export const credentialHealthGauge = new (require('prom-client').Gauge)({
+  name: 'nashrino_credential_health',
+  help: 'Credential health by platform (1=valid, 0=expired/invalid)',
+  labelNames: ['platform'] as const,
+  registers: [workerRegistry],
+})

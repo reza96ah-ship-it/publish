@@ -1,0 +1,90 @@
+{
+  "annotations": { "list": [] },
+  "title": "Nashrino Service Health",
+  "uid": "nashrino-service-health",
+  "version": 1,
+  "schemaVersion": 39,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "title": "Publish Success Rate",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(nashrino_publish_jobs_completed_total{outcome=\"success\"}[5m])) / sum(rate(nashrino_publish_jobs_completed_total[5m]))",
+          "legendFormat": "success rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.95 },
+              { "color": "green", "value": 0.995 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Publications per Minute",
+      "type": "graph",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(nashrino_publish_jobs_completed_total[1m])) * 60",
+          "legendFormat": "publications/min"
+        }
+      ]
+    },
+    {
+      "title": "Queue Depth",
+      "type": "graph",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "expr": "nashrino_queue_depth",
+          "legendFormat": "depth"
+        }
+      ]
+    },
+    {
+      "title": "Unknown Outcomes",
+      "type": "graph",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 6 },
+      "targets": [
+        {
+          "expr": "rate(nashrino_unknown_outcomes_total[5m])",
+          "legendFormat": "{{platform}}"
+        }
+      ]
+    },
+    {
+      "title": "Dead-Letter Count",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 6 },
+      "targets": [
+        {
+          "expr": "nashrino_outbox_dead_letter_count",
+          "legendFormat": "DLQ"
+        }
+      ]
+    },
+    {
+      "title": "Schedule Lateness p95",
+      "type": "graph",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(nashrino_schedule_delay_seconds_bucket[5m]))",
+          "legendFormat": "p95 lateness (s)"
+        }
+      ]
+    }
+  ]
+}
