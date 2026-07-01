@@ -187,5 +187,52 @@ describe('Issue #147 A — adapter error classification → RetryDirective', () 
       expect(result.errorCategory).toBe('rate_limit')
       expect(normalizePublishResult(result).kind).toBe('retry')
     })
+
+    it('error code 100 (invalid parameter/object) → not_found, action_required', async () => {
+      // Bug fix regression test: code 100 previously shared a branch with the
+      // dead-code duplicate of 2500. Confirm 100 alone still classifies as
+      // not_found and is never retried.
+      fetchMock.mockResolvedValueOnce({ json: async () => ({ id: 'container-1' }) })
+      fetchMock.mockResolvedValueOnce({
+        json: async () => ({ error: { message: 'invalid parameter', code: 100 } }),
+      })
+      const result = await new InstagramAdapter().publish(
+        makeJob(account, { mediaItems: [{ type: 'photo', url: 'https://x.com/i.jpg' }] })
+      )
+      expect(result.errorCategory).toBe('not_found')
+      expect(result.retryable).toBe(false)
+      expect(normalizePublishResult(result).kind).toBe('action_required')
+    })
+
+    it('error code 2500 (app/permission validation) → auth, action_required (not not_found)', async () => {
+      // Bug fix: code 2500 used to appear in BOTH the auth and not_found
+      // branches. Since auth was checked first, the not_found copy was
+      // unreachable dead code. Per Meta's error-handling guide, 2500 is an
+      // application/permission validation error, so it must classify as
+      // 'auth' — never 'not_found'.
+      fetchMock.mockResolvedValueOnce({ json: async () => ({ id: 'container-1' }) })
+      fetchMock.mockResolvedValueOnce({
+        json: async () => ({ error: { message: 'error validating application', code: 2500 } }),
+      })
+      const result = await new InstagramAdapter().publish(
+        makeJob(account, { mediaItems: [{ type: 'photo', url: 'https://x.com/i.jpg' }] })
+      )
+      expect(result.errorCategory).toBe('auth')
+      expect(result.errorCategory).not.toBe('not_found')
+      expect(result.retryable).toBe(false)
+      expect(normalizePublishResult(result).kind).toBe('action_required')
+    })
+
+    it('error code 220 (permission denied) → auth, action_required', async () => {
+      fetchMock.mockResolvedValueOnce({ json: async () => ({ id: 'container-1' }) })
+      fetchMock.mockResolvedValueOnce({
+        json: async () => ({ error: { message: 'permission denied', code: 220 } }),
+      })
+      const result = await new InstagramAdapter().publish(
+        makeJob(account, { mediaItems: [{ type: 'photo', url: 'https://x.com/i.jpg' }] })
+      )
+      expect(result.errorCategory).toBe('auth')
+      expect(normalizePublishResult(result).kind).toBe('action_required')
+    })
   })
 })

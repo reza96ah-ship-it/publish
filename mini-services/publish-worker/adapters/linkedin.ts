@@ -23,10 +23,17 @@
  *      5xx (retryable). Returns typed errorCategory so the worker never
  *      retries auth failures (BUG-05).
  *
- * Two-step image upload:
- *   1. POST /rest/assets?action=registerUpload → get uploadUrl + asset URN
- *   2. PUT <uploadUrl> with binary image data
- *   3. POST /rest/posts with content.media.id = asset URN
+ * Three-step image upload (Issue #150 — migrated off the deprecated
+ * registerUpload flow to the current Images API):
+ *   1. POST /rest/images with { initializeUploadRequest: { owner } } →
+ *      response is { value: { uploadUrl, image } }, where `image` is a
+ *      urn:li:digitalmediaImage:{id} (NOT an asset URN, and NOT nested
+ *      under `value.asset` — that shape belonged to the old API).
+ *   2. GET the source image and PUT its bytes to <uploadUrl> with the
+ *      real Content-Type detected from the download response (not a
+ *      hardcoded image/jpeg).
+ *   3. POST /rest/posts with content.media.id = the image URN from step 1.
+ * See uploadImage() below for the implementation.
  *
  * Rate limits: 100K calls/day app-level, ~90 posts/day per member.
  * Token refresh: POST /oauth/v2/accessToken with refresh_token (60-day cycle).

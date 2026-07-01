@@ -34,6 +34,7 @@ import {
   SectionTitle,
   PlatformIcon,
   PlatformBadge,
+  ProviderSupportBadge,
   Skeleton,
   LoadingState,
   EmptyState,
@@ -506,6 +507,7 @@ export function ComposeView() {
                 >
                   <PlatformIcon platform={p.type} className="size-4" />
                   <span>{p.name}</span>
+                  <ProviderSupportBadge level={getCapabilities(p.type).supportLevel} />
                   {isSelected && <Check className="size-3.5" strokeWidth={2.5} />}
                 </button>
               )
