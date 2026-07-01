@@ -1,68 +1,38 @@
 /**
- * POST /api/members/invite/revoke — revoke a pending invitation (Issue #143).
+ * POST /api/members/invite/revoke — revoke a pending invitation (Issue #143, #156).
  *
- * Sets revokedAt on the invitation, making it unusable for acceptance.
- * Permission: member.invite (admin-only).
+ * Thin transport handler: auth → validate → service.revokeInvitation() → map.
+ *
+ * The service (src/modules/membership/service.ts) owns the revoke policy:
+ *   idempotent on already-revoked, refuses to revoke an already-accepted
+ *   invitation, audit log.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { membershipService, MembershipError } from '@/modules/membership'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const guard = await requirePermissionApi('member.invite')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspaceId
 
   const body = await req.json().catch(() => null)
   if (!body?.id || typeof body.id !== 'string') {
     return NextResponse.json({ error: 'شناسه دعوت‌نامه الزامی است' }, { status: 400 })
   }
 
-  // Find the invitation — must belong to this workspace (object-level auth)
-  const invitation = await db.workspaceInvitation.findFirst({
-    where: { id: body.id, workspaceId },
-  })
-
-  if (!invitation) {
-    return NextResponse.json({ error: 'دعوت‌نامه یافت نشد' }, { status: 404 })
-  }
-
-  if (invitation.revokedAt) {
-    return NextResponse.json({ ok: true, message: 'دعوت‌نامه قبلاً لغو شده است' })
-  }
-
-  if (invitation.acceptedAt) {
-    return NextResponse.json(
-      { error: 'نمی‌توان دعوت‌نامه پذیرفته‌شده را لغو کرد' },
-      { status: 400 }
-    )
-  }
-
-  await db.workspaceInvitation.update({
-    where: { id: body.id },
-    data: { revokedAt: new Date() },
-  })
-
-  // Write audit event — failure must not crash the happy path (revoke already committed)
   try {
-    await db.auditLog.create({
-      data: {
-        userId: guard.userId,
-        workspaceId,
-        action: 'invitation.revoked',
-        resource: 'WorkspaceInvitation',
-        metadata: {
-          invitationId: body.id,
-          email: invitation.emailNormalized,
-        },
-      },
-    })
-  } catch {
-    // audit write failure is non-fatal
+    const result = await membershipService.revokeInvitation(
+      { workspaceId: guard.workspaceId, userId: guard.userId, role: guard.role },
+      { id: body.id }
+    )
+    return NextResponse.json(result)
+  } catch (err) {
+    if (err instanceof MembershipError) {
+      return NextResponse.json({ error: err.userMessage ?? err.message }, { status: err.statusCode })
+    }
+    throw err
   }
-
-  return NextResponse.json({ ok: true, message: 'دعوت‌نامه لغو شد' })
 }
