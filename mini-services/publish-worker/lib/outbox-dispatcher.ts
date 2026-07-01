@@ -16,8 +16,10 @@ import {
   outboxPendingGauge,
   outboxClaimedGauge,
   outboxDeadLetterGauge,
+  outboxOldestPendingAgeGauge,
   outboxExpiredLeasesCounter,
   outboxDispatchFailuresCounter,
+  outboxDeliveryLatencyHistogram,
 } from './metrics'
 import { enqueuePublishJob } from './queue'
 import { randomUUID } from 'crypto'
@@ -27,27 +29,93 @@ const BATCH_SIZE = 20
 const MAX_ATTEMPTS = 10
 const LEASE_DURATION_MS = 30_000 // 30 seconds — if a dispatcher crashes, another can reclaim after this
 const MAX_BACKOFF_MS = 300_000 // 5 minutes max backoff
+const METRICS_REFRESH_INTERVAL_MS = 15_000 // how often to recompute pending/DLQ gauges
 
 const INSTANCE_ID = randomUUID()
 
 let running = false
 let timer: ReturnType<typeof setTimeout> | null = null
 let activeClaims = 0
+let metricsTimer: ReturnType<typeof setInterval> | null = null
 
 export function startOutboxDispatcher(): void {
   if (running) return
   running = true
   console.log(`[outbox] dispatcher started (instance=${INSTANCE_ID}, poll=${POLL_INTERVAL_MS}ms, lease=${LEASE_DURATION_MS}ms)`)
   scheduleTick()
+
+  // Issue #148: periodically refresh the point-in-time gauges (pending count,
+  // dead-letter count, oldest pending age) that aren't naturally updated by
+  // the claim/delivery path.
+  refreshGauges().catch((err) => console.error('[outbox] metrics refresh error:', err))
+  metricsTimer = setInterval(() => {
+    refreshGauges().catch((err) => console.error('[outbox] metrics refresh error:', err))
+  }, METRICS_REFRESH_INTERVAL_MS)
 }
 
-export function stopOutboxDispatcher(): void {
+/**
+ * Issue #148: Recompute the outbox gauges that reflect point-in-time state
+ * (as opposed to counters incremented at the moment something happens).
+ */
+async function refreshGauges(): Promise<void> {
+  const [pendingCount, deadLetterCount, oldestPending] = await Promise.all([
+    db.outboxEvent.count({ where: { status: 'pending' } }),
+    db.outboxEvent.count({ where: { status: 'dead_letter' } }),
+    db.outboxEvent.findFirst({
+      where: { status: 'pending' },
+      orderBy: { availableAt: 'asc' },
+      select: { createdAt: true },
+    }),
+  ])
+
+  outboxPendingGauge.set(pendingCount)
+  outboxDeadLetterGauge.set(deadLetterCount)
+  outboxOldestPendingAgeGauge.set(
+    oldestPending ? (Date.now() - oldestPending.createdAt.getTime()) / 1000 : 0
+  )
+}
+
+const SHUTDOWN_POLL_INTERVAL_MS = 100
+const SHUTDOWN_DRAIN_TIMEOUT_MS = 30_000 // matches worker's overall stopTimeout
+
+/**
+ * Issue #148: Graceful shutdown — stop claiming new batches and actually
+ * wait (poll) for any in-flight claims to finish delivering before
+ * returning, up to a bounded timeout. Callers should `await` this before
+ * proceeding with the rest of process shutdown.
+ */
+export async function stopOutboxDispatcher(timeoutMs: number = SHUTDOWN_DRAIN_TIMEOUT_MS): Promise<void> {
   running = false
   if (timer) {
     clearTimeout(timer)
     timer = null
   }
-  console.log('[outbox] dispatcher stopped — waiting for active claims to finish')
+  if (metricsTimer) {
+    clearInterval(metricsTimer)
+    metricsTimer = null
+  }
+
+  if (activeClaims === 0) {
+    console.log('[outbox] dispatcher stopped — no active claims')
+    return
+  }
+
+  console.log(`[outbox] dispatcher stopping — waiting for ${activeClaims} active claim(s) to finish (timeout=${timeoutMs}ms)`)
+
+  const deadline = Date.now() + timeoutMs
+  while (activeClaims > 0 && Date.now() < deadline) {
+    await sleep(SHUTDOWN_POLL_INTERVAL_MS)
+  }
+
+  if (activeClaims > 0) {
+    console.warn(`[outbox] dispatcher stop timed out with ${activeClaims} active claim(s) still in flight`)
+  } else {
+    console.log('[outbox] dispatcher stopped — active claims drained')
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 /**
@@ -174,7 +242,8 @@ async function claimBatch(): Promise<ClaimedEvent[]> {
           "OutboxEvent".id,
           "OutboxEvent".payload,
           "OutboxEvent"."attemptCount",
-          "OutboxEvent"."workspaceId"
+          "OutboxEvent"."workspaceId",
+          "OutboxEvent"."createdAt"
       `
       return rows
     })
@@ -191,6 +260,7 @@ interface ClaimedEvent {
   payload: Record<string, unknown>
   attemptCount: number
   workspaceId: string
+  createdAt: Date
 }
 
 /**
@@ -244,6 +314,9 @@ async function deliverEvent(event: ClaimedEvent): Promise<void> {
     // Our lease expired and another dispatcher reclaimed it — don't overwrite
     console.warn(`[outbox] event ${event.id} lease expired before delivery — another dispatcher may have reclaimed it`)
   } else {
+    // Issue #148: observe end-to-end latency from event creation to delivery
+    const latencySeconds = (Date.now() - event.createdAt.getTime()) / 1000
+    outboxDeliveryLatencyHistogram.observe(latencySeconds)
     console.log(`[outbox] delivered event ${event.id} → job ${deterministicJobId}`)
   }
 }
@@ -277,18 +350,18 @@ async function handleDeliveryFailure(event: ClaimedEvent, err: unknown): Promise
       availableAt,
       lastError: error,
       lastErrorCategory: errorCategory,
-      // Issue #148: increment dispatch failure metric
-      // outboxDispatchFailuresCounter.inc(errorCategory) — called by caller
       lastSafeError: safeErrorMessage(errorCategory, error),
       lockedBy: null,
       lockedAt: null,
       lockExpiresAt: null,
       status: isExhausted ? 'dead_letter' : 'retry_wait',
       deadLetteredAt: isExhausted ? new Date() : null,
-      // Issue #148: increment dead-letter metric when event is dead-lettered
-      ...(isExhausted ? { _metricsDeadLetter: true } : {}),
     },
   })
+
+  // Issue #148: increment dispatch failure + dead-letter metrics based on the
+  // status we actually wrote (not a fake column on the Prisma model).
+  outboxDispatchFailuresCounter.inc({ category: errorCategory })
 
   if (result.count === 0) {
     console.warn(`[outbox] event ${event.id} lease expired during failure — another dispatcher may have reclaimed it`)

@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Check if the associated publication was cancelled — don't replay cancelled work
   const payload = original.payload as { publicationId?: string; jobId?: string }
   if (payload.publicationId) {
-    const publication = await (db as any).publication.findFirst({
+    const publication = await db.publication.findFirst({
       where: { id: payload.publicationId, workspaceId },
       select: { status: true },
     })

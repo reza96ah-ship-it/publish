@@ -837,7 +837,7 @@ async function shutdown(signal: string) {
   shuttingDown = true
   // #112: log clearly so ops can confirm graceful drain in logs
   console.log(`\n[worker] ${signal} — graceful shutdown started (stopTimeout=30s)`)
-  stopOutboxDispatcher()
+  await stopOutboxDispatcher()
   stopTokenExpiryScanner()
   stopInvitationCleanup()
   stopMediaCleanup()
