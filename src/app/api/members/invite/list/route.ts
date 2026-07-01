@@ -1,53 +1,26 @@
 /**
- * GET /api/members/invite/list — list pending invitations (Issue #143).
+ * GET /api/members/invite/list — list pending invitations (Issue #143, #156).
  *
- * Returns invitations for the current workspace. Never returns tokenHash.
- * Permission: member.invite (admin-only).
+ * Thin transport handler: auth → service.listInvitations() → map.
+ *
+ * The service (src/modules/membership/service.ts) + repository enforce that
+ * tokenHash is NEVER selected — it must never appear in API responses.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { membershipService } from '@/modules/membership'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const guard = await requirePermissionApi('member.invite')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspaceId
 
-  const invitations = await db.workspaceInvitation.findMany({
-    where: { workspaceId },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      emailNormalized: true,
-      role: true,
-      expiresAt: true,
-      acceptedAt: true,
-      revokedAt: true,
-      createdAt: true,
-      // NEVER select tokenHash — it must never appear in API responses
-    },
+  const result = await membershipService.listInvitations({
+    workspaceId: guard.workspaceId,
+    userId: guard.userId,
+    role: guard.role,
   })
-
-  const now = new Date()
-  return NextResponse.json({
-    data: invitations.map((inv) => ({
-      id: inv.id,
-      email: inv.emailNormalized,
-      role: inv.role,
-      status: inv.acceptedAt
-        ? 'accepted'
-        : inv.revokedAt
-          ? 'revoked'
-          : inv.expiresAt < now
-            ? 'expired'
-            : 'pending',
-      expiresAt: inv.expiresAt.toISOString(),
-      acceptedAt: inv.acceptedAt?.toISOString() ?? null,
-      revokedAt: inv.revokedAt?.toISOString() ?? null,
-      createdAt: inv.createdAt.toISOString(),
-    })),
-  })
+  return NextResponse.json(result)
 }
