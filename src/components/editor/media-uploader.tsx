@@ -62,9 +62,14 @@ export function MediaUploader({
 
   const handleUpload = useCallback(
     async (files: FileList | File[]) => {
-      const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/'))
+      // Issue #146 follow-up: video upload is now supported end-to-end
+      // (presign, magic-byte detection, ffprobe duration/codec, ffmpeg
+      // thumbnail) — no longer gated to images only.
+      const fileArray = Array.from(files).filter(
+        (f) => f.type.startsWith('image/') || f.type.startsWith('video/')
+      )
       if (fileArray.length === 0) {
-        toast.error('فقط فایل تصویری قابل آپلود است')
+        toast.error('فقط فایل تصویری یا ویدیویی قابل آپلود است')
         return
       }
 
@@ -196,11 +201,11 @@ export function MediaUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
           multiple
           onChange={handleFileSelect}
           className="hidden"
-          aria-label="آپلود فایل تصویری"
+          aria-label="آپلود فایل تصویری یا ویدیویی"
         />
 
         {isUploading ? (
@@ -220,10 +225,10 @@ export function MediaUploader({
             </div>
             <div>
               <p className="text-[12px] font-[600] text-ink-secondary">
-                {isDragging ? 'فایل را اینجا رها کنید' : 'تصویر را اینجا بکشید یا کلیک کنید'}
+                {isDragging ? 'فایل را اینجا رها کنید' : 'تصویر یا ویدیو را اینجا بکشید یا کلیک کنید'}
               </p>
               <p className="text-[10px] text-ink-tertiary mt-0.5">
-                JPEG, PNG, WebP, GIF — حداکثر ۱۰ مگابایت
+                JPEG, PNG, WebP, GIF (حداکثر ۱۰ مگابایت) — MP4, MOV, WebM (حداکثر ۲۰۰ مگابایت)
               </p>
             </div>
           </div>

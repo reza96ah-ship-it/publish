@@ -75,6 +75,19 @@ export interface PublishResult {
   retryable: boolean
   /** structured error category — worker uses this instead of Persian string matching */
   errorCategory?: ErrorCategory
+  /**
+   * Issue #147 A: provider-supplied retry delay (e.g. Telegram's retry_after,
+   * in seconds, converted to ms here). When present, the worker's backoff
+   * computation honors it instead of the default exponential schedule.
+   */
+  retryAfterMs?: number
+  /**
+   * Issue #147 D: set when the outcome is genuinely ambiguous — e.g. a
+   * request timeout where we don't know if the provider received/processed
+   * it. The normalizer maps this to RetryDirective's `outcome_unknown` kind
+   * instead of blindly retrying (which could create a duplicate post).
+   */
+  outcomeUnknown?: boolean
   /** simulated step labels for UI progression (mock mode) */
   steps?: { label: string; at: number }[]
 }

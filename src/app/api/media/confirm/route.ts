@@ -15,8 +15,16 @@
  *
  * On any failure: the stored object is deleted and the row is marked
  * "rejected" with a safe reason (not deleted — keeps an audit trail).
- * On success: status becomes "validated" and a derived thumbnail is generated.
+ * On success: status becomes "validated" and a derived thumbnail is generated
+ * (images: sharp resize; videos: ffprobe duration/codec + ffmpeg frame grab,
+ * see src/lib/video-probe.ts).
  * Idempotent — re-confirming an already-validated row returns the same result.
+ *
+ * Storage note: both the local-disk and S3 code paths in src/lib/storage.ts
+ * are implemented, but only the local-disk path has been live-tested in this
+ * environment (no S3 credentials available here). The S3 path is unverified
+ * live — treat it as implemented-but-unconfirmed until tested against a real
+ * bucket.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -33,6 +41,7 @@ import {
   putObject,
   publicUrlFor,
 } from '@/lib/storage'
+import { probeVideo } from '@/lib/video-probe'
 import sharp from 'sharp'
 
 export const dynamic = 'force-dynamic'
@@ -55,6 +64,8 @@ function toMediaPayload(m: {
   thumbnailUrl: string | null
   width: number | null
   height: number | null
+  durationMs?: number | null
+  codec?: string | null
 }) {
   return {
     id: m.id,
@@ -65,6 +76,8 @@ function toMediaPayload(m: {
     thumbnail: m.thumbnailUrl ?? m.url,
     width: m.width,
     height: m.height,
+    durationMs: m.durationMs ?? null,
+    codec: m.codec ?? null,
   }
 }
 
@@ -150,6 +163,8 @@ export async function POST(req: NextRequest) {
   let width: number | null = detected.width ?? null
   let height: number | null = detected.height ?? null
   let thumbnailUrl: string | null = null
+  let durationMs: number | null = null
+  let codec: string | null = null
 
   if (detected.kind === 'image') {
     try {
@@ -185,10 +200,25 @@ export async function POST(req: NextRequest) {
       return reject(media.id, media.storageKey, 'decode_failed', 'پردازش تصویر ناموفق بود', 400)
     }
   }
-  // Video: signature-validated above. Duration/codec extraction and thumbnail
-  // generation require a sandboxed media probe (ffprobe) not available in this
-  // environment — durationMs/codec remain null and the original is used as
-  // its own "thumbnail" placeholder. Tracked as a follow-up.
+  if (detected.kind === 'video') {
+    // Issue #146 follow-up: extract duration/codec via ffprobe and generate a
+    // real thumbnail frame via ffmpeg — both shell out to the system binary
+    // (see src/lib/video-probe.ts for why, not a bundled npm package). Best-effort:
+    // a probe/thumbnail failure does not reject the upload, it just leaves
+    // durationMs/codec/thumbnail null.
+    try {
+      const probeType = detected.type === 'mov' || detected.type === 'webm' ? detected.type : 'mp4'
+      const probed = await probeVideo(buffer, probeType)
+      durationMs = probed.durationMs
+      codec = probed.codec
+      if (probed.thumbnail) {
+        const thumbKey = buildDerivedKey(media.storageKey, 'thumb.jpg')
+        thumbnailUrl = await putObject(thumbKey, probed.thumbnail, 'image/jpeg')
+      }
+    } catch (err) {
+      console.error('[media/confirm] video probe failed (non-fatal):', err)
+    }
+  }
 
   const publicUrl = publicUrlFor(media.storageKey)
 
@@ -201,6 +231,8 @@ export async function POST(req: NextRequest) {
       height,
       url: publicUrl,
       thumbnailUrl: thumbnailUrl ?? publicUrl,
+      durationMs,
+      codec,
       validatedAt: new Date(),
     },
   })

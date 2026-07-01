@@ -62,6 +62,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
+      # Issue #146 follow-up: ffmpeg/ffprobe for video-probe.ts (duration/codec/thumbnail) —
+      # video-probe.test.ts exercises the real binary against a synthetic test clip.
+      - name: Install ffmpeg
+        run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends ffmpeg
       - run: bun install --frozen-lockfile
 
       # Issue #141: Migrations must be deterministic — no db push fallback.

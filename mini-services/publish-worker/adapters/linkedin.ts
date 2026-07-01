@@ -44,6 +44,7 @@ import type {
   ErrorCategory,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
+import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
 // Issue #114: named constants — LinkedIn-Version in YYYYMM format.
 // Update this when LinkedIn sunsets the current version (check Microsoft Learn).
@@ -61,7 +62,7 @@ export class LinkedInAdapter implements ChannelAdapter {
       return { healthy: false, status: 'disconnected', lastError: 'توکن لینکدین تنظیم نشده است' }
     }
     try {
-      const res = await fetch(`${LI_V2_API}/userinfo`, {
+      const res = await fetchWithTimeout(`${LI_V2_API}/userinfo`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.status === 401) {
@@ -203,7 +204,7 @@ export class LinkedInAdapter implements ChannelAdapter {
       }
 
       // Issue #114: use /rest/posts (not deprecated /v2/posts)
-      const res = await fetch(`${LI_REST_API}/posts`, {
+      const res = await fetchWithTimeout(`${LI_REST_API}/posts`, {
         method: 'POST',
         headers: this.headers(token),
         body: JSON.stringify(postBody),
@@ -239,6 +240,24 @@ export class LinkedInAdapter implements ChannelAdapter {
       const normalized = this.normalizeLinkedInError(res.status, errorBody)
       throw normalized
     } catch (err: any) {
+      // Issue #147 D: timeout = ambiguous outcome, never blindly retried —
+      // we don't know if LinkedIn received the post.
+      if (err instanceof FetchTimeoutError) {
+        return {
+          externalId: null,
+          rawResponse: { error: err.message },
+          status: 'failed',
+          error: 'پاسخ لینکدین در زمان مقرر دریافت نشد. وضعیت انتشار نامشخص است.',
+          retryable: false,
+          errorCategory: 'network',
+          outcomeUnknown: true,
+          steps: [
+            { label: 'انتشار در لینکدین', at: now },
+            { label: 'خطا', at: Date.now() },
+          ],
+        }
+      }
+
       // Issue #114: typed errorCategory so the worker knows whether to retry.
       // Auth errors (401/403) are never retried; 429/5xx are retried.
       const errorCategory: ErrorCategory = err.errorCategory || 'unknown'
@@ -272,7 +291,7 @@ export class LinkedInAdapter implements ChannelAdapter {
     // Step 1: Register upload (v2/assets — LinkedIn's legacy image upload API).
     // Bug fix: use v2Headers() here, not headers() — the v2/assets endpoint
     // predates the versioned REST API and rejects the LinkedIn-Version header.
-    const registerRes = await fetch(`${LI_V2_API}/assets?action=registerUpload`, {
+    const registerRes = await fetchWithTimeout(`${LI_V2_API}/assets?action=registerUpload`, {
       method: 'POST',
       headers: this.v2Headers(token),
       body: JSON.stringify({
@@ -314,11 +333,11 @@ export class LinkedInAdapter implements ChannelAdapter {
     }
 
     // Step 2: Download image from URL and upload to LinkedIn
-    const imgRes = await fetch(media.url)
+    const imgRes = await fetchWithTimeout(media.url)
     const imageBlob = await imgRes.blob()
 
     // Step 3: Upload binary — LinkedIn CDN accepts PUT with Content-Type only (no auth header)
-    await fetch(uploadUrl, {
+    await fetchWithTimeout(uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'image/jpeg' },
       body: imageBlob,

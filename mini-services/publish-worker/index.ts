@@ -17,7 +17,7 @@
  *                                               emitJobStatus → realtime
  */
 
-import { Worker, UnrecoverableError, type Job } from 'bullmq'
+import { Worker, UnrecoverableError, DelayedError, type Job } from 'bullmq'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
@@ -45,6 +45,8 @@ import {
   markLocalSuccess,
   markFailure,
 } from './lib/attempt-ledger'
+import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
+import { platformRateLimiter } from './lib/rate-limiter'
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
 const BOARD_PASSWORD = process.env.BOARD_PASSWORD || 'nashrino'
@@ -65,7 +67,7 @@ const startTime = Date.now()
 
 const worker = new Worker(
   'publish-jobs',
-  async (bullJob: Job) => {
+  async (bullJob: Job, token?: string) => {
     const { jobId, contentId, platformId, workspaceId } = bullJob.data
 
     // Fetch the PublishJob + Content + Platform from DB
@@ -81,6 +83,17 @@ const worker = new Worker(
     if (!job) {
       console.error(`[worker] job ${jobId} not found in DB`)
       throw new Error(`PublishJob ${jobId} not found`)
+    }
+
+    // Issue #147 C: preflight cancellation check — if the job was cancelled
+    // (e.g. via PATCH /api/publish-jobs/[id] while this job was still
+    // waiting/delayed in BullMQ) before the worker picked it up, abort
+    // cleanly instead of calling the provider. The cancel route already
+    // refuses to cancel a job whose Publication is provider-acknowledged,
+    // so seeing status=cancelled here means it's safe to no-op.
+    if (job.status === 'cancelled') {
+      console.log(`[worker] job ${job.id} — already cancelled, skipping provider call`)
+      return { status: 'cancelled' }
     }
 
     // MISS-02: check attempt ledger BEFORE calling the provider.
@@ -115,6 +128,36 @@ const worker = new Worker(
       return
     }
 
+    // Issue #147 E: per-platform-type token-bucket rate limit, in addition to
+    // the global BullMQ queue limiter below (which is shared across every
+    // provider). Defer (not retry-count) when the platform's bucket is empty
+    // — same treatment as the circuit breaker above.
+    if (!platformRateLimiter.tryAcquire(job.platform.type as PlatformType)) {
+      console.log(`[worker] rate limit reached for ${job.platform.type}, deferring job ${job.id}`)
+      await bullJob.moveToDelayed(Date.now() + 2_000)
+      return
+    }
+
+    // Issue #147 E: conditional claim — atomic compare-and-swap into
+    // 'processing'. 'processing' itself is included in the allowed source
+    // states because BullMQ retries reuse the SAME PublishJob row (the
+    // 'retry' branch below sets it back to 'processing' between attempts)
+    // — excluding it would make every retry attempt after the first get
+    // count=0 and silently stop retrying. What this guard actually
+    // protects against is a duplicate concurrent claim of this exact
+    // PublishJob row from anything other than the normal retry path (e.g.
+    // a stale BullMQ delayed job that fires after the row was already
+    // cancelled/completed by another path) — those terminal states are
+    // excluded below.
+    const claim = await db.publishJob.updateMany({
+      where: { id: job.id, status: { notIn: ['success', 'cancelled', 'failed', 'action'] } },
+      data: { progress: 5, processLabel: 'شروع پردازش', startedAt: new Date(), status: 'processing' },
+    })
+    if (claim.count === 0) {
+      console.log(`[worker] job ${job.id} — already claimed or terminal, skipping (concurrency guard)`)
+      return { status: 'skipped' }
+    }
+
     // Issue #116: expired OAuth token guard — never retry, surface as auth error.
     // The token-expiry scanner sets Platform.status='expired' when a 60-day
     // Instagram/LinkedIn token passes its expiry date. Retrying would waste
@@ -135,11 +178,12 @@ const worker = new Worker(
         safeUserMessage: authError,
       })
       await markFailed(job, authError, false, true)
+      // Issue #147 B: recompute the aggregate on this terminal path too.
+      await checkContentPublished(job.contentId)
       throw new UnrecoverableError(authError)
     }
 
-    // Update DB: processing
-    await updateJobStatus(job, 'processing', 5, 'شروع پردازش', null)
+    // DB already flipped to 'processing' by the concurrency-guard claim above.
     await emit(job, 'processing', 5, 'شروع پردازش', null)
 
     // Issue #126: record job start time for duration histogram
@@ -267,118 +311,211 @@ const worker = new Worker(
       throw new Error(`آداپتور پلتفرم «${job.platform.type}» یافت نشد`)
     }
 
-    if (result.status === 'success') {
-      // MISS-02: record provider_success BEFORE updating local DB.
-      // If the process crashes here, the next retry will find this record
-      // and reconcile without calling the provider again.
-      await markProviderSuccess(attemptId, result.externalId ?? '')
+    // Issue #147 A: the worker no longer inspects status/retryable/errorCategory
+    // directly — every adapter result goes through the normalizer first, and
+    // the switch below is the single place that decides retry vs terminal vs
+    // action-required vs unknown. The `default: assertNeverRetryDirective(...)`
+    // branch makes adding a new RetryDirective.kind a compile error here until
+    // it's handled.
+    const directive = normalizePublishResult(result)
 
-      circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
-      await updateJobStatus(job, 'success', 100, 'منتشر شد', null, result.externalId ?? undefined)
-
-      // Issue #145: keep the first-class Publication record in sync
-      if (publication) {
-        try {
-          await (db as any).publication.update({
-            where: { id: publication.id },
-            data: {
-              status: 'published',
-              providerPostId: result.externalId ?? null,
-              providerAcknowledgedAt: new Date(),
-              completedAt: new Date(),
-            },
-          })
-        } catch (err) {
-          console.error('[worker] failed to update Publication record on success:', err)
-        }
-      }
-
-      // Update platform
-      await db.platform.update({
-        where: { id: job.platform.id },
-        data: { lastSuccessAt: new Date(), lastError: null, circuitState: 'closed' },
-      })
-
-      // Check if all jobs for this content are done
-      await checkContentPublished(job.contentId)
-
-      // MISS-02: local DB committed — finalize the ledger record
-      await markLocalSuccess(attemptId)
-
-      await emit(job, 'success', 100, 'منتشر شد', null)
-      await writeAuditLog({
-        action: 'publish.success',
-        workspaceId: job.workspaceId,
-        metadata: { jobId: job.id, platform: job.platform.type, externalId: result.externalId },
-      })
-
-      console.log(`[worker] job ${job.id} → success (${result.externalId})`)
-      // Issue #126: increment completed counter + observe duration
-      publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'success' })
-      publishDurationHistogram.observe(
-        { platform: job.platform.type },
-        (Date.now() - jobStartedAt) / 1000
-      )
-      return { status: 'success', externalId: result.externalId }
-    }
-
-    // Failure — throw so BullMQ retries with backoff
-    circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
-
-    // Issue #126: increment failed counter + observe duration for all failure paths
-    const errorCategory = result.errorCategory ?? 'unknown'
-    publishJobsFailed.inc({ platform: job.platform.type, category: errorCategory })
     publishDurationHistogram.observe(
       { platform: job.platform.type },
       (Date.now() - jobStartedAt) / 1000
     )
 
-    // BUG-05: typed errorCategory instead of matching Persian error strings
-    const needsAction = result.errorCategory === 'auth'
+    switch (directive.kind) {
+      case 'success': {
+        // MISS-02: record provider_success BEFORE updating local DB.
+        // If the process crashes here, the next retry will find this record
+        // and reconcile without calling the provider again.
+        await markProviderSuccess(attemptId, directive.providerPostId)
 
-    if (needsAction) {
-      await markFailure(attemptId, {
-        outcome: 'permanent_failure',
-        errorCategory: result.errorCategory ?? undefined,
-        safeUserMessage: result.error ?? undefined,
-      })
-      publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
-      if (publication) {
-        try {
-          await (db as any).publication.update({
-            where: { id: publication.id },
-            data: { status: 'action_required', errorCategory: result.errorCategory ?? null, errorMessage: result.error ?? null, completedAt: new Date() },
-          })
-        } catch (err) {
-          console.error('[worker] failed to update Publication record on auth failure:', err)
+        circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
+        await updateJobStatus(job, 'success', 100, 'منتشر شد', null, directive.providerPostId || undefined)
+
+        // Issue #145: keep the first-class Publication record in sync
+        if (publication) {
+          try {
+            await (db as any).publication.update({
+              where: { id: publication.id },
+              data: {
+                status: 'published',
+                providerPostId: directive.providerPostId || null,
+                providerAcknowledgedAt: new Date(),
+                completedAt: new Date(),
+              },
+            })
+          } catch (err) {
+            console.error('[worker] failed to update Publication record on success:', err)
+          }
         }
-      }
-      await markFailed(job, result.error ?? 'خطای نامشخص', false, true)
-      throw new UnrecoverableError(result.error ?? 'خطای نامشخص')
-    }
 
-    // Retryable failure
-    await markFailure(attemptId, {
-      outcome: 'retryable_failure',
-      errorCategory: result.errorCategory ?? undefined,
-      safeUserMessage: result.error ?? undefined,
-    })
-    await updateJobStatus(
-      job,
-      'processing',
-      0,
-      `تلاش مجدد (${bullJob.attemptsMade + 1})`,
-      result.error
-    )
-    await emit(
-      job,
-      'job:progress',
-      0,
-      `تلاش مجدد در ${Math.pow(2, bullJob.attemptsMade)}ث`,
-      result.error
-    )
-    console.log(`[worker] job ${job.id} → retry ${bullJob.attemptsMade + 1}/5: ${result.error}`)
-    throw new Error(result.error ?? 'خطای نامشخص')
+        await db.platform.update({
+          where: { id: job.platform.id },
+          data: { lastSuccessAt: new Date(), lastError: null, circuitState: 'closed' },
+        })
+
+        // Issue #147 B: recompute the parent Content aggregate.
+        await checkContentPublished(job.contentId)
+
+        // MISS-02: local DB committed — finalize the ledger record
+        await markLocalSuccess(attemptId)
+
+        await emit(job, 'success', 100, 'منتشر شد', null)
+        await writeAuditLog({
+          action: 'publish.success',
+          workspaceId: job.workspaceId,
+          metadata: { jobId: job.id, platform: job.platform.type, externalId: directive.providerPostId },
+        })
+
+        console.log(`[worker] job ${job.id} → success (${directive.providerPostId})`)
+        publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'success' })
+        return { status: 'success', externalId: directive.providerPostId }
+      }
+
+      case 'action_required': {
+        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
+        await markFailure(attemptId, {
+          outcome: 'permanent_failure',
+          errorCategory: directive.category,
+          safeUserMessage: directive.safeMessage,
+        })
+        publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
+        if (publication) {
+          try {
+            await (db as any).publication.update({
+              where: { id: publication.id },
+              data: {
+                status: 'action_required',
+                errorCategory: directive.category,
+                errorMessage: directive.safeMessage,
+                completedAt: new Date(),
+              },
+            })
+          } catch (err) {
+            console.error('[worker] failed to update Publication record on action_required:', err)
+          }
+        }
+        await markFailed(job, directive.safeMessage, false, true)
+        // Issue #147 B: recompute the aggregate even on action-required —
+        // a parent Content must never stay "publishing" once every child
+        // is terminal.
+        await checkContentPublished(job.contentId)
+        throw new UnrecoverableError(directive.safeMessage)
+      }
+
+      case 'permanent_failure': {
+        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
+        await markFailure(attemptId, {
+          outcome: 'permanent_failure',
+          errorCategory: directive.category,
+          safeUserMessage: directive.safeMessage,
+        })
+        publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'permanent_failure' })
+        if (publication) {
+          try {
+            await (db as any).publication.update({
+              where: { id: publication.id },
+              data: {
+                status: 'failed',
+                errorCategory: directive.category,
+                errorMessage: directive.safeMessage,
+                completedAt: new Date(),
+              },
+            })
+          } catch (err) {
+            console.error('[worker] failed to update Publication record on permanent_failure:', err)
+          }
+        }
+        await markFailed(job, directive.safeMessage, false, false)
+        await checkContentPublished(job.contentId)
+        throw new UnrecoverableError(directive.safeMessage)
+      }
+
+      case 'outcome_unknown': {
+        // Issue #147 D: we genuinely don't know whether the provider
+        // received/processed the request (e.g. a timeout). Do NOT retry —
+        // that risks a duplicate post — but do NOT silently mark it
+        // success or a normal failure either. Surface it as needing manual
+        // reconciliation, same as action_required, with a distinct
+        // reconciliationStatus on the Publication record.
+        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
+        await markFailure(attemptId, {
+          outcome: 'outcome_unknown',
+          errorCategory: directive.category,
+          safeUserMessage: directive.safeMessage,
+        })
+        publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'outcome_unknown' })
+        if (publication) {
+          try {
+            await (db as any).publication.update({
+              where: { id: publication.id },
+              data: {
+                status: 'action_required',
+                errorCategory: directive.category,
+                errorMessage: directive.safeMessage,
+                reconciliationStatus: 'still_unknown',
+                completedAt: new Date(),
+              },
+            })
+          } catch (err) {
+            console.error('[worker] failed to update Publication record on outcome_unknown:', err)
+          }
+        }
+        const unknownMessage = `وضعیت انتشار نامشخص است (${directive.safeMessage}) — نیازمند بررسی دستی`
+        await markFailed(job, unknownMessage, false, true)
+        await checkContentPublished(job.contentId)
+        throw new UnrecoverableError(unknownMessage)
+      }
+
+      case 'retry': {
+        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
+        await markFailure(attemptId, {
+          outcome: 'retryable_failure',
+          errorCategory: directive.category,
+          safeUserMessage: directive.safeMessage,
+        })
+        await updateJobStatus(
+          job,
+          'processing',
+          0,
+          `تلاش مجدد (${bullJob.attemptsMade + 1})`,
+          directive.safeMessage
+        )
+        await emit(
+          job,
+          'job:progress',
+          0,
+          `تلاش مجدد در ${Math.pow(2, bullJob.attemptsMade)}ث`,
+          directive.safeMessage
+        )
+        console.log(
+          `[worker] job ${job.id} → retry ${bullJob.attemptsMade + 1}/5: ${directive.safeMessage}`
+        )
+
+        // Issue #147 A: honor a provider-supplied retry delay (e.g.
+        // Telegram's retry_after on 429) instead of always falling back to
+        // BullMQ's default exponential backoff (src/lib/queue.ts). Per
+        // BullMQ's delayed-job pattern, this requires explicitly moving the
+        // job to delayed *and* throwing DelayedError — just throwing a
+        // plain Error here would still go through BullMQ's own backoff
+        // calculation and ignore retryAt.
+        if (directive.retryAt && token) {
+          await bullJob.moveToDelayed(directive.retryAt.getTime(), token)
+          throw new DelayedError()
+        }
+
+        throw new Error(directive.safeMessage)
+      }
+
+      default:
+        return assertNeverRetryDirective(directive)
+    }
   },
   {
     connection,
@@ -431,6 +568,13 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       } catch (pubErr) {
         console.error('[worker] failed to update Publication on final failure:', pubErr)
       }
+
+      // Issue #147 B: this is the "exhausted retries" terminal path (BullMQ
+      // gave up after maxAttempts) — checkContentPublished was previously
+      // NOT called here, so a Content whose only job exhausted retries
+      // without ever hitting the explicit permanent_failure/action_required
+      // branches in the processor could stay stuck at "publishing" forever.
+      await checkContentPublished(dbJob.contentId)
     }
   } catch (dbErr) {
     console.error('[worker] failed to update DB on job failure:', dbErr)

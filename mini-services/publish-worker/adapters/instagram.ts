@@ -32,6 +32,7 @@ import type {
   ErrorCategory,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
+import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
 const GRAPH_API = 'https://graph.facebook.com/v21.0'
 // Issue #117: limits now come from the capability registry (single source of truth)
@@ -50,7 +51,7 @@ export class InstagramAdapter implements ChannelAdapter {
       }
     }
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `${GRAPH_API}/${igUserId}?fields=username,followers_count&access_token=${token}`
       )
       const data = await res.json()
@@ -170,7 +171,7 @@ export class InstagramAdapter implements ChannelAdapter {
       }
 
       // Step 2: Publish
-      const publishRes = await fetch(`${GRAPH_API}/${igUserId}/media_publish`, {
+      const publishRes = await fetchWithTimeout(`${GRAPH_API}/${igUserId}/media_publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -194,13 +195,41 @@ export class InstagramAdapter implements ChannelAdapter {
         ],
       }
     } catch (err: any) {
-      const retryable = err.code === 4 || err.code === 32 || (err.code && err.code >= 500)
+      // Issue #147 D: timeout = ambiguous outcome, never blindly retried.
+      // Instagram's media_publish in particular is NOT idempotent — retrying
+      // a request whose outcome we don't know risks a duplicate post.
+      if (err instanceof FetchTimeoutError) {
+        return {
+          externalId: null,
+          rawResponse: { error: err.message },
+          status: 'failed',
+          error: 'پاسخ اینستاگرام در زمان مقرر دریافت نشد. وضعیت انتشار نامشخص است.',
+          retryable: false,
+          errorCategory: 'network',
+          outcomeUnknown: true,
+          steps: [
+            { label: 'انتشار در اینستاگرام', at: now },
+            { label: 'خطا', at: Date.now() },
+          ],
+        }
+      }
+
+      // Issue #147 A: typed errorCategory from Meta's Graph API error codes.
+      // 190 = invalid/expired token (auth). 4, 32, 17 = app/user rate limits.
+      const code = err.code
+      let errorCategory: ErrorCategory = 'unknown'
+      if (code === 190) errorCategory = 'auth'
+      else if (code === 4 || code === 17 || code === 32) errorCategory = 'rate_limit'
+      else if (typeof code === 'number' && code >= 500) errorCategory = 'network'
+      const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
+
       return {
         externalId: null,
         rawResponse: { error: err.message, code: err.code },
         status: retryable ? 'failed' : 'action',
         error: err.message,
         retryable,
+        errorCategory,
         steps: [
           { label: 'انتشار در اینستاگرام', at: now },
           { label: 'خطا', at: Date.now() },
@@ -244,7 +273,7 @@ export class InstagramAdapter implements ChannelAdapter {
       body.caption = caption
     }
 
-    const res = await fetch(`${GRAPH_API}/${igUserId}/media`, {
+    const res = await fetchWithTimeout(`${GRAPH_API}/${igUserId}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -260,7 +289,7 @@ export class InstagramAdapter implements ChannelAdapter {
     childIds: string[],
     caption: string
   ): Promise<string> {
-    const res = await fetch(`${GRAPH_API}/${igUserId}/media`, {
+    const res = await fetchWithTimeout(`${GRAPH_API}/${igUserId}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -277,7 +306,7 @@ export class InstagramAdapter implements ChannelAdapter {
 
   private async waitForProcessing(token: string, containerId: string): Promise<void> {
     for (let i = 0; i < 30; i++) {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         `${GRAPH_API}/${containerId}?fields=status_code&access_token=${token}`
       )
       const data = await res.json()

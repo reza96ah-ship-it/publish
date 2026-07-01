@@ -21,8 +21,10 @@ import type {
   ReadinessResult,
   AdapterContent,
   AdapterAccount,
+  ErrorCategory,
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
+import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
 
 // Issue #115: Telegram has TWO distinct limits — text-only messages (sendMessage)
 // allow 4096 chars, but media captions (sendPhoto/sendVideo/sendDocument) cap
@@ -61,7 +63,7 @@ export class TelegramAdapter implements ChannelAdapter {
       return { healthy: false, status: 'disconnected', lastError: 'توکن ربات تنظیم نشده است' }
     }
     try {
-      const res = await fetch(`${TG_API_BASE}${token}/getMe`)
+      const res = await fetchWithTimeout(`${TG_API_BASE}${token}/getMe`)
       const data = await res.json()
       if (!data.ok) {
         return {
@@ -124,6 +126,7 @@ export class TelegramAdapter implements ChannelAdapter {
         status: 'action',
         error: 'توکن ربات تلگرام تنظیم نشده است. لطفاً در تنظیمات پلتفرم، توکن را وارد کنید.',
         retryable: false,
+        errorCategory: 'auth',
         steps: [{ label: 'بررسی توکن', at: now }],
       }
     }
@@ -197,13 +200,47 @@ export class TelegramAdapter implements ChannelAdapter {
         ],
       }
     } catch (err: any) {
-      const retryable = err.code === 429 || (err.code && err.code >= 500)
+      // Issue #147 D: a request timeout means we don't know if Telegram
+      // received the message — treat as an ambiguous outcome, not a plain
+      // retryable failure (avoids creating a duplicate post on retry).
+      if (err instanceof FetchTimeoutError) {
+        return {
+          externalId: null,
+          rawResponse: { error: err.message },
+          status: 'failed',
+          error: 'پاسخ تلگرام در زمان مقرر دریافت نشد. وضعیت ارسال نامشخص است.',
+          retryable: false,
+          errorCategory: 'network',
+          outcomeUnknown: true,
+          steps: [
+            { label: 'ارسال به تلگرام', at: now },
+            { label: 'خطا', at: Date.now() },
+          ],
+        }
+      }
+
+      // Issue #147 A: classify Telegram's error_code into a typed
+      // ErrorCategory instead of leaving it unset (previously only
+      // LinkedIn/Instagram populated this, so Telegram's permission/
+      // validation errors fell into the generic retry branch).
+      const code = err.code
+      let errorCategory: ErrorCategory = 'unknown'
+      if (code === 401 || code === 403) errorCategory = 'auth'
+      else if (code === 429) errorCategory = 'rate_limit'
+      else if (code === 404) errorCategory = 'not_found'
+      else if (typeof code === 'number' && code >= 500) errorCategory = 'network'
+      const retryable = errorCategory === 'rate_limit' || errorCategory === 'network'
+      // Telegram returns retry_after (seconds) in parameters on 429 — honor it.
+      const retryAfterMs = typeof err.retryAfter === 'number' ? err.retryAfter * 1000 : undefined
+
       return {
         externalId: null,
         rawResponse: { error: err.message, code: err.code },
         status: retryable ? 'failed' : 'action',
         error: err.message,
         retryable,
+        errorCategory,
+        ...(retryAfterMs ? { retryAfterMs } : {}),
         steps: [
           { label: 'ارسال به تلگرام', at: now },
           { label: 'خطا', at: Date.now() },
@@ -218,7 +255,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendMessage(token: string, chatId: string, text: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendMessage`, {
+    const res = await fetchWithTimeout(`${TG_API_BASE}${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -234,7 +271,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendPhoto(token: string, chatId: string, photoUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendPhoto`, {
+    const res = await fetchWithTimeout(`${TG_API_BASE}${token}/sendPhoto`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -250,7 +287,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendVideo(token: string, chatId: string, videoUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendVideo`, {
+    const res = await fetchWithTimeout(`${TG_API_BASE}${token}/sendVideo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -266,7 +303,7 @@ export class TelegramAdapter implements ChannelAdapter {
   }
 
   private async sendDocument(token: string, chatId: string, documentUrl: string, caption: string) {
-    const res = await fetch(`${TG_API_BASE}${token}/sendDocument`, {
+    const res = await fetchWithTimeout(`${TG_API_BASE}${token}/sendDocument`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -288,7 +325,7 @@ export class TelegramAdapter implements ChannelAdapter {
       caption: i === 0 ? caption : undefined,
       parse_mode: 'HTML',
     }))
-    const res = await fetch(`${TG_API_BASE}${token}/sendMediaGroup`, {
+    const res = await fetchWithTimeout(`${TG_API_BASE}${token}/sendMediaGroup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, media: mediaJson }),
