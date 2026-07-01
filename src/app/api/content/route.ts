@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi, requireAnyPermissionApi } from '@/lib/auth-guards'
 import { validateParams, contentListQuerySchema, cursorPaginationSchema } from '@/lib/validations'

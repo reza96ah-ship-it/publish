@@ -1,3 +1,5 @@
+> **⚠️ SUPERSEDED**: This roadmap has been superseded by the gate-based certification program in issue #160. See `docs/CURRENT_STATUS.md` for the current plan.
+
 # Implementation Roadmap - Nashrino
 
 **Last updated:** 2026-06-27

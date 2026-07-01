@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GET /api/analytics/real — fetch real analytics from platform APIs.
  *
  * For platforms with valid tokens, calls:
