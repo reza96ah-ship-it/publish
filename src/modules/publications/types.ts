@@ -36,4 +36,10 @@ export interface AuthContext {
   userId: string
   authorName: string
   role: string
+  /**
+   * Issue #155: W3C trace context for the incoming request. Propagated through
+   * the service → repository → OutboxEvent.traceParent so the worker can continue
+   * the same trace when processing the queued job.
+   */
+  trace?: import('@/lib/tracing').TraceContext
 }
