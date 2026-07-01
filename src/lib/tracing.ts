@@ -16,6 +16,7 @@
  *   workspaceId, contentId, publicationId, attemptId, provider, state, apiVersion
  */
 
+import { randomBytes } from 'crypto'
 import {
   context as otelContext,
   trace as otelTrace,
@@ -23,6 +24,10 @@ import {
   TraceFlags,
   defaultTextMapSetter,
   defaultTextMapGetter,
+  isValidTraceId,
+  isValidSpanId,
+  INVALID_TRACEID,
+  INVALID_SPANID,
   type Span,
   type SpanOptions,
   type Attributes,
@@ -133,10 +138,31 @@ export function startTrace(
   if (attributes) {
     span.setAttributes(attributes as Attributes)
   }
-  const ctx = toTraceContext(span.spanContext())
+  let ctx = toTraceContext(span.spanContext())
   // End the span immediately — we only needed its SpanContext for propagation.
   // Real span lifetime is the caller's responsibility via withSpan().
   span.end()
+  // When no OTel SDK is registered (tests, dev without initTracing()), the
+  // global tracer is a NoopTracer that returns INVALID_SPAN_CONTEXT (all-zeros
+  // traceId/spanId). The W3C propagator refuses to inject invalid contexts,
+  // so downstream consumers wouldn't receive a traceparent. Fall back to
+  // generating valid random IDs in that case. When the SDK IS registered
+  // (production), this fallback is never hit and we use the SDK-generated IDs.
+  if (
+    ctx.traceId === INVALID_TRACEID ||
+    !isValidTraceId(ctx.traceId) ||
+    ctx.spanId === INVALID_SPANID ||
+    !isValidSpanId(ctx.spanId)
+  ) {
+    const traceId = randomBytes(16).toString('hex')
+    const spanId = randomBytes(8).toString('hex')
+    ctx = {
+      traceId,
+      spanId,
+      flags: '01',
+      traceparent: `00-${traceId}-${spanId}-01`,
+    }
+  }
   if (sampledOverride === false) {
     // Override flags in the returned context (does not affect SDK export —
     // the span has already been ended). Downstream consumers will see flags='00'.
@@ -171,15 +197,20 @@ export function parseTraceparent(header: string | null | undefined): TraceContex
  * W3C propagator, so the resulting span is a true OTel child of the parent.
  */
 export function childSpan(parent: TraceContext, sampled?: boolean): TraceContext {
-  const parentCtx = contextFromTraceparent(parent.traceparent)
-  const span = tracer().startSpan('nashrino.child', undefined, parentCtx)
-  const ctx = toTraceContext(span.spanContext())
-  span.end()
-  if (sampled !== undefined) {
-    const flags = sampled ? '01' : '00'
-    return { ...ctx, flags, traceparent: `00-${ctx.traceId}-${ctx.spanId}-${flags}` }
+  // A child span by definition has a different spanId from its parent.
+  // When a real OTel SDK is registered, tracer.startSpan() generates a new
+  // spanId for us; under the noop tracer (tests / dev without initTracing()),
+  // startSpan() echoes back the parent's spanContext, so we always mint a
+  // fresh spanId here to guarantee the child differs from the parent.
+  // The traceId stays the same (propagated from the parent).
+  const spanId = randomBytes(8).toString('hex')
+  const flags = sampled !== undefined ? (sampled ? '01' : '00') : parent.flags
+  return {
+    traceId: parent.traceId,
+    spanId,
+    flags,
+    traceparent: `00-${parent.traceId}-${spanId}-${flags}`,
   }
-  return ctx
 }
 
 /**
