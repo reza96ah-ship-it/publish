@@ -1,4 +1,4 @@
-﻿/**
+/**
  * GET /api/ai/drafts — list AI-saved caption drafts.
  * POST /api/ai/drafts — save a new draft.
  *

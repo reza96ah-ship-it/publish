@@ -1,4 +1,4 @@
-﻿/**
+/**
  * POST /api/ai/hashtags — Persian hashtag suggestion with explanations.
  *
  * Returns { hashtags: { tag, reason }[] }.
