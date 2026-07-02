@@ -47,11 +47,11 @@ export function PlatformsPanel() {
             <div key={p.id} className="n-card-compact flex items-center gap-2.5 p-2.5">
               {/* Real logo with status dot */}
               <div className="relative shrink-0">
-                <div className="flex size-9 items-center justify-center rounded-md bg-white border border-border-subtle">
+                <div className="flex size-9 items-center justify-center rounded-md bg-surface border border-border-subtle">
                   <PlatformLogo platform={p.type} className="size-5" />
                 </div>
                 <span
-                  className={`absolute -bottom-0.5 -left-0.5 size-2.5 rounded-full ring-2 ring-white ${healthy ? 'bg-success' : 'bg-danger'}`}
+                  className={`absolute -bottom-0.5 -left-0.5 size-2.5 rounded-full ring-2 ring-canvas ${healthy ? 'bg-success' : 'bg-danger'}`}
                 />
               </div>
 

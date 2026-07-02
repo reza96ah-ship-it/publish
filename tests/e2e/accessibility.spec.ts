@@ -221,3 +221,49 @@ test.describe('Issue #216 — Color contrast', () => {
     expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
   })
 })
+
+// Dark mode contrast checks (Issue #217: first-class dark mode)
+// Sets next-themes localStorage key to 'dark' so the .dark class is applied,
+// then runs the same axe color-contrast rule on key views.
+test.describe('Issue #217 — Dark mode color contrast', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/auth/signin')
+    await page.waitForLoadState('load')
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'))
+    await page.reload()
+    await page.waitForLoadState('load')
+  })
+
+  test('login page meets WCAG AA contrast in dark mode', async ({ page }) => {
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('dashboard meets WCAG AA contrast in dark mode', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('compose view meets WCAG AA contrast in dark mode', async ({ page }) => {
+    await page.goto('/compose')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+})

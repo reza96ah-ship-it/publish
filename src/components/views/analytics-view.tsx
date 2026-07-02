@@ -289,16 +289,16 @@ export function AnalyticsView() {
                     <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => toPersianDigits(v)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
@@ -336,15 +336,15 @@ export function AnalyticsView() {
                 })}
                 margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}

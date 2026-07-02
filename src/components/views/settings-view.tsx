@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -16,6 +17,9 @@ import {
   Hash,
   Check,
   Sparkles,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -240,6 +244,51 @@ export function SettingsView() {
   )
 }
 
+/* ── Appearance ── */
+const THEME_OPTIONS = [
+  { value: 'light', label: 'روشن', icon: Sun },
+  { value: 'dark', label: 'تاریک', icon: Moon },
+  { value: 'system', label: 'سیستم', icon: Monitor },
+] as const
+
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
+  return (
+    <div className="n-card p-5 max-w-2xl">
+      <div className="flex items-center gap-2 mb-4">
+        <Sun className="size-4 text-accent" />
+        <h2 className="text-sm font-[600] text-ink-primary">ظاهر</h2>
+      </div>
+      <p className="text-[12px] text-ink-tertiary mb-4">
+        پوسته برنامه را انتخاب کنید. «سیستم» به تنظیم سیستم‌عامل پیروی می‌کند.
+      </p>
+      <div className="flex gap-3">
+        {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
+          const active = mounted && theme === value
+          return (
+            <button
+              key={value}
+              onClick={() => setTheme(value)}
+              aria-pressed={active}
+              className={`n-focus-ring flex flex-1 flex-col items-center gap-2 rounded-xl border p-4 text-[12px] font-[500] transition-colors ${
+                active
+                  ? 'border-accent bg-accent-soft text-accent'
+                  : 'border-border bg-surface text-ink-secondary hover:border-border-strong hover:bg-surface-hover'
+              }`}
+            >
+              <Icon className="size-5" strokeWidth={1.75} />
+              {label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 /* ── Overview ── */
 function OverviewTab() {
   const { data: ws, isLoading } = useQuery<Workspace>({
@@ -262,7 +311,12 @@ function OverviewTab() {
       </div>
     )
   }
-  return <OverviewForm ws={ws} />
+  return (
+    <div className="space-y-4">
+      <OverviewForm ws={ws} />
+      <AppearanceSection />
+    </div>
+  )
 }
 
 function OverviewForm({ ws }: { ws: Workspace }) {

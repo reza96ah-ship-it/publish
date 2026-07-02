@@ -119,7 +119,7 @@ export function NotificationPopover() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25, mass: 0.8 }}
-                className="absolute -top-1 -right-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-[600] text-white ring-2 ring-white num-tabular"
+                className="absolute -top-1 -right-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-[600] text-white ring-2 ring-canvas num-tabular"
               >
                 {toPersianDigits(unreadCount)}
               </motion.span>
