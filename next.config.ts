@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   // Security headers — environment-aware.
-  // CSP is now set per-request in src/middleware.ts with a nonce (Issue #119).
+  // CSP is now set per-request in src/proxy.ts with a nonce (Issue #119).
   // Other security headers stay here (they don't need per-request variation).
   async headers() {
     return [
