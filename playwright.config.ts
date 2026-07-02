@@ -49,10 +49,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun run dev',
+    // CI uses the pre-built standalone server (seconds to start).
+    // Local dev uses the hot-reload dev server.
+    command: process.env.CI ? 'bun run start' : 'bun run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    // 60 s is too short for Next.js cold compile in CI — use 360 s
-    timeout: process.env.CI ? 360_000 : 60_000,
+    timeout: process.env.CI ? 60_000 : 60_000,
   },
 })
