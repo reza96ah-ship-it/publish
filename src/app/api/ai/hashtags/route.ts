@@ -2,10 +2,13 @@
  * POST /api/ai/hashtags — Persian hashtag suggestion with explanations.
  *
  * Returns { hashtags: { tag, reason }[] }.
+ *
+ * Issue #142: requires content.create permission (admin/editor only).
  */
 
 import { NextRequest } from 'next/server'
 import { suggestHashtags, type Platform, type CreatorRole, type ContentGoal } from '@/lib/ai/gemini'
+import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, aiHashtagsSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +17,10 @@ export const runtime = 'nodejs'
 export const maxDuration = 30
 
 export async function POST(req: NextRequest) {
+  // Issue #142: require content.create permission
+  const guard = await requirePermissionApi('content.create')
+  if (guard.error) return guard.error
+
   try {
     const body = await req.json().catch(() => null)
     if (!body) return Response.json({ error: 'بدنه نامعتبر' }, { status: 400 })

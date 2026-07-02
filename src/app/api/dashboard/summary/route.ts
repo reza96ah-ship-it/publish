@@ -33,7 +33,7 @@ export async function GET() {
       }),
     ])
 
-  // Build status â†’ count map
+  // Build status → count map
   const jobMap = new Map(jobCounts.map((j) => [j.status, j._count._all]))
   const failed = (jobMap.get('failed') ?? 0) + (jobMap.get('action') ?? 0)
   const queued = (jobMap.get('pending') ?? 0) + (jobMap.get('scheduled') ?? 0)
