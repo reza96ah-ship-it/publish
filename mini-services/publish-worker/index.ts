@@ -34,6 +34,11 @@ import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
 import {
+  unknownOutcomesCounter,
+  scheduleDelayHistogram,
+  duplicateDetectionCounter,
+} from './lib/metrics'
+import {
   publishJobsCompleted,
   publishJobsFailed,
   publishDurationHistogram,
@@ -552,6 +557,7 @@ const worker = new Worker(
           safeUserMessage: directive.safeMessage,
         })
         publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'outcome_unknown' })
+        unknownOutcomesCounter.inc({ platform: job.platform.type })
         if (publication) {
           try {
             await (db as any).publication.update({

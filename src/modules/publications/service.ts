@@ -93,6 +93,8 @@ export class PublicationsService {
         // Issue #145: pass ordered media + per-channel captions
         mediaItems,
         platformCaptions: body.platformCaptions,
+        // Issue #155: propagate trace context so OutboxEvent stores it.
+        traceParent: auth.trace?.traceparent ?? null,
       })
     )
 

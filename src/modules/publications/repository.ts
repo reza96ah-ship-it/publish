@@ -108,6 +108,9 @@ export class PublicationsRepository {
       // Issue #145: ordered media + per-channel captions
       mediaItems?: { id: string; position: number; role: string }[]
       platformCaptions?: Record<string, string> // channelId → override caption
+      // Issue #155: W3C trace context to persist on each OutboxEvent so the
+      // worker can continue the trace when processing the queued job.
+      traceParent?: string | null
     }
   ): Promise<{ content: ContentRow; jobs: JobRow[] }> {
     const content = await tx.content.create({
@@ -246,7 +249,12 @@ export class PublicationsRepository {
               // Issue #145: include publication + revision IDs for the worker
               publicationId,
               revisionId: revision.id,
+              // Issue #155: include traceparent in payload too (belt+suspenders
+              // — the dedicated traceParent column is the canonical place).
+              traceParent: params.traceParent ?? null,
             },
+            // Issue #155: persist W3C trace context for the worker to continue.
+            traceParent: params.traceParent ?? null,
             availableAt: params.scheduledAt ?? new Date(),
           },
         })

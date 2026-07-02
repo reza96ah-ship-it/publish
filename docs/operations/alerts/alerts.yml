@@ -1,0 +1,115 @@
+# Issue #155: Prometheus alert rules for Nashrino
+# Deploy with: prometheus --config.file=prometheus.yml
+# Rule file reference: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+groups:
+  - name: nashrino-slo
+    interval: 30s
+    rules:
+      # Fast burn: 14.4x burn rate over 1 hour = P0
+      - alert: NashrinoFastBurnP0
+        expr: |
+          (
+            sum(rate(nashrino_publish_jobs_failed_total[1h]))
+            /
+            sum(rate(nashrino_publish_jobs_completed_total[1h]))
+          ) > 0.144
+        for: 5m
+        labels:
+          severity: P0
+          team: publishing
+        annotations:
+          summary: "Fast SLO burn — publish failure rate > 14.4% over 1h"
+          description: "Failure rate is {{ $value }} — SLO budget will be exhausted in <2h."
+          runbook: "docs/operations/runbooks/publish-failure.md"
+
+      # Slow burn: 3x burn rate over 6 hours = P2
+      - alert: NashrinoSlowBurnP2
+        expr: |
+          (
+            sum(rate(nashrino_publish_jobs_failed_total[6h]))
+            /
+            sum(rate(nashrino_publish_jobs_completed_total[6h]))
+          ) > 0.03
+        for: 30m
+        labels:
+          severity: P2
+          team: publishing
+        annotations:
+          summary: "Slow SLO burn — publish failure rate > 3% over 6h"
+          runbook: "docs/operations/runbooks/publish-failure.md"
+
+  - name: nashrino-infrastructure
+    interval: 30s
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: P0
+        annotations:
+          summary: "PostgreSQL is down"
+          runbook: "docs/operations/runbooks/database-outage.md"
+
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: P0
+        annotations:
+          summary: "Redis is down"
+          runbook: "docs/operations/runbooks/redis-outage.md"
+
+      - alert: QueueBacklog
+        expr: nashrino_queue_depth > 1000
+        for: 5m
+        labels:
+          severity: P1
+        annotations:
+          summary: "Queue backlog > 1000 jobs for 5 minutes"
+          runbook: "docs/operations/runbooks/worker-backlog.md"
+
+      - alert: DeadLetterGrowth
+        expr: rate(nashrino_outbox_dead_letter_count[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: P1
+        annotations:
+          summary: "Dead-letter events growing — > 0.1/sec"
+          runbook: "docs/operations/runbooks/dead-letter.md"
+
+      - alert: ExpiredLeases
+        expr: rate(nashrino_outbox_expired_leases_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: P2
+        annotations:
+          summary: "High rate of expired outbox leases — dispatchers may be crashing"
+          runbook: "docs/operations/runbooks/dead-letter.md"
+
+      - alert: UnknownOutcomesSpike
+        expr: rate(nashrino_unknown_outcomes_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: P1
+        annotations:
+          summary: "Spike in unknown provider outcomes — providers may be timing out"
+          runbook: "docs/operations/runbooks/unknown-outcome.md"
+
+      - alert: DuplicateDetected
+        expr: rate(nashrino_duplicate_detections_total[1h]) > 0
+        for: 1m
+        labels:
+          severity: P1
+        annotations:
+          summary: "Duplicate external post detected and prevented"
+          runbook: "docs/operations/runbooks/suspected-duplicate.md"
+
+      - alert: ScheduleLateness
+        expr: histogram_quantile(0.95, rate(nashrino_schedule_delay_seconds_bucket[5m])) > 60
+        for: 10m
+        labels:
+          severity: P2
+        annotations:
+          summary: "Schedule lateness p95 > 60s — publications are delayed"
+          runbook: "docs/operations/runbooks/worker-backlog.md"

@@ -35,6 +35,12 @@ export async function enqueuePublishJob(opts: {
   platformId: string
   workspaceId: string
   scheduledAt?: Date | null
+  /**
+   * Issue #155: W3C traceparent header value. Propagated through BullMQ job
+   * data so the worker can continue the trace when it picks up the job.
+   * The outbox dispatcher reads this from OutboxEvent.traceParent.
+   */
+  traceParent?: string | null
 }): Promise<void> {
   const delay = opts.scheduledAt ? Math.max(0, opts.scheduledAt.getTime() - Date.now()) : 0
 
@@ -46,6 +52,8 @@ export async function enqueuePublishJob(opts: {
         contentId: opts.contentId,
         platformId: opts.platformId,
         workspaceId: opts.workspaceId,
+        // Issue #155: traceparent for distributed tracing continuity.
+        ...(opts.traceParent ? { traceParent: opts.traceParent } : {}),
       },
       {
         // Issue #148: deterministic job ID = idempotencyKey (publicationId or stable key)
