@@ -35,9 +35,7 @@ describe('Issue #153 Tier 7 — Process-level failure injection', () => {
       // Simulate unreachable database by using an invalid URL
       // We test that the client throws a connection/initialization error
       const badDb = new PrismaClient({
-        datasources: {
-          db: { url: 'postgresql://invalid_user:invalid_pass@localhost:9999/invalid_db?connect_timeout=1' },
-        },
+        datasourceUrl: 'postgresql://invalid_user:invalid_pass@localhost:9999/invalid_db?connect_timeout=1',
       })
       await expect(badDb.$queryRaw`SELECT 1`).rejects.toThrow()
       await badDb.$disconnect()
