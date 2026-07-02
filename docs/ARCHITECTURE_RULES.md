@@ -39,14 +39,14 @@
 |--------|------|-------|--------|
 | publications | `src/modules/publications/` | Backend | ✅ migrated |
 | identity/auth | `src/lib/auth.ts`, `auth-guards.ts` | Backend | ⚠️ needs extraction |
-| workspaces/members | `src/app/api/members/` | Backend | ⚠️ needs extraction |
+| workspaces/members | `src/modules/membership/` | Backend | ✅ migrated |
 | content/revisions | `src/app/api/content/` | Backend | ⚠️ needs extraction |
-| channels/credentials | `src/app/api/platforms/` | Backend | ⚠️ needs extraction |
-| media | `src/app/api/media/` | Backend | ⚠️ needs extraction |
+| channels/credentials | `src/modules/channels/` | Backend | ✅ migrated |
+| media | `src/modules/media/` | Backend | ✅ migrated |
 | campaigns | `src/app/api/campaigns/` | Backend | ⚠️ needs extraction |
 | inbox | `src/app/api/inbox/` | Backend | ⚠️ needs extraction |
 | notifications | `src/app/api/notifications/` | Backend | ⚠️ needs extraction |
-| analytics | `src/app/api/analytics/` | Backend | ⚠️ needs extraction |
+| analytics | `src/modules/analytics/` | Backend | ✅ migrated |
 | operations/health | `src/app/api/health/`, `readyz/` | Backend | ⚠️ needs extraction |
 
 ## 3. Shared Contracts (Issue #156)
