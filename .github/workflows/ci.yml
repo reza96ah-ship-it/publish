@@ -272,7 +272,7 @@ jobs:
   load-gate:
     name: Load Gate (k6 smoke)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     services:
       postgres:
         image: postgres:16-alpine
@@ -321,24 +321,30 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
             | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt-get update -y && sudo apt-get install -y k6
-      - name: Start Next.js dev server
-        run: bun run dev &
+      - name: Build Next.js app (needed for bun run start)
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+      - name: Start Next.js server (pre-built — starts in seconds)
+        run: bun run start &
         env:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_load?schema=public&connection_limit=10'
           REDIS_URL: 'redis://localhost:6379'
-      - name: Wait for server (up to 300s)
+      - name: Wait for server (up to 60s)
         run: |
-          for i in $(seq 1 60); do
+          for i in $(seq 1 12); do
             if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
               echo "Server is up after $((i * 5))s"
               exit 0
             fi
-            echo "Waiting... ($i/60)"
+            echo "Waiting... ($i/12)"
             sleep 5
           done
-          echo "::error::Server did not respond within 300s"
+          echo "::error::Server did not respond within 60s"
           exit 1
       - name: Run k6 smoke test (blocking gate)
         run: k6 run k6/smoke.js
@@ -395,6 +401,12 @@ jobs:
       - run: bunx prisma migrate deploy
       - run: bun run prisma/seed.ts
       - run: bun run seed:auth # Seed demo user for E2E
+      - name: Build Next.js app (E2E uses bun run start — pre-built server)
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
       - run: bunx playwright install --with-deps chromium firefox webkit
       - run: bun run test:e2e
 
