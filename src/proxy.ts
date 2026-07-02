@@ -60,7 +60,7 @@ function buildCsp(nonce: string, isProd: boolean): string {
   ].join('; ')
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const nonce = generateNonce()
   const isProd = process.env.NODE_ENV === 'production'
   const csp = buildCsp(nonce, isProd)
