@@ -333,19 +333,20 @@ describe('Issue #151 -- Fail-closed configuration', () => {
 
     it('exits with code 1 when CORS is wildcard in production', () => {
       const exitFn = vi.fn()
-      const log = vi.fn()
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       loadRealtimeConfig({
         env: {
           NODE_ENV: 'production',
           EMIT_SECRET: 'emit-secret-xxx',
           REALTIME_JWT_SECRET: 'jwt-secret-xxx',
           REALTIME_CORS_ORIGIN: '*',
+          REDIS_CACHE_URL: 'redis://localhost:6379',
         },
         exitFn,
-        log,
       })
       expect(exitFn).toHaveBeenCalledWith(1)
-      expect(log).toHaveBeenCalledWith(expect.stringContaining('CORS'))
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('CORS'))
+      errSpy.mockRestore()
     })
 
     it('exits with code 1 when CORS is empty in production', () => {
@@ -372,6 +373,7 @@ describe('Issue #151 -- Fail-closed configuration', () => {
           REALTIME_CORS_ORIGIN: 'https://app.example.com,https://staging.example.com',
           REALTIME_PORT: '4000',
           REALTIME_JWT_KID: 'rotated-2',
+          REDIS_CACHE_URL: 'redis://localhost:6379',
         },
         exitFn,
       })
@@ -421,6 +423,7 @@ describe('Issue #151 -- CORS allowlist enforcement', () => {
         EMIT_SECRET: 'x',
         REALTIME_JWT_SECRET: 'y',
         REALTIME_CORS_ORIGIN: 'https://app.example.com',
+        REDIS_CACHE_URL: 'redis://localhost:6379',
       },
       exitFn,
     })
