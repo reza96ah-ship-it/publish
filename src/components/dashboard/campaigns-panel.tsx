@@ -23,7 +23,7 @@ interface Campaign {
 export function CampaignsPanel() {
   const { data } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
-    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+    queryFn: () => api.getPaginated<Campaign>('/api/campaigns'),
   })
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)

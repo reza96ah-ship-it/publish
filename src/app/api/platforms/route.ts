@@ -1,18 +1,28 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { validateParams, cursorPaginationSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const guard = await requirePermissionApi('platform.manage')
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries())
+  const queryCheck = validateParams(cursorPaginationSchema, query)
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
+  const { cursor, limit } = queryCheck.data
+
   // P8.3: Fixed N+1 — single groupBy query instead of count per platform
   const platforms = await db.platform.findMany({
-    where: { workspaceId },
+    where: {
+      workspaceId,
+      ...(cursor ? { id: { gt: cursor } } : {}),
+    },
     orderBy: { createdAt: 'asc' },
+    take: limit + 1,
     select: {
       id: true,
       name: true,
@@ -34,22 +44,27 @@ export async function GET() {
   })
   const countMap = new Map(typeCounts.map((t) => [t.type, t._count._all]))
 
-  const result = platforms.map((p) => ({
-    id: p.id,
-    name: p.name,
-    type: p.type,
-    logo: logoFor(p.type),
-    state: stateLabel(p),
-    stateColor: stateColor(p),
-    accounts: countMap.get(p.type) ?? 1,
-    primaryIssue: p.primaryIssue,
-    lastSuccess: p.lastSuccessAt,
-    accountKind: p.accountKind,
-    circuitState: p.circuitState,
-    username: p.username,
-  }))
+  const hasMore = platforms.length > limit
+  const page = hasMore ? platforms.slice(0, limit) : platforms
+  const nextCursor = hasMore ? page[page.length - 1]?.id : null
 
-  return NextResponse.json(result)
+  return NextResponse.json({
+    data: page.map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      logo: logoFor(p.type),
+      state: stateLabel(p),
+      stateColor: stateColor(p),
+      accounts: countMap.get(p.type) ?? 1,
+      primaryIssue: p.primaryIssue,
+      lastSuccess: p.lastSuccessAt,
+      accountKind: p.accountKind,
+      circuitState: p.circuitState,
+      username: p.username,
+    })),
+    nextCursor,
+  })
 }
 
 function logoFor(t: string) {
