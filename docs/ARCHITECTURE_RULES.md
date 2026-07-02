@@ -44,8 +44,8 @@
 | channels/credentials | `src/modules/channels/` | Backend | ✅ migrated |
 | media | `src/modules/media/` | Backend | ✅ migrated |
 | campaigns | `src/app/api/campaigns/` | Backend | ⚠️ needs extraction |
-| inbox | `src/app/api/inbox/` | Backend | ⚠️ needs extraction |
-| notifications | `src/app/api/notifications/` | Backend | ⚠️ needs extraction |
+| inbox | `src/modules/inbox/` | Backend | ✅ migrated |
+| notifications | `src/modules/notifications/` | Backend | ✅ migrated |
 | analytics | `src/modules/analytics/` | Backend | ✅ migrated |
 | operations/health | `src/app/api/health/`, `readyz/` | Backend | ⚠️ needs extraction |
 
