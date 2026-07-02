@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { assertExhaustive } from '@/lib/api-contracts'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -136,6 +137,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       })
       break
     }
+
+    default:
+      assertExhaustive(action)
   }
 
   // Write audit event (preserves the original ambiguous attempt)

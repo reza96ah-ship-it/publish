@@ -16,6 +16,7 @@ import { enqueuePublishJob, publishQueue } from '@/lib/queue'
 import { writeAuditLog } from '@/lib/audit'
 import { checkContentPublished } from '@/lib/content-aggregate'
 import { db } from '@/lib/db'
+import { assertExhaustive } from '@/lib/api-contracts'
 import {
   JobNotFoundError,
   JobNotCancellableError,
@@ -85,9 +86,7 @@ export class PublishJobService {
       case 'cancel':
         return this.cancel(auth, job)
       default:
-        // Compile-time exhaustiveness — if JobAction gains a member, this
-        // branch fails to type-check and forces the author to handle it.
-        throw new InvalidActionError()
+        return assertExhaustive(body.action)
     }
   }
 
