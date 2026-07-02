@@ -37,6 +37,9 @@ import { createClient } from 'redis'
 import { realtimeRegistry, activeSocketsGauge } from './lib/metrics'
 import { loadRealtimeConfig } from './lib/config'
 import { verifyRealtimeJwt, type SessionData } from './lib/jwt'
+import { initTracing } from './lib/tracing'
+
+initTracing('realtime')
 
 // -- Config (Issue #151: fail-closed in production) --
 // loadRealtimeConfig() will process.exit(1) in production if any required

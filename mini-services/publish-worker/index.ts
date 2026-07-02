@@ -58,9 +58,11 @@ import {
 import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
 import { platformRateLimiter } from './lib/rate-limiter'
 import { bootstrapServiceConfig } from '../../shared/config-validator'
+import { initTracing } from './lib/tracing'
 
-// Validate worker configuration on startup
+// Validate config and start tracing before any other work
 bootstrapServiceConfig('worker')
+initTracing('publish-worker')
 
 const HEALTH_PORT = parseInt(process.env.WORKER_HEALTH_PORT || '3002', 10)
 // Issue #151: fail-closed board password — no default 'nashrino' in production
