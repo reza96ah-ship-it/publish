@@ -25,7 +25,9 @@ test.describe('Issue #128 — WCAG 2.2 AA accessibility audit', () => {
 
   test('login page — zero axe violations', async ({ page }) => {
     await page.goto('/auth/signin')
-    await page.waitForLoadState('networkidle')
+    // 'load' not 'networkidle' — background requests (session polling, sockets)
+    // keep the network active under the production server, so networkidle never fires
+    await page.waitForLoadState('load')
 
     const results = await new AxeBuilder({ page })
       .withTags(WCAG_TAGS)
@@ -100,7 +102,9 @@ test.describe('Issue #128 — RTL layout checks', () => {
 
   test('icon buttons have aria-label in Persian', async ({ page }) => {
     await page.goto('/auth/signin')
-    await page.waitForLoadState('networkidle')
+    // 'load' not 'networkidle' — background requests (session polling, sockets)
+    // keep the network active under the production server, so networkidle never fires
+    await page.waitForLoadState('load')
 
     // Find all buttons that contain only an icon (no visible text)
     // Bug fix: removed stray ')' from end of selector string
@@ -121,7 +125,9 @@ test.describe('Issue #128 — RTL layout checks', () => {
 
   test('focus order is logical in RTL (tab navigation)', async ({ page }) => {
     await page.goto('/auth/signin')
-    await page.waitForLoadState('networkidle')
+    // 'load' not 'networkidle' — background requests (session polling, sockets)
+    // keep the network active under the production server, so networkidle never fires
+    await page.waitForLoadState('load')
 
     // Tab through focusable elements — verify each is visible when focused
     const focusable = page.locator(
@@ -138,7 +144,9 @@ test.describe('Issue #128 — RTL layout checks', () => {
 
   test('aria-live regions exist for status announcements', async ({ page }) => {
     await page.goto('/auth/signin')
-    await page.waitForLoadState('networkidle')
+    // 'load' not 'networkidle' — background requests (session polling, sockets)
+    // keep the network active under the production server, so networkidle never fires
+    await page.waitForLoadState('load')
 
     // The app should have aria-live regions for announcing dynamic content
     // (publish status, toasts, etc.) — at least the sr-only announce region
@@ -158,7 +166,9 @@ test.describe('Issue #128 — RTL layout checks', () => {
 test.describe('Issue #128 — Color contrast', () => {
   test.fixme('login page meets WCAG AA contrast ratios', async ({ page }) => {
     await page.goto('/auth/signin')
-    await page.waitForLoadState('networkidle')
+    // 'load' not 'networkidle' — background requests (session polling, sockets)
+    // keep the network active under the production server, so networkidle never fires
+    await page.waitForLoadState('load')
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
