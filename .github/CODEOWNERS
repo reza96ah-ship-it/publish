@@ -10,7 +10,7 @@
 /src/lib/crypto.ts         @reza96ah-ship-it
 /src/lib/password.ts       @reza96ah-ship-it
 /src/lib/mfa.ts            @reza96ah-ship-it
-/src/middleware.ts         @reza96ah-ship-it
+/src/proxy.ts              @reza96ah-ship-it
 
 # Migrations — must be reviewed before any schema change reaches production
 /prisma/schema.prisma      @reza96ah-ship-it
