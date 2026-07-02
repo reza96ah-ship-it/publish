@@ -52,7 +52,7 @@ export default defineConfig({
     command: 'bun run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    // 60 s is too short for Next.js cold compile in CI — use 120 s
-    timeout: process.env.CI ? 120_000 : 60_000,
+    // 60 s is too short for Next.js cold compile in CI — use 240 s
+    timeout: process.env.CI ? 240_000 : 60_000,
   },
 })
