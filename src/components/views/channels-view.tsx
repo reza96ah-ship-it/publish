@@ -328,7 +328,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8 shrink-0">
+            <Button variant="ghost" size="icon" className="size-8 min-h-[44px] min-w-[44px] shrink-0">
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -411,7 +411,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
         <Button
           variant="outline"
           size="sm"
-          className="flex-1"
+          className="flex-1 min-h-[44px]"
           onClick={handleValidate}
           disabled={isValidating}
         >
@@ -421,7 +421,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1"
+          className="flex-1 min-h-[44px]"
           onClick={() => toast.info('ویرایش پلتفرم به‌زودی فعال خواهد شد.')}
         >
           <Pencil className="size-3.5" />
@@ -436,7 +436,7 @@ function DisconnectItem({ platformName }: { platformName: string }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <button className="n-focus-ring relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-[12px] text-danger outline-none transition-colors hover:bg-danger-soft focus:bg-danger-soft w-full">
+        <button className="n-focus-ring relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-3 text-[12px] text-danger outline-none transition-colors hover:bg-danger-soft focus:bg-danger-soft w-full">
           <Trash2 className="size-3.5" />
           قطع اتصال
         </button>
@@ -538,7 +538,7 @@ function ConnectDialog({
         <div className="space-y-4">
           <div>
             <Label className="text-[12px] text-ink-secondary mb-2 block">پلتفرم</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AVAILABLE_PLATFORMS.map((p) => (
                 <button
                   key={p.id}

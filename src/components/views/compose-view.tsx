@@ -690,7 +690,7 @@ export function ComposeView() {
                   onClick={() => togglePlatform(p.id)}
                   disabled={p.state === 'disconnected'}
                   className={cn(
-                    'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-2 text-[12px] font-[600] transition-all',
+                    'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-3 sm:py-2 text-[12px] font-[600] transition-all',
                     isSelected
                       ? 'border-accent/30 bg-accent-soft text-accent'
                       : p.state === 'disconnected'
@@ -764,7 +764,7 @@ export function ComposeView() {
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
                 onClick={() => setAiSheetOpen(true)}
-                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
+                className="n-focus-ring inline-flex h-8 min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
               >
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
@@ -877,7 +877,7 @@ export function ComposeView() {
                   key={opt.id}
                   onClick={() => setScheduleMode(opt.id)}
                   className={cn(
-                    'n-focus-ring rounded-lg border px-3 py-1.5 text-[11.5px] font-[600] transition-colors',
+                    'n-focus-ring rounded-lg border px-3 py-2.5 sm:py-1.5 text-[11.5px] font-[600] transition-colors',
                     scheduleMode === opt.id
                       ? 'border-accent/30 bg-accent-soft text-accent'
                       : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
@@ -887,7 +887,7 @@ export function ComposeView() {
                 </button>
               ))}
               {scheduleMode === 'schedule' && (
-                <div className="flex items-center gap-2 ms-2 min-w-[220px]">
+                <div className="flex items-center gap-2 w-full sm:w-auto sm:ms-2 sm:min-w-[220px]">
                   <JalaliDatePicker
                     value={scheduledAt}
                     onChange={setScheduledAt}
@@ -905,7 +905,7 @@ export function ComposeView() {
 
         {/* Right panel: preview only (AI is now a popup sheet) */}
         <div className="lg:col-span-2">
-          <div className="sticky top-4 space-y-3">
+          <div className="lg:sticky lg:top-4 space-y-3">
             <div className="flex items-center gap-2 px-1">
               <Eye className="size-4 text-accent" />
               <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
@@ -941,7 +941,7 @@ export function ComposeView() {
       </div>
 
       {/* ── Bottom action bar ── */}
-      <div className="n-card p-4 sticky bottom-4">
+      <div className="n-card p-4 sticky bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-[11px] text-ink-tertiary num-tabular flex items-center gap-2">
             {selectedPlatforms.length > 0 && (
@@ -1145,10 +1145,10 @@ function StepMedia({
                 <img src={m.thumbnail} alt={m.name} className="size-16 rounded-xl object-cover" />
                 <button
                   onClick={() => toggle(m)}
-                  className="n-focus-ring absolute -top-1.5 -left-1.5 bg-danger text-white rounded-full p-0.5 ring-2 ring-background"
+                  className="n-focus-ring absolute -top-1.5 -left-1.5 bg-danger text-white rounded-full p-1.5 ring-2 ring-background"
                   aria-label="حذف"
                 >
-                  <X className="size-3" />
+                  <X className="size-3.5" />
                 </button>
               </div>
             ))}

@@ -270,7 +270,7 @@ export function CalendarView() {
               <Button variant="ghost" size="icon" onClick={goPrev} aria-label="ماه قبل">
                 <ChevronRight className="size-4" />
               </Button>
-              <div className="text-center min-w-32">
+              <div className="text-center min-w-[100px]">
                 <p className="text-sm font-[700] text-ink-primary num-tabular">
                   {monthName} {toPersianDigits(calendarCursor.year)}
                 </p>
@@ -287,8 +287,9 @@ export function CalendarView() {
             </Button>
           </div>
 
-          {/* Month grid */}
-          <div className="n-card p-3 sm:p-4">
+          {/* Month grid — horizontal scroll on mobile so 7-col grid never clips */}
+          <div className="n-card p-3 sm:p-4 overflow-x-auto">
+            <div className="min-w-[320px]">
             {/* Weekday header */}
             <div className="grid grid-cols-7 gap-1 mb-2">
               {JALALI_WEEKDAYS_SHORT.map((d, i) => (
@@ -334,13 +335,15 @@ export function CalendarView() {
                 ) : null}
               </DragOverlay>
             </DndContext>
+            </div>
           </div>
         </TabsContent>
 
         {/* ── Week view (simplified) ── */}
         <TabsContent value="week" className="space-y-4">
-          <div className="n-card p-5">
+          <div className="n-card p-5 overflow-x-auto">
             <p className="text-[12px] text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
+            <div className="min-w-[320px]">
             <div className="grid grid-cols-7 gap-2">
               {cells.slice(7, 14).map((cell, i) => (
                 <DayCell
@@ -355,6 +358,7 @@ export function CalendarView() {
                   tall
                 />
               ))}
+            </div>
             </div>
           </div>
         </TabsContent>
@@ -637,7 +641,7 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        'n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
         PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
         (isDragging || isDimmed) && 'opacity-30'
       )}

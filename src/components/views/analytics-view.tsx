@@ -430,7 +430,7 @@ export function AnalyticsView() {
             </span>
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-8">
+            <SelectTrigger className="w-36 h-10">
               <SelectValue placeholder="همه" />
             </SelectTrigger>
             <SelectContent>

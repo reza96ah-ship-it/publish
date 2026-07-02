@@ -295,7 +295,7 @@ export function InboxView() {
         </div>
 
         {/* Center: Thread */}
-        <div className="lg:col-span-5 n-card n-gradient-border p-0 overflow-hidden flex flex-col min-h-[60vh]">
+        <div className="lg:col-span-5 n-card n-gradient-border p-0 overflow-hidden flex flex-col min-h-0 sm:min-h-[60vh]">
           {!selected ? (
             <div className="flex-1 flex items-center justify-center p-10">
               <EmptyState
@@ -353,7 +353,7 @@ export function InboxView() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-7 w-40 text-[11px]">
+                      <SelectTrigger className="h-7 w-full sm:w-40 text-[11px]">
                         <SelectValue placeholder="بدون ارجاع" />
                       </SelectTrigger>
                       <SelectContent>
@@ -423,6 +423,7 @@ export function InboxView() {
                     <Button
                       variant="outline"
                       size="sm"
+                      className="min-h-[44px] sm:min-h-0"
                       onClick={handleSmartReply}
                       disabled={isGeneratingReply}
                     >
@@ -435,6 +436,7 @@ export function InboxView() {
                     </Button>
                     <Button
                       size="sm"
+                      className="min-h-[44px] sm:min-h-0"
                       onClick={handleReply}
                       disabled={replyMutation.isPending || !replyText.trim()}
                     >
