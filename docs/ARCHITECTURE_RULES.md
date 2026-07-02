@@ -47,7 +47,7 @@
 | inbox | `src/modules/inbox/` | Backend | ✅ migrated |
 | notifications | `src/modules/notifications/` | Backend | ✅ migrated |
 | analytics | `src/modules/analytics/` | Backend | ✅ migrated |
-| operations/health | `src/app/api/health/`, `readyz/` | Backend | ⚠️ needs extraction |
+| operations/health | `src/modules/operations/` | Backend | ✅ migrated |
 
 ## 3. Shared Contracts (Issue #156)
 
