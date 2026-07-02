@@ -48,8 +48,8 @@ export async function GET() {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id as string
-  const activeWorkspaceId = (session as any).activeWorkspaceId as string | null
+  const userId = session.user.id
+  const activeWorkspaceId = session.activeWorkspaceId
 
   if (!userId) {
     return NextResponse.json({ error: 'invalid session' }, { status: 401 })

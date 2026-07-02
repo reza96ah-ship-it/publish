@@ -81,6 +81,7 @@ export const authOptions: NextAuthOptions = {
         const primaryMembership = user.memberships[0]
 
         if (user.mfaSecret) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const totpCode = (credentials as any).totpCode as string | undefined
           if (!totpCode) {
             // Password valid but MFA code missing — signal the client to show MFA step
@@ -109,6 +110,7 @@ export const authOptions: NextAuthOptions = {
 
         // Issue #118: if the stored hash was legacy scrypt, upgrade to Argon2id
         // on successful login (gradual migration, no forced password reset).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const updateData: any = {
           failedAttempts: 0,
           lockedUntil: null,
@@ -132,6 +134,7 @@ export const authOptions: NextAuthOptions = {
           role: primaryMembership?.role ?? 'viewer',
           activeWorkspaceId: primaryMembership?.workspaceId ?? null,
           mfaEnabled: !!user.mfaSecret,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any
       },
     }),
@@ -157,8 +160,11 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, trigger }) {
       // Initial sign-in: inject user data into token
       if (user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.id = (user as any).id
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.role = (user as any).role ?? 'viewer'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.activeWorkspaceId = (user as any).activeWorkspaceId ?? null
       }
 
@@ -167,6 +173,7 @@ export const authOptions: NextAuthOptions = {
         const membership = await db.workspaceMember.findFirst({
           where: {
             userId: token.id as string,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             workspaceId: (token as any).activeWorkspaceId,
           },
           select: { role: true, workspaceId: true },
@@ -179,9 +186,12 @@ export const authOptions: NextAuthOptions = {
             orderBy: { createdAt: 'asc' },
             select: { role: true, workspaceId: true },
           })
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ;(token as any).activeWorkspaceId = first?.workspaceId ?? null
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           token.role = (first?.role ?? 'viewer') as any
         } else {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           token.role = membership.role as any
         }
       }
@@ -192,8 +202,11 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Expose token data to the client session
       if (session.user) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).id = token.id
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session.user as any).role = token.role
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(session as any).activeWorkspaceId = token.activeWorkspaceId
       }
       return session

@@ -61,8 +61,9 @@ export async function GET(req: NextRequest) {
 
   let response: NextResponse
   try {
-    const credential = await (adapter as any).exchangeCode({
+    const credential = await adapter.exchangeCode!({
       code,
+      state,
       redirectUri: REDIRECT_URI,
       codeVerifier: codeVerifier ?? undefined,
     })
@@ -107,8 +108,8 @@ export async function GET(req: NextRequest) {
     } catch { /* audit write failure is non-fatal */ }
 
     response = NextResponse.redirect(new URL('/channels?oauth_success=1', BASE_URL))
-  } catch (err: any) {
-    response = redirectError(err.message || 'token_exchange_failed')
+  } catch (err: unknown) {
+    response = redirectError(err instanceof Error ? err.message : 'token_exchange_failed')
   }
 
   // Clear the state cookie regardless of outcome

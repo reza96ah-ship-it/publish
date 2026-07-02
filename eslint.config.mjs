@@ -14,7 +14,7 @@ const eslintConfig = [
       // ── TypeScript rules ──────────────────────────────────────
       // "warn" = visible in CI but doesn't fail the build.
       // "error" = fails the build (only for clear bugs).
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn', // global default; overridden to error for API/lib below
       '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn',
@@ -49,6 +49,15 @@ const eslintConfig = [
       'no-undef': 'off', // TypeScript handles this; false positives with React 19 JSX
       'no-unreachable': 'error',
       'no-useless-escape': 'warn',
+    },
+  },
+  // Enforce no-any as a build error in security-critical paths (API routes + shared lib).
+  // Components and UI files keep the global 'warn' — Framer Motion spreads and catch
+  // blocks there are low-risk and would generate unactionable noise.
+  {
+    files: ['src/app/api/**/*.ts', 'src/lib/**/*.ts', 'shared/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
     },
   },
   {

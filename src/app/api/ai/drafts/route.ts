@@ -29,7 +29,7 @@ export async function GET() {
 
   return NextResponse.json(
     items.map((c) => {
-      let meta: any = {}
+      let meta: Record<string, unknown> = {}
       try {
         const metaStr = (c.internalNote ?? '').replace('[ai-draft]', '')
         meta = JSON.parse(metaStr)

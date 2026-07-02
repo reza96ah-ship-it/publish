@@ -16,7 +16,7 @@ export async function getWorkspace() {
   try {
     const session = await getServerSession(authOptions)
     if (session?.user) {
-      const wsId = (session as any).activeWorkspaceId
+      const wsId = session.activeWorkspaceId
       if (wsId) {
         const ws = await db.workspace.findUnique({ where: { id: wsId } })
         if (ws) return ws
@@ -48,7 +48,7 @@ export async function getUserId(): Promise<string | null> {
   try {
     const session = await getServerSession(authOptions)
     if (session?.user) {
-      return (session.user as any).id ?? null
+      return session.user.id ?? null
     }
   } catch {
     // No session

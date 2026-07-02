@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     )
 
     return Response.json({ hashtags })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[ai/hashtags] error:', err)
     return Response.json(
       { error: 'خطا در تولید هشتگ. لطفاً دوباره تلاش کنید.' },

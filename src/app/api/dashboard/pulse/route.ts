@@ -14,7 +14,14 @@ export async function GET() {
       workspaceId,
       status: { in: ['processing', 'pending', 'scheduled', 'action', 'failed', 'success'] },
     },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      scheduledAt: true,
+      processLabel: true,
+      progress: true,
+      thumbnailUrl: true,
+      error: true,
       content: { select: { title: true, body: true, thumbnailUrl: true } },
       platform: { select: { type: true, name: true } },
       campaign: { select: { name: true } },
@@ -43,7 +50,7 @@ export async function GET() {
     processLabel: j.processLabel,
     progress: j.progress,
     // #113: expose error field for repair UI (retry/reconnect/cancel buttons)
-    errorCategory: (j as any).errorCategory ?? null,
+    errorCategory: j.error ?? null,
     assignee: j.assignee?.name ?? 'بدون مسئول',
     assigneeAvatar: j.assignee?.avatarUrl ?? '',
     campaign: j.campaign?.name ?? 'بدون کمپین',

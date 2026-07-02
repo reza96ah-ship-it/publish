@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ done: true, platform: p })}\n\n`)
             )
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error(`[ai/caption-multi] stream error for ${p}:`, err)
             controller.enqueue(
               encoder.encode(
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
         Connection: 'keep-alive',
       },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[ai/caption-multi] route error:', err)
     return Response.json(
       {

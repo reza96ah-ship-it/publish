@@ -268,6 +268,7 @@ export async function* streamCaption(
       const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`
       const stream = await model.generateContentStream(prompt)
       let yielded = false
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       for await (const chunk of stream as any) {
         const text = chunk.text()
         if (text) {
@@ -294,6 +295,7 @@ export async function* streamCaption(
     stream: true,
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reader = (completion as any).getReader?.()
   if (reader) {
     const decoder = new TextDecoder()
