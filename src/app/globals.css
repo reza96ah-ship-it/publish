@@ -187,7 +187,7 @@
   /* Text — high contrast, professional scale (full opacity for WCAG-AA) */
   --n-text-primary: oklch(0.18 0.014 280);
   --n-text-secondary: oklch(0.44 0.011 280);
-  --n-text-tertiary: oklch(0.56 0.009 280);
+  --n-text-tertiary: oklch(0.44 0.009 280);
   --n-text-disabled: oklch(0.68 0.007 280);
 
   /* Accent — single restrained violet (Linear + Stripe synthesis).
@@ -258,7 +258,7 @@
 
   --n-text-primary: oklch(0.96 0.004 280);
   --n-text-secondary: oklch(0.76 0.01 280);
-  --n-text-tertiary: oklch(0.62 0.01 280);
+  --n-text-tertiary: oklch(0.65 0.01 280);
   --n-text-disabled: oklch(0.48 0.01 280);
 
   --n-accent: oklch(0.68 0.18 295);
