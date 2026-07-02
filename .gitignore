@@ -4,6 +4,9 @@
 graphify-out/
 analysis/
 
+# Lighthouse CI local run output
+.lighthouseci/
+
 # dependencies
 node_modules
 /.pnp
