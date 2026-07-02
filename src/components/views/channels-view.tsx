@@ -115,7 +115,7 @@ export function ChannelsView() {
 
   const { data: platforms, isLoading } = useQuery<Platform[]>({
     queryKey: ['platforms'],
-    queryFn: () => api.get<Platform[]>('/api/platforms'),
+    queryFn: () => api.getPaginated<Platform>('/api/platforms'),
   })
 
   const [connectOpen, setConnectOpen] = useState(false)
@@ -492,7 +492,7 @@ function ConnectDialog({
     setConnecting(true)
     try {
       // Find existing platform of this type or create new
-      const platforms = await api.get<Platform[]>('/api/platforms')
+      const platforms = await api.getPaginated<Platform>('/api/platforms')
       const existing = platforms.find((p) => p.type === selectedType)
 
       if (existing) {

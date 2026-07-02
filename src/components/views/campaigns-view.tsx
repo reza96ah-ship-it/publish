@@ -91,7 +91,7 @@ export function CampaignsView() {
 
   const { data: campaigns, isLoading } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
-    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+    queryFn: () => api.getPaginated<Campaign>('/api/campaigns'),
   })
 
   const filtered = useMemo(() => {

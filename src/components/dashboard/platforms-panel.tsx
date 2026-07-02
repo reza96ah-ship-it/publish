@@ -26,7 +26,7 @@ interface Platform {
 export function PlatformsPanel() {
   const { data } = useQuery<Platform[]>({
     queryKey: ['platforms'],
-    queryFn: () => api.get<Platform[]>('/api/platforms'),
+    queryFn: () => api.getPaginated<Platform>('/api/platforms'),
   })
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)

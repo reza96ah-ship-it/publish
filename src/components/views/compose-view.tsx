@@ -317,7 +317,7 @@ export function ComposeView() {
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
-    queryFn: () => api.get<Campaign[]>('/api/campaigns'),
+    queryFn: () => api.getPaginated<Campaign>('/api/campaigns'),
   })
   const { data: media, isLoading: mediaIsLoading } = useQuery<MediaItem[]>({
     queryKey: ['media'],
@@ -325,7 +325,7 @@ export function ComposeView() {
   })
   const { data: platforms } = useQuery<Platform[]>({
     queryKey: ['platforms'],
-    queryFn: () => api.get<Platform[]>('/api/platforms'),
+    queryFn: () => api.getPaginated<Platform>('/api/platforms'),
   })
 
   const toggleMedia = (m: MediaItem) => {

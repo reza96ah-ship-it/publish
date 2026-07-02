@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { validateParams, cursorPaginationSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,16 +18,19 @@ export async function GET(req: NextRequest) {
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
-  const { searchParams } = new URL(req.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
+  const query = Object.fromEntries(req.nextUrl.searchParams.entries())
+  const queryCheck = validateParams(cursorPaginationSchema, query)
+  if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
+  const { cursor, limit } = queryCheck.data
 
   const events = await db.outboxEvent.findMany({
     where: {
       workspaceId,
       status: 'dead_letter',
+      ...(cursor ? { id: { lt: cursor } } : {}),
     },
-    orderBy: { deadLetteredAt: 'desc' },
-    take: limit,
+    orderBy: { id: 'desc' },
+    take: limit + 1,
     select: {
       id: true,
       aggregateId: true,
@@ -43,8 +47,12 @@ export async function GET(req: NextRequest) {
     },
   })
 
+  const hasMore = events.length > limit
+  const data = hasMore ? events.slice(0, limit) : events
+  const nextCursor = hasMore ? data[data.length - 1]?.id : null
+
   return NextResponse.json({
-    data: events.map((e) => ({
+    data: data.map((e) => ({
       id: e.id,
       contentId: e.aggregateId,
       eventType: e.eventType,
@@ -58,6 +66,6 @@ export async function GET(req: NextRequest) {
       isReplay: !!e.replayedFromId,
       originalEventId: e.replayedFromId,
     })),
-    count: events.length,
+    nextCursor,
   })
 }
