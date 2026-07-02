@@ -328,7 +328,10 @@ jobs:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
       - name: Start Next.js server (pre-built — starts in seconds)
-        run: bun run start &
+        # Run standalone server directly (not via bun run start) to avoid the
+        # NODE_ENV=production hardcode in package.json, which triggers bootstrapServiceConfig
+        # to reject test secrets. NODE_ENV=test skips the production secret validation.
+        run: NODE_ENV=test bun .next/standalone/server.js &
         env:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
