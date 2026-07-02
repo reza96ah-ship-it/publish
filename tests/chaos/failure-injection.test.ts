@@ -34,9 +34,11 @@ describe('Issue #153 Tier 7 — Process-level failure injection', () => {
     it('query fails gracefully when database is unreachable', async () => {
       // Simulate unreachable database by using an invalid URL
       // We test that the client throws a connection/initialization error
-      const badDb = new PrismaClient({
-        datasourceUrl: 'postgresql://invalid_user:invalid_pass@localhost:9999/invalid_db?connect_timeout=1',
-      })
+      // Prisma 7 removed constructor URL overrides — set env var before constructing
+      const originalUrl = process.env.DATABASE_URL
+      process.env.DATABASE_URL = 'postgresql://invalid_user:invalid_pass@localhost:9999/invalid_db?connect_timeout=1'
+      const badDb = new PrismaClient()
+      process.env.DATABASE_URL = originalUrl // restore; Prisma captured the URL at construction
       await expect(badDb.$queryRaw`SELECT 1`).rejects.toThrow()
       await badDb.$disconnect()
     })
