@@ -1,25 +1,14 @@
 /**
- * POST /api/auth/mfa/disable — disable MFA (requires current TOTP code).
+ * POST /api/auth/mfa/disable — disable MFA (requires current TOTP or backup code).
  *
- * Flow (Issue #121):
- *   1. User enters current TOTP code (or backup code) to confirm
- *   2. Verify against active mfaSecret
- *   3. If valid: clear mfaSecret, mfaBackupCodes, mfaEnabledAt
- *
- * Requires authenticated session + active MFA.
+ * Thin handler: auth → identityService.disableMfa → response mapping.
+ * Business logic lives in src/modules/identity (Issue #156).
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { db } from '@/lib/db'
-import {
-  verifyTotpCode,
-  decryptMfaSecret,
-  parseBackupCodes,
-  consumeBackupCode,
-  serializeBackupCodes,
-} from '@/lib/mfa'
+import { identityService, IdentityError } from '@/modules/identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,44 +18,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const userId = session.user.id
   const { code } = await req.json().catch(() => ({}))
-  if (!code || typeof code !== 'string') {
-    return NextResponse.json({ error: 'کد تأیید الزامی است' }, { status: 400 })
-  }
 
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { mfaSecret: true, mfaBackupCodes: true },
-  })
-  if (!user?.mfaSecret) {
-    return NextResponse.json({ error: 'MFA فعال نیست' }, { status: 400 })
-  }
-
-  const secret = decryptMfaSecret(user.mfaSecret)
-  const isValidTotp = verifyTotpCode(code, secret)
-
-  let backupCodesRemaining = user.mfaBackupCodes
-  if (!isValidTotp) {
-    // Try backup code
-    const stored = parseBackupCodes(user.mfaBackupCodes)
-    const { valid, remaining } = consumeBackupCode(code, stored)
-    if (!valid) {
-      return NextResponse.json({ error: 'کد تأیید یا کد پشتیبان نامعتبر است' }, { status: 400 })
+  try {
+    await identityService.disableMfa(
+      { userId: session.user.id, email: session.user.email ?? '' },
+      code
+    )
+    return NextResponse.json({ ok: true, message: 'MFA غیرفعال شد' })
+  } catch (err) {
+    if (err instanceof IdentityError) {
+      return NextResponse.json({ error: err.userMessage ?? err.message }, { status: err.statusCode })
     }
-    backupCodesRemaining = serializeBackupCodes(remaining)
+    throw err
   }
-
-  // Disable MFA: clear all MFA fields
-  await db.user.update({
-    where: { id: userId },
-    data: {
-      mfaSecret: null,
-      mfaSecretPending: null,
-      mfaBackupCodes: null,
-      mfaEnabledAt: null,
-    },
-  })
-
-  return NextResponse.json({ ok: true, message: 'MFA غیرفعال شد' })
 }
