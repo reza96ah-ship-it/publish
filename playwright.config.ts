@@ -54,7 +54,7 @@ export default defineConfig({
     // secrets). NODE_ENV=test skips the production validation so the server starts.
     // Local dev: use the hot-reload dev server as normal.
     command: process.env.CI
-      ? 'NODE_ENV=test bun .next/standalone/server.js'
+      ? 'NODE_ENV=test node .next/standalone/server.js'
       : 'bun run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
