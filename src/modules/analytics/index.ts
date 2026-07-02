@@ -1,2 +1,3 @@
-export { analyticsService } from './service'
-export type { PlatformRealStat, AnalyticsFallbackEntry, RealAnalyticsResult } from './types'
+export { AnalyticsService, analyticsService } from './service'
+export { AnalyticsRepository } from './repository'
+export * from './types'

@@ -43,7 +43,7 @@ describe('Issue #156 — Architecture enforcement', () => {
     })
 
     for (const file of moduleFiles) {
-      const relPath = file.replace(process.cwd(), '')
+      const relPath = file.replace(process.cwd(), '').replace(/\\/g, '/')
       it(`${relPath} does not import next/server or next/navigation`, () => {
         const content = readFile(file)
         expect(content).not.toMatch(/from\s+['"]next\/server['"]/)
@@ -115,7 +115,7 @@ describe('Issue #156 — Architecture enforcement', () => {
     ]
 
     for (const file of routeFiles) {
-      const relPath = file.replace(process.cwd(), '')
+      const relPath = file.replace(process.cwd(), '').replace(/\\/g, '/')
       const isGrace = GRACE_LIST.some(g => relPath.includes(`/api/${g}/`))
 
       it(`${relPath} is under 100 lines${isGrace ? ' (grace — not yet migrated)' : ''}`, () => {

@@ -412,3 +412,86 @@ jobs:
           NEXTAUTH_URL: 'http://localhost:3000'
       - run: bunx playwright install --with-deps chromium firefox webkit
       - run: bun run test:e2e
+
+  lighthouse:
+    name: Lighthouse CI (a11y + best-practices + SEO)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Accessibility threshold (≥0.85) is enforced as an error in .lighthouserc.json.
+    # The job is continue-on-error so a flaky Lighthouse run never blocks a merge —
+    # a dedicated axe-core E2E gate already enforces WCAG 2.2 AA. Once baselines
+    # are stable, remove continue-on-error to make Lighthouse fully blocking.
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nashrino_lhci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nashrino_lhci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_lhci?schema=public&connection_limit=10'
+      DIRECT_DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_lhci?schema=public'
+      NEXTAUTH_SECRET: 'test-secret-not-for-production'
+      NEXTAUTH_URL: 'http://localhost:3000'
+      REDIS_URL: 'redis://localhost:6379'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+      - run: bunx prisma migrate deploy
+      - name: Build Next.js app (pre-built standalone server)
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+      - name: Start Next.js server (pre-built — starts in seconds)
+        # node, not bun — Next.js standalone server.js targets the Node.js
+        # module system. NODE_ENV=test skips production secret validation.
+        run: NODE_ENV=test node .next/standalone/server.js &
+        env:
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_lhci?schema=public&connection_limit=10'
+          REDIS_URL: 'redis://localhost:6379'
+      - name: Wait for server (up to 60s)
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Server ready after $((i * 5))s"
+              exit 0
+            fi
+            echo "Waiting... ($i/12)"
+            sleep 5
+          done
+          echo "::error::Server did not respond within 60s"
+          exit 1
+      - name: Run Lighthouse CI
+        run: bunx @lhci/cli@0.14.x autorun --config=.lighthouserc.json
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 30

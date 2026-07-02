@@ -39,15 +39,15 @@
 |--------|------|-------|--------|
 | publications | `src/modules/publications/` | Backend | ✅ migrated |
 | identity/auth | `src/lib/auth.ts`, `auth-guards.ts` | Backend | ⚠️ needs extraction |
-| workspaces/members | `src/app/api/members/` | Backend | ⚠️ needs extraction |
-| content/revisions | `src/app/api/content/` | Backend | ⚠️ needs extraction |
-| channels/credentials | `src/app/api/platforms/` | Backend | ⚠️ needs extraction |
-| media | `src/app/api/media/` | Backend | ⚠️ needs extraction |
-| campaigns | `src/app/api/campaigns/` | Backend | ⚠️ needs extraction |
-| inbox | `src/app/api/inbox/` | Backend | ⚠️ needs extraction |
-| notifications | `src/app/api/notifications/` | Backend | ⚠️ needs extraction |
-| analytics | `src/app/api/analytics/` | Backend | ⚠️ needs extraction |
-| operations/health | `src/app/api/health/`, `readyz/` | Backend | ⚠️ needs extraction |
+| workspaces/members | `src/modules/membership/` | Backend | ✅ migrated |
+| content/revisions | `src/modules/content/` | Backend | ✅ migrated |
+| channels/credentials | `src/modules/channels/` | Backend | ✅ migrated |
+| media | `src/modules/media/` | Backend | ✅ migrated |
+| campaigns | `src/modules/campaigns/` | Backend | ✅ migrated |
+| inbox | `src/modules/inbox/` | Backend | ✅ migrated |
+| notifications | `src/modules/notifications/` | Backend | ✅ migrated |
+| analytics | `src/modules/analytics/` | Backend | ✅ migrated |
+| operations/health | `src/modules/operations/` | Backend | ✅ migrated |
 
 ## 3. Shared Contracts (Issue #156)
 
