@@ -1,71 +1,29 @@
-/**
- * POST /api/content/[id]/submit-review
- * Transitions content from draft/rejected → review (submit for approval).
- */
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-
-export const dynamic = 'force-dynamic'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateId } from '@/lib/validations'
+import { contentService, ContentNotFoundError, InvalidStateTransitionError } from '@/modules/content'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: rawId } = await params
   const idCheck = validateId(rawId)
   if (!idCheck.success) return NextResponse.json({ error: idCheck.error }, { status: 400 })
-  const id = idCheck.data
 
   const guard = await requirePermissionApi('content.edit')
   if (guard.error) return guard.error
-  const workspaceId = guard.workspaceId
 
-  const content = await db.content.findFirst({
-    where: { id, workspaceId },
-  })
-  if (!content) return NextResponse.json({ error: 'not_found' }, { status: 404 })
-
-  // State machine: only draft or rejected can go to review
-  if (content.status !== 'draft' && content.status !== 'rejected') {
-    return NextResponse.json(
-      {
-        error: 'invalid_transition',
-        message: 'فقط محتوای پیش‌نویس یا ردشده می‌تواند برای بررسی ارسال شود',
-      },
-      { status: 400 }
+  try {
+    const result = await contentService.submitForReview(
+      { workspaceId: guard.workspaceId, userId: guard.userId },
+      idCheck.data
     )
+    return NextResponse.json(result)
+  } catch (err) {
+    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof InvalidStateTransitionError) {
+      return NextResponse.json({ error: 'invalid_transition', message: err.message }, { status: 400 })
+    }
+    throw err
   }
-
-  // Save version snapshot before submitting
-  await db.contentVersion.create({
-    data: {
-      contentId: id,
-      body: content.body ?? '',
-      editedBy: 'submitter',
-      editSummary: 'ارسال برای بررسی',
-    },
-  })
-
-  // Transition to review
-  await db.content.update({
-    where: { id },
-    data: {
-      status: 'review',
-      rejectedReason: null,
-    },
-  })
-
-  // Notify approvers
-  const approvers = await db.workspaceMember.findMany({
-    where: { workspaceId, role: { in: ['admin', 'approver'] } },
-  })
-  await db.notification.createMany({
-    data: approvers.map(() => ({
-      workspaceId,
-      type: 'approval_requested',
-      title: 'محتوای جدید برای تأیید',
-      body: content.title,
-    })),
-  })
-
-  return NextResponse.json({ ok: true, status: 'review' })
 }

@@ -40,7 +40,7 @@
 | publications | `src/modules/publications/` | Backend | ✅ migrated |
 | identity/auth | `src/lib/auth.ts`, `auth-guards.ts` | Backend | ⚠️ needs extraction |
 | workspaces/members | `src/modules/membership/` | Backend | ✅ migrated |
-| content/revisions | `src/app/api/content/` | Backend | ⚠️ needs extraction |
+| content/revisions | `src/modules/content/` | Backend | ✅ migrated |
 | channels/credentials | `src/modules/channels/` | Backend | ✅ migrated |
 | media | `src/modules/media/` | Backend | ✅ migrated |
 | campaigns | `src/app/api/campaigns/` | Backend | ⚠️ needs extraction |
