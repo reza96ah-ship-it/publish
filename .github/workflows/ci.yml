@@ -459,24 +459,32 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bunx prisma generate
       - run: bunx prisma migrate deploy
-      - name: Start Next.js dev server
-        run: bun run dev &
+      - name: Build Next.js app (pre-built standalone server)
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+      - name: Start Next.js server (pre-built — starts in seconds)
+        # node, not bun — Next.js standalone server.js targets the Node.js
+        # module system. NODE_ENV=test skips production secret validation.
+        run: NODE_ENV=test node .next/standalone/server.js &
         env:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_lhci?schema=public&connection_limit=10'
           REDIS_URL: 'redis://localhost:6379'
-      - name: Wait for server (up to 300s)
+      - name: Wait for server (up to 60s)
         run: |
-          for i in $(seq 1 60); do
+          for i in $(seq 1 12); do
             if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
               echo "Server ready after $((i * 5))s"
               exit 0
             fi
-            echo "Waiting... ($i/60)"
+            echo "Waiting... ($i/12)"
             sleep 5
           done
-          echo "::error::Server did not respond within 300s"
+          echo "::error::Server did not respond within 60s"
           exit 1
       - name: Run Lighthouse CI
         run: bunx @lhci/cli@0.14.x autorun --config=.lighthouserc.json

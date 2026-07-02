@@ -59,7 +59,9 @@ const PROTECTED = [
 test.describe('Auth-protected endpoints — 401 not 500 when unauthenticated', () => {
   for (const path of PROTECTED) {
     test(`GET ${path}`, async ({ request }) => {
-      const res = await request.get(path)
+      // maxRedirects: 0 — the proxy answers unauthenticated /api/* with a 307
+      // redirect to /auth/signin; following it would report the signin page's 200
+      const res = await request.get(path, { maxRedirects: 0 })
       expect(res.status()).not.toBe(500)
       // Accept 401 or 307/302 redirect to /auth/signin
       expect([401, 302, 307]).toContain(res.status())
@@ -72,7 +74,7 @@ test.describe('Auth-protected endpoints — 401 not 500 when unauthenticated', (
 // ---------------------------------------------------------------------------
 test.describe('Pagination parameter validation', () => {
   test('GET /api/platforms?limit=abc → 400', async ({ request }) => {
-    const res = await request.get('/api/platforms?limit=abc')
+    const res = await request.get('/api/platforms?limit=abc', { maxRedirects: 0 })
     // Protected routes return 401 before param validation in unauthenticated CI,
     // but in dev-mode with auth bypass they return 400. Either is correct here.
     expect([400, 401, 302, 307]).toContain(res.status())
