@@ -70,7 +70,8 @@ export async function GET(req: NextRequest) {
 
   const state = randomBytes(16).toString('hex')
 
-  const { authorizationUrl, codeVerifier } = await (adapter as any).getAuthorizationUrl({
+  const { authorizationUrl, codeVerifier } = await adapter.getAuthorizationUrl!({
+    workspaceId: guard.workspaceId,
     redirectUri: REDIRECT_URI,
     state,
     platformId: platform.id,

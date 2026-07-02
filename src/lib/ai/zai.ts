@@ -82,6 +82,7 @@ export async function* streamCaption(
 
   // The SDK returns a ReadableStream when stream:true
   // Parse SSE frames: "data: {json}\n\n"
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const reader = (completion as any).getReader?.()
   if (reader) {
     const decoder = new TextDecoder()

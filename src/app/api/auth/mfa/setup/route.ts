@@ -29,7 +29,7 @@ export async function POST(_req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id as string
+  const userId = session.user.id
   const email = session.user.email ?? ''
 
   // Generate a new TOTP secret

@@ -199,6 +199,7 @@ export async function fetchObject(key: string): Promise<Buffer | null> {
     const response = await getS3Client().send(command)
     if (!response.Body) return null
     const chunks: Uint8Array[] = []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const reader = response.Body as any
     for await (const chunk of reader) chunks.push(chunk)
     return Buffer.concat(chunks)

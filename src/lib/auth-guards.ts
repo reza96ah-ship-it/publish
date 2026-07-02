@@ -54,12 +54,12 @@ export async function requireWorkspace() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/auth/signin')
 
-  const wsId = (session as any).activeWorkspaceId
+  const wsId = session.activeWorkspaceId
   if (!wsId) redirect('/auth/signin')
 
   const membership = await db.workspaceMember.findFirst({
     where: {
-      userId: (session.user as any).id,
+      userId: session.user.id,
       workspaceId: wsId,
     },
     include: { workspace: true },
@@ -146,7 +146,7 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
     }
   }
 
-  const userId = (session.user as any).id as string | undefined
+  const userId = session.user.id
   if (!userId) {
     return {
       error: NextResponse.json({ error: 'unauthorized', message: 'User ID missing from session' }, { status: 401 }),
@@ -157,7 +157,7 @@ export async function requireWorkspaceApi(): Promise<WorkspaceGuardResult> {
     }
   }
 
-  const wsId = (session as any).activeWorkspaceId
+  const wsId = session.activeWorkspaceId
   if (!wsId) {
     return {
       error: NextResponse.json({ error: 'no_workspace' }, { status: 403 }),

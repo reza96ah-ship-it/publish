@@ -27,7 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   let valid = false
-  let botInfo: any = null
+  let botInfo: { username?: string; first_name?: string; [key: string]: unknown } | null = null
   const token = decrypt(platform.tokenSecret)
 
   if (platform.type === 'telegram') {

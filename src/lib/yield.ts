@@ -12,6 +12,7 @@
 
 export function yieldToMain(): Promise<void> {
   // Use globalThis to avoid TypeScript error (scheduler is not in TS lib yet)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const s = (globalThis as any).scheduler
   if (s && typeof s.yield === 'function') {
     return s.yield()

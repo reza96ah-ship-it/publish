@@ -107,6 +107,7 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
       `${IG_GRAPH_API}/me/permissions?access_token=${longLived.access_token}`
     )
     const scopesData = await scopesRes.json()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const grantedScopes = (scopesData.data || []).map((s: any) => s.permission)
 
     return {
@@ -156,6 +157,7 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
         `${IG_GRAPH_API}/me/permissions?access_token=${token}`
       )
       const scopesData = await scopesRes.json()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const grantedScopes = (scopesData.data || []).map((s: any) => s.permission)
       const required = REQUIRED_SCOPES.instagram
       const missingScopes = required.filter((s) => !grantedScopes.includes(s))

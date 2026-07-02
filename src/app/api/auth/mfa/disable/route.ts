@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const userId = (session.user as any).id as string
+  const userId = session.user.id
   const { code } = await req.json().catch(() => ({}))
   if (!code || typeof code !== 'string') {
     return NextResponse.json({ error: 'کد تأیید الزامی است' }, { status: 400 })

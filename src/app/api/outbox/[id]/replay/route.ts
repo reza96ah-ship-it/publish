@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { randomUUID } from 'crypto'
+import type { Prisma } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       aggregateType: original.aggregateType,
       aggregateId: original.aggregateId,
       eventType: original.eventType,
-      payload: original.payload as any, // Prisma JSON type
+      payload: original.payload as Prisma.InputJsonValue,
       traceParent: original.traceParent,
       status: 'pending',
       attemptCount: 0,

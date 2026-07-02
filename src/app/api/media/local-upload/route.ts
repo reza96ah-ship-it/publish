@@ -19,6 +19,7 @@ import { mkdir, rm } from 'fs/promises'
 import path from 'path'
 import { Readable, Transform } from 'stream'
 import { pipeline } from 'stream/promises'
+import type { ReadableStream as NodeReadableStream } from 'stream/web'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -91,7 +92,9 @@ export async function PUT(req: NextRequest) {
     },
   })
 
-  const nodeReadable = Readable.fromWeb(req.body as any)
+  // req.body is the DOM ReadableStream; Readable.fromWeb expects stream/web.ReadableStream —
+  // same object at runtime but two distinct TypeScript ambient declarations.
+  const nodeReadable = Readable.fromWeb(req.body as unknown as NodeReadableStream<Uint8Array>)
   const writeStream = createWriteStream(destPath)
 
   try {

@@ -23,7 +23,7 @@ export async function GET() {
   const workspaceId = guard.workspaceId
 
   const session = await getServerSession(authOptions)
-  const authorId = (session?.user as any)?.id as string | undefined
+  const authorId = session?.user?.id
   if (!authorId) return NextResponse.json({ draft: null })
 
   const draft = await db.contentDraft.findUnique({
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const workspaceId = guard.workspaceId
 
   const session = await getServerSession(authOptions)
-  const authorId = (session?.user as any)?.id as string | undefined
+  const authorId = session?.user?.id
   if (!authorId) {
     return NextResponse.json({ error: 'شناسه کاربر یافت نشد' }, { status: 401 })
   }

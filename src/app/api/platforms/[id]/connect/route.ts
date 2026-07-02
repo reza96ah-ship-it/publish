@@ -19,7 +19,16 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, platformConnectSchema } from '@/lib/validations'
 import { encrypt } from '@/lib/crypto'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
-import { computeCredentialStatus, REQUIRED_SCOPES } from '@/lib/provider-auth/types'
+import { computeCredentialStatus, REQUIRED_SCOPES, type BotTokenInput, type CredentialHealth, type ProviderCredential } from '@/lib/provider-auth/types'
+
+type BotTokenAdapter = {
+  validateBotToken(input: BotTokenInput): Promise<{
+    valid: boolean
+    botInfo?: { username?: string; first_name?: string; [key: string]: unknown }
+    health: CredentialHealth
+    credential?: Partial<ProviderCredential>
+  }>
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -55,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // For bot-token providers (telegram, bale, rubika): use validateBotToken
   // For OAuth providers (instagram, linkedin): use validateCredential (token already obtained via OAuth)
   let valid = false
-  let botInfo: any = null
+  let botInfo: { username?: string; first_name?: string; [key: string]: unknown } | null = null
   let realExpiresAt: Date | null = null
   let grantedScopes: string[] = []
   let accountId = ''
@@ -64,9 +73,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if ('validateBotToken' in adapter) {
     // Bot-token provider (Telegram, Bale, Rubika)
-    const result = await (adapter as any).validateBotToken({ token, targetId })
+    const result = await (adapter as BotTokenAdapter).validateBotToken({ token, targetId })
     valid = result.valid
-    botInfo = result.botInfo
+    botInfo = result.botInfo ?? null
     errorMessage = result.health.message
 
     if (result.credential) {

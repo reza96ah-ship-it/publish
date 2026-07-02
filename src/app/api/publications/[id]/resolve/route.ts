@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { action, providerPostId, reason } = validation.data
 
   // Find the publication — must be in outcome_unknown state + belong to workspace
-  const publication = await (db as any).publication.findFirst({
+  const publication = await db.publication.findFirst({
     where: { id, workspaceId },
   })
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!providerPostId) {
         return NextResponse.json({ error: 'شناسه پست ارائه‌دهنده برای تأیید انتشار الزامی است' }, { status: 400 })
       }
-      await (db as any).publication.update({
+      await db.publication.update({
         where: { id },
         data: {
           status: 'success',
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     case 'confirm_failure': {
-      await (db as any).publication.update({
+      await db.publication.update({
         where: { id },
         data: {
           status: 'failed',
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     case 'abandon': {
-      await (db as any).publication.update({
+      await db.publication.update({
         where: { id },
         data: {
           status: 'failed',
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     case 'duplicate_safe_retry': {
       // Reset to pending so the outbox dispatcher re-enqueues it
-      await (db as any).publication.update({
+      await db.publication.update({
         where: { id },
         data: {
           status: 'pending',

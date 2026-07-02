@@ -144,6 +144,7 @@ export interface ProviderAuthAdapter {
   listPublishTargets?(credential: {
     accessTokenEncrypted: string
   }): Promise<PublishTarget[]>
+
 }
 
 // ── Registry ───────────────────────────────────────────────────

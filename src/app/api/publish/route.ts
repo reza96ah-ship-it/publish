@@ -49,10 +49,10 @@ export async function POST(req: Request) {
   // Resolve author name for the content record
   const session = await getServerSession(authOptions)
   const authorName =
-    (session?.user as any)?.name ||
+    session?.user?.name ||
     (
       await db.workspaceMember.findFirst({
-        where: { userId: (session?.user as any)?.id },
+        where: { userId: session?.user?.id },
         select: { name: true },
       })
     )?.name ||
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   // 5. Call the service layer (all business logic + DB transaction lives there)
   const auth: AuthContext = {
     workspaceId: guard.workspaceId,
-    userId: (session?.user as any)?.id ?? '',
+    userId: session?.user?.id ?? '',
     authorName,
     role: guard.role,
     trace,
