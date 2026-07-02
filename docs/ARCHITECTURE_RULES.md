@@ -43,7 +43,7 @@
 | content/revisions | `src/modules/content/` | Backend | ✅ migrated |
 | channels/credentials | `src/modules/channels/` | Backend | ✅ migrated |
 | media | `src/modules/media/` | Backend | ✅ migrated |
-| campaigns | `src/app/api/campaigns/` | Backend | ⚠️ needs extraction |
+| campaigns | `src/modules/campaigns/` | Backend | ✅ migrated |
 | inbox | `src/modules/inbox/` | Backend | ✅ migrated |
 | notifications | `src/modules/notifications/` | Backend | ✅ migrated |
 | analytics | `src/modules/analytics/` | Backend | ✅ migrated |
