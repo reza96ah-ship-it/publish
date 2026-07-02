@@ -14,10 +14,13 @@ if [ -n "$BOM_FILES" ]; then
 fi
 
 # Check for common mojibake patterns in Persian text
-# Mojibake occurs when UTF-8 Persian bytes are misinterpreted as Latin-1
-MOJIBAKE=$(grep -rlP '[\xC0-\xFF][\x80-\xBF]' src/ tests/ 2>/dev/null | head -5 || true)
+# Mojibake occurs when UTF-8 Persian bytes are misinterpreted as Latin-1 and saved back.
+# Misinterpreted first bytes: \xD8-\xDB become Latin-1 Ø, Ù, Ú, Û (\xC3\x98 - \xC3\x9B in UTF-8)
+# Misinterpreted second bytes: \x80-\xBF become Latin-1 \x80-\xBF (\xC2\x80-\xC2\xBF or \xC3\x80-\xC3\xBF in UTF-8)
+# This regex has zero false positives on valid UTF-8 Persian (which uses direct \xD8-\xDB bytes).
+MOJIBAKE=$(grep -rlP '\xC3[\x98-\x9B]\xC2[\x80-\xBF]|\xC3[\x98-\x9B]\xC3[\x80-\xBF]' src/ tests/ 2>/dev/null | head -5 || true)
 if [ -n "$MOJIBAKE" ]; then
-  echo "⚠️  Warning: Files with potential mojibake (high bytes that aren't valid UTF-8 Persian):"
+  echo "⚠️  Warning: Files with potential mojibake (corrupted Persian characters):"
   echo "$MOJIBAKE"
   echo "Review these files manually for corrupted Persian text."
 fi
