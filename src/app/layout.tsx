@@ -8,6 +8,7 @@ import { QueryProvider } from '@/lib/query-provider'
 import { MotionProvider } from '@/lib/motion'
 import { NextAuthSessionProvider } from '@/components/providers/session-provider'
 import { WebVitals } from '@/components/providers/web-vitals'
+import { LiveRegionProvider } from '@/lib/aria-live'
 
 const vazir = Vazirmatn({
   subsets: ['arabic', 'latin'],
@@ -62,6 +63,9 @@ export default async function RootLayout({
             </MotionProvider>
           </QueryProvider>
           <Sonner position="top-center" dir="rtl" />
+          {/* aria-live announce regions — mounted once at the root so every
+              page (including /auth/signin, which has no AppShell) can announce */}
+          <LiveRegionProvider />
           {/* Issue #127: collect Core Web Vitals (LCP/INP/CLS) → /api/vitals → Prometheus */}
           <WebVitals />
         </ThemeProvider>

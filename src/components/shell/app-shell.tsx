@@ -12,7 +12,6 @@ import { usePublishStream } from '@/hooks/use-publish-stream'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { CommandPalette } from './command-palette'
 import { ShortcutsModal } from './shortcuts-modal'
-import { LiveRegionProvider } from '@/lib/aria-live'
 
 function RealtimeProvider() {
   const { data: workspaceId } = useQuery<string>({
@@ -38,7 +37,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <RealtimeProvider />
       <CommandPalette />
       <ShortcutsModal />
-      <LiveRegionProvider />
 
       {/* Skip link — WCAG 2.4.1 Level A bypass block */}
       <a
