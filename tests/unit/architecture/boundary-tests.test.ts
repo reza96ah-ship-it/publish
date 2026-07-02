@@ -98,11 +98,9 @@ describe('Issue #156 — Architecture enforcement', () => {
     // Grace list: routes not yet migrated to thin handlers.
     // These have TODO comments and will be migrated in follow-up PRs.
     const GRACE_LIST = [
-      'inbox', // planned migration
       'workspace', // planned migration
       'calendar', // read-model, not a command handler
       'dashboard', // read-model, not a command handler
-      'analytics', // read-model, not a command handler
       'ai/caption', // AI routes — planned for AI module
       'ai/caption-multi', // AI routes — planned for AI module
       'ai/drafts', // AI routes — planned for AI module
