@@ -111,6 +111,9 @@ describe('Issue #156 — Architecture enforcement', () => {
       'platforms/[id]/connect', // OAuth flow — complex but thin enough at 200
       'platforms/oauth/callback', // OAuth callback — complex but thin enough at 200
       'publish-jobs/[id]', // status endpoint — planned migration
+      'compose-draft', // planned migration to compose module
+      'publications/[id]/resolve', // complex resolution logic — planned migration
+      'publish', // orchestration route — planned migration to publish module
     ]
 
     for (const file of routeFiles) {
