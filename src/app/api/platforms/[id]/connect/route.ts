@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, platformConnectSchema } from '@/lib/validations'
 import { channelsService, PlatformNotFoundError, UnsupportedProviderError, CredentialValidationError } from '@/modules/channels'
+import { platformRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const guard = await requirePermissionApi('platform.connect')
   if (guard.error) return guard.error
+
+  const { success: rateOk } = await platformRateLimit(guard.workspaceId, id)
+  if (!rateOk) {
+    return NextResponse.json({ error: 'too_many_requests' }, { status: 429 })
+  }
 
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })

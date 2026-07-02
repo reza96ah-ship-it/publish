@@ -1,59 +1,72 @@
 /**
- * Rate limiting — in-memory sliding window (no Redis needed for SQLite demo).
+ * Redis-backed fixed-window rate limiter.
  *
- * Usage:
- *   import { rateLimit } from "@/lib/ratelimit";
- *   const { success, remaining } = await rateLimit(identifier, { limit: 10, window: 60 });
- *   if (!success) return NextResponse.json({ error: "تعداد درخواست‌ها زیاد است" }, { status: 429 });
+ * Each window is keyed as `rl:{prefix}:{identifier}:{windowIndex}`.
+ * The INCR is atomic; EXPIRE is set on the first increment so the key
+ * auto-removes when the window passes.
+ *
+ * Degrades gracefully: if Redis is unavailable the request is allowed
+ * through rather than blocking legitimate traffic.
  */
 
-interface RateLimitEntry {
-  count: number
-  resetAt: number
+import { getRedisClient } from '@/lib/redis'
+
+export interface RateLimitResult {
+  success: boolean
+  remaining: number
+  resetAt: number // Unix ms when the current window resets
 }
 
-const store = new Map<string, RateLimitEntry>()
-
-// Clean up expired entries every 60s
-setInterval(() => {
+async function checkLimit(
+  prefix: string,
+  identifier: string,
+  limit: number,
+  windowSeconds: number
+): Promise<RateLimitResult> {
   const now = Date.now()
-  for (const [key, entry] of store.entries()) {
-    if (entry.resetAt < now) store.delete(key)
-  }
-}, 60_000)
+  const windowIndex = Math.floor(now / (windowSeconds * 1000))
+  const key = `rl:${prefix}:${identifier}:${windowIndex}`
+  const resetAt = (windowIndex + 1) * windowSeconds * 1000
 
+  try {
+    const redis = getRedisClient()
+    const pipeline = redis.pipeline()
+    pipeline.incr(key)
+    pipeline.expire(key, windowSeconds + 1)
+    const results = await pipeline.exec()
+    const count = (results?.[0]?.[1] as number) ?? 0
+    return {
+      success: count <= limit,
+      remaining: Math.max(0, limit - count),
+      resetAt,
+    }
+  } catch {
+    // Fail open — Redis unavailable should not block traffic
+    return { success: true, remaining: limit, resetAt }
+  }
+}
+
+// Generic helper (kept for backwards compatibility)
 export async function rateLimit(
   identifier: string,
   opts: { limit: number; window: number } = { limit: 20, window: 60 }
-): Promise<{ success: boolean; remaining: number; resetAt: number }> {
-  const now = Date.now()
-  const key = identifier
-  const entry = store.get(key)
-
-  if (!entry || entry.resetAt < now) {
-    // First request or window expired
-    const newEntry: RateLimitEntry = {
-      count: 1,
-      resetAt: now + opts.window * 1000,
-    }
-    store.set(key, newEntry)
-    return { success: true, remaining: opts.limit - 1, resetAt: newEntry.resetAt }
-  }
-
-  if (entry.count >= opts.limit) {
-    return { success: false, remaining: 0, resetAt: entry.resetAt }
-  }
-
-  entry.count++
-  return { success: true, remaining: opts.limit - entry.count, resetAt: entry.resetAt }
+): Promise<RateLimitResult> {
+  return checkLimit('generic', identifier, opts.limit, opts.window)
 }
 
 // Pre-configured limiters
-export const aiRateLimit = (identifier: string) =>
-  rateLimit(`ai:${identifier}`, { limit: 15, window: 60 }) // 15 AI requests per minute
+// 15 AI generation requests per minute per IP
+export const aiRateLimit = (ip: string) =>
+  checkLimit('ai', ip, 15, 60)
 
-export const authRateLimit = (identifier: string) =>
-  rateLimit(`auth:${identifier}`, { limit: 5, window: 300 }) // 5 login attempts per 5 minutes
+// 5 auth/MFA attempts per 5 minutes per user
+export const authRateLimit = (userId: string) =>
+  checkLimit('auth', userId, 5, 300)
 
+// 10 platform connect/validate attempts per minute per workspace+platform
+export const platformRateLimit = (workspaceId: string, platformId: string) =>
+  checkLimit('platform', `${workspaceId}:${platformId}`, 10, 60)
+
+// 60 general API requests per minute per workspace
 export const apiRateLimit = (identifier: string) =>
-  rateLimit(`api:${identifier}`, { limit: 60, window: 60 }) // 60 API requests per minute
+  checkLimit('api', identifier, 60, 60)

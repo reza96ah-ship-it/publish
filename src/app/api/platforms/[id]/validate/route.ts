@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateId } from '@/lib/validations'
 import { channelsService, PlatformNotFoundError, CredentialValidationError } from '@/modules/channels'
+import { platformRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const guard = await requirePermissionApi('platform.manage')
   if (guard.error) return guard.error
+
+  const { success: rateOk } = await platformRateLimit(guard.workspaceId, idCheck.data)
+  if (!rateOk) {
+    return NextResponse.json({ error: 'too_many_requests' }, { status: 429 })
+  }
 
   try {
     const result = await channelsService.validatePlatform(

@@ -21,6 +21,7 @@ import {
   generateBackupCodes,
   serializeBackupCodes,
 } from '@/lib/mfa'
+import { authRateLimit } from '@/lib/ratelimit'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,15 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = session.user.id
+
+  const { success: rateOk } = await authRateLimit(userId)
+  if (!rateOk) {
+    return NextResponse.json(
+      { error: 'تعداد تلاش‌ها زیاد است — چند دقیقه صبر کنید' },
+      { status: 429 }
+    )
+  }
+
   const { code } = await req.json().catch(() => ({}))
   if (!code || typeof code !== 'string') {
     return NextResponse.json({ error: 'کد تأیید الزامی است' }, { status: 400 })
