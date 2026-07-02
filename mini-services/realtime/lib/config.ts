@@ -20,6 +20,38 @@ export interface RealtimeConfig {
 export const DEFAULT_JWT_KID = 'realtime-v1'
 
 /**
+ * Require an environment variable, failing closed in production.
+ * In development, falls back to devDefault with a console.warn.
+ */
+export function requireSecret(
+  envKey: string,
+  devDefault: string,
+  opts: {
+    env?: Record<string, string | undefined>
+    isProduction?: boolean
+    exitFn?: (code: number) => void
+    log?: (msg: string) => void
+  } = {}
+): string {
+  const env = opts.env ?? process.env
+  const isProduction = opts.isProduction ?? (env.NODE_ENV === 'production')
+  const exitFn = opts.exitFn ?? ((code) => process.exit(code))
+  const log = opts.log ?? console.error
+
+  const value = env[envKey]
+  if (value) return value
+
+  if (isProduction) {
+    log(`FATAL: required secret "${envKey}" is missing in production`)
+    exitFn(1)
+    return ''
+  }
+
+  console.warn(`[config] WARNING: "${envKey}" is not set. Using dev default.`)
+  return devDefault
+}
+
+/**
  * Load configuration. Runs bootstrapServiceConfig inside so that
  * tests can override env and exitFn.
  */

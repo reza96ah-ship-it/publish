@@ -49,10 +49,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun run dev',
+    // CI: run the pre-built standalone server directly (not via bun run start, which
+    // hardcodes NODE_ENV=production and triggers bootstrapServiceConfig to reject test
+    // secrets). NODE_ENV=test skips the production validation so the server starts.
+    // Local dev: use the hot-reload dev server as normal.
+    command: process.env.CI
+      ? 'NODE_ENV=test node .next/standalone/server.js'
+      : 'bun run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    // 60 s is too short for Next.js cold compile in CI — use 120 s
-    timeout: process.env.CI ? 120_000 : 60_000,
+    timeout: 60_000,
   },
 })

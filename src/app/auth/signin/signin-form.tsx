@@ -102,6 +102,8 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
             <button
               type="submit"
               disabled={!csrfToken || loading}
+              aria-label="ورود"
+              aria-busy={!csrfToken || loading}
               className="n-focus-ring w-full h-10 rounded-lg bg-accent text-[13px] font-[600] text-white transition-colors hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {!csrfToken ? (

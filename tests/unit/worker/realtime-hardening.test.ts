@@ -333,19 +333,20 @@ describe('Issue #151 -- Fail-closed configuration', () => {
 
     it('exits with code 1 when CORS is wildcard in production', () => {
       const exitFn = vi.fn()
-      const log = vi.fn()
+      const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       loadRealtimeConfig({
         env: {
           NODE_ENV: 'production',
           EMIT_SECRET: 'emit-secret-xxx',
           REALTIME_JWT_SECRET: 'jwt-secret-xxx',
           REALTIME_CORS_ORIGIN: '*',
+          REDIS_CACHE_URL: 'redis://localhost:6379',
         },
         exitFn,
-        log,
       })
       expect(exitFn).toHaveBeenCalledWith(1)
-      expect(log).toHaveBeenCalledWith(expect.stringContaining('CORS'))
+      expect(errSpy).toHaveBeenCalledWith(expect.stringContaining('CORS'))
+      errSpy.mockRestore()
     })
 
     it('exits with code 1 when CORS is empty in production', () => {
@@ -372,6 +373,7 @@ describe('Issue #151 -- Fail-closed configuration', () => {
           REALTIME_CORS_ORIGIN: 'https://app.example.com,https://staging.example.com',
           REALTIME_PORT: '4000',
           REALTIME_JWT_KID: 'rotated-2',
+          REDIS_CACHE_URL: 'redis://localhost:6379',
         },
         exitFn,
       })
@@ -421,6 +423,7 @@ describe('Issue #151 -- CORS allowlist enforcement', () => {
         EMIT_SECRET: 'x',
         REALTIME_JWT_SECRET: 'y',
         REALTIME_CORS_ORIGIN: 'https://app.example.com',
+        REDIS_CACHE_URL: 'redis://localhost:6379',
       },
       exitFn,
     })
@@ -578,7 +581,7 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
     // Read the middleware source and assert /api/metrics is NOT in isPublicPath.
     // This is a regression guard: if someone re-adds it, this test fails.
     const middlewareSrc = fs.readFileSync(
-      path.resolve(__dirname, '../../../src/middleware.ts'),
+      path.resolve(__dirname, '../../../src/proxy.ts'),
       'utf8'
     )
     // The isPublicPath block must NOT contain a `pathname.startsWith('/api/metrics')` line.
@@ -586,14 +589,14 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
     const blockMatch = middlewareSrc.match(
       /const isPublicPath =([\s\S]*?)if \(!isPublicPath\)/
     )
-    expect(blockMatch, 'isPublicPath block must exist in middleware.ts').not.toBeNull()
+    expect(blockMatch, 'isPublicPath block must exist in proxy.ts').not.toBeNull()
     const block = blockMatch![1]
     expect(block).not.toContain("pathname.startsWith('/api/metrics')")
   })
 
   it('middleware sets Content-Security-Policy on BOTH request and response headers', () => {
     const middlewareSrc = fs.readFileSync(
-      path.resolve(__dirname, '../../../src/middleware.ts'),
+      path.resolve(__dirname, '../../../src/proxy.ts'),
       'utf8'
     )
     // The middleware must set CSP on request headers (requestHeaders.set('Content-Security-Policy', ...))
@@ -604,7 +607,7 @@ describe('Issue #151 -- CSP + security headers (middleware contract)', () => {
 
   it('middleware sets x-nonce on request headers (for Next.js script nonce injection)', () => {
     const middlewareSrc = fs.readFileSync(
-      path.resolve(__dirname, '../../../src/middleware.ts'),
+      path.resolve(__dirname, '../../../src/proxy.ts'),
       'utf8'
     )
     expect(middlewareSrc).toMatch(/requestHeaders\.set\(['"]x-nonce['"]/)

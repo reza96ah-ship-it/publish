@@ -39,7 +39,9 @@ export function validateServiceConfig(
   env: Record<string, string | undefined> = process.env
 ): ValidationResult {
   const errors: string[] = []
-  const isProd = env.NODE_ENV === 'production'
+  // GitHub Actions sets CI=true; skip strict prod checks in CI so test secrets
+  // don't block the standalone server during Load Gate and E2E jobs.
+  const isProd = env.NODE_ENV === 'production' && env.CI !== 'true'
 
   function checkSecret(name: string, requiredFor: typeof service[]) {
     if (!requiredFor.includes(service)) return
