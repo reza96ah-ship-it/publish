@@ -23,6 +23,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
+# OpenSSL is required by Prisma's Rust engine — oven/bun:1.2 (Debian) ships without it
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN bunx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Set dummy secrets for build — Next.js build evaluates auth.ts which requires

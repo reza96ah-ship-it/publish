@@ -273,9 +273,9 @@ export function ComposeView() {
   // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
   useEffect(() => {
     if (!title && !caption && selectedPlatforms.length === 0) return
-    setSaveState('saving')
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(async () => {
+      setSaveState('saving')
       try {
         const res = await fetch('/api/compose-draft', {
           method: 'POST',
