@@ -269,6 +269,88 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  load-gate:
+    name: Load Gate (k6 smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nashrino_load
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nashrino_load"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_load?schema=public&connection_limit=10'
+      DIRECT_DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_load?schema=public'
+      NEXTAUTH_SECRET: 'test-secret-not-for-production'
+      NEXTAUTH_URL: 'http://localhost:3000'
+      REDIS_URL: 'redis://localhost:6379'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+      - name: Run migrations
+        run: bunx prisma migrate deploy
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -y && sudo apt-get install -y k6
+      - name: Start Next.js dev server
+        run: bun run dev &
+        env:
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_load?schema=public&connection_limit=10'
+          REDIS_URL: 'redis://localhost:6379'
+      - name: Wait for server (up to 150s)
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "Server is up after $((i * 5))s"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 5
+          done
+          echo "::error::Server did not respond within 150s"
+          exit 1
+      - name: Run k6 smoke test (blocking gate)
+        run: k6 run k6/smoke.js
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-smoke-results
+          path: k6/results/
+          retention-days: 30
+          if-no-files-found: ignore
+
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
