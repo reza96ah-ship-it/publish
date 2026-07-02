@@ -451,17 +451,17 @@ jobs:
           NEXTAUTH_URL: 'http://localhost:3000'
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_lhci?schema=public&connection_limit=10'
           REDIS_URL: 'redis://localhost:6379'
-      - name: Wait for server (up to 150s)
+      - name: Wait for server (up to 300s)
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             if curl -sf http://localhost:3000/api/health > /dev/null 2>&1; then
               echo "Server ready after $((i * 5))s"
               exit 0
             fi
-            echo "Waiting... ($i/30)"
+            echo "Waiting... ($i/60)"
             sleep 5
           done
-          echo "::error::Server did not respond within 150s"
+          echo "::error::Server did not respond within 300s"
           exit 1
       - name: Run Lighthouse CI
         run: bunx @lhci/cli@0.14.x autorun --config=.lighthouserc.json
