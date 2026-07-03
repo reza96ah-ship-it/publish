@@ -525,7 +525,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span className="text-ink-tertiary shrink-0">{label}</span>
-      <span className="text-ink-primary font-semibold text-left">{value}</span>
+      <span className="text-ink-primary font-semibold text-end">{value}</span>
     </div>
   )
 }

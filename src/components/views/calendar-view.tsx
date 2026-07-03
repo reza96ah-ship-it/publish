@@ -730,7 +730,7 @@ function QueueRow({ job }: { job: PublishJob }) {
       <Avatar className="size-7 shrink-0 ring-2 ring-background">
         {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
         <AvatarFallback className="text-2xs">
-          {job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
+          {!job.assignee || job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
         </AvatarFallback>
       </Avatar>
     </div>
