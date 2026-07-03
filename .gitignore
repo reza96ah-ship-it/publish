@@ -88,4 +88,4 @@ verify-*.png
 verify-*.jpg
 *.png
 !src/**/*.png
-!public/**/*.png
+!public/**/*.pngtests/e2e/.auth/user.json

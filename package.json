@@ -26,7 +26,10 @@
     "seed:auth": "bun run prisma/seed-auth.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:fixtures": "bun run scripts/check-fixture-data.ts"
+    "check:fixtures": "bun run scripts/check-fixture-data.ts",
+    "lint:design": "bash scripts/lint-design.sh",
+    "test:visual": "playwright test --project=visual",
+    "test:visual:update": "playwright test --project=visual --update-snapshots"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",

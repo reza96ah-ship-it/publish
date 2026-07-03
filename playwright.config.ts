@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
+import path from 'path'
+
+const AUTH_FILE = path.join(import.meta.dirname, 'tests/e2e/.auth/user.json')
 
 /**
  * Issue #153 Tier 6: Browser/accessibility matrix.
@@ -21,6 +24,25 @@ export default defineConfig({
   },
   // Issue #153: browser matrix — Chromium, Firefox, WebKit desktop + mobile
   projects: [
+    // ── Auth setup (runs once before visual project) ──────────────────────
+    {
+      name: 'setup',
+      testMatch: /auth\.setup\.ts/,
+    },
+
+    // ── Visual regression (Issue #235) ────────────────────────────────────
+    // Chromium only: baselines are platform-specific (linux runner in CI).
+    // Update with: bun run test:visual:update
+    {
+      name: 'visual',
+      testMatch: /visual\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_FILE,
+      },
+      dependencies: ['setup'],
+    },
+
     // Desktop browsers
     {
       name: 'chromium',

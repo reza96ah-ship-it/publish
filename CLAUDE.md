@@ -55,3 +55,29 @@ Use the semantic type scale — **never** write `text-[Npx]` or `font-[N]` arbit
 | `text-2xl` | 26px | Display / KPI numbers |
 
 Font weights: `font-medium` (500) · `font-semibold` (600) · `font-bold` (700) · `font-extrabold` (800). Never use `font-[N]`.
+
+## Design lint gate
+
+`bun run lint:design` (via `scripts/lint-design.sh`) enforces three rules in CI:
+
+1. **No raw palette / hex colors** outside documented exceptions — use `n-*` semantic tokens
+2. **No physical direction classes** (`text-right`, `rounded-l-*`) in RTL-first components — use `text-start/end`, `rounded-s-*/e-*`
+3. **No arbitrary type sizes** (`text-[14px]`, `font-[500]`) — use the semantic scale above
+
+Run it locally before pushing: `bun run lint:design`
+
+## Visual regression
+
+Baselines live in `tests/e2e/visual.spec.ts-snapshots/` (committed to git).
+36 screenshots: 6 views × 3 viewports (375/768/1280px) × 2 themes (light/dark).
+Dynamic regions (dates, charts, KPI numbers) are masked so data noise never fails a run.
+
+**To update snapshots** after intentional UI changes:
+
+```bash
+bun run test:visual:update   # regenerates all baselines
+git add tests/e2e/visual.spec.ts-snapshots/
+git commit -m "chore: update visual regression baselines"
+```
+
+**CI flow**: the `visual` job runs on ubuntu-latest (Chromium). Diffs upload as `visual-diff-report` artifact on failure. `continue-on-error: true` until baselines are committed — remove that flag once the snapshots directory is in git.

@@ -96,54 +96,10 @@ jobs:
           echo "✓ No schema drift — schema.prisma matches the applied database state"
 
       - run: bun run lint
-      # Issue #230: reject raw palette / hex color leaks outside documented exceptions
-      - name: Reject raw palette and hex color leaks
-        run: |
-          # Exceptions:
-          #   platform-preview-tabs.tsx — intentionally simulates platform UI chrome
-          #   settings-view.tsx        — user-configurable brand color picker defaults
-          #   toast.tsx                — shadcn destructive variant (text-red-300 etc.)
-          HITS=$(grep -rEo '\b(text|bg|border|ring)-(rose|pink|sky|emerald|amber|yellow|orange|red|purple|violet|indigo|slate|gray|zinc|lime|teal|cyan|fuchsia|blue|green)-[0-9]{2,3}\b|#[0-9a-fA-F]{4,8}' \
-            src/components/ src/app/ --include='*.tsx' --include='*.ts' --include='*.css' \
-            | grep -v 'platform-preview-tabs\|settings-view\|globals\.css\|toast\.tsx' \
-            | head -20 || true)
-          if [ -n "$HITS" ]; then
-            echo "::error::Raw palette class or hex literal found. Use n-* semantic tokens (text-danger, bg-success-tint, etc.) instead. Exceptions: platform-preview-tabs.tsx, settings-view.tsx."
-            echo "$HITS"
-            exit 1
-          fi
-          echo "✓ No raw palette or hex color leaks"
-      # Issue #231: reject physical direction classes that break RTL layout
-      - name: Reject physical direction classes (RTL logical properties)
-        run: |
-          # Check custom components only — exclude src/components/ui/ (shadcn) and known exceptions
-          # Exceptions:
-          #   settings-view.tsx — text-left on dir="ltr" LTR inputs (phone, email, hex color)
-          #   platform-preview-tabs.tsx — simulates LTR platform UI chrome
-          #   mobile-bottom-nav.tsx — left-1/2 centering idiom (direction-neutral)
-          HITS=$(grep -rEo '\btext-right\b|\brounded-r-\w+|\brounded-l-\w+' \
-            src/components/views/ src/components/shell/ src/components/dashboard/ \
-            src/components/ai/ src/components/editor/ src/components/approval/ \
-            src/app/ \
-            --include='*.tsx' --include='*.ts' \
-            | grep -v 'settings-view\|platform-preview-tabs\|mobile-bottom-nav' \
-            | head -20 || true)
-          if [ -n "$HITS" ]; then
-            echo "::error::Physical direction class found in RTL-first app. Use logical equivalents: text-start/text-end, rounded-s-*/rounded-e-* instead of text-right, rounded-r-*, rounded-l-*."
-            echo "$HITS"
-            exit 1
-          fi
-          echo "✓ No physical direction class violations"
-      # Issue #229: reject arbitrary text-size / font-weight classes — use semantic scale
-      - name: Reject arbitrary text-size and font-weight classes
-        run: |
-          HITS=$(grep -rEo 'text-\[[0-9]+(\.[0-9]+)?px\]|font-\[[0-9]+\]' src/ --include='*.tsx' --include='*.ts' --include='*.css' 2>/dev/null | head -20 || true)
-          if [ -n "$HITS" ]; then
-            echo "::error::Arbitrary text-size or font-weight classes found. Use the semantic scale (text-2xs…text-2xl, font-medium/semibold/bold)."
-            echo "$HITS"
-            exit 1
-          fi
-          echo "✓ No arbitrary text-size or font-weight classes"
+      # Issues #229 #230 #231 #235: consolidated design-system gate
+      # (palette leaks, physical RTL classes, arbitrary type scale)
+      - name: Design lint (lint:design)
+        run: bun run lint:design
       # Issue #159: detect UTF-8 BOM and mojibake in source files
       - run: bash scripts/check-mojibake.sh
       - run: bun run typecheck
@@ -460,6 +416,77 @@ jobs:
           NEXTAUTH_URL: 'http://localhost:3000'
       - run: bunx playwright install --with-deps chromium firefox webkit
       - run: bun run test:e2e
+
+  visual:
+    name: Visual Regression (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # continue-on-error until baselines are committed — first run creates them.
+    # Remove continue-on-error once tests/e2e/visual.spec.ts-snapshots/ is in git.
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: nashrino_visual
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nashrino_visual"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_visual?schema=public&connection_limit=10'
+      DIRECT_DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/nashrino_visual?schema=public'
+      NEXTAUTH_SECRET: 'test-secret-not-for-production'
+      NEXTAUTH_URL: 'http://localhost:3000'
+      REDIS_URL: 'redis://localhost:6379'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2
+      - run: bun install --frozen-lockfile
+      - run: bunx prisma generate
+      - run: bunx prisma migrate deploy
+      - run: bun run prisma/seed.ts
+      - run: bun run seed:auth
+      - name: Build Next.js app
+        run: bun run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXTAUTH_SECRET: 'test-secret-not-for-production'
+          NEXTAUTH_URL: 'http://localhost:3000'
+      - run: bunx playwright install --with-deps chromium
+      - name: Run visual regression tests
+        run: bun run test:visual
+      - name: Upload visual diff report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diff-report
+          path: playwright-report/
+          retention-days: 7
+      - name: Upload new snapshots (if missing)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-snapshots
+          path: tests/e2e/visual.spec.ts-snapshots/
+          retention-days: 30
+          if-no-files-found: ignore
 
   lighthouse:
     name: Lighthouse CI (a11y + best-practices + SEO)
