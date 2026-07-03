@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useShouldAnimate } from '@/lib/motion'
 import {
   Sparkles,
   Send,
@@ -90,6 +91,7 @@ export function AIAssistantSheet({
   onInsert,
   onHashtags,
 }: AIAssistantSheetProps) {
+  const shouldAnimate = useShouldAnimate()
   const [topic, setTopic] = useState(initialTopic)
   const [isStreaming, setIsStreaming] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
@@ -358,7 +360,7 @@ export function AIAssistantSheet({
               <div className="flex items-center gap-2">
                 <motion.div
                   animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+                  transition={{ duration: 2, repeat: shouldAnimate ? Infinity : 0, repeatDelay: 3, ease: 'easeInOut' }}
                 >
                   <Sparkles className="size-5 text-accent" strokeWidth={2} />
                 </motion.div>

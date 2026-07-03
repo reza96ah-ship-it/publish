@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useShouldAnimate } from '@/lib/motion'
 import { toPersianDigits, formatCompact } from '@/lib/jalali'
 import { cn } from '@/lib/utils'
 import { PlatformLogo } from '@/components/ui/platform-logo'
@@ -336,6 +337,7 @@ export function MiniChart({
   formatLabel?: (i: number) => string
   showBaseline?: boolean
 }) {
+  const shouldAnimate = useShouldAnimate()
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   // FIX 3: Measure actual pixel width via ResizeObserver → render SVG at 1:1 scale
@@ -523,7 +525,7 @@ export function MiniChart({
           style={{ borderColor: color, borderWidth: 1.5, borderStyle: 'solid' }}
           initial={{ scale: 1, opacity: 0.5 }}
           animate={{ scale: 3.5, opacity: 0 }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeOut' }}
+          transition={{ duration: 1.8, repeat: shouldAnimate ? Infinity : 0, ease: 'easeOut' }}
         />
       </div>
 

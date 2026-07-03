@@ -5,6 +5,8 @@
  * Shows: Operational Summary, Publishing Pulse, Action Center, Executive Metrics, Campaigns, Platforms
  */
 
+import { motion } from 'framer-motion'
+import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import { OperationalSummary } from '@/components/dashboard/operational-summary'
 import { ExecutiveMetrics } from '@/components/dashboard/executive-metrics'
 import { PublishingPulse } from '@/components/dashboard/publishing-pulse'
@@ -14,7 +16,12 @@ import { ActionCenter } from '@/components/dashboard/action-center'
 
 export function DashboardView() {
   return (
-    <div className="flex flex-col gap-4 md:gap-5 w-full">
+    <motion.div
+      initial={pageTransition.initial}
+      animate={pageTransition.animate}
+      transition={pageTransitionProps}
+      className="flex flex-col gap-4 md:gap-5 w-full"
+    >
       {/* Live operations summary */}
       <div className="order-1 lg:order-none">
         <OperationalSummary />
@@ -57,6 +64,6 @@ export function DashboardView() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }

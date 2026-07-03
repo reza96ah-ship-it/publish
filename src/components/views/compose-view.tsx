@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useShouldAnimate } from '@/lib/motion'
 import { toast } from 'sonner'
 import { CaptionAssistant } from '@/components/ai/caption-assistant'
 import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
@@ -118,6 +119,7 @@ interface PublishPayload {
 const IG_LIMIT = PROVIDER_CAPABILITIES.instagram.maxCaptionLength
 
 export function ComposeView() {
+  const shouldAnimate = useShouldAnimate()
   const [title, setTitle] = useState('')
   const [caption, setCaption] = useState('')
   const [hashtags, setHashtags] = useState('')
@@ -768,7 +770,7 @@ export function ComposeView() {
               >
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3, ease: 'easeInOut' }}
+                  transition={{ duration: 2, repeat: shouldAnimate ? Infinity : 0, repeatDelay: 3, ease: 'easeInOut' }}
                 >
                   <Sparkles className="size-3.5" strokeWidth={2.5} />
                 </motion.span>

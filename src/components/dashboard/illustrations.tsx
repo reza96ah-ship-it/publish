@@ -1,6 +1,8 @@
 'use client'
 
+import { type ReactNode } from 'react'
 import { motion } from 'framer-motion'
+import { useShouldAnimate } from '@/lib/motion'
 
 /* ============================================================================
    CUSTOM SVG ILLUSTRATIONS — for view-level empty states
@@ -18,11 +20,16 @@ const containerMotion = {
   animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0, 0, 0.2, 1] } },
 }
 
-const floatMotion = {
-  animate: {
-    y: [0, -4, 0],
-    transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' as const },
-  },
+function FloatGroup({ children }: { children: ReactNode }) {
+  const shouldAnimate = useShouldAnimate()
+  return (
+    <motion.g
+      animate={{ y: [0, -4, 0] }}
+      transition={{ duration: 3, repeat: shouldAnimate ? Infinity : 0, ease: 'easeInOut' }}
+    >
+      {children}
+    </motion.g>
+  )
 }
 
 /** Inbox illustration — envelope with floating notification dots */
@@ -40,7 +47,7 @@ export function InboxIllustration({ className = '' }: IllustrationProps) {
       {/* Halo */}
       <circle cx="60" cy="60" r="48" fill="var(--n-accent-soft)" opacity="0.5" />
       {/* Envelope body */}
-      <motion.g {...floatMotion}>
+      <FloatGroup>
         <rect
           x="32"
           y="44"
@@ -66,7 +73,7 @@ export function InboxIllustration({ className = '' }: IllustrationProps) {
           strokeLinecap="round"
           opacity="0.4"
         />
-      </motion.g>
+      </FloatGroup>
       {/* Floating notification dots */}
       <motion.circle
         cx="84"
@@ -107,7 +114,7 @@ export function ContentIllustration({ className = '' }: IllustrationProps) {
     >
       <circle cx="60" cy="60" r="48" fill="var(--n-accent-soft)" opacity="0.5" />
       {/* Back document */}
-      <motion.g {...floatMotion}>
+      <FloatGroup>
         <rect
           x="38"
           y="34"
@@ -177,7 +184,7 @@ export function ContentIllustration({ className = '' }: IllustrationProps) {
           opacity="0.3"
           transform="rotate(4 64 63)"
         />
-      </motion.g>
+      </FloatGroup>
       <circle cx="30" cy="34" r="1.5" fill="var(--n-accent)" opacity="0.3" />
       <circle cx="92" cy="80" r="1.5" fill="var(--n-accent)" opacity="0.25" />
     </motion.svg>
@@ -196,7 +203,7 @@ export function MediaIllustration({ className = '' }: IllustrationProps) {
       aria-hidden
     >
       <circle cx="60" cy="60" r="48" fill="var(--n-accent-soft)" opacity="0.5" />
-      <motion.g {...floatMotion}>
+      <FloatGroup>
         {/* Image frame */}
         <rect
           x="32"
@@ -218,7 +225,7 @@ export function MediaIllustration({ className = '' }: IllustrationProps) {
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
-      </motion.g>
+      </FloatGroup>
       {/* Sparkle */}
       <motion.path
         d="M88 38 L90 42 L94 44 L90 46 L88 50 L86 46 L82 44 L86 42 Z"
@@ -399,7 +406,7 @@ export function CalendarIllustration({ className = '' }: IllustrationProps) {
       aria-hidden
     >
       <circle cx="60" cy="60" r="48" fill="var(--n-accent-soft)" opacity="0.5" />
-      <motion.g {...floatMotion}>
+      <FloatGroup>
         {/* Calendar body */}
         <rect
           x="34"
@@ -447,7 +454,7 @@ export function CalendarIllustration({ className = '' }: IllustrationProps) {
           transition={{ delay: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
         />
         <circle cx="76" cy="74" r="2" fill="var(--n-accent)" opacity="0.3" />
-      </motion.g>
+      </FloatGroup>
       <circle cx="28" cy="38" r="1.5" fill="var(--n-accent)" opacity="0.3" />
       <circle cx="94" cy="82" r="1.5" fill="var(--n-accent)" opacity="0.25" />
     </motion.svg>
@@ -569,7 +576,7 @@ export function SearchIllustration({ className = '' }: IllustrationProps) {
       aria-hidden
     >
       <circle cx="60" cy="60" r="48" fill="var(--n-accent-soft)" opacity="0.5" />
-      <motion.g {...floatMotion}>
+      <FloatGroup>
         <circle
           cx="54"
           cy="54"
@@ -599,7 +606,7 @@ export function SearchIllustration({ className = '' }: IllustrationProps) {
         >
           ؟
         </text>
-      </motion.g>
+      </FloatGroup>
       <circle cx="30" cy="38" r="1.5" fill="var(--n-accent)" opacity="0.3" />
       <circle cx="92" cy="78" r="1.5" fill="var(--n-accent)" opacity="0.25" />
     </motion.svg>
