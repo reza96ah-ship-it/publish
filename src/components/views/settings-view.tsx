@@ -21,6 +21,9 @@ import {
   Sun,
   Moon,
   Monitor,
+  HelpCircle,
+  Download,
+  ExternalLink,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -320,6 +323,76 @@ function OverviewTab() {
     <div className="space-y-4">
       <OverviewForm ws={ws} />
       <AppearanceSection />
+      <SupportCard />
+    </div>
+  )
+}
+
+function SupportCard() {
+  const [downloading, setDownloading] = useState(false)
+
+  async function downloadBundle() {
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/support-bundle')
+      if (!res.ok) throw new Error('failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nashrino-support-bundle-${new Date().toISOString().split('T')[0]}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('بسته پشتیبانی دانلود شد.')
+    } catch {
+      toast.error('دانلود بسته پشتیبانی ناموفق بود.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <div className="n-card p-5 max-w-2xl">
+      <div className="flex items-center gap-2 mb-4">
+        <HelpCircle className="size-4 text-accent" />
+        <h2 className="text-sm font-semibold text-ink-primary">پشتیبانی و تشخیص</h2>
+      </div>
+      <div className="space-y-3">
+        <p className="text-sm text-ink-secondary">
+          برای گزارش مشکل به تیم پشتیبانی، می‌توانید یک «بسته پشتیبانی» دانلود کنید. این فایل
+          شامل اطلاعات تشخیصی بدون اطلاعات شخصی یا توکن‌های دسترسی است.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadBundle}
+            disabled={downloading}
+            className="n-focus-ring"
+          >
+            {downloading ? (
+              <>در حال آماده‌سازی…</>
+            ) : (
+              <>
+                <Download className="size-4" />
+                دانلود بسته پشتیبانی
+              </>
+            )}
+          </Button>
+          <Button variant="outline" size="sm" asChild className="n-focus-ring">
+            <a href="mailto:support@nashrino.com" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="size-4" />
+              تماس با پشتیبانی
+            </a>
+          </Button>
+        </div>
+        <p className="text-xs text-ink-tertiary">
+          <a href="/help" className="underline underline-offset-2 hover:text-ink-secondary transition-colors">
+            مرکز راهنما
+          </a>{' '}
+          — پاسخ سوالات رایج و راهنمای اتصال کانال‌ها
+        </p>
+      </div>
     </div>
   )
 }

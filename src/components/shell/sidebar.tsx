@@ -260,6 +260,17 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
         ))}
       </nav>
 
+      {/* Help & status links */}
+      <div className="px-4 pb-2 flex items-center gap-3 text-2xs text-ink-tertiary">
+        <Link href="/help" className="hover:text-ink-secondary transition-colors">
+          راهنما
+        </Link>
+        <span aria-hidden>·</span>
+        <Link href="/status" className="hover:text-ink-secondary transition-colors">
+          وضعیت سرویس
+        </Link>
+      </div>
+
       {/* Bottom section */}
       <div className="border-t border-border/40 px-2 py-3 space-y-1">
         {/* Live indicator */}
