@@ -6,7 +6,8 @@ import { AmbientMesh } from './ambient-mesh'
 import { useAppStore } from '@/lib/store'
 import { Sidebar } from './sidebar'
 import { CommandBar } from './command-bar'
-import { Menu, X } from 'lucide-react'
+import { MobileBottomNav } from './mobile-bottom-nav'
+import { Menu, X, Bell } from 'lucide-react'
 import { api } from '@/lib/api'
 import { usePublishStream } from '@/hooks/use-publish-stream'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
@@ -72,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="flex items-center justify-between px-4 py-3 lg:hidden">
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="n-glass-control flex size-10 items-center justify-center text-ink-primary"
+            className="n-glass-control flex size-11 items-center justify-center text-ink-primary"
             aria-label="باز کردن منو"
           >
             <Menu className="size-5" />
@@ -83,7 +84,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <span className="text-[13.5px] font-[700] text-ink-primary tracking-tight">نشرینو</span>
           </div>
-          <div className="w-10" />
+          <button
+            className="n-glass-control relative flex size-11 items-center justify-center text-ink-secondary"
+            aria-label="اعلان‌ها"
+          >
+            <Bell className="size-[18px]" strokeWidth={1.8} />
+          </button>
         </header>
 
         {/* Desktop command bar slot — glass toolbar */}
@@ -97,9 +103,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="flex-1 overflow-y-auto thin-scrollbar px-[var(--shell-gutter)] py-[var(--shell-gap)]"
           tabIndex={-1}
         >
-          <div className="mx-auto w-full max-w-[1600px] pb-10">{children}</div>
+          {/* pb-[...] accounts for bottom nav (56px) + safe-area + breathing room on mobile; lg: resets to pb-10 */}
+          <div className="mx-auto w-full max-w-[1600px] pb-[calc(56px+env(safe-area-inset-bottom)+2.5rem)] lg:pb-10">
+            {children}
+          </div>
         </main>
       </div>
+
+      <MobileBottomNav />
 
       {/* Close button on mobile drawer */}
       {isMobileMenuOpen && (
