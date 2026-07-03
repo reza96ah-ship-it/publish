@@ -274,7 +274,7 @@ export function JalaliDatePicker({
         sideOffset={6}
         className="w-auto p-0 bg-popover border-border shadow-xl rounded-2xl"
       >
-        <div className="w-[300px]" dir="rtl">
+        <div className="w-[min(300px,calc(100vw-2rem))]" dir="rtl">
           {calendarContent}
         </div>
       </PopoverContent>

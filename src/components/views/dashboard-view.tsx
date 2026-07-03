@@ -21,19 +21,19 @@ export function DashboardView() {
       </div>
 
       {/* Action Center - Mobile only, above pulse */}
-      <div className="order-2 lg:hidden h-[340px] sm:h-[400px]">
+      <div className="order-2 lg:hidden h-[300px] sm:h-[360px] md:h-[400px]">
         <ActionCenter />
       </div>
 
       {/* Publishing Pulse + Action Center (Desktop) */}
       <div className="order-3 lg:order-none grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
         <div className="lg:col-span-8">
-          <div className="h-[380px] sm:h-[500px]">
+          <div className="h-[320px] sm:h-[420px] md:h-[460px] lg:h-[500px]">
             <PublishingPulse />
           </div>
         </div>
         <div className="hidden lg:block lg:col-span-4">
-          <div className="h-[500px]">
+          <div className="h-[460px] lg:h-[500px]">
             <ActionCenter />
           </div>
         </div>
@@ -47,12 +47,12 @@ export function DashboardView() {
       {/* Campaigns and Platforms */}
       <div className="order-5 lg:order-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5">
         <div className="lg:col-span-8">
-          <div className="h-[380px] sm:h-[460px]">
+          <div className="h-[320px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
             <CampaignsPanel />
           </div>
         </div>
         <div className="lg:col-span-4">
-          <div className="h-[380px] sm:h-[460px]">
+          <div className="h-[320px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
             <PlatformsPanel />
           </div>
         </div>
