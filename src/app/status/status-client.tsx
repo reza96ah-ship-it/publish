@@ -147,7 +147,7 @@ export function StatusPageClient() {
   const overall = overallStatus(services)
 
   return (
-    <div dir="rtl" className="min-h-screen bg-canvas px-4 py-12">
+    <div dir="rtl" className="h-dvh overflow-y-auto thin-scrollbar bg-canvas px-4 py-12">
       <div className="mx-auto max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

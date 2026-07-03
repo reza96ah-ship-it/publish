@@ -62,7 +62,7 @@ async function* walk(dir: string): AsyncGenerator<string> {
 }
 
 async function main() {
-  const root = path.resolve(import.meta.dir, '..')
+  const root = process.cwd()
   const srcDir = path.join(root, 'src')
 
   const violations: { file: string; line: number; label: string; text: string }[] = []

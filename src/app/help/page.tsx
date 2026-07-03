@@ -158,7 +158,7 @@ const ARTICLES: Article[] = [
 
 export default function HelpPage() {
   return (
-    <div dir="rtl" className="min-h-screen bg-canvas px-4 py-12">
+    <div dir="rtl" className="h-dvh overflow-y-auto thin-scrollbar bg-canvas px-4 py-12">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="mb-10">

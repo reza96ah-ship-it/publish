@@ -496,6 +496,13 @@
     border: 1px solid var(--n-border);
     border-radius: var(--radius-card);
     box-shadow: var(--n-shadow-card);
+    transition:
+      border-color var(--motion-quick) var(--ease-standard),
+      box-shadow var(--motion-quick) var(--ease-standard);
+  }
+  .n-card:hover {
+    border-color: var(--n-border-strong);
+    box-shadow: var(--n-shadow-card-hover);
   }
 
   /* Interactive content card — hoverable */
