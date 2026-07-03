@@ -27,7 +27,6 @@ export interface PlatformListItem {
   id: string
   name: string
   type: string
-  logo: string
   state: string
   stateColor: string
   accounts: number

@@ -129,6 +129,20 @@ model Workspace {
   invitations   WorkspaceInvitation[]
   publications  Publication[]
   revisions    ContentRevision[]
+  featureFlags  FeatureFlag[]
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  workspaceId String
+  flag        String
+  enabled     Boolean
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, flag])
 }
 
 model WorkspaceMember {

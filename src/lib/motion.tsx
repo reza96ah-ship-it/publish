@@ -1,6 +1,6 @@
 'use client'
 
-import { type Variants, type Transition } from 'framer-motion'
+import { type Variants, type Transition, type TargetAndTransition } from 'framer-motion'
 import { useReducedMotion, MotionConfig } from 'framer-motion'
 import { type ReactNode } from 'react'
 
@@ -44,7 +44,7 @@ export const spring = {
 } as const
 
 /* ---- Page transition (view switch) ---- */
-export const pageTransition: Variants = {
+export const pageTransition: Record<'initial' | 'animate' | 'exit', TargetAndTransition> = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: -4 },

@@ -21,6 +21,7 @@ import {
   type TraceContext,
 } from '@/lib/tracing'
 import { structuredLogger } from '@/lib/structured-logger'
+import { track } from '@/lib/track'
 import {
   publicationsService,
   PermissionDeniedError,
@@ -81,6 +82,19 @@ export async function POST(req: Request) {
     for (const job of result.jobs) {
       publishJobsAccepted.inc({ workspace: auth.workspaceId, platform: job.platform })
     }
+    // Fire-and-forget product analytics — never block the response
+    void Promise.allSettled(
+      result.jobs.map((job) =>
+        track({
+          event: 'publication_queued',
+          workspaceId: auth.workspaceId,
+          userId: auth.userId,
+          jobId: job.id,
+          platformType: job.platform,
+          scheduleType: (validation.data as PublishRequest).scheduleMode ?? 'now',
+        }),
+      ),
+    )
     structuredLogger.info({
       trace,
       operation: 'publish.route',
