@@ -994,7 +994,7 @@ export function AnimatedTabs<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onValueChange(tab.value)}
-            className={`n-focus-ring relative ${pad} ${textSize} font-semibold transition-colors duration-150 flex items-center gap-1.5 -mb-px border-b-2 ${
+            className={`n-focus-ring relative ${pad} ${textSize} font-semibold transition-colors duration-150 flex items-center gap-1.5 -mb-px border-b-2 whitespace-nowrap ${
               active
                 ? 'text-accent border-accent'
                 : 'text-ink-tertiary border-transparent hover:text-ink-secondary'

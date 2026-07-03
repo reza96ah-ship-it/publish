@@ -70,7 +70,7 @@ export function MobileBottomNav() {
             >
               {active && (
                 <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 h-[2px] w-6 rounded-full bg-accent"
+                  className="absolute top-0 inset-x-0 mx-auto h-[2px] w-6 rounded-full bg-accent"
                   aria-hidden
                 />
               )}

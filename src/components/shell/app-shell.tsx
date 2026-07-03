@@ -7,7 +7,7 @@ import { useAppStore } from '@/lib/store'
 import { Sidebar } from './sidebar'
 import { CommandBar } from './command-bar'
 import { MobileBottomNav } from './mobile-bottom-nav'
-import { Menu, X, Bell } from 'lucide-react'
+import { Menu, Bell } from 'lucide-react'
 import { api } from '@/lib/api'
 import { usePublishStream } from '@/hooks/use-publish-stream'
 import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
@@ -47,23 +47,23 @@ export function AppShell({ children }: { children: ReactNode }) {
         پرش به محتوای اصلی
       </a>
 
-      {/* Mobile overlay — visible only below md (tablet+desktop have static sidebar) */}
+      {/* Mobile overlay — visible only below md */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm md:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden
         />
       )}
 
-      {/* Sidebar — icon rail at md, full at lg, drawer below md */}
+      {/* Sidebar — icon rail at md, full at lg, right-side drawer below md */}
       <nav aria-label="ناوبری اصلی">
         <div
-          className={`fixed inset-y-0 end-0 z-40 w-[260px] transform transition-transform duration-300 md:static md:z-auto md:w-[72px] md:translate-x-0 lg:w-[260px] ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          className={`fixed inset-y-0 start-0 z-40 w-[280px] transform transition-transform duration-300 ease-out md:static md:z-auto md:w-[72px] md:translate-x-0 lg:w-[260px] ${
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
           }`}
         >
-          <Sidebar />
+          <Sidebar isDrawer={isMobileMenuOpen} />
         </div>
       </nav>
 
@@ -111,17 +111,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <MobileBottomNav />
-
-      {/* Close button on mobile drawer */}
-      {isMobileMenuOpen && (
-        <button
-          onClick={() => setMobileMenuOpen(false)}
-          className="fixed top-4 start-4 z-50 n-glass-control flex size-10 items-center justify-center text-ink-primary md:hidden"
-          aria-label="بستن منو"
-        >
-          <X className="size-5" />
-        </button>
-      )}
     </div>
   )
 }
