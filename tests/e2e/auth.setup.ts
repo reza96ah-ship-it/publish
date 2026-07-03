@@ -9,7 +9,7 @@
 import { test as setup } from '@playwright/test'
 import path from 'path'
 
-export const AUTH_FILE = path.join(import.meta.dirname, '.auth/user.json')
+export const AUTH_FILE = path.resolve(__dirname, '.auth/user.json')
 
 setup('authenticate as demo user', async ({ page }) => {
   await page.goto('/auth/signin')

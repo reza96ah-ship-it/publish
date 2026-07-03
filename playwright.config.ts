@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 
-const AUTH_FILE = path.join(import.meta.dirname, 'tests/e2e/.auth/user.json')
+const AUTH_FILE = path.resolve(__dirname, 'tests/e2e/.auth/user.json')
 
 /**
  * Issue #153 Tier 6: Browser/accessibility matrix.
