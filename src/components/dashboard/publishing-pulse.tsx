@@ -146,7 +146,7 @@ function PulseItem({
           </div>
         )}
         <span
-          className={`absolute -bottom-1 -left-1 flex size-4 items-center justify-center rounded-full ${iconBg} ring-2 ring-white`}
+          className={`absolute -bottom-1 -end-1 flex size-4 items-center justify-center rounded-full ${iconBg} ring-2 ring-canvas`}
         >
           <Icon
             className={`size-2.5 ${iconColor} ${job.type === 'live' ? 'animate-spin' : ''}`}

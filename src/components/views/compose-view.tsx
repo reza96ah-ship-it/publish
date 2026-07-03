@@ -602,7 +602,7 @@ export function ComposeView() {
     <>
       {showConflictModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-right" dir="rtl">
+          <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-start" dir="rtl">
             <div className="flex items-center gap-3 text-warning">
               <AlertTriangle className="size-6" />
               <h3 className="text-lg font-bold text-ink-primary">تغییرات همزمان یافت شد</h3>
@@ -1145,7 +1145,7 @@ function StepMedia({
                 <img src={m.thumbnail} alt={m.name} className="size-16 rounded-xl object-cover" />
                 <button
                   onClick={() => toggle(m)}
-                  className="n-focus-ring absolute -top-1.5 -left-1.5 bg-danger text-white rounded-full p-1.5 ring-2 ring-background"
+                  className="n-focus-ring absolute -top-1.5 -end-1.5 bg-danger text-white rounded-full p-1.5 ring-2 ring-background"
                   aria-label="حذف"
                 >
                   <X className="size-3.5" />
@@ -1192,11 +1192,11 @@ function StepMedia({
                   >
                     <img src={m.thumbnail} alt={m.name} className="w-full h-full object-cover" />
                     {isSel && (
-                      <span className="absolute top-1 right-1 bg-accent text-white rounded-full p-0.5">
+                      <span className="absolute top-1 end-1 bg-accent text-white rounded-full p-0.5">
                         <Check className="size-3" />
                       </span>
                     )}
-                    <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-white text-2xs px-1.5 py-1 truncate text-right">
+                    <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-white text-2xs px-1.5 py-1 truncate text-start">
                       {m.name}
                     </span>
                   </button>

@@ -189,7 +189,7 @@ export function Sidebar() {
         </div>
 
         {/* Workspace — hidden in rail */}
-        <button className="hidden w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-right transition-colors hover:bg-surface-hover/70 lg:flex">
+        <button className="hidden w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-start transition-colors hover:bg-surface-hover/70 lg:flex">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-xs font-bold text-accent">
             ب
           </div>

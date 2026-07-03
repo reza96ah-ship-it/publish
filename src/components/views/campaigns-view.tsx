@@ -273,8 +273,8 @@ export function CampaignsView() {
           {selected && (
             <>
               <SheetHeader>
-                <SheetTitle className="text-right">{selected.name}</SheetTitle>
-                <SheetDescription className="text-right">
+                <SheetTitle className="text-start">{selected.name}</SheetTitle>
+                <SheetDescription className="text-start">
                   {selected.description ?? 'بدون توضیحات'}
                 </SheetDescription>
               </SheetHeader>
@@ -322,7 +322,7 @@ function CampaignCard({ campaign, onClick }: { campaign: Campaign; onClick: () =
   return (
     <button
       onClick={onClick}
-      className="n-card-interactive n-focus-ring p-5 text-right hover:scale-[1.01] transition-transform"
+      className="n-card-interactive n-focus-ring p-5 text-start hover:scale-[1.01] transition-transform"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">

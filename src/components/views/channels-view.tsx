@@ -443,8 +443,8 @@ function DisconnectItem({ platformName }: { platformName: string }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-right">قطع اتصال پلتفرم</AlertDialogTitle>
-          <AlertDialogDescription className="text-right">
+          <AlertDialogTitle className="text-start">قطع اتصال پلتفرم</AlertDialogTitle>
+          <AlertDialogDescription className="text-start">
             آیا از قطع اتصال «{platformName}» مطمئن هستید؟ پس از قطع، انتشار به این پلتفرم متوقف
             می‌شود. این عملیات قابل بازگشت نیست.
           </AlertDialogDescription>
@@ -529,8 +529,8 @@ function ConnectDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-right">اتصال پلتفرم</DialogTitle>
-          <DialogDescription className="text-right">
+          <DialogTitle className="text-start">اتصال پلتفرم</DialogTitle>
+          <DialogDescription className="text-start">
             توکن ربات را وارد کنید — اتصال به‌صورت خودکار بررسی می‌شود.
           </DialogDescription>
         </DialogHeader>
@@ -589,7 +589,6 @@ function ConnectDialog({
                   placeholder="123456:ABC-DEF..."
                   value={botToken}
                   onChange={(e) => setBotToken(e.target.value)}
-                  className="text-left"
                 />
                 <p className="text-2xs text-ink-tertiary mt-1">
                   {selectedType === 'telegram' && 'از @BotFather در تلگرام دریافت کنید'}
@@ -607,7 +606,6 @@ function ConnectDialog({
                   placeholder="@channel_username یا -1001234567890"
                   value={chatId}
                   onChange={(e) => setChatId(e.target.value)}
-                  className="text-left"
                 />
                 <p className="text-2xs text-ink-tertiary mt-1">
                   ربات را به‌عنوان ادمین به کانال اضافه کنید، سپس شناسه کانال را وارد کنید.

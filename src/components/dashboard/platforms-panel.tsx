@@ -51,7 +51,7 @@ export function PlatformsPanel() {
                   <PlatformLogo platform={p.type} className="size-5" />
                 </div>
                 <span
-                  className={`absolute -bottom-0.5 -left-0.5 size-2.5 rounded-full ring-2 ring-canvas ${healthy ? 'bg-success' : 'bg-danger'}`}
+                  className={`absolute -bottom-0.5 -end-0.5 size-2.5 rounded-full ring-2 ring-canvas ${healthy ? 'bg-success' : 'bg-danger'}`}
                 />
               </div>
 
@@ -69,7 +69,7 @@ export function PlatformsPanel() {
                 </span>
               </div>
 
-              <div className="text-left shrink-0">
+              <div className="text-end shrink-0">
                 <p className="text-2xs text-ink-tertiary leading-tight">
                   {p.lastSuccess ? relativeTime(new Date(p.lastSuccess)) : '—'}
                 </p>

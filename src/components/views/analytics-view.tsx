@@ -448,25 +448,25 @@ export function AnalyticsView() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   عنوان
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   پلتفرم
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   وضعیت
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden sm:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                   زمان انتشار
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden md:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                   تکمیل
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden md:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                   تلاش مجدد
                 </TableHead>
-                <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden lg:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden lg:table-cell">
                   خطا
                 </TableHead>
               </TableRow>

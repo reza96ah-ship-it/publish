@@ -391,7 +391,7 @@ export function CalendarView() {
                             key={job.id}
                             onClick={() => setSelectedJob(job)}
                             className={cn(
-                              'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-right',
+                              'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-start',
                               PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
                             )}
                           >
@@ -440,7 +440,7 @@ export function CalendarView() {
                     <button
                       key={job.id}
                       onClick={() => setSelectedJob(job)}
-                      className="n-focus-ring w-full n-card-compact flex items-center gap-3 p-3 text-right"
+                      className="n-focus-ring w-full n-card-compact flex items-center gap-3 p-3 text-start"
                     >
                       <PlatformIcon platform={job.platform} className="size-8 shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -495,8 +495,8 @@ export function CalendarView() {
           {selectedJob && (
             <>
               <SheetHeader>
-                <SheetTitle className="text-right">{selectedJob.title}</SheetTitle>
-                <SheetDescription className="text-right">
+                <SheetTitle className="text-start">{selectedJob.title}</SheetTitle>
+                <SheetDescription className="text-start">
                   جزئیات انتشار برنامه‌ریزی‌شده
                 </SheetDescription>
               </SheetHeader>
@@ -687,7 +687,7 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring w-full text-right text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        'n-focus-ring w-full text-start text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
         PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border',
         (isDragging || isDimmed) && 'opacity-30'
       )}
@@ -709,7 +709,7 @@ function QueueRow({ job }: { job: PublishJob }) {
             <PlatformIcon platform={job.platform} className="size-5" />
           </div>
         )}
-        <span className="absolute -bottom-1 -left-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
+        <span className="absolute -bottom-1 -end-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
           <PlatformIcon platform={job.platform} className="size-3" />
         </span>
       </div>

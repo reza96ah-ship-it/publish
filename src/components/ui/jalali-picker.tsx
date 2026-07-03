@@ -248,7 +248,7 @@ export function JalaliDatePicker({
           disabled={disabled}
           data-empty={!value}
           className={cn(
-            'n-focus-ring justify-start text-right font-medium gap-2 w-full',
+            'n-focus-ring justify-start text-start font-medium gap-2 w-full',
             'data-[empty=true]:text-ink-tertiary',
             sizeClass,
             variantClass,

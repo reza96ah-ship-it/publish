@@ -661,13 +661,13 @@ function TeamTab() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                     عضو
                   </TableHead>
-                  <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden sm:table-cell">
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                     ایمیل
                   </TableHead>
-                  <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                     نقش
                   </TableHead>
                 </TableRow>
@@ -713,8 +713,8 @@ function TeamTab() {
       <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-right">دعوت عضو جدید</DialogTitle>
-            <DialogDescription className="text-right">
+            <DialogTitle className="text-start">دعوت عضو جدید</DialogTitle>
+            <DialogDescription className="text-start">
               برای دعوت به تیم، ایمیل و نقش کاربر را مشخص کنید.
             </DialogDescription>
           </DialogHeader>
@@ -852,16 +852,16 @@ function BillingTab() {
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                 شماره فاکتور
               </TableHead>
-              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                 تاریخ
               </TableHead>
-              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                 مبلغ
               </TableHead>
-              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                 وضعیت
               </TableHead>
             </TableRow>

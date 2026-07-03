@@ -119,7 +119,7 @@ export function NotificationPopover() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25, mass: 0.8 }}
-                className="absolute -top-1 -right-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-2xs font-semibold text-white ring-2 ring-canvas num-tabular"
+                className="absolute -top-1 -end-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-2xs font-semibold text-white ring-2 ring-canvas num-tabular"
               >
                 {toPersianDigits(unreadCount)}
               </motion.span>
@@ -190,7 +190,7 @@ export function NotificationPopover() {
                             visible: { opacity: 1, y: 0 },
                           }}
                           onClick={() => handleItemClick(notif)}
-                          className="relative w-full flex items-start gap-3 px-4 py-3 text-right hover:bg-surface-hover/60 transition-colors group"
+                          className="relative w-full flex items-start gap-3 px-4 py-3 text-start hover:bg-surface-hover/60 transition-colors group"
                         >
                           <div
                             className={cn(

@@ -204,13 +204,13 @@ export function MediaView() {
           <div className="n-card n-gradient-border p-3">
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative flex-1 min-w-48">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
+                <Search className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
                 <Input
                   dir="rtl"
                   placeholder="جستجوی رسانه…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pr-9"
+                  className="ps-9"
                 />
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-surface-subtle">
@@ -295,8 +295,8 @@ export function MediaView() {
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-right">آپلود رسانه جدید</DialogTitle>
-            <DialogDescription className="text-right">
+            <DialogTitle className="text-start">آپلود رسانه جدید</DialogTitle>
+            <DialogDescription className="text-start">
               یک یا چند فایل را برای آپلود انتخاب کنید.
             </DialogDescription>
           </DialogHeader>
@@ -334,8 +334,8 @@ export function MediaView() {
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-right">{selected.name}</DialogTitle>
-                <DialogDescription className="text-right">
+                <DialogTitle className="text-start">{selected.name}</DialogTitle>
+                <DialogDescription className="text-start">
                   {selected.folder} • {formatNumber(selected.fileSize)} بایت
                 </DialogDescription>
               </DialogHeader>
@@ -404,7 +404,7 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
           onClick()
         }
       }}
-      className="group n-card-interactive n-focus-ring p-0 overflow-hidden text-right hover:scale-[1.02] transition-transform cursor-pointer"
+      className="group n-card-interactive n-focus-ring p-0 overflow-hidden text-start hover:scale-[1.02] transition-transform cursor-pointer"
     >
       <div className="relative aspect-square bg-border">
         {item.thumbnail ? (
@@ -414,7 +414,7 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
             <ImageIcon className="size-8 text-ink-tertiary opacity-40" />
           </div>
         )}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 start-2">
           {kind === 'video' ? (
             <span className="inline-flex items-center gap-1 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full">
               <FileVideo className="size-2.5" /> ویدئو
@@ -482,7 +482,7 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
     <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-surface-subtle transition-colors">
       <button
         onClick={onClick}
-        className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-right"
+        className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-start"
       >
         {item.thumbnail ? (
           <img

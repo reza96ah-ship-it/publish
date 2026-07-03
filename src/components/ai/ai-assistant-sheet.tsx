@@ -350,7 +350,7 @@ export function AIAssistantSheet({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 350, damping: 32, mass: 0.8 }}
-            className="fixed inset-y-0 right-0 z-[81] w-full max-w-[440px] bg-surface border-l border-border shadow-2xl flex flex-col"
+            className="fixed inset-y-0 start-0 z-[81] w-full max-w-[440px] bg-surface border-e border-border shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

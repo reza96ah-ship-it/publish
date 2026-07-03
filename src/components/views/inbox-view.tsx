@@ -523,7 +523,7 @@ function MessageListItem({
     <button
       onClick={onClick}
       className={cn(
-        'n-focus-ring w-full text-right flex items-start gap-3 p-3 border-b border-border transition-colors',
+        'n-focus-ring w-full text-start flex items-start gap-3 p-3 border-b border-border transition-colors',
         active ? 'bg-accent-soft' : 'hover:bg-surface-subtle',
         !message.isRead && 'bg-accent-soft'
       )}
@@ -535,7 +535,7 @@ function MessageListItem({
           )}
           <AvatarFallback className="text-sm">{message.senderName.slice(0, 1)}</AvatarFallback>
         </Avatar>
-        <span className="absolute -bottom-0.5 -left-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
+        <span className="absolute -bottom-0.5 -end-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
           <PlatformIcon platform={message.platform} className="size-2.5" />
         </span>
       </div>

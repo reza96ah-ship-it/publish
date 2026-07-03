@@ -45,7 +45,7 @@ export function ActionCenter() {
         {/* Primary critical task */}
         {data?.primary && (
           <div className="relative overflow-hidden rounded-lg border border-danger/20 bg-danger-soft p-3">
-            <div className="absolute top-0 right-0 h-full w-[3px] bg-danger" />
+            <div className="absolute top-0 start-0 h-full w-[3px] bg-danger" />
             <div className="flex items-start gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-danger text-white shrink-0">
                 <AlertTriangle className="size-3.5" strokeWidth={2} />

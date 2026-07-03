@@ -113,6 +113,27 @@ jobs:
             exit 1
           fi
           echo "✓ No raw palette or hex color leaks"
+      # Issue #231: reject physical direction classes that break RTL layout
+      - name: Reject physical direction classes (RTL logical properties)
+        run: |
+          # Check custom components only — exclude src/components/ui/ (shadcn) and known exceptions
+          # Exceptions:
+          #   settings-view.tsx — text-left on dir="ltr" LTR inputs (phone, email, hex color)
+          #   platform-preview-tabs.tsx — simulates LTR platform UI chrome
+          #   mobile-bottom-nav.tsx — left-1/2 centering idiom (direction-neutral)
+          HITS=$(grep -rEo '\btext-right\b|\brounded-r-\w+|\brounded-l-\w+' \
+            src/components/views/ src/components/shell/ src/components/dashboard/ \
+            src/components/ai/ src/components/editor/ src/components/approval/ \
+            src/app/ \
+            --include='*.tsx' --include='*.ts' \
+            | grep -v 'settings-view\|platform-preview-tabs\|mobile-bottom-nav' \
+            | head -20 || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::Physical direction class found in RTL-first app. Use logical equivalents: text-start/text-end, rounded-s-*/rounded-e-* instead of text-right, rounded-r-*, rounded-l-*."
+            echo "$HITS"
+            exit 1
+          fi
+          echo "✓ No physical direction class violations"
       # Issue #229: reject arbitrary text-size / font-weight classes — use semantic scale
       - name: Reject arbitrary text-size and font-weight classes
         run: |

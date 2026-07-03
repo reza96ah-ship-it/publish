@@ -176,13 +176,13 @@ export function ContentView() {
       <div className="n-card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
             <Input
               dir="rtl"
               placeholder="جستجو در عنوان محتوا…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
+              className="ps-9"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -260,22 +260,22 @@ export function ContentView() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                       محتوا
                     </TableHead>
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                       وضعیت
                     </TableHead>
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden sm:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                       کمپین
                     </TableHead>
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden md:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                       پلتفرم‌ها
                     </TableHead>
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden md:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                       نویسنده
                     </TableHead>
-                    <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden sm:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                       به‌روزرسانی
                     </TableHead>
                     <TableHead className="w-10"></TableHead>

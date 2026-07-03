@@ -1015,7 +1015,7 @@ export function AnimatedTabs<T extends string>({
             {active && (
               <motion.span
                 layoutId="animated-tab-underline"
-                className="absolute -bottom-px left-0 right-0 h-[2px] bg-accent rounded-full"
+                className="absolute -bottom-px inset-x-0 h-[2px] bg-accent rounded-full"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 aria-hidden
               />
