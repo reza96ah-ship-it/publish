@@ -3,7 +3,10 @@ import path from 'path'
 
 const AUTH_FILE = path.resolve(__dirname, 'tests/e2e/.auth/user.json')
 const VISUAL_TEST = /visual\.spec\.ts/
-const isVisualRun = process.argv.some((arg) => arg === '--project=visual' || arg === 'visual')
+const scriptName = process.env.npm_lifecycle_event ?? ''
+const isVisualRun =
+  scriptName.startsWith('test:visual') ||
+  process.argv.some((arg) => arg === '--project=visual' || arg === 'visual')
 
 const visualProjects = isVisualRun
   ? [
