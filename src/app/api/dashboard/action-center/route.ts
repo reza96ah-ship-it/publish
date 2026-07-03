@@ -68,50 +68,50 @@ function colorFor(t: string) {
   switch (t) {
     case 'publish_failed':
     case 'channel_disconnected':
-      return 'text-rose-600'
+      return 'text-danger'
     case 'approval_requested':
-      return 'text-amber-600'
+      return 'text-warning'
     case 'token_expiring':
-      return 'text-orange-600'
+      return 'text-warning'
     case 'inbox_new':
-      return 'text-blue-600'
+      return 'text-info'
     case 'publish_success':
-      return 'text-emerald-600'
+      return 'text-success'
     default:
-      return 'text-slate-600'
+      return 'text-ink-secondary'
   }
 }
 function bgFor(t: string) {
   switch (t) {
     case 'publish_failed':
     case 'channel_disconnected':
-      return 'bg-rose-50'
+      return 'bg-danger-tint'
     case 'approval_requested':
-      return 'bg-amber-50'
+      return 'bg-warning-tint'
     case 'token_expiring':
-      return 'bg-orange-50'
+      return 'bg-warning-tint'
     case 'inbox_new':
-      return 'bg-blue-50'
+      return 'bg-info-tint'
     case 'publish_success':
-      return 'bg-emerald-50'
+      return 'bg-success-tint'
     default:
-      return 'bg-slate-50'
+      return 'bg-surface-subtle'
   }
 }
 function borderFor(t: string) {
   switch (t) {
     case 'publish_failed':
     case 'channel_disconnected':
-      return 'border-rose-100'
+      return 'border-danger-soft'
     case 'approval_requested':
-      return 'border-amber-100'
+      return 'border-warning-soft'
     case 'token_expiring':
-      return 'border-orange-100'
+      return 'border-warning-soft'
     case 'inbox_new':
-      return 'border-blue-100'
+      return 'border-info-soft'
     case 'publish_success':
-      return 'border-emerald-100'
+      return 'border-success-soft'
     default:
-      return 'border-slate-100'
+      return 'border-border'
   }
 }

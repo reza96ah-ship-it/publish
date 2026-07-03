@@ -148,9 +148,9 @@ function statusLabel(status: string, circuitState: string): string {
 }
 
 function statusColor(status: string, circuitState: string): string {
-  if (status === 'expired') return 'text-amber-700 bg-amber-50 border-amber-200'
+  if (status === 'expired') return 'text-warning bg-warning-tint border-warning-soft'
   if (status === 'error' || circuitState === 'open')
-    return 'text-rose-700 bg-rose-50 border-rose-200'
-  if (status === 'disconnected') return 'text-slate-700 bg-slate-50 border-slate-200'
-  return 'text-emerald-700 bg-emerald-50 border-emerald-200'
+    return 'text-danger bg-danger-tint border-danger-soft'
+  if (status === 'disconnected') return 'text-ink-secondary bg-surface-subtle border-border'
+  return 'text-success bg-success-tint border-success-soft'
 }

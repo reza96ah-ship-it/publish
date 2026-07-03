@@ -120,7 +120,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
       <div className="flex items-center gap-3">
         <div className={cn(
           'rounded-xl p-2',
-          isHealthy ? 'bg-emerald-50' : ch.tokenExpired ? 'bg-rose-50' : 'bg-amber-50'
+          isHealthy ? 'bg-success-tint' : ch.tokenExpired ? 'bg-danger-tint' : 'bg-warning-tint'
         )}>
           <PlatformIcon platform={ch.type} className="size-6" />
         </div>
@@ -156,7 +156,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
           {ch.daysRemaining !== null ? (
             <p className={cn(
               'text-sm font-bold num-tabular',
-              ch.tokenExpired ? 'text-rose-600' : ch.tokenWarning ? 'text-amber-600' : 'text-ink-primary'
+              ch.tokenExpired ? 'text-danger' : ch.tokenWarning ? 'text-warning' : 'text-ink-primary'
             )}>
               {ch.tokenExpired ? 'منقضی شده' : `${toPersianDigits(ch.daysRemaining)} روز دیگر`}
             </p>
@@ -178,7 +178,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
           </div>
           <p className={cn(
             'text-sm font-bold num-tabular',
-            ch.failureRate7d > 20 ? 'text-rose-600' : ch.failureRate7d > 5 ? 'text-amber-600' : 'text-emerald-600'
+            ch.failureRate7d > 20 ? 'text-danger' : ch.failureRate7d > 5 ? 'text-warning' : 'text-success'
           )}>
             {toPersianDigits(ch.failureRate7d)}٪
           </p>
@@ -210,9 +210,9 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
         <div className="space-y-1.5">
           <div className="flex items-center gap-1">
             {ch.missingScopes.length > 0 ? (
-              <ShieldAlert className="size-3.5 text-rose-500" />
+              <ShieldAlert className="size-3.5 text-danger" />
             ) : (
-              <Shield className="size-3.5 text-emerald-500" />
+              <Shield className="size-3.5 text-success" />
             )}
             <span className="text-xs font-semibold text-ink-secondary">دسترسی‌های OAuth</span>
           </div>
@@ -225,8 +225,8 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
                   className={cn(
                     'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-semibold border',
                     granted
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                      : 'border-rose-200 bg-rose-50 text-rose-700'
+                      ? 'border-success-soft bg-success-tint text-success'
+                      : 'border-danger-soft bg-danger-tint text-danger'
                   )}
                 >
                   {granted ? <CheckCircle2 className="size-2.5" /> : <XCircle className="size-2.5" />}
@@ -236,7 +236,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
             })}
           </div>
           {ch.missingScopes.length > 0 && (
-            <p className="text-2xs text-rose-600">
+            <p className="text-2xs text-danger">
               {toPersianDigits(ch.missingScopes.length)} دسترسی مفقود — نیاز به اتصال مجدد
             </p>
           )}
@@ -245,9 +245,9 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
 
       {/* Last error (if any) */}
       {ch.lastError && (
-        <div className="rounded-lg border border-rose-100 bg-rose-50/50 p-2">
-          <p className="text-2xs font-semibold text-rose-700 mb-0.5">آخرین خطا</p>
-          <p className="text-2xs text-rose-600 truncate" title={ch.lastError}>
+        <div className="rounded-lg border border-danger-soft bg-danger-tint/50 p-2">
+          <p className="text-2xs font-semibold text-danger mb-0.5">آخرین خطا</p>
+          <p className="text-2xs text-danger truncate" title={ch.lastError}>
             {ch.lastError}
           </p>
         </div>

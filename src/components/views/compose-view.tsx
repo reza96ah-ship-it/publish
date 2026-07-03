@@ -603,7 +603,7 @@ export function ComposeView() {
       {showConflictModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-right" dir="rtl">
-            <div className="flex items-center gap-3 text-amber-500">
+            <div className="flex items-center gap-3 text-warning">
               <AlertTriangle className="size-6" />
               <h3 className="text-lg font-bold text-ink-primary">تغییرات همزمان یافت شد</h3>
             </div>
@@ -643,11 +643,11 @@ export function ComposeView() {
               className={cn(
                 'text-xs',
                 saveState === 'saved'
-                  ? 'text-emerald-600'
+                  ? 'text-success'
                   : saveState === 'error'
-                    ? 'text-red-500'
+                    ? 'text-danger'
                     : saveState === 'conflict'
-                      ? 'text-amber-600 font-semibold'
+                      ? 'text-warning font-semibold'
                       : 'text-ink-tertiary'
               )}
             >
@@ -714,7 +714,7 @@ export function ComposeView() {
           <div
             role="alert"
             aria-live="polite"
-            className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+            className="mt-2 rounded-lg border border-warning-soft bg-warning-tint p-2.5 text-xs text-warning"
           >
             <div className="flex items-center gap-1.5 mb-1 font-semibold">
               <AlertTriangle className="size-3.5" />
@@ -959,7 +959,7 @@ export function ComposeView() {
                 caption.length > activeCaptionLimit
                   ? 'text-danger font-semibold'
                   : caption.length > activeCaptionLimit * 0.9
-                    ? 'text-amber-600'
+                    ? 'text-warning'
                     : ''
               )}
             >

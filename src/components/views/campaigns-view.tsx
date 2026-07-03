@@ -202,15 +202,15 @@ export function CampaignsView() {
           label="کمپین‌های فعال"
           value={stats.active}
           icon={TrendingUp}
-          color="text-emerald-600"
+          color="text-success"
         />
-        <StatCard label="تکمیل‌شده" value={stats.completed} icon={Target} color="text-blue-600" />
+        <StatCard label="تکمیل‌شده" value={stats.completed} icon={Target} color="text-info" />
         <StatCard
           label="میانگین پیشرفت"
           value={stats.avgProgress}
           suffix="٪"
           icon={Calendar}
-          color="text-violet-600"
+          color="text-accent"
         />
       </div>
 

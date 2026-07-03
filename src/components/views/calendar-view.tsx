@@ -91,11 +91,12 @@ interface PublishJob {
 }
 
 const PLATFORM_CHIP: Record<string, string> = {
-  instagram: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-800/50',
-  telegram: 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/50',
-  linkedin: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50',
-  rubika: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50',
-  eitaa: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800/50',
+  instagram: 'chip-instagram',
+  telegram: 'chip-telegram',
+  linkedin: 'chip-linkedin',
+  rubika: 'chip-rubika',
+  eitaa: 'chip-eitaa',
+  bale: 'chip-bale',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -299,7 +300,7 @@ export function CalendarView() {
                   key={d}
                   className={cn(
                     'text-center text-xs font-bold py-1.5',
-                    i >= 5 ? 'text-rose-500' : 'text-ink-tertiary'
+                    i >= 5 ? 'text-danger' : 'text-ink-tertiary'
                   )}
                 >
                   {d}
@@ -376,10 +377,10 @@ export function CalendarView() {
                   )}>
                     <p className={cn(
                       'text-sm font-bold mb-2',
-                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-rose-500' : 'text-ink-secondary'
+                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-danger' : 'text-ink-secondary'
                     )}>
                       {JALALI_WEEKDAYS_SHORT[i % 7]} {toPersianDigits(cell.jalali.day)}
-                      {cell.holiday && <span className="text-2xs text-rose-500 me-2">— {cell.holiday}</span>}
+                      {cell.holiday && <span className="text-2xs text-danger me-2">— {cell.holiday}</span>}
                     </p>
                     {dayJobs.length === 0 ? (
                       <p className="text-xs text-ink-tertiary">بدون رویداد</p>
@@ -391,7 +392,7 @@ export function CalendarView() {
                             onClick={() => setSelectedJob(job)}
                             className={cn(
                               'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-right',
-                              PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                              PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
                             )}
                           >
                             <Clock3 className="size-3.5 shrink-0" />
@@ -617,7 +618,7 @@ function DayCell({
         cell.isToday
           ? 'border-accent ring-1 ring-accent/30 bg-accent-soft'
           : cell.holiday
-            ? 'border-rose-200 bg-rose-50/40'
+            ? 'border-danger-soft bg-danger-tint/40'
             : cell.isWeekend && cell.inMonth
               ? 'border-border bg-surface-hover'
               : 'border-border',
@@ -631,16 +632,16 @@ function DayCell({
             cell.isToday
               ? 'bg-accent text-white rounded-full size-5 inline-flex items-center justify-center'
               : cell.holiday
-                ? 'text-rose-600'
+                ? 'text-danger'
                 : cell.isWeekend
-                  ? 'text-rose-500'
+                  ? 'text-danger'
                   : 'text-ink-secondary'
           )}
         >
           {day}
         </span>
         {cell.holiday && (
-          <span className="text-2xs text-rose-500 truncate max-w-12" title={cell.holiday}>
+          <span className="text-2xs text-danger truncate max-w-12" title={cell.holiday}>
             {cell.holiday}
           </span>
         )}
@@ -687,7 +688,7 @@ function JobChip({
       title={job.title}
       className={cn(
         'n-focus-ring w-full text-right text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
-        PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
+        PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border',
         (isDragging || isDimmed) && 'opacity-30'
       )}
     >

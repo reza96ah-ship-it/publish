@@ -96,6 +96,23 @@ jobs:
           echo "✓ No schema drift — schema.prisma matches the applied database state"
 
       - run: bun run lint
+      # Issue #230: reject raw palette / hex color leaks outside documented exceptions
+      - name: Reject raw palette and hex color leaks
+        run: |
+          # Exceptions:
+          #   platform-preview-tabs.tsx — intentionally simulates platform UI chrome
+          #   settings-view.tsx        — user-configurable brand color picker defaults
+          #   toast.tsx                — shadcn destructive variant (text-red-300 etc.)
+          HITS=$(grep -rEo '\b(text|bg|border|ring)-(rose|pink|sky|emerald|amber|yellow|orange|red|purple|violet|indigo|slate|gray|zinc|lime|teal|cyan|fuchsia|blue|green)-[0-9]{2,3}\b|#[0-9a-fA-F]{4,8}' \
+            src/components/ src/app/ --include='*.tsx' --include='*.ts' --include='*.css' \
+            | grep -v 'platform-preview-tabs\|settings-view\|globals\.css\|toast\.tsx' \
+            | head -20 || true)
+          if [ -n "$HITS" ]; then
+            echo "::error::Raw palette class or hex literal found. Use n-* semantic tokens (text-danger, bg-success-tint, etc.) instead. Exceptions: platform-preview-tabs.tsx, settings-view.tsx."
+            echo "$HITS"
+            exit 1
+          fi
+          echo "✓ No raw palette or hex color leaks"
       # Issue #229: reject arbitrary text-size / font-weight classes — use semantic scale
       - name: Reject arbitrary text-size and font-weight classes
         run: |

@@ -26,7 +26,7 @@ export function ExecutiveMetrics() {
     id === 'engagement' ? Heart : id === 'reach' ? Eye : id === 'audience' ? Users : Flag
   const iconColorFor = (id: string) =>
     id === 'engagement'
-      ? 'text-[#db2777]'
+      ? 'text-[var(--color-platform-instagram)]'
       : id === 'reach'
         ? 'text-info'
         : id === 'audience'
@@ -34,7 +34,7 @@ export function ExecutiveMetrics() {
           : 'text-success'
   const sparkColorFor = (id: string) =>
     id === 'engagement'
-      ? '#db2777'
+      ? 'var(--color-platform-instagram)'
       : id === 'reach'
         ? 'var(--color-info)'
         : id === 'audience'

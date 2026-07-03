@@ -359,7 +359,7 @@ function CalendarGrid({
             key={d}
             className={cn(
               'text-center text-2xs font-semibold py-1',
-              i >= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-tertiary'
+              i >= 5 ? 'text-warning' : 'text-ink-tertiary'
             )}
           >
             {d}
@@ -395,8 +395,8 @@ function CalendarGrid({
                 !cell.inMonth && 'opacity-30',
                 disabledDay && 'opacity-30 cursor-not-allowed',
                 !disabledDay && !isSelected && 'hover:bg-surface-hover',
-                weekend && !isSelected && !holiday && 'text-amber-700 dark:text-amber-300',
-                holiday && !isSelected && 'text-rose-600 dark:text-rose-400',
+                weekend && !isSelected && !holiday && 'text-warning',
+                holiday && !isSelected && 'text-danger',
                 isToday && !isSelected && 'bg-accent-soft text-accent',
                 isSelected &&
                   'bg-primary text-primary-foreground shadow-sm scale-105 hover:bg-primary'
@@ -404,7 +404,7 @@ function CalendarGrid({
             >
               {toPersianDigits(j.day)}
               {holiday && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-rose-500" />
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-danger" />
               )}
             </button>
           )
@@ -444,7 +444,7 @@ function CalendarGrid({
             variant="ghost"
             size="sm"
             onClick={onClear}
-            className="h-7 text-xs text-ink-tertiary hover:text-rose-500"
+            className="h-7 text-xs text-ink-tertiary hover:text-danger"
           >
             پاک کردن
           </Button>

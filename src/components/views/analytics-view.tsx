@@ -90,10 +90,10 @@ interface PublishJob {
 }
 
 const PLATFORMS = [
-  { id: 'instagram', label: 'اینستاگرام', color: '#ec4899' },
-  { id: 'telegram', label: 'تلگرام', color: '#0ea5e9' },
-  { id: 'linkedin', label: 'لینکدین', color: '#2563eb' },
-  { id: 'rubika', label: 'روبیکا', color: '#a855f7' },
+  { id: 'instagram', label: 'اینستاگرام', color: 'var(--color-platform-instagram)' },
+  { id: 'telegram', label: 'تلگرام', color: 'var(--color-platform-telegram)' },
+  { id: 'linkedin', label: 'لینکدین', color: 'var(--color-platform-linkedin)' },
+  { id: 'rubika', label: 'روبیکا', color: 'var(--color-platform-rubika)' },
 ]
 
 export function AnalyticsView() {
@@ -167,7 +167,7 @@ export function AnalyticsView() {
         label: 'دسترسی',
         value: kpis.reach,
         icon: Eye,
-        iconColor: 'text-violet-600',
+        iconColor: 'text-accent',
         sparkColor: 'var(--color-accent)',
         spark: reach,
         trend: trend(reach),
@@ -179,8 +179,8 @@ export function AnalyticsView() {
         label: 'تعامل',
         value: kpis.engagement,
         icon: Heart,
-        iconColor: 'text-pink-600',
-        sparkColor: '#ec4899',
+        iconColor: 'text-[var(--color-platform-instagram)]',
+        sparkColor: 'var(--color-platform-instagram)',
         spark: engagement,
         trend: trend(engagement),
         prev: prev(engagement),
@@ -191,8 +191,8 @@ export function AnalyticsView() {
         label: 'رشد مخاطبان',
         value: kpis.followers,
         icon: Users,
-        iconColor: 'text-emerald-600',
-        sparkColor: '#10b981',
+        iconColor: 'text-success',
+        sparkColor: 'var(--color-success)',
         spark: followers,
         trend: trend(followers),
         prev: prev(followers),
@@ -203,8 +203,8 @@ export function AnalyticsView() {
         label: 'کلیک',
         value: kpis.clicks,
         icon: MousePointerClick,
-        iconColor: 'text-amber-600',
-        sparkColor: '#f59e0b',
+        iconColor: 'text-warning',
+        sparkColor: 'var(--color-warning)',
         spark: clicks,
         trend: trend(clicks),
         prev: prev(clicks),
