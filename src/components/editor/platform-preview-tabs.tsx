@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -95,7 +95,7 @@ export function PlatformPreviewTabs({
               onClick={() => setActive(p)}
               aria-pressed={active === p}
               className={cn(
-                'n-focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-[600] transition-colors shrink-0',
+                'n-focus-ring flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors shrink-0',
                 active === p
                   ? 'bg-surface text-ink-primary shadow-sm'
                   : 'text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary'
@@ -105,7 +105,7 @@ export function PlatformPreviewTabs({
               <span>{PLATFORM_LABELS[p] ?? p}</span>
               <span
                 className={cn(
-                  'ms-1 rounded px-1 text-[9px] num-tabular font-[700]',
+                  'ms-1 rounded px-1 text-2xs num-tabular font-bold',
                   status === 'ok' && 'bg-success/10 text-success',
                   status === 'warn' && 'bg-warning/10 text-warning',
                   status === 'over' && 'bg-danger/10 text-danger'
@@ -180,12 +180,12 @@ function InstagramPreview({
       <div className="flex items-center gap-2 p-3">
         <div className="size-8 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-0.5">
           <div className="size-full rounded-full bg-surface flex items-center justify-center">
-            <span className="text-[10px] font-[700] text-ink-primary">{author[0]}</span>
+            <span className="text-2xs font-bold text-ink-primary">{author[0]}</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-[700] text-ink-primary truncate">{author}</p>
-          <p className="text-[9px] text-ink-tertiary">الان</p>
+          <p className="text-xs font-bold text-ink-primary truncate">{author}</p>
+          <p className="text-2xs text-ink-tertiary">الان</p>
         </div>
         <MoreHorizontal className="size-4 text-ink-tertiary" />
       </div>
@@ -195,7 +195,7 @@ function InstagramPreview({
         <div className="relative aspect-square w-full bg-border">
           <img src={media[0].thumbnail} alt="" className="w-full h-full object-cover" />
           {media.length > 1 && (
-            <span className="absolute top-2 left-2 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
+            <span className="absolute top-2 left-2 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
               <svg viewBox="0 0 24 24" className="size-2.5 fill-current">
                 <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm8.5 6l-4-5-2 2-3-4-3 7h12z" />
               </svg>
@@ -205,7 +205,7 @@ function InstagramPreview({
         </div>
       ) : (
         <div className="aspect-square w-full bg-surface-hover flex items-center justify-center">
-          <span className="text-[10px] text-ink-tertiary">بدون رسانه</span>
+          <span className="text-2xs text-ink-tertiary">بدون رسانه</span>
         </div>
       )}
 
@@ -219,13 +219,13 @@ function InstagramPreview({
 
       {/* Likes */}
       <div className="px-3 pt-1.5">
-        <p className="text-[10px] font-[700] text-ink-primary">{toPersianDigits(124)} پسند</p>
+        <p className="text-2xs font-bold text-ink-primary">{toPersianDigits(124)} پسند</p>
       </div>
 
       {/* Caption */}
       <div className="px-3 pb-3 pt-1">
-        <p className="text-[11px] text-ink-primary leading-relaxed whitespace-pre-wrap">
-          <span className="font-[700]">{author}</span> {displayCaption}
+        <p className="text-xs text-ink-primary leading-relaxed whitespace-pre-wrap">
+          <span className="font-bold">{author}</span> {displayCaption}
           {isLong && <span className="text-ink-tertiary"> … بیشتر</span>}
         </p>
       </div>
@@ -251,12 +251,12 @@ function TelegramPreview({
     <div className="mx-auto max-w-[380px]">
       {/* Channel header */}
       <div className="flex items-center gap-2 mb-2 px-1">
-        <div className="size-8 rounded-full bg-[#0088cc] flex items-center justify-center text-white text-[10px] font-[700]">
+        <div className="size-8 rounded-full bg-[#0088cc] flex items-center justify-center text-white text-2xs font-bold">
           {author[0]}
         </div>
         <div>
-          <p className="text-[11px] font-[700] text-ink-primary">{author}</p>
-          <p className="text-[9px] text-ink-tertiary">{platformName} • الان</p>
+          <p className="text-xs font-bold text-ink-primary">{author}</p>
+          <p className="text-2xs text-ink-tertiary">{platformName} • الان</p>
         </div>
       </div>
 
@@ -267,15 +267,15 @@ function TelegramPreview({
             <img src={media[0].thumbnail} alt="" className="w-full max-h-[200px] object-cover" />
           </div>
         )}
-        {title && <p className="text-[12px] font-[700] text-ink-primary mb-1">{title}</p>}
-        <p className="text-[11.5px] text-ink-primary leading-relaxed whitespace-pre-wrap">
+        {title && <p className="text-sm font-bold text-ink-primary mb-1">{title}</p>}
+        <p className="text-xs text-ink-primary leading-relaxed whitespace-pre-wrap">
           {caption || 'متن پیام…'}
         </p>
         {/* Time + views */}
         <div className="flex items-center justify-end gap-1 mt-1.5">
           <Eye className="size-3 text-ink-tertiary" />
-          <span className="text-[9px] text-ink-tertiary num-tabular">{toPersianDigits(1234)}</span>
-          <span className="text-[9px] text-ink-tertiary ms-1">۱۲:۳۰</span>
+          <span className="text-2xs text-ink-tertiary num-tabular">{toPersianDigits(1234)}</span>
+          <span className="text-2xs text-ink-tertiary ms-1">۱۲:۳۰</span>
         </div>
       </div>
     </div>
@@ -302,19 +302,19 @@ function LinkedInPreview({
     <div className="mx-auto max-w-[400px] bg-surface rounded-lg overflow-hidden border border-border">
       {/* Header */}
       <div className="flex items-center gap-2 p-3">
-        <div className="size-9 rounded-full bg-[#0a66c2] flex items-center justify-center text-white text-[11px] font-[700]">
+        <div className="size-9 rounded-full bg-[#0a66c2] flex items-center justify-center text-white text-xs font-bold">
           {author[0]}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11.5px] font-[700] text-ink-primary truncate">{author}</p>
-          <p className="text-[9px] text-ink-tertiary">اکنون • عمومی</p>
+          <p className="text-xs font-bold text-ink-primary truncate">{author}</p>
+          <p className="text-2xs text-ink-tertiary">اکنون • عمومی</p>
         </div>
         <MoreHorizontal className="size-4 text-ink-tertiary" />
       </div>
 
       {/* Caption (LinkedIn shows text above media) */}
       <div className="px-3 pb-2">
-        <p className="text-[11.5px] text-ink-primary leading-relaxed whitespace-pre-wrap">
+        <p className="text-xs text-ink-primary leading-relaxed whitespace-pre-wrap">
           {displayCaption}
           {isLong && <span className="text-[#0a66c2]"> …دیدن بیشتر</span>}
         </p>
@@ -332,11 +332,11 @@ function LinkedInPreview({
         <div className="flex items-center gap-1">
           <ThumbsUp className="size-3.5 text-[#0a66c2] fill-[#0a66c2]" />
           <Repeat2 className="size-3.5 text-[#5cb85c]" />
-          <span className="text-[9px] text-ink-tertiary num-tabular ms-1">
+          <span className="text-2xs text-ink-tertiary num-tabular ms-1">
             {toPersianDigits(42)}
           </span>
         </div>
-        <span className="text-[9px] text-ink-tertiary">{toPersianDigits(7)} نظر</span>
+        <span className="text-2xs text-ink-tertiary">{toPersianDigits(7)} نظر</span>
       </div>
     </div>
   )

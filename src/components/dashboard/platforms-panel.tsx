@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -57,23 +57,23 @@ export function PlatformsPanel() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-[12.5px] font-[600] text-ink-primary truncate">{p.name}</p>
-                  <span className="text-[10px] text-ink-tertiary">
+                  <p className="text-sm font-semibold text-ink-primary truncate">{p.name}</p>
+                  <span className="text-2xs text-ink-tertiary">
                     @{(p as any).username || '—'}
                   </span>
                 </div>
                 <span
-                  className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border mt-1 ${p.stateColor}`}
+                  className={`inline-flex items-center text-2xs font-semibold px-1.5 py-0.5 rounded-md border mt-1 ${p.stateColor}`}
                 >
                   {p.state}
                 </span>
               </div>
 
               <div className="text-left shrink-0">
-                <p className="text-[10px] text-ink-tertiary leading-tight">
+                <p className="text-2xs text-ink-tertiary leading-tight">
                   {p.lastSuccess ? relativeTime(new Date(p.lastSuccess)) : '—'}
                 </p>
-                <p className="text-[10px] font-[600] text-ink-secondary mt-0.5 num-tabular leading-tight">
+                <p className="text-2xs font-semibold text-ink-secondary mt-0.5 num-tabular leading-tight">
                   {toPersianDigits(p.accounts)} حساب
                 </p>
               </div>

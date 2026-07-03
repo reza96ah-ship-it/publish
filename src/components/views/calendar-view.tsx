@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -273,10 +273,10 @@ export function CalendarView() {
                 <ChevronRight className="size-4" />
               </Button>
               <div className="text-center min-w-[100px]">
-                <p className="text-sm font-[700] text-ink-primary num-tabular">
+                <p className="text-sm font-bold text-ink-primary num-tabular">
                   {monthName} {toPersianDigits(calendarCursor.year)}
                 </p>
-                <p className="text-[10px] text-ink-tertiary num-tabular">
+                <p className="text-2xs text-ink-tertiary num-tabular">
                   ماه {toPersianDigits(calendarCursor.month)}
                 </p>
               </div>
@@ -298,7 +298,7 @@ export function CalendarView() {
                 <div
                   key={d}
                   className={cn(
-                    'text-center text-[11px] font-[700] py-1.5',
+                    'text-center text-xs font-bold py-1.5',
                     i >= 5 ? 'text-rose-500' : 'text-ink-tertiary'
                   )}
                 >
@@ -331,7 +331,7 @@ export function CalendarView() {
               </div>
               <DragOverlay>
                 {activeDrag ? (
-                  <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-[10px] font-[700] shadow-xl max-w-56 truncate">
+                  <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-2xs font-bold shadow-xl max-w-56 truncate">
                     {activeDrag.title}
                   </div>
                 ) : null}
@@ -344,7 +344,7 @@ export function CalendarView() {
         {/* ── Week view (simplified) ── */}
         <TabsContent value="week" className="space-y-4">
           <div className="n-card p-3 sm:p-5">
-            <p className="text-[12px] text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
+            <p className="text-sm text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
             {/* Desktop: 7-col grid */}
             <div className="hidden sm:block overflow-x-auto">
               <div className="min-w-[320px] grid grid-cols-7 gap-2">
@@ -375,14 +375,14 @@ export function CalendarView() {
                     cell.isToday ? 'border-accent bg-accent-soft' : 'border-border'
                   )}>
                     <p className={cn(
-                      'text-[12px] font-[700] mb-2',
+                      'text-sm font-bold mb-2',
                       cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-rose-500' : 'text-ink-secondary'
                     )}>
                       {JALALI_WEEKDAYS_SHORT[i % 7]} {toPersianDigits(cell.jalali.day)}
-                      {cell.holiday && <span className="text-[10px] text-rose-500 me-2">— {cell.holiday}</span>}
+                      {cell.holiday && <span className="text-2xs text-rose-500 me-2">— {cell.holiday}</span>}
                     </p>
                     {dayJobs.length === 0 ? (
-                      <p className="text-[11px] text-ink-tertiary">بدون رویداد</p>
+                      <p className="text-xs text-ink-tertiary">بدون رویداد</p>
                     ) : (
                       <div className="space-y-1.5">
                         {dayJobs.map((job) => (
@@ -395,8 +395,8 @@ export function CalendarView() {
                             )}
                           >
                             <Clock3 className="size-3.5 shrink-0" />
-                            <span className="text-[12px] font-[600] truncate flex-1">{job.title}</span>
-                            <span className="text-[10px] shrink-0">{formatJalaliTime(new Date(job.scheduledAt))}</span>
+                            <span className="text-sm font-semibold truncate flex-1">{job.title}</span>
+                            <span className="text-2xs shrink-0">{formatJalaliTime(new Date(job.scheduledAt))}</span>
                           </button>
                         ))}
                       </div>
@@ -413,7 +413,7 @@ export function CalendarView() {
           <div className="n-card p-5">
             <div className="flex items-center gap-2 mb-4">
               <ListChecks className="size-4 text-accent" />
-              <h2 className="text-sm font-[600] text-ink-primary">برنامه انتشار این ماه</h2>
+              <h2 className="text-sm font-semibold text-ink-primary">برنامه انتشار این ماه</h2>
             </div>
             {(jobs ?? []).length === 0 ? (
               <EmptyState
@@ -443,10 +443,10 @@ export function CalendarView() {
                     >
                       <PlatformIcon platform={job.platform} className="size-8 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-[600] text-ink-primary truncate">
+                        <p className="text-sm font-semibold text-ink-primary truncate">
                           {job.title}
                         </p>
-                        <p className="text-[11px] text-ink-tertiary mt-0.5">
+                        <p className="text-xs text-ink-tertiary mt-0.5">
                           {formatJalali(new Date(job.scheduledAt), true)} •{' '}
                           {formatJalaliTime(new Date(job.scheduledAt))}
                         </p>
@@ -467,8 +467,8 @@ export function CalendarView() {
       <div className="n-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Radio className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">صف انتشار</h2>
-          <span className="text-[10px] text-ink-tertiary ms-auto num-tabular">
+          <h2 className="text-sm font-semibold text-ink-primary">صف انتشار</h2>
+          <span className="text-2xs text-ink-tertiary ms-auto num-tabular">
             {toPersianDigits(queue?.length ?? 0)} کار در صف
           </span>
         </div>
@@ -510,7 +510,7 @@ export function CalendarView() {
                 <div className="flex items-center gap-3">
                   <PlatformIcon platform={selectedJob.platform} className="size-10" />
                   <div className="flex-1">
-                    <p className="text-[13px] font-[600] text-ink-primary">
+                    <p className="text-sm font-semibold text-ink-primary">
                       {selectedJob.platform}
                     </p>
                     <StatusBadge
@@ -519,10 +519,10 @@ export function CalendarView() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-[12px]">
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl bg-surface-subtle p-3">
-                    <p className="text-[10px] text-ink-tertiary mb-1">زمان انتشار</p>
-                    <p className="font-[700] text-ink-primary">
+                    <p className="text-2xs text-ink-tertiary mb-1">زمان انتشار</p>
+                    <p className="font-bold text-ink-primary">
                       {formatJalali(new Date(selectedJob.scheduledAt), true)}
                     </p>
                     <p className="text-ink-secondary">
@@ -530,8 +530,8 @@ export function CalendarView() {
                     </p>
                   </div>
                   <div className="rounded-xl bg-surface-subtle p-3">
-                    <p className="text-[10px] text-ink-tertiary mb-1">پیشرفت</p>
-                    <p className="font-[700] text-ink-primary num-tabular">
+                    <p className="text-2xs text-ink-tertiary mb-1">پیشرفت</p>
+                    <p className="font-bold text-ink-primary num-tabular">
                       {toPersianDigits(selectedJob.progress)}٪
                     </p>
                   </div>
@@ -545,7 +545,7 @@ export function CalendarView() {
               <div className="rounded-xl border border-border bg-surface-subtle p-3 space-y-3">
                 <div className="flex items-center gap-2">
                   <CalendarClock className="size-4 text-accent" />
-                  <p className="text-[12px] font-[600] text-ink-primary">تغییر زمان‌بندی</p>
+                  <p className="text-sm font-semibold text-ink-primary">تغییر زمان‌بندی</p>
                 </div>
                 <JalaliDatePicker
                   value={editingSchedule ?? new Date(selectedJob.scheduledAt)}
@@ -558,14 +558,14 @@ export function CalendarView() {
                   className="w-full"
                 />
                 {editingSchedule && (
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-ink-tertiary">
                       جدید: {formatJalali(editingSchedule, true)} •{' '}
                       {formatJalaliTime(editingSchedule)}
                     </span>
                     <Button
                       size="sm"
-                      className="h-7 text-[11px]"
+                      className="h-7 text-xs"
                       disabled={rescheduleMutation.isPending}
                       onClick={() =>
                         rescheduleMutation.mutate({
@@ -627,7 +627,7 @@ function DayCell({
       <div className="flex items-center justify-between mb-1">
         <span
           className={cn(
-            'text-[11px] font-[700] leading-none',
+            'text-xs font-bold leading-none',
             cell.isToday
               ? 'bg-accent text-white rounded-full size-5 inline-flex items-center justify-center'
               : cell.holiday
@@ -640,7 +640,7 @@ function DayCell({
           {day}
         </span>
         {cell.holiday && (
-          <span className="text-[8px] text-rose-500 truncate max-w-12" title={cell.holiday}>
+          <span className="text-2xs text-rose-500 truncate max-w-12" title={cell.holiday}>
             {cell.holiday}
           </span>
         )}
@@ -655,7 +655,7 @@ function DayCell({
           />
         ))}
         {jobs.length > (tall ? 5 : 3) && (
-          <p className="text-[9px] text-ink-tertiary px-1.5">
+          <p className="text-2xs text-ink-tertiary px-1.5">
             +{toPersianDigits(jobs.length - (tall ? 5 : 3))} مورد دیگر
           </p>
         )}
@@ -686,7 +686,7 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring w-full text-right text-[9px] font-[600] px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        'n-focus-ring w-full text-right text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
         PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
         (isDragging || isDimmed) && 'opacity-30'
       )}
@@ -713,22 +713,22 @@ function QueueRow({ job }: { job: PublishJob }) {
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-[600] text-ink-primary truncate">{job.title}</p>
+        <p className="text-sm font-semibold text-ink-primary truncate">{job.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] text-ink-tertiary truncate">{job.platformName}</span>
+          <span className="text-2xs text-ink-tertiary truncate">{job.platformName}</span>
           <span className="text-ink-tertiary">•</span>
-          <span className="text-[10px] text-ink-tertiary truncate">{job.campaign}</span>
+          <span className="text-2xs text-ink-tertiary truncate">{job.campaign}</span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <StatusBadge label={job.statusLabel} variant={job.status} />
-          <span className="text-[10px] text-ink-tertiary">
+          <span className="text-2xs text-ink-tertiary">
             {job.scheduledAt ? relativeTime(new Date(job.scheduledAt)) : job.processLabel}
           </span>
         </div>
       </div>
       <Avatar className="size-7 shrink-0 ring-2 ring-background">
         {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
-        <AvatarFallback className="text-[10px]">
+        <AvatarFallback className="text-2xs">
           {job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
         </AvatarFallback>
       </Avatar>

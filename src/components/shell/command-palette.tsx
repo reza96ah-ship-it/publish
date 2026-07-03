@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect } from 'react'
 import { Command as CommandPrimitive } from 'cmdk'
@@ -186,9 +186,9 @@ export function CommandPalette() {
                 <CommandPrimitive.Input
                   autoFocus
                   placeholder="جستجو یا اجرای فرمان…"
-                  className="flex-1 bg-transparent text-[14px] text-ink-primary placeholder:text-ink-tertiary outline-none"
+                  className="flex-1 bg-transparent text-base text-ink-primary placeholder:text-ink-tertiary outline-none"
                 />
-                <kbd className="text-[10px] font-[600] text-ink-tertiary px-1.5 py-0.5 rounded border border-border bg-surface-hover shrink-0">
+                <kbd className="text-2xs font-semibold text-ink-tertiary px-1.5 py-0.5 rounded border border-border bg-surface-hover shrink-0">
                   ESC
                 </kbd>
               </div>
@@ -201,8 +201,8 @@ export function CommandPalette() {
                       className="size-8 mx-auto text-ink-tertiary opacity-40 mb-2"
                       strokeWidth={1.5}
                     />
-                    <p className="text-[13px] text-ink-secondary font-[500]">نتیجه‌ای پیدا نشد</p>
-                    <p className="text-[11px] text-ink-tertiary mt-1">
+                    <p className="text-sm text-ink-secondary font-medium">نتیجه‌ای پیدا نشد</p>
+                    <p className="text-xs text-ink-tertiary mt-1">
                       برای دیدن همه فرمان‌ها، جستجو را خالی کنید
                     </p>
                   </div>
@@ -211,7 +211,7 @@ export function CommandPalette() {
                 {/* Pages group */}
                 <CommandPrimitive.Group
                   heading="مسیرها"
-                  className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-[600] [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide"
+                  className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide"
                 >
                   {actions
                     .filter((a) => a.group === 'pages')
@@ -223,7 +223,7 @@ export function CommandPalette() {
                 {/* Actions group */}
                 <CommandPrimitive.Group
                   heading="عملیات"
-                  className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-[600] [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide border-t border-border"
+                  className="[&_[cmdk-group-heading]]:px-4 [&_[cmdk-group-heading]]:py-2 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:text-ink-tertiary [&_[cmdk-group-heading]]:tracking-wide border-t border-border"
                 >
                   {actions
                     .filter((a) => a.group === 'actions')
@@ -234,7 +234,7 @@ export function CommandPalette() {
               </CommandPrimitive.List>
 
               {/* Footer */}
-              <div className="flex items-center justify-between px-4 h-9 border-t border-border text-[10px] text-ink-tertiary">
+              <div className="flex items-center justify-between px-4 h-9 border-t border-border text-2xs text-ink-tertiary">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1">
                     <kbd className="px-1 rounded border border-border bg-surface-hover">↑↓</kbd>
@@ -269,13 +269,13 @@ function CommandItem({ action }: { action: NavAction }) {
         className="size-4 text-ink-tertiary group-data-[selected=true]:text-accent shrink-0"
         strokeWidth={2}
       />
-      <span className="flex-1 text-[13px] text-ink-primary font-[500]">{action.label}</span>
+      <span className="flex-1 text-sm text-ink-primary font-medium">{action.label}</span>
       {action.shortcut && (
-        <span className="flex items-center gap-1 text-[10px] text-ink-tertiary shrink-0">
+        <span className="flex items-center gap-1 text-2xs text-ink-tertiary shrink-0">
           {action.shortcut.split(' ').map((key, i) => (
             <kbd
               key={i}
-              className="px-1.5 py-0.5 rounded border border-border bg-surface-hover font-[600]"
+              className="px-1.5 py-0.5 rounded border border-border bg-surface-hover font-semibold"
             >
               {key}
             </kbd>

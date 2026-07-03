@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useTheme } from 'next-themes'
 import { Toaster as Sonner, ToasterProps } from 'sonner'
@@ -29,8 +29,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: 'n-glass-popover !border-0.5 !shadow-lg',
-          title: 'text-[13px] font-[600]',
-          description: 'text-[11.5px]',
+          title: 'text-sm font-semibold',
+          description: 'text-xs',
           actionButton: 'bg-accent text-white hover:bg-accent-hover',
           cancelButton: 'bg-surface-hover text-ink-secondary hover:bg-surface-subtle',
           closeButton: 'text-ink-tertiary hover:text-ink-primary',

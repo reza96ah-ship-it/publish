@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { type CSSProperties } from 'react'
 
@@ -137,7 +137,7 @@ export function PlatformLogo({
   if (!Cmp) {
     return (
       <span
-        className={`inline-flex items-center justify-center rounded-[var(--radius-small)] bg-surface-hover text-ink-tertiary text-[10px] font-[800] ${className ?? 'size-5'}`}
+        className={`inline-flex items-center justify-center rounded-[var(--radius-small)] bg-surface-hover text-ink-tertiary text-2xs font-extrabold ${className ?? 'size-5'}`}
         style={style}
       >
         {platform.slice(0, 2).toUpperCase()}

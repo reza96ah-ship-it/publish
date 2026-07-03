@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 /**
  * Issue #131: Channel Health Center view.
@@ -71,7 +71,7 @@ export function ChannelHealthView() {
       className="space-y-4"
     >
       <SectionTitle icon={Activity} badge={
-        <span className="text-[11px] text-ink-tertiary">
+        <span className="text-xs text-ink-tertiary">
           {channels ? `${toPersianDigits(channels.length)} کانال` : '—'}
         </span>
       }>
@@ -125,13 +125,13 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
           <PlatformIcon platform={ch.type} className="size-6" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[13px] font-[700] text-ink-primary truncate">{ch.name}</h3>
-          <p className="text-[11px] text-ink-tertiary truncate">
+          <h3 className="text-sm font-bold text-ink-primary truncate">{ch.name}</h3>
+          <p className="text-xs text-ink-tertiary truncate">
             @{ch.username || '—'} • {ch.apiVersion}
           </p>
         </div>
         <span className={cn(
-          'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-[600]',
+          'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-2xs font-semibold',
           ch.statusColor
         )}>
           {ch.tokenExpired || ch.status === 'error' ? (
@@ -146,25 +146,25 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
       </div>
 
       {/* Grid: token expiry + failure rate + last success */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {/* Token expiry */}
         <div className="rounded-lg bg-surface-subtle p-2.5">
           <div className="flex items-center gap-1 mb-1">
             <Clock className="size-3 text-ink-tertiary" />
-            <span className="text-[10px] font-[600] text-ink-secondary">انقضای توکن</span>
+            <span className="text-2xs font-semibold text-ink-secondary">انقضای توکن</span>
           </div>
           {ch.daysRemaining !== null ? (
             <p className={cn(
-              'text-[13px] font-[700] num-tabular',
+              'text-sm font-bold num-tabular',
               ch.tokenExpired ? 'text-rose-600' : ch.tokenWarning ? 'text-amber-600' : 'text-ink-primary'
             )}>
               {ch.tokenExpired ? 'منقضی شده' : `${toPersianDigits(ch.daysRemaining)} روز دیگر`}
             </p>
           ) : (
-            <p className="text-[12px] text-ink-tertiary">بدون انقضا</p>
+            <p className="text-sm text-ink-tertiary">بدون انقضا</p>
           )}
           {ch.tokenExpiresAt && (
-            <p className="text-[9px] text-ink-tertiary mt-0.5">
+            <p className="text-2xs text-ink-tertiary mt-0.5">
               {relativeTime(new Date(ch.tokenExpiresAt))}
             </p>
           )}
@@ -174,15 +174,15 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
         <div className="rounded-lg bg-surface-subtle p-2.5">
           <div className="flex items-center gap-1 mb-1">
             <Activity className="size-3 text-ink-tertiary" />
-            <span className="text-[10px] font-[600] text-ink-secondary">نرخ خطا (۷ روز)</span>
+            <span className="text-2xs font-semibold text-ink-secondary">نرخ خطا (۷ روز)</span>
           </div>
           <p className={cn(
-            'text-[13px] font-[700] num-tabular',
+            'text-sm font-bold num-tabular',
             ch.failureRate7d > 20 ? 'text-rose-600' : ch.failureRate7d > 5 ? 'text-amber-600' : 'text-emerald-600'
           )}>
             {toPersianDigits(ch.failureRate7d)}٪
           </p>
-          <p className="text-[9px] text-ink-tertiary mt-0.5">
+          <p className="text-2xs text-ink-tertiary mt-0.5">
             {toPersianDigits(ch.attemptCount7d)} تلاش
           </p>
         </div>
@@ -191,16 +191,16 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
         <div className="rounded-lg bg-surface-subtle p-2.5">
           <div className="flex items-center gap-1 mb-1">
             <Calendar className="size-3 text-ink-tertiary" />
-            <span className="text-[10px] font-[600] text-ink-secondary">آخرین موفقیت</span>
+            <span className="text-2xs font-semibold text-ink-secondary">آخرین موفقیت</span>
           </div>
           {ch.lastSuccessAt ? (
             <>
-              <p className="text-[12px] font-[600] text-ink-primary">
+              <p className="text-sm font-semibold text-ink-primary">
                 {relativeTime(new Date(ch.lastSuccessAt))}
               </p>
             </>
           ) : (
-            <p className="text-[12px] text-ink-tertiary">هنوز منتشر نشده</p>
+            <p className="text-sm text-ink-tertiary">هنوز منتشر نشده</p>
           )}
         </div>
       </div>
@@ -214,7 +214,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
             ) : (
               <Shield className="size-3.5 text-emerald-500" />
             )}
-            <span className="text-[11px] font-[600] text-ink-secondary">دسترسی‌های OAuth</span>
+            <span className="text-xs font-semibold text-ink-secondary">دسترسی‌های OAuth</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {ch.requiredScopes.map((scope) => {
@@ -223,7 +223,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
                 <span
                   key={scope}
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-[600] border',
+                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-semibold border',
                     granted
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                       : 'border-rose-200 bg-rose-50 text-rose-700'
@@ -236,7 +236,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
             })}
           </div>
           {ch.missingScopes.length > 0 && (
-            <p className="text-[10px] text-rose-600">
+            <p className="text-2xs text-rose-600">
               {toPersianDigits(ch.missingScopes.length)} دسترسی مفقود — نیاز به اتصال مجدد
             </p>
           )}
@@ -246,8 +246,8 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
       {/* Last error (if any) */}
       {ch.lastError && (
         <div className="rounded-lg border border-rose-100 bg-rose-50/50 p-2">
-          <p className="text-[10px] font-[600] text-rose-700 mb-0.5">آخرین خطا</p>
-          <p className="text-[10px] text-rose-600 truncate" title={ch.lastError}>
+          <p className="text-2xs font-semibold text-rose-700 mb-0.5">آخرین خطا</p>
+          <p className="text-2xs text-rose-600 truncate" title={ch.lastError}>
             {ch.lastError}
           </p>
         </div>
@@ -258,7 +258,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
         <Button
           size="sm"
           variant={ch.tokenExpired || ch.missingScopes.length > 0 ? 'default' : 'outline'}
-          className="n-focus-ring text-[11px] h-8"
+          className="n-focus-ring text-xs h-8"
           onClick={() => {
             window.location.href = ch.reconnectUrl
           }}

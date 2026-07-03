@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -45,15 +45,15 @@ export function OperationalSummary() {
             <Activity className="size-[14px] text-accent" strokeWidth={2} />
           </div>
           <div className="leading-tight">
-            <h2 className="text-[13px] font-[700] text-ink-primary tracking-tight">خلاصه عملیات</h2>
-            <p className="text-[11px] text-ink-tertiary mt-0.5 leading-tight">
+            <h2 className="text-sm font-bold text-ink-primary tracking-tight">خلاصه عملیات</h2>
+            <p className="text-xs text-ink-tertiary mt-0.5 leading-tight">
               وضعیت لحظه‌ای سیستم
             </p>
           </div>
         </div>
         {data && (
           <span
-            className={`inline-flex items-center gap-1 text-[10.5px] font-[600] px-2 py-1 rounded-md border ${healthTone[data.health] ?? healthTone.warning}`}
+            className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-md border ${healthTone[data.health] ?? healthTone.warning}`}
           >
             {(() => {
               const Icon = healthIcon
@@ -131,11 +131,11 @@ function Stat({
         <span className={`flex size-5 items-center justify-center rounded-md ${bg}`}>
           <Icon className={`size-3 ${color}`} strokeWidth={2} />
         </span>
-        <span className="text-[10px] font-[500] text-ink-secondary leading-tight line-clamp-1">
+        <span className="text-2xs font-medium text-ink-secondary leading-tight line-clamp-1">
           {label}
         </span>
       </div>
-      <span className="text-[22px] font-[700] text-ink-primary num-tabular leading-none tracking-tight">
+      <span className="text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight">
         {value != null ? <CountUp value={value} duration={600} /> : '—'}
       </span>
     </div>

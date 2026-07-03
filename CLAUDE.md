@@ -39,3 +39,19 @@ Use `dark:` variants whenever adding color-bearing classes. Check `n-*` semantic
 ## Tap targets
 
 All interactive elements must be ≥ 44 × 44px on mobile. Use `min-h-[44px]` on buttons/links inside touch UIs.
+
+## Type scale
+
+Use the semantic type scale — **never** write `text-[Npx]` or `font-[N]` arbitrary values. CI will reject them.
+
+| Token | Size | Use case |
+|---|---|---|
+| `text-2xs` | 10px | Absolute floor — badge micro-labels, decorative only |
+| `text-xs` | 11px | Timestamps, secondary chip labels |
+| `text-sm` | 12.5px | Captions, helper text, meta-info |
+| `text-base` | 14px | Body copy, form labels |
+| `text-lg` | 16px | Section titles, card headings |
+| `text-xl` | 20px | View headings |
+| `text-2xl` | 26px | Display / KPI numbers |
+
+Font weights: `font-medium` (500) · `font-semibold` (600) · `font-bold` (700) · `font-extrabold` (800). Never use `font-[N]`.

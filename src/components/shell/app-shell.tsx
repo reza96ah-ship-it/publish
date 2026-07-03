@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Skip link — WCAG 2.4.1 Level A bypass block */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2.5 focus:text-[13px] focus:font-[600] focus:text-white focus:shadow-lg focus:outline-none"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:right-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none"
       >
         پرش به محتوای اصلی
       </a>
@@ -80,9 +80,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="flex items-center gap-2">
             <div className="flex size-7 items-center justify-center rounded-md bg-accent">
-              <span className="text-[13px] font-[700] text-white leading-none">N</span>
+              <span className="text-sm font-bold text-white leading-none">N</span>
             </div>
-            <span className="text-[13.5px] font-[700] text-ink-primary tracking-tight">نشرینو</span>
+            <span className="text-base font-bold text-ink-primary tracking-tight">نشرینو</span>
           </div>
           <button
             className="n-glass-control relative flex size-11 items-center justify-center text-ink-secondary"

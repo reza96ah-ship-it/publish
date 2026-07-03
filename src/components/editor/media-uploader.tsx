@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -211,7 +211,7 @@ export function MediaUploader({
         {isUploading ? (
           <div className="flex flex-col items-center gap-2">
             <Loader2 className="size-8 text-accent animate-spin" strokeWidth={2} />
-            <p className="text-[12px] text-ink-secondary">در حال آپلود…</p>
+            <p className="text-sm text-ink-secondary">در حال آپلود…</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2">
@@ -224,10 +224,10 @@ export function MediaUploader({
               <UploadCloud className="size-5" strokeWidth={2} />
             </div>
             <div>
-              <p className="text-[12px] font-[600] text-ink-secondary">
+              <p className="text-sm font-semibold text-ink-secondary">
                 {isDragging ? 'فایل را اینجا رها کنید' : 'تصویر یا ویدیو را اینجا بکشید یا کلیک کنید'}
               </p>
-              <p className="text-[10px] text-ink-tertiary mt-0.5">
+              <p className="text-2xs text-ink-tertiary mt-0.5">
                 JPEG, PNG, WebP, GIF (حداکثر ۱۰ مگابایت) — MP4, MOV, WebM (حداکثر ۲۰۰ مگابایت)
               </p>
             </div>
@@ -237,7 +237,7 @@ export function MediaUploader({
 
       {/* Selected media count */}
       {selectedMedia.length > 0 && (
-        <div className="flex items-center gap-2 text-[11px] text-ink-tertiary">
+        <div className="flex items-center gap-2 text-xs text-ink-tertiary">
           <Check className="size-3.5 text-success" strokeWidth={2.5} />
           <span>{toPersianDigits(selectedMedia.length)} رسانه انتخاب شده</span>
         </div>
@@ -284,7 +284,7 @@ export function MediaUploader({
                 )}
                 {/* Hover overlay with name */}
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <p className="text-[8px] text-white truncate">{m.name}</p>
+                  <p className="text-2xs text-white truncate">{m.name}</p>
                 </div>
               </button>
             )
@@ -294,7 +294,7 @@ export function MediaUploader({
 
       {/* Empty state */}
       {allMedia.length === 0 && !isUploading && (
-        <div className="flex items-center justify-center py-4 text-[11px] text-ink-tertiary">
+        <div className="flex items-center justify-center py-4 text-xs text-ink-tertiary">
           <ImageIcon className="size-4 ms-1 opacity-50" />
           <span className="ms-1">هنوز رسانه‌ای آپلود نشده است</span>
         </div>

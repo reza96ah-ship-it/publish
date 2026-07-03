@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,7 +26,7 @@ export function ApprovalStatusBadge({ status }: { status: string }) {
 
   return (
     <span
-      className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${c.className}`}
+      className={`inline-flex items-center text-2xs font-semibold px-1.5 py-0.5 rounded-md border ${c.className}`}
     >
       {c.label}
     </span>
@@ -85,7 +85,7 @@ export function ApprovalBar({
         <div className="flex items-center gap-2">
           <ApprovalStatusBadge status={status} />
           {status === 'rejected' && (
-            <span className="text-[11px] text-danger">نیاز به بازبینی</span>
+            <span className="text-xs text-danger">نیاز به بازبینی</span>
           )}
         </div>
 
@@ -95,7 +95,7 @@ export function ApprovalBar({
             <button
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
-              className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-warning px-3 text-[11.5px] font-[600] text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+              className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-warning px-3 text-xs font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
             >
               {submitMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
@@ -112,7 +112,7 @@ export function ApprovalBar({
               <button
                 onClick={() => approveMutation.mutate()}
                 disabled={approveMutation.isPending}
-                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-success px-3 text-[11.5px] font-[600] text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-success px-3 text-xs font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
               >
                 {approveMutation.isPending ? (
                   <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
@@ -123,7 +123,7 @@ export function ApprovalBar({
               </button>
               <button
                 onClick={() => setShowRejectModal(true)}
-                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-danger/20 bg-danger-soft px-3 text-[11.5px] font-[600] text-danger transition-colors hover:bg-danger/20"
+                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-danger/20 bg-danger-soft px-3 text-xs font-semibold text-danger transition-colors hover:bg-danger/20"
               >
                 <X className="size-3.5" strokeWidth={2.5} />
                 رد
@@ -133,7 +133,7 @@ export function ApprovalBar({
 
           {/* Approved → ready to publish */}
           {status === 'approved' && (
-            <span className="text-[11px] text-success font-[600]">آماده انتشار ✓</span>
+            <span className="text-xs text-success font-semibold">آماده انتشار ✓</span>
           )}
         </div>
       </div>
@@ -141,7 +141,7 @@ export function ApprovalBar({
       {/* Rejection reason display */}
       {status === 'rejected' && rejectedReason && (
         <div className="mt-2 rounded-lg border border-danger/20 bg-danger-soft px-3 py-2">
-          <p className="text-[11px] text-danger">دلیل رد: {rejectedReason}</p>
+          <p className="text-xs text-danger">دلیل رد: {rejectedReason}</p>
         </div>
       )}
 
@@ -162,27 +162,27 @@ export function ApprovalBar({
               className="n-card max-w-sm w-full mx-4 p-5"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-[14px] font-[700] text-ink-primary mb-3">دلیل رد محتوا</h3>
+              <h3 className="text-base font-bold text-ink-primary mb-3">دلیل رد محتوا</h3>
               <textarea
                 dir="rtl"
                 rows={3}
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
                 placeholder="مثلاً: لحن مناسب نیست، نیاز به ویرایش..."
-                className="n-control w-full p-3 text-[12.5px] resize-none mb-3"
+                className="n-control w-full p-3 text-sm resize-none mb-3"
                 autoFocus
               />
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setShowRejectModal(false)}
-                  className="n-focus-ring h-8 rounded-lg border border-border bg-surface px-3 text-[11.5px] font-[600] text-ink-secondary hover:bg-surface-hover"
+                  className="n-focus-ring h-8 rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-secondary hover:bg-surface-hover"
                 >
                   انصراف
                 </button>
                 <button
                   onClick={() => rejectMutation.mutate()}
                   disabled={!rejectReason.trim() || rejectMutation.isPending}
-                  className="n-focus-ring h-8 rounded-lg bg-danger px-3 text-[11.5px] font-[600] text-white hover:bg-danger/90 disabled:opacity-50"
+                  className="n-focus-ring h-8 rounded-lg bg-danger px-3 text-xs font-semibold text-white hover:bg-danger/90 disabled:opacity-50"
                 >
                   {rejectMutation.isPending ? 'در حال رد...' : 'رد کردن'}
                 </button>

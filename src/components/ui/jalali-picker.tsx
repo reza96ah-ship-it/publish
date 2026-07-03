@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 /**
  * JalaliDatePicker — Persian-first date picker popover.
@@ -197,7 +197,7 @@ export function JalaliDatePicker({
       : formatJalali(value, true)
     : placeholder
 
-  const sizeClass = size === 'sm' ? 'h-8 text-[11px] px-2.5' : 'h-9 text-[12px] px-3'
+  const sizeClass = size === 'sm' ? 'h-8 text-xs px-2.5' : 'h-9 text-sm px-3'
   const variantClass =
     variant === 'ghost'
       ? 'border-transparent bg-transparent hover:bg-surface-hover'
@@ -248,7 +248,7 @@ export function JalaliDatePicker({
           disabled={disabled}
           data-empty={!value}
           className={cn(
-            'n-focus-ring justify-start text-right font-[500] gap-2 w-full',
+            'n-focus-ring justify-start text-right font-medium gap-2 w-full',
             'data-[empty=true]:text-ink-tertiary',
             sizeClass,
             variantClass,
@@ -337,7 +337,7 @@ function CalendarGrid({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="text-[13px] font-[700] text-ink-primary"
+              className="text-sm font-bold text-ink-primary"
             >
               {JALALI_MONTHS[cursor.month - 1]} {toPersianDigits(cursor.year)}
             </motion.div>
@@ -358,7 +358,7 @@ function CalendarGrid({
           <div
             key={d}
             className={cn(
-              'text-center text-[10px] font-[600] py-1',
+              'text-center text-2xs font-semibold py-1',
               i >= 5 ? 'text-amber-600 dark:text-amber-400' : 'text-ink-tertiary'
             )}
           >
@@ -390,7 +390,7 @@ function CalendarGrid({
               aria-label={`${j.day} ${JALALI_MONTHS[j.month - 1]} ${toPersianDigits(j.year)}`}
               aria-pressed={!!isSelected}
               className={cn(
-                'n-focus-ring relative aspect-square rounded-lg text-[12px] font-[600] transition-all',
+                'n-focus-ring relative aspect-square rounded-lg text-sm font-semibold transition-all',
                 'flex items-center justify-center',
                 !cell.inMonth && 'opacity-30',
                 disabledDay && 'opacity-30 cursor-not-allowed',
@@ -414,14 +414,14 @@ function CalendarGrid({
       {/* Time input (optional) */}
       {showTime && (
         <div className="px-3 pb-2 border-t border-border pt-3">
-          <label className="text-[10px] text-ink-tertiary mb-1.5 block font-[600]">
+          <label className="text-2xs text-ink-tertiary mb-1.5 block font-semibold">
             ساعت انتشار
           </label>
           <Input
             type="time"
             value={timeStr}
             onChange={(e) => onTimeChange(e.target.value)}
-            className="h-8 text-[12px]"
+            className="h-8 text-sm"
             dir="ltr"
           />
         </div>
@@ -434,7 +434,7 @@ function CalendarGrid({
           variant="ghost"
           size="sm"
           onClick={onToday}
-          className="h-7 text-[11px] text-accent hover:text-accent"
+          className="h-7 text-xs text-accent hover:text-accent"
         >
           امروز
         </Button>
@@ -444,13 +444,13 @@ function CalendarGrid({
             variant="ghost"
             size="sm"
             onClick={onClear}
-            className="h-7 text-[11px] text-ink-tertiary hover:text-rose-500"
+            className="h-7 text-xs text-ink-tertiary hover:text-rose-500"
           >
             پاک کردن
           </Button>
         )}
         {showTime && onClose && (
-          <Button type="button" size="sm" onClick={onClose} className="h-7 text-[11px] ms-auto">
+          <Button type="button" size="sm" onClick={onClose} className="h-7 text-xs ms-auto">
             تأیید
           </Button>
         )}

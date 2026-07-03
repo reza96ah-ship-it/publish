@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
@@ -34,7 +34,7 @@ export function StatusBadge({ label, variant }: { label: string; variant: string
   }
   return (
     <span
-      className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${map[variant] ?? map.draft}`}
+      className={`inline-flex items-center text-2xs font-semibold px-1.5 py-0.5 rounded-md border ${map[variant] ?? map.draft}`}
     >
       {label}
     </span>
@@ -57,7 +57,7 @@ export function ProviderSupportBadge({ level }: { level: ProviderSupportLevel })
   return (
     <span
       className={cn(
-        'text-[9px] font-[700] px-1.5 py-0.5 rounded-full border inline-flex items-center',
+        'text-2xs font-bold px-1.5 py-0.5 rounded-full border inline-flex items-center',
         cls
       )}
       title={`سطح پشتیبانی: ${label}`}
@@ -78,7 +78,7 @@ export function PlatformBadge({ platform }: { platform: string }) {
   }
   const label = labels[platform] ?? platform
   return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] font-[600] px-1.5 py-0.5 rounded-md border border-border bg-surface-hover text-ink-secondary">
+    <span className="inline-flex items-center gap-1.5 text-2xs font-semibold px-1.5 py-0.5 rounded-md border border-border bg-surface-hover text-ink-secondary">
       <PlatformLogo platform={platform} className="size-3" />
       {label}
     </span>
@@ -119,7 +119,7 @@ export function SectionTitle({
       <div className="flex size-8 items-center justify-center rounded-md bg-accent-soft">
         <Icon className="size-[16px] text-accent" strokeWidth={2} />
       </div>
-      <h1 className="text-[18px] font-[700] text-ink-primary tracking-tight leading-tight">
+      <h1 className="text-xl font-bold text-ink-primary tracking-tight leading-tight">
         {children}
       </h1>
       {badge}
@@ -146,9 +146,9 @@ export function PanelHeader({
           <Icon className="size-[14px] text-accent" strokeWidth={2} />
         </div>
         <div className="leading-tight">
-          <h2 className="text-[13px] font-[700] text-ink-primary tracking-tight">{title}</h2>
+          <h2 className="text-sm font-bold text-ink-primary tracking-tight">{title}</h2>
           {subtitle && (
-            <p className="text-[11px] text-ink-tertiary mt-0.5 leading-tight">{subtitle}</p>
+            <p className="text-xs text-ink-tertiary mt-0.5 leading-tight">{subtitle}</p>
           )}
         </div>
       </div>
@@ -168,7 +168,7 @@ export function LinkAction({
   return (
     <button
       onClick={onClick}
-      className="text-[11.5px] font-[600] text-accent hover:text-accent-hover transition-colors"
+      className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
     >
       {children}
     </button>
@@ -192,7 +192,7 @@ export function Card({
       {(title || action) && (
         <div className="flex items-center justify-between mb-4">
           {title && (
-            <h2 className="text-[13px] font-[700] text-ink-primary tracking-tight">{title}</h2>
+            <h2 className="text-sm font-bold text-ink-primary tracking-tight">{title}</h2>
           )}
           {action}
         </div>
@@ -208,9 +208,9 @@ export function Trend({ value, showArrow = true }: { value: number; showArrow?: 
   const arrow = up ? '▲' : '▼'
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-[700] num-tabular ${up ? 'trend-up' : 'trend-down'}`}
+      className={`inline-flex items-center gap-0.5 text-2xs font-bold num-tabular ${up ? 'trend-up' : 'trend-down'}`}
     >
-      {showArrow && <span className="text-[8px]">{arrow}</span>}
+      {showArrow && <span className="text-2xs">{arrow}</span>}
       {toPersianDigits(Math.abs(value).toFixed(1))}٪
     </span>
   )
@@ -547,7 +547,7 @@ export function MiniChart({
             aria-hidden
           />
           <div
-            className="absolute pointer-events-none n-glass-popover px-2 py-1 text-[10px] whitespace-nowrap z-20"
+            className="absolute pointer-events-none n-glass-popover px-2 py-1 text-2xs whitespace-nowrap z-20"
             style={{
               left: xFor(hoverIdx),
               top: tooltipBelow ? hoveredY + 12 : undefined,
@@ -557,11 +557,11 @@ export function MiniChart({
             dir="rtl"
           >
             {formatLabel?.(hoverIdx) && (
-              <span className="block text-[9px] text-ink-tertiary leading-tight mb-0.5">
+              <span className="block text-2xs text-ink-tertiary leading-tight mb-0.5">
                 {formatLabel(hoverIdx)}
               </span>
             )}
-            <span className="font-[700] text-ink-primary num-tabular leading-tight">
+            <span className="font-bold text-ink-primary num-tabular leading-tight">
               {fmt(hovered)}
             </span>
           </div>
@@ -632,7 +632,7 @@ export function KpiCard({
           ) : (
             <>
               <Icon className={cn('size-3.5 shrink-0', iconColor)} strokeWidth={2} />
-              <span className="text-[11px] font-[600] text-ink-secondary truncate">{label}</span>
+              <span className="text-xs font-semibold text-ink-secondary truncate">{label}</span>
             </>
           )}
         </div>
@@ -644,7 +644,7 @@ export function KpiCard({
         {loading ? (
           <Skeleton className="h-7 w-24 rounded" />
         ) : (
-          <p className="text-[26px] font-[700] text-ink-primary num-tabular leading-none tracking-tight">
+          <p className="text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight">
             {fmt(value)}
           </p>
         )}
@@ -652,10 +652,10 @@ export function KpiCard({
 
       {/* Context line: delta vs previous period */}
       {!loading && delta != null && (
-        <p className="text-[10px] text-ink-tertiary mb-2.5 leading-tight">
+        <p className="text-2xs text-ink-tertiary mb-2.5 leading-tight">
           {delta >= 0 ? 'افزایش' : 'کاهش'}{' '}
           <span
-            className={cn('font-[700] num-tabular', delta >= 0 ? 'text-success' : 'text-danger')}
+            className={cn('font-bold num-tabular', delta >= 0 ? 'text-success' : 'text-danger')}
           >
             {toPersianDigits(Math.abs(delta).toFixed(1))}٪
           </span>{' '}
@@ -683,7 +683,7 @@ export function KpiCard({
       {!loading && spark.length >= 2 && (
         <div
           dir="ltr"
-          className="flex items-center justify-between mt-1.5 text-[9px] text-ink-tertiary/60 num-tabular"
+          className="flex items-center justify-between mt-1.5 text-2xs text-ink-tertiary/60 num-tabular"
         >
           <span>{timeLabel}</span>
           <span>امروز</span>
@@ -714,7 +714,7 @@ export function MetricValue({
 }) {
   return (
     <span
-      className={`text-[26px] font-[700] text-ink-primary num-tabular leading-none tracking-tight ${className}`}
+      className={`text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight ${className}`}
     >
       {value}
     </span>
@@ -747,9 +747,9 @@ export function EmptyState({
     return (
       <div className={`flex flex-col items-center justify-center ${py} text-center`}>
         <Illustration className="size-[120px] mb-4" />
-        <p className="text-[14px] font-[700] text-ink-primary">{title}</p>
+        <p className="text-base font-bold text-ink-primary">{title}</p>
         {message && (
-          <p className="text-[12px] text-ink-tertiary mt-1.5 max-w-[320px] leading-relaxed">
+          <p className="text-sm text-ink-tertiary mt-1.5 max-w-[320px] leading-relaxed">
             {message}
           </p>
         )}
@@ -765,8 +765,8 @@ export function EmptyState({
       <div className="flex size-12 items-center justify-center rounded-xl bg-surface-hover mb-3">
         <Icon className="size-6 text-ink-tertiary opacity-60" strokeWidth={1.5} />
       </div>
-      <p className="text-[13px] font-[600] text-ink-secondary">{title}</p>
-      {message && <p className="text-[11.5px] text-ink-tertiary mt-1 max-w-[280px]">{message}</p>}
+      <p className="text-sm font-semibold text-ink-secondary">{title}</p>
+      {message && <p className="text-xs text-ink-tertiary mt-1 max-w-[280px]">{message}</p>}
       {action && <div className="mt-3">{action}</div>}
     </div>
   )
@@ -941,13 +941,13 @@ export function ErrorState({
         <AlertCircle className="size-6 text-danger" strokeWidth={2} />
       </div>
       <div>
-        <p className="text-[14px] font-[600] text-ink-primary">{label}</p>
-        {description && <p className="text-[12px] text-ink-tertiary mt-1">{description}</p>}
+        <p className="text-base font-semibold text-ink-primary">{label}</p>
+        {description && <p className="text-sm text-ink-tertiary mt-1">{description}</p>}
       </div>
       {onRetry && (
         <button
           onClick={onRetry}
-          className="n-focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-[12.5px] font-[600] text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary"
+          className="n-focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary"
         >
           <RefreshCw className="size-3.5" strokeWidth={2.5} />
           تلاش مجدد
@@ -977,7 +977,7 @@ export function AnimatedTabs<T extends string>({
   size?: 'sm' | 'md'
 }) {
   const pad = size === 'sm' ? 'px-2.5 py-1.5' : 'px-3.5 py-2'
-  const textSize = size === 'sm' ? 'text-[11.5px]' : 'text-[12.5px]'
+  const textSize = size === 'sm' ? 'text-xs' : 'text-sm'
   const iconSize = size === 'sm' ? 'size-3.5' : 'size-4'
 
   return (
@@ -994,7 +994,7 @@ export function AnimatedTabs<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onValueChange(tab.value)}
-            className={`n-focus-ring relative ${pad} ${textSize} font-[600] transition-colors duration-150 flex items-center gap-1.5 -mb-px border-b-2 ${
+            className={`n-focus-ring relative ${pad} ${textSize} font-semibold transition-colors duration-150 flex items-center gap-1.5 -mb-px border-b-2 ${
               active
                 ? 'text-accent border-accent'
                 : 'text-ink-tertiary border-transparent hover:text-ink-secondary'
@@ -1004,7 +1004,7 @@ export function AnimatedTabs<T extends string>({
             <span>{tab.label}</span>
             {tab.count != null && tab.count > 0 && (
               <span
-                className={`inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-[700] leading-none num-tabular ${
+                className={`inline-flex min-w-[16px] items-center justify-center rounded-full px-1 text-2xs font-bold leading-none num-tabular ${
                   active ? 'bg-accent text-white' : 'bg-surface-hover text-ink-tertiary'
                 }`}
               >

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -307,10 +307,10 @@ function StatCard({
   return (
     <div className={cn('n-card p-4', className)}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[11px] text-ink-tertiary">{label}</span>
+        <span className="text-xs text-ink-tertiary">{label}</span>
         <Icon className={cn('size-4', color)} />
       </div>
-      <p className="text-xl font-[700] text-ink-primary num-tabular">
+      <p className="text-xl font-bold text-ink-primary num-tabular">
         {toPersianDigits(value)}
         {suffix}
       </p>
@@ -326,15 +326,15 @@ function CampaignCard({ campaign, onClick }: { campaign: Campaign; onClick: () =
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-[600] text-ink-primary truncate">{campaign.name}</p>
-          <p className="text-[11px] text-ink-tertiary mt-0.5">
+          <p className="text-base font-semibold text-ink-primary truncate">{campaign.name}</p>
+          <p className="text-xs text-ink-tertiary mt-0.5">
             {STATUS_LABEL[campaign.status] ?? campaign.status}
             {campaign.owner && ` • مسئول: ${campaign.owner}`}
           </p>
         </div>
         <span
           className={cn(
-            'text-[10px] font-[700] px-2 py-0.5 rounded-full border shrink-0',
+            'text-2xs font-bold px-2 py-0.5 rounded-full border shrink-0',
             campaign.healthColor
           )}
         >
@@ -342,25 +342,25 @@ function CampaignCard({ campaign, onClick }: { campaign: Campaign; onClick: () =
         </span>
       </div>
 
-      <p className="text-[11px] text-ink-secondary line-clamp-2 mb-3 min-h-8">
+      <p className="text-xs text-ink-secondary line-clamp-2 mb-3 min-h-8">
         {campaign.description ?? '—'}
       </p>
 
       <div className="space-y-2 mb-3">
-        <div className="flex items-center justify-between text-[11px]">
+        <div className="flex items-center justify-between text-xs">
           <span className="text-ink-tertiary">پیشرفت انتشار</span>
-          <span className="font-[700] text-ink-primary num-tabular">
+          <span className="font-bold text-ink-primary num-tabular">
             {toPersianDigits(campaign.pubProgress)}٪
           </span>
         </div>
         <Progress value={campaign.pubProgress} className="h-1.5" />
       </div>
 
-      <div className="flex items-center justify-between text-[11px]">
+      <div className="flex items-center justify-between text-xs">
         <span className="text-ink-tertiary">{campaign.goalCompletion}</span>
         <span
           className={cn(
-            'font-[600]',
+            'font-semibold',
             campaign.daysRemaining.includes('پایان') ? 'text-danger' : 'text-ink-secondary'
           )}
         >
@@ -369,7 +369,7 @@ function CampaignCard({ campaign, onClick }: { campaign: Campaign; onClick: () =
       </div>
 
       {campaign.topBlocker && (
-        <div className="mt-3 flex items-center gap-1.5 text-[11px] text-warning bg-warning-soft rounded-lg px-2 py-1.5">
+        <div className="mt-3 flex items-center gap-1.5 text-xs text-warning bg-warning-soft rounded-lg px-2 py-1.5">
           <AlertTriangle className="size-3 shrink-0" />
           <span className="truncate">مانع: {campaign.topBlocker}</span>
         </div>
@@ -417,23 +417,23 @@ function CampaignDetail({ campaign }: { campaign: Campaign }) {
           />
           <Separator />
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-[12px]">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-ink-secondary">پیشرفت انتشار</span>
-              <span className="font-[700] text-ink-primary num-tabular">
+              <span className="font-bold text-ink-primary num-tabular">
                 {toPersianDigits(campaign.pubProgress)}٪
               </span>
             </div>
             <Progress value={campaign.pubProgress} className="h-2" />
           </div>
-          <div className="rounded-xl bg-surface-subtle p-3 text-[12px] text-ink-secondary">
-            <p className="text-ink-primary font-[700] mb-1 text-[11px]">توضیحات</p>
+          <div className="rounded-xl bg-surface-subtle p-3 text-sm text-ink-secondary">
+            <p className="text-ink-primary font-bold mb-1 text-xs">توضیحات</p>
             {campaign.description ?? 'بدون توضیحات'}
           </div>
           {campaign.topBlocker && (
-            <div className="flex items-start gap-2 text-[12px] text-warning bg-warning-soft rounded-xl p-3">
+            <div className="flex items-start gap-2 text-sm text-warning bg-warning-soft rounded-xl p-3">
               <AlertTriangle className="size-4 shrink-0 mt-0.5" />
               <div>
-                <p className="font-[700]">مانع اصلی</p>
+                <p className="font-bold">مانع اصلی</p>
                 <p className="mt-0.5">{campaign.topBlocker}</p>
               </div>
             </div>
@@ -471,8 +471,8 @@ function CampaignDetail({ campaign }: { campaign: Campaign }) {
               {campaignPosts.map((post) => (
                 <div key={post.id} className="n-card-compact flex items-center gap-3 p-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-[600] text-ink-primary truncate">{post.title}</p>
-                    <p className="text-[10px] text-ink-tertiary mt-0.5">
+                    <p className="text-sm font-semibold text-ink-primary truncate">{post.title}</p>
+                    <p className="text-2xs text-ink-tertiary mt-0.5">
                       {post.campaign} • {formatJalali(new Date(post.updatedAt))}
                     </p>
                   </div>
@@ -500,10 +500,10 @@ function CampaignDetail({ campaign }: { campaign: Campaign }) {
               value={toPersianDigits(Math.round(campaign.pubProgress / 10))}
             />
           </div>
-          <div className="rounded-xl bg-surface-subtle p-4 text-[12px] text-ink-secondary">
+          <div className="rounded-xl bg-surface-subtle p-4 text-sm text-ink-secondary">
             <div className="flex items-center gap-2 mb-2">
               <ArrowLeft className="size-3.5 text-accent" />
-              <p className="text-ink-primary font-[700] text-[11px]">جمع‌بندی</p>
+              <p className="text-ink-primary font-bold text-xs">جمع‌بندی</p>
             </div>
             این کمپین در حال حاضر {toPersianDigits(campaign.pubProgress)}٪ از مسیر انتشار را طی کرده
             است. {campaign.healthLabel}.
@@ -523,9 +523,9 @@ function CampaignDetail({ campaign }: { campaign: Campaign }) {
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-[12px]">
+    <div className="flex items-center justify-between gap-3 text-sm">
       <span className="text-ink-tertiary shrink-0">{label}</span>
-      <span className="text-ink-primary font-[600] text-left">{value}</span>
+      <span className="text-ink-primary font-semibold text-left">{value}</span>
     </div>
   )
 }
@@ -533,8 +533,8 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 function ReportStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="n-card-compact p-3">
-      <p className="text-[10px] text-ink-tertiary mb-1">{label}</p>
-      <p className="text-base font-[700] text-ink-primary num-tabular">{value}</p>
+      <p className="text-2xs text-ink-tertiary mb-1">{label}</p>
+      <p className="text-base font-bold text-ink-primary num-tabular">{value}</p>
     </div>
   )
 }

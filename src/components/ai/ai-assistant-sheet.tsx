@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -363,9 +363,9 @@ export function AIAssistantSheet({
                   <Sparkles className="size-5 text-accent" strokeWidth={2} />
                 </motion.div>
                 <div>
-                  <h2 className="text-[14px] font-[700] text-ink-primary">دستیار هوش مصنوعی</h2>
+                  <h2 className="text-base font-bold text-ink-primary">دستیار هوش مصنوعی</h2>
                   {variation > 0 && (
-                    <span className="text-[10px] text-accent font-[600]">
+                    <span className="text-2xs text-accent font-semibold">
                       (نسخهٔ {toPersianDigits(variation + 1)})
                     </span>
                   )}
@@ -384,7 +384,7 @@ export function AIAssistantSheet({
             <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-4">
               {/* Topic input */}
               <div>
-                <label className="text-[11px] font-[600] text-ink-tertiary mb-1.5 block">
+                <label className="text-xs font-semibold text-ink-tertiary mb-1.5 block">
                   موضوع محتوا
                 </label>
                 <textarea
@@ -393,21 +393,21 @@ export function AIAssistantSheet({
                   value={topic}
                   onChange={(e) => setTopic(e.target.value)}
                   placeholder="مثال: معرفی قهوه فوری نشرینو با سه طعم"
-                  className="n-control w-full p-3 text-[13px] resize-none"
+                  className="n-control w-full p-3 text-sm resize-none"
                   autoFocus
                 />
               </div>
 
               {/* Role selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">نقش شما</div>
+                <div className="text-2xs font-semibold text-ink-tertiary mb-1.5">نقش شما</div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
                   {CREATOR_ROLES.map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setSelectedRole(r.id)}
                       disabled={isStreaming}
-                      className={`n-focus-ring flex flex-col items-center gap-0.5 rounded-md px-1 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedRole === r.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+                      className={`n-focus-ring flex flex-col items-center gap-0.5 rounded-md px-1 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-2xs font-semibold transition-colors disabled:opacity-50 ${selectedRole === r.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
                       aria-pressed={selectedRole === r.id}
                     >
                       <span className="text-sm">{r.emoji}</span>
@@ -419,14 +419,14 @@ export function AIAssistantSheet({
 
               {/* Goal selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">هدف محتوا</div>
+                <div className="text-2xs font-semibold text-ink-tertiary mb-1.5">هدف محتوا</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                   {CONTENT_GOALS.map((g) => (
                     <button
                       key={g.id}
                       onClick={() => setSelectedGoal(g.id)}
                       disabled={isStreaming}
-                      className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedGoal === g.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+                      className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-2xs font-semibold transition-colors disabled:opacity-50 ${selectedGoal === g.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
                       aria-pressed={selectedGoal === g.id}
                     >
                       <span>{g.emoji}</span>
@@ -438,7 +438,7 @@ export function AIAssistantSheet({
 
               {/* Tone selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">لحن نگارش</div>
+                <div className="text-2xs font-semibold text-ink-tertiary mb-1.5">لحن نگارش</div>
                 <div className="flex items-center gap-1 flex-wrap">
                   {TONES.map((t) => (
                     <button
@@ -446,7 +446,7 @@ export function AIAssistantSheet({
                       onClick={() => setSelectedTone(t.id)}
                       disabled={isStreaming}
                       title={t.sample}
-                      className={`n-focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[11px] font-[600] transition-colors disabled:opacity-50 ${selectedTone === t.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+                      className={`n-focus-ring inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-xs font-semibold transition-colors disabled:opacity-50 ${selectedTone === t.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
                       aria-pressed={selectedTone === t.id}
                     >
                       <span>{t.emoji}</span>
@@ -458,14 +458,14 @@ export function AIAssistantSheet({
 
               {/* Length selector */}
               <div>
-                <div className="text-[10px] font-[600] text-ink-tertiary mb-1.5">طول متن</div>
+                <div className="text-2xs font-semibold text-ink-tertiary mb-1.5">طول متن</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
                   {CAPTION_LENGTHS.map((l) => (
                     <button
                       key={l.id}
                       onClick={() => setSelectedLength(l.id)}
                       disabled={isStreaming}
-                      className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedLength === l.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+                      className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-2xs font-semibold transition-colors disabled:opacity-50 ${selectedLength === l.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
                       aria-pressed={selectedLength === l.id}
                     >
                       <span>{l.emoji}</span>
@@ -482,7 +482,7 @@ export function AIAssistantSheet({
                   whileTap={{ scale: canGenerate ? 0.98 : 1 }}
                   onClick={handleGenerate}
                   disabled={!canGenerate}
-                  className="n-focus-ring flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-accent text-[13px] font-[600] text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="n-focus-ring flex-1 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isStreaming ? (
                     <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
@@ -494,7 +494,7 @@ export function AIAssistantSheet({
                 <button
                   onClick={fetchHashtags}
                   disabled={!canGenerate || isGeneratingHashtags}
-                  className="n-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-[600] text-ink-secondary hover:bg-surface-hover disabled:opacity-50"
+                  className="n-focus-ring inline-flex h-10 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-ink-secondary hover:bg-surface-hover disabled:opacity-50"
                 >
                   {isGeneratingHashtags ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -520,7 +520,7 @@ export function AIAssistantSheet({
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="flex items-center gap-2 text-[12px] text-accent bg-accent-soft rounded-lg px-3 py-2"
+                    className="flex items-center gap-2 text-sm text-accent bg-accent-soft rounded-lg px-3 py-2"
                   >
                     <Loader2 className="size-3.5 animate-spin" />
                     <span>در حال تولید…</span>
@@ -540,19 +540,19 @@ export function AIAssistantSheet({
                     className="n-card-compact p-3 bg-surface-subtle"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-[600] text-ink-tertiary uppercase tracking-wider">
+                      <span className="text-2xs font-semibold text-ink-tertiary uppercase tracking-wider">
                         {isStreaming
                           ? 'در حال تولید...'
                           : `کپشن (${toPersianDigits(streamedText.length)} کاراکتر)`}
                       </span>
                       {isStreaming && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-accent">
+                        <span className="inline-flex items-center gap-1 text-2xs text-accent">
                           <span className="size-1.5 rounded-full bg-accent animate-pulse" />
                           زنده
                         </span>
                       )}
                     </div>
-                    <p className="text-[13px] text-ink-primary leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-ink-primary leading-relaxed whitespace-pre-wrap">
                       {streamedText}
                       {isStreaming && (
                         <span className="inline-block w-0.5 h-4 bg-accent ms-0.5 animate-pulse align-middle" />
@@ -572,21 +572,21 @@ export function AIAssistantSheet({
                   >
                     <button
                       onClick={acceptCaption}
-                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg bg-success px-3 text-[12px] font-[600] text-white hover:bg-success/90"
+                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg bg-success px-3 text-sm font-semibold text-white hover:bg-success/90"
                     >
                       <Check className="size-3.5" strokeWidth={2.5} />
                       درج در کپشن
                     </button>
                     <button
                       onClick={handleRegenerate}
-                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-[600] text-ink-secondary hover:bg-surface-hover"
+                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-ink-secondary hover:bg-surface-hover"
                     >
                       <RefreshCw className="size-3.5" strokeWidth={2.5} />
                       بازنویسی
                     </button>
                     <button
                       onClick={copyCaption}
-                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-[600] text-ink-secondary hover:bg-surface-hover"
+                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-ink-secondary hover:bg-surface-hover"
                     >
                       <Copy className="size-3.5" strokeWidth={2.5} />
                       کپی
@@ -594,7 +594,7 @@ export function AIAssistantSheet({
                     <button
                       onClick={saveDraft}
                       disabled={isSavingDraft}
-                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[12px] font-[600] text-ink-secondary hover:bg-surface-hover disabled:opacity-50"
+                      className="n-focus-ring inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-ink-secondary hover:bg-surface-hover disabled:opacity-50"
                     >
                       {isSavingDraft ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -615,12 +615,12 @@ export function AIAssistantSheet({
                   className="n-card-compact p-3 bg-surface-subtle"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-[600] text-ink-tertiary uppercase tracking-wider">
+                    <span className="text-2xs font-semibold text-ink-tertiary uppercase tracking-wider">
                       هشتگ‌های پیشنهادی
                     </span>
                     <button
                       onClick={insertAllHashtags}
-                      className="text-[10px] text-accent font-[600] hover:underline"
+                      className="text-2xs text-accent font-semibold hover:underline"
                     >
                       درج همه
                     </button>
@@ -631,7 +631,7 @@ export function AIAssistantSheet({
                         key={i}
                         onClick={() => appendHashtag(h.tag)}
                         title={h.reason || undefined}
-                        className={`inline-flex items-center text-[10px] font-[600] px-2 py-1 rounded-md border transition-colors ${appendedHashtags.has(h.tag) ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'}`}
+                        className={`inline-flex items-center text-2xs font-semibold px-2 py-1 rounded-md border transition-colors ${appendedHashtags.has(h.tag) ? 'bg-accent text-white border-accent' : 'bg-surface border-border text-ink-secondary hover:bg-surface-hover'}`}
                       >
                         {h.tag}
                         {appendedHashtags.has(h.tag) && (
@@ -646,7 +646,7 @@ export function AIAssistantSheet({
 
             {/* Footer hint */}
             <div className="px-4 py-2 border-t border-border shrink-0">
-              <p className="text-[10px] text-ink-tertiary text-center">
+              <p className="text-2xs text-ink-tertiary text-center">
                 تولید‌شده با هوش مصنوعی — پیش از انتشار بازبینی کنید
               </p>
             </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
@@ -260,9 +260,9 @@ function AppearanceSection() {
     <div className="n-card p-5 max-w-2xl">
       <div className="flex items-center gap-2 mb-4">
         <Sun className="size-4 text-accent" />
-        <h2 className="text-sm font-[600] text-ink-primary">ظاهر</h2>
+        <h2 className="text-sm font-semibold text-ink-primary">ظاهر</h2>
       </div>
-      <p className="text-[12px] text-ink-tertiary mb-4">
+      <p className="text-sm text-ink-tertiary mb-4">
         پوسته برنامه را انتخاب کنید. «سیستم» به تنظیم سیستم‌عامل پیروی می‌کند.
       </p>
       <div className="flex gap-3">
@@ -273,7 +273,7 @@ function AppearanceSection() {
               key={value}
               onClick={() => setTheme(value)}
               aria-pressed={active}
-              className={`n-focus-ring flex flex-1 flex-col items-center gap-2 rounded-xl border p-4 text-[12px] font-[500] transition-colors ${
+              className={`n-focus-ring flex flex-1 flex-col items-center gap-2 rounded-xl border p-4 text-sm font-medium transition-colors ${
                 active
                   ? 'border-accent bg-accent-soft text-accent'
                   : 'border-border bg-surface text-ink-secondary hover:border-border-strong hover:bg-surface-hover'
@@ -301,7 +301,7 @@ function OverviewTab() {
       <div className="n-card n-gradient-border p-5 max-w-2xl">
         <div className="flex items-center gap-2 mb-4">
           <Building2 className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">پروفایل فضای کار</h2>
+          <h2 className="text-sm font-semibold text-ink-primary">پروفایل فضای کار</h2>
         </div>
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -327,12 +327,12 @@ function OverviewForm({ ws }: { ws: Workspace }) {
     <div className="n-card n-gradient-border p-5 max-w-2xl">
       <div className="flex items-center gap-2 mb-4">
         <Building2 className="size-4 text-accent" />
-        <h2 className="text-sm font-[600] text-ink-primary">پروفایل فضای کار</h2>
+        <h2 className="text-sm font-semibold text-ink-primary">پروفایل فضای کار</h2>
       </div>
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">نام فضای کار</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">نام فضای کار</Label>
             <Input
               dir="rtl"
               value={form.name ?? ''}
@@ -340,7 +340,7 @@ function OverviewForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">دسته‌بندی</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">دسته‌بندی</Label>
             <Input
               dir="rtl"
               value={form.category ?? ''}
@@ -348,7 +348,7 @@ function OverviewForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">تلفن</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">تلفن</Label>
             <Input
               dir="ltr"
               value={form.phone ?? ''}
@@ -357,7 +357,7 @@ function OverviewForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">منطقه زمانی</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">منطقه زمانی</Label>
             <Select
               value={form.timezone ?? 'Asia/Tehran'}
               onValueChange={(v) => set('timezone', v)}
@@ -374,7 +374,7 @@ function OverviewForm({ ws }: { ws: Workspace }) {
           </div>
         </div>
         <div>
-          <Label className="text-[12px] text-ink-secondary mb-1.5 block">توضیحات</Label>
+          <Label className="text-sm text-ink-secondary mb-1.5 block">توضیحات</Label>
           <Textarea
             dir="rtl"
             rows={3}
@@ -407,7 +407,7 @@ function BrandTab() {
       <div className="n-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Palette className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">کیت برند</h2>
+          <h2 className="text-sm font-semibold text-ink-primary">کیت برند</h2>
         </div>
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -442,12 +442,12 @@ function BrandForm({ ws }: { ws: Workspace }) {
       <div className="lg:col-span-2 n-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Palette className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">کیت برند</h2>
+          <h2 className="text-sm font-semibold text-ink-primary">کیت برند</h2>
         </div>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">رنگ اصلی</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">رنگ اصلی</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -464,7 +464,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
               </div>
             </div>
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">رنگ تأکید</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">رنگ تأکید</Label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -482,7 +482,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
             </div>
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">لحن برند</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">لحن برند</Label>
             <Textarea
               dir="rtl"
               rows={2}
@@ -493,7 +493,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">CTA پیش‌فرض</Label>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">CTA پیش‌فرض</Label>
             <Input
               dir="rtl"
               placeholder="مثال: همین حالا سفارش دهید"
@@ -502,7 +502,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+            <Label className="text-sm text-ink-secondary mb-1.5 block">
               دستورالعمل‌های محتوایی
             </Label>
             <Textarea
@@ -516,7 +516,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+              <Label className="text-sm text-ink-secondary mb-1.5 block">
                 <span className="inline-flex items-center gap-1">
                   <Hash className="size-3.5" /> هشتگ‌های پیش‌فرض
                 </span>
@@ -529,7 +529,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
               />
             </div>
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">پانویس کپشن</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">پانویس کپشن</Label>
               <Input
                 dir="rtl"
                 placeholder="مثال: برای سفارش DM دهید"
@@ -540,8 +540,8 @@ function BrandForm({ ws }: { ws: Workspace }) {
           </div>
           <div className="n-card-compact flex items-center justify-between p-3">
             <div>
-              <p className="text-[12px] font-[600] text-ink-primary">استفاده از اعداد فارسی</p>
-              <p className="text-[11px] text-ink-tertiary">تبدیل خودکار اعداد لاتین به فارسی</p>
+              <p className="text-sm font-semibold text-ink-primary">استفاده از اعداد فارسی</p>
+              <p className="text-xs text-ink-tertiary">تبدیل خودکار اعداد لاتین به فارسی</p>
             </div>
             <Switch
               checked={form.persianDigits ?? true}
@@ -563,7 +563,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
       <div className="n-card p-5 h-fit sticky top-4">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="size-4 text-accent" />
-          <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش کپشن</h3>
+          <h3 className="text-sm font-semibold text-ink-primary">پیش‌نمایش کپشن</h3>
         </div>
         <div className="n-card-compact p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -572,26 +572,26 @@ function BrandForm({ ws }: { ws: Workspace }) {
               style={{ background: form.brandPrimaryColor ?? '#0F766E' }}
             />
             <div>
-              <p className="text-[12px] font-[600] text-ink-primary">{form.name ?? 'نام برند'}</p>
-              <p className="text-[10px] text-ink-tertiary">الان</p>
+              <p className="text-sm font-semibold text-ink-primary">{form.name ?? 'نام برند'}</p>
+              <p className="text-2xs text-ink-tertiary">الان</p>
             </div>
           </div>
           <div
             className="aspect-square w-full rounded-xl mb-3"
             style={{ background: `${form.brandAccentColor ?? '#2563EB'}22` }}
           />
-          <p className="text-[12px] text-ink-primary leading-relaxed">
+          <p className="text-sm text-ink-primary leading-relaxed">
             محصول جدید ما عرضه شد! {form.brandVoice ? `با لحن ${form.brandVoice}` : ''}
             {' — '}
             {form.defaultCta ?? 'همین حالا سفارش دهید.'}
           </p>
           {form.captionFooter && (
-            <p className="text-[11px] text-ink-tertiary mt-2 border-t border-border pt-2">
+            <p className="text-xs text-ink-tertiary mt-2 border-t border-border pt-2">
               {form.captionFooter}
             </p>
           )}
           {form.defaultHashtags && (
-            <p className="text-[11px] mt-2" style={{ color: form.brandAccentColor ?? '#2563EB' }}>
+            <p className="text-xs mt-2" style={{ color: form.brandAccentColor ?? '#2563EB' }}>
               {form.defaultHashtags}
             </p>
           )}
@@ -623,8 +623,8 @@ function TeamTab() {
       <div className="p-4 flex items-center justify-between border-b border-border">
         <div className="flex items-center gap-2">
           <Users className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">اعضای تیم</h2>
-          <span className="text-[11px] text-ink-tertiary num-tabular">
+          <h2 className="text-sm font-semibold text-ink-primary">اعضای تیم</h2>
+          <span className="text-xs text-ink-tertiary num-tabular">
             {toPersianDigits(members?.length ?? 0)} عضو
           </span>
         </div>
@@ -661,13 +661,13 @@ function TeamTab() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                  <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                     عضو
                   </TableHead>
-                  <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                  <TableHead className="text-right text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                     ایمیل
                   </TableHead>
-                  <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                  <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                     نقش
                   </TableHead>
                 </TableRow>
@@ -679,15 +679,15 @@ function TeamTab() {
                       <div className="flex items-center gap-3">
                         <Avatar className="size-9">
                           {m.avatar && <AvatarImage src={m.avatar} alt={m.name} />}
-                          <AvatarFallback className="text-[12px]">
+                          <AvatarFallback className="text-sm">
                             {m.name.slice(0, 1)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-[13px] font-[600] text-ink-primary">{m.name}</span>
+                        <span className="text-sm font-semibold text-ink-primary">{m.name}</span>
                       </div>
                     </TableCell>
                     <TableCell
-                      className="hidden sm:table-cell text-[12px] text-ink-secondary"
+                      className="hidden sm:table-cell text-sm text-ink-secondary"
                       dir="ltr"
                     >
                       {m.email}
@@ -695,7 +695,7 @@ function TeamTab() {
                     <TableCell>
                       <span
                         className={cn(
-                          'text-[10px] font-[700] px-2 py-0.5 rounded-full border',
+                          'text-2xs font-bold px-2 py-0.5 rounded-full border',
                           ROLE_COLOR[m.role] ?? ROLE_COLOR.viewer
                         )}
                       >
@@ -720,7 +720,7 @@ function TeamTab() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">ایمیل</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">ایمیل</Label>
               <Input
                 dir="ltr"
                 type="email"
@@ -731,7 +731,7 @@ function TeamTab() {
               />
             </div>
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">نقش</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">نقش</Label>
               <Select value={role} onValueChange={setRole}>
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -790,11 +790,11 @@ function BillingTab() {
       <div className="n-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] text-ink-tertiary mb-1">طرح فعلی</p>
-            <p className="text-lg font-[700] text-ink-primary">
+            <p className="text-xs text-ink-tertiary mb-1">طرح فعلی</p>
+            <p className="text-lg font-bold text-ink-primary">
               {planLabel[currentPlan] ?? currentPlan}
             </p>
-            <p className="text-[12px] text-ink-secondary mt-1">
+            <p className="text-sm text-ink-secondary mt-1">
               {PLAN_TIERS.find((t) => t.id === currentPlan)?.priceLabel ?? '—'}
             </p>
           </div>
@@ -806,7 +806,7 @@ function BillingTab() {
       </div>
 
       <div>
-        <p className="text-[12px] font-[700] text-ink-primary mb-3">طرح‌های موجود</p>
+        <p className="text-sm font-bold text-ink-primary mb-3">طرح‌های موجود</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {PLAN_TIERS.map((tier) => {
             const isCurrent = tier.id === currentPlan
@@ -816,15 +816,15 @@ function BillingTab() {
                 className={cn('n-card p-5 flex flex-col', tier.popular && 'ring-2 ring-accent/30')}
               >
                 {tier.popular && (
-                  <span className="self-start text-[10px] font-[700] px-2 py-0.5 rounded-full bg-accent-soft text-accent mb-2">
+                  <span className="self-start text-2xs font-bold px-2 py-0.5 rounded-full bg-accent-soft text-accent mb-2">
                     محبوب‌ترین
                   </span>
                 )}
-                <p className="text-[14px] font-[700] text-ink-primary">{tier.name}</p>
-                <p className="text-[18px] font-[700] text-ink-primary mt-1">{tier.priceLabel}</p>
+                <p className="text-base font-bold text-ink-primary">{tier.name}</p>
+                <p className="text-xl font-bold text-ink-primary mt-1">{tier.priceLabel}</p>
                 <ul className="mt-3 space-y-1.5 flex-1">
                   {tier.features.map((f) => (
-                    <li key={f} className="flex items-start gap-1.5 text-[11px] text-ink-secondary">
+                    <li key={f} className="flex items-start gap-1.5 text-xs text-ink-secondary">
                       <Check className="size-3 text-success shrink-0 mt-0.5" />
                       <span>{f}</span>
                     </li>
@@ -847,39 +847,39 @@ function BillingTab() {
 
       <div className="n-card p-0 overflow-hidden">
         <div className="p-4 border-b border-border">
-          <h2 className="text-sm font-[600] text-ink-primary">تاریخچه فاکتورها</h2>
+          <h2 className="text-sm font-semibold text-ink-primary">تاریخچه فاکتورها</h2>
         </div>
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                 شماره فاکتور
               </TableHead>
-              <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                 تاریخ
               </TableHead>
-              <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                 مبلغ
               </TableHead>
-              <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+              <TableHead className="text-right text-xs text-ink-tertiary font-bold">
                 وضعیت
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             <TableRow className="border-border">
-              <TableCell className="text-[12px] font-[600] text-ink-primary" dir="ltr">
+              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-003
               </TableCell>
-              <TableCell className="text-[12px] text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30))}
               </TableCell>
-              <TableCell className="text-[12px] text-ink-primary num-tabular">
+              <TableCell className="text-sm text-ink-primary num-tabular">
                 {toPersianDigits('۲۹۰,۰۰۰')} تومان
               </TableCell>
               <TableCell>
                 <Badge
-                  className="text-[10px] bg-success-soft text-success border-success/20"
+                  className="text-2xs bg-success-soft text-success border-success/20"
                   variant="outline"
                 >
                   پرداخت‌شده
@@ -887,18 +887,18 @@ function BillingTab() {
               </TableCell>
             </TableRow>
             <TableRow className="border-border">
-              <TableCell className="text-[12px] font-[600] text-ink-primary" dir="ltr">
+              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-002
               </TableCell>
-              <TableCell className="text-[12px] text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 60))}
               </TableCell>
-              <TableCell className="text-[12px] text-ink-primary num-tabular">
+              <TableCell className="text-sm text-ink-primary num-tabular">
                 {toPersianDigits('۲۹۰,۰۰۰')} تومان
               </TableCell>
               <TableCell>
                 <Badge
-                  className="text-[10px] bg-success-soft text-success border-success/20"
+                  className="text-2xs bg-success-soft text-success border-success/20"
                   variant="outline"
                 >
                   پرداخت‌شده
@@ -906,18 +906,18 @@ function BillingTab() {
               </TableCell>
             </TableRow>
             <TableRow className="border-border">
-              <TableCell className="text-[12px] font-[600] text-ink-primary" dir="ltr">
+              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-001
               </TableCell>
-              <TableCell className="text-[12px] text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 90))}
               </TableCell>
-              <TableCell className="text-[12px] text-ink-primary num-tabular">
+              <TableCell className="text-sm text-ink-primary num-tabular">
                 {toPersianDigits('۲۹۰,۰۰۰')} تومان
               </TableCell>
               <TableCell>
                 <Badge
-                  className="text-[10px] bg-success-soft text-success border-success/20"
+                  className="text-2xs bg-success-soft text-success border-success/20"
                   variant="outline"
                 >
                   پرداخت‌شده
@@ -941,7 +941,7 @@ function NotificationsTab() {
     <div className="n-card p-5 max-w-2xl">
       <div className="flex items-center gap-2 mb-4">
         <Bell className="size-4 text-accent" />
-        <h2 className="text-sm font-[600] text-ink-primary">تنظیمات اعلان‌ها</h2>
+        <h2 className="text-sm font-semibold text-ink-primary">تنظیمات اعلان‌ها</h2>
       </div>
       <div className="space-y-2">
         {NOTIFICATION_TOGGLES.map((t) => {
@@ -953,8 +953,8 @@ function NotificationsTab() {
                   <Icon className="size-4 text-accent" />
                 </div>
                 <div>
-                  <p className="text-[13px] font-[600] text-ink-primary">{t.label}</p>
-                  <p className="text-[11px] text-ink-tertiary">{t.desc}</p>
+                  <p className="text-sm font-semibold text-ink-primary">{t.label}</p>
+                  <p className="text-xs text-ink-tertiary">{t.desc}</p>
                 </div>
               </div>
               <Switch

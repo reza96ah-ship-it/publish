@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -64,7 +64,7 @@ export function MobileBottomNav() {
               href={item.href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[56px] py-2 text-[10px] font-[500] transition-colors duration-150',
+                'relative flex flex-1 flex-col items-center justify-center gap-0.5 min-h-[56px] py-2 text-2xs font-medium transition-colors duration-150',
                 active ? 'text-accent' : 'text-ink-tertiary',
               )}
             >
@@ -83,7 +83,7 @@ export function MobileBottomNav() {
                   strokeWidth={active ? 2.2 : 1.8}
                 />
                 {badge > 0 && (
-                  <span className="absolute -top-1 -end-1.5 inline-flex min-w-[14px] items-center justify-center rounded-full bg-danger px-[3px] py-px text-[8px] font-[700] leading-none text-white">
+                  <span className="absolute -top-1 -end-1.5 inline-flex min-w-[14px] items-center justify-center rounded-full bg-danger px-[3px] py-px text-2xs font-bold leading-none text-white">
                     {toPersianDigits(Math.min(badge, 99))}
                   </span>
                 )}

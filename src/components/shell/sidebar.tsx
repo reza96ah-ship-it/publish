@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -71,7 +71,7 @@ function SidebarNavItem({
       data-active={isActive || undefined}
       title={item.label}
       onClick={() => setMobileMenuOpen(false)}
-      className="group relative flex w-full items-center justify-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-[500] transition-colors duration-150 text-ink-secondary hover:bg-surface-hover/70 hover:text-ink-primary data-[active]:bg-accent data-[active]:text-white data-[active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 lg:justify-start"
+      className="group relative flex w-full items-center justify-center gap-2.5 rounded-md px-2.5 py-[7px] text-sm font-medium transition-colors duration-150 text-ink-secondary hover:bg-surface-hover/70 hover:text-ink-primary data-[active]:bg-accent data-[active]:text-white data-[active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 lg:justify-start"
     >
       {isActive && (
         <motion.span
@@ -93,7 +93,7 @@ function SidebarNavItem({
       />
       <span className="hidden truncate lg:inline">{item.label}</span>
       {badge != null && badge > 0 && (
-        <span className="ms-auto hidden lg:inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger/12 px-1.5 py-0.5 text-[10px] font-[600] leading-none text-danger num-tabular group-data-[active]:bg-white/20 group-data-[active]:text-white">
+        <span className="ms-auto hidden lg:inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger/12 px-1.5 py-0.5 text-2xs font-semibold leading-none text-danger num-tabular group-data-[active]:bg-white/20 group-data-[active]:text-white">
           {toPersianDigits(badge)}
         </span>
       )}
@@ -132,11 +132,11 @@ export function Sidebar() {
       {/* Brand Header — icon only at md rail, full at lg */}
       <div className="flex items-center justify-center gap-2.5 px-2 pt-4 pb-3 lg:justify-start lg:px-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent shadow-sm">
-          <span className="text-[14px] font-[700] text-white leading-none">N</span>
+          <span className="text-base font-bold text-white leading-none">N</span>
         </div>
         <div className="hidden flex-col leading-tight lg:flex">
-          <span className="text-[14px] font-[700] tracking-tight text-ink-primary">نشرینو</span>
-          <span className="text-[9.5px] font-[600] text-ink-tertiary tracking-[0.1em]">
+          <span className="text-base font-bold tracking-tight text-ink-primary">نشرینو</span>
+          <span className="text-2xs font-semibold text-ink-tertiary tracking-[0.1em]">
             NASHRINO
           </span>
         </div>
@@ -153,7 +153,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto no-scrollbar px-1.5 py-1 space-y-px lg:px-2">
-        <p className="hidden px-2.5 pb-1 pt-2 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary lg:block">
+        <p className="hidden px-2.5 pb-1 pt-2 text-2xs font-semibold uppercase tracking-[0.1em] text-ink-tertiary lg:block">
           منوی اصلی
         </p>
         {navItems.slice(0, 7).map((item) => (
@@ -164,7 +164,7 @@ export function Sidebar() {
             badge={badgeFor(item.badgeKey)}
           />
         ))}
-        <p className="hidden px-2.5 pb-1 pt-3 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary lg:block">
+        <p className="hidden px-2.5 pb-1 pt-3 text-2xs font-semibold uppercase tracking-[0.1em] text-ink-tertiary lg:block">
           مدیریت
         </p>
         {navItems.slice(7).map((item) => (
@@ -185,19 +185,19 @@ export function Sidebar() {
             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
             <span className="relative inline-flex size-2 rounded-full bg-success" />
           </span>
-          <span className="hidden text-[10px] font-[500] text-ink-tertiary lg:inline">متصل لحظه‌ای</span>
+          <span className="hidden text-2xs font-medium text-ink-tertiary lg:inline">متصل لحظه‌ای</span>
         </div>
 
         {/* Workspace — hidden in rail */}
         <button className="hidden w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-right transition-colors hover:bg-surface-hover/70 lg:flex">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-[11px] font-[700] text-accent">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-xs font-bold text-accent">
             ب
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-[600] text-ink-primary truncate leading-tight">
+            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">
               برند آرامش
             </p>
-            <p className="text-[10px] text-ink-tertiary truncate leading-tight">پلن حرفه‌ای</p>
+            <p className="text-2xs text-ink-tertiary truncate leading-tight">پلن حرفه‌ای</p>
           </div>
           <ChevronLeft className="size-3.5 text-ink-tertiary shrink-0" strokeWidth={2} />
         </button>
@@ -210,10 +210,10 @@ export function Sidebar() {
             className="size-7 shrink-0 rounded-full"
           />
           <div className="hidden flex-1 min-w-0 lg:block">
-            <p className="text-[12px] font-[600] text-ink-primary truncate leading-tight">
+            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">
               علی احمدی
             </p>
-            <p className="text-[10px] font-[500] text-ink-tertiary truncate leading-tight">
+            <p className="text-2xs font-medium text-ink-tertiary truncate leading-tight">
               مدیر عملیات
             </p>
           </div>

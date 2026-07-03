@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -167,7 +167,7 @@ export function ChannelsView() {
       </SectionTitle>
 
       <Breadcrumb>
-        <BreadcrumbList className="text-[12px]">
+        <BreadcrumbList className="text-sm">
           <BreadcrumbItem>
             <BreadcrumbLink className="cursor-pointer">تنظیمات</BreadcrumbLink>
           </BreadcrumbItem>
@@ -213,14 +213,14 @@ export function ChannelsView() {
                     <PlugZap className="size-5 text-accent" />
                   </div>
                   <div>
-                    <p className="text-[11px] text-ink-tertiary">وضعیت اتصال پلتفرم‌ها</p>
-                    <p className="text-[18px] font-[700] text-ink-primary num-tabular leading-tight mt-0.5">
+                    <p className="text-xs text-ink-tertiary">وضعیت اتصال پلتفرم‌ها</p>
+                    <p className="text-xl font-bold text-ink-primary num-tabular leading-tight mt-0.5">
                       {toPersianDigits(healthyCount)} از {toPersianDigits(platforms.length)} پلتفرم
                       فعال
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-[11px]">
+                <div className="flex items-center gap-4 text-xs">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-success" />
                     <span className="text-ink-secondary num-tabular">
@@ -320,10 +320,10 @@ function PlatformCard({ platform }: { platform: Platform }) {
           <PlatformIcon platform={platform.type} className="size-11 shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-[14px] font-[600] text-ink-primary truncate">{platform.name}</p>
+              <p className="text-base font-semibold text-ink-primary truncate">{platform.name}</p>
               <ProviderSupportBadge level={getCapabilities(platform.type).supportLevel} />
             </div>
-            <p className="text-[11px] text-ink-tertiary truncate">@{platform.username || '—'}</p>
+            <p className="text-xs text-ink-tertiary truncate">@{platform.username || '—'}</p>
           </div>
         </div>
         <DropdownMenu>
@@ -350,19 +350,19 @@ function PlatformCard({ platform }: { platform: Platform }) {
       <div className="flex items-center gap-2 mb-3">
         <span
           className={cn(
-            'text-[10px] font-[700] px-2 py-0.5 rounded-full border inline-flex items-center gap-1',
+            'text-2xs font-bold px-2 py-0.5 rounded-full border inline-flex items-center gap-1',
             platform.stateColor
           )}
         >
           {healthy ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
           {platform.state}
         </span>
-        <span className="text-[10px] text-ink-tertiary ms-auto num-tabular">
+        <span className="text-2xs text-ink-tertiary ms-auto num-tabular">
           {toPersianDigits(platform.accounts)} حساب
         </span>
       </div>
 
-      <div className="space-y-2 text-[11px] mt-auto">
+      <div className="space-y-2 text-xs mt-auto">
         <div className="flex items-center justify-between">
           <span className="text-ink-tertiary">آخرین موفقیت</span>
           <span className="text-ink-secondary">
@@ -383,7 +383,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
           <span className="text-ink-tertiary">وضعیت مدار</span>
           <span
             className={cn(
-              'font-[600]',
+              'font-semibold',
               platform.circuitState === 'closed'
                 ? 'text-success'
                 : platform.circuitState === 'half_open'
@@ -401,7 +401,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
       </div>
 
       {platform.primaryIssue && (
-        <div className="mt-3 flex items-start gap-1.5 text-[11px] text-warning bg-warning-soft rounded-lg px-2 py-1.5">
+        <div className="mt-3 flex items-start gap-1.5 text-xs text-warning bg-warning-soft rounded-lg px-2 py-1.5">
           <AlertTriangle className="size-3 shrink-0 mt-0.5" />
           <span className="truncate">{platform.primaryIssue}</span>
         </div>
@@ -436,7 +436,7 @@ function DisconnectItem({ platformName }: { platformName: string }) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <button className="n-focus-ring relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-3 text-[12px] text-danger outline-none transition-colors hover:bg-danger-soft focus:bg-danger-soft w-full">
+        <button className="n-focus-ring relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-3 text-sm text-danger outline-none transition-colors hover:bg-danger-soft focus:bg-danger-soft w-full">
           <Trash2 className="size-3.5" />
           قطع اتصال
         </button>
@@ -537,7 +537,7 @@ function ConnectDialog({
 
         <div className="space-y-4">
           <div>
-            <Label className="text-[12px] text-ink-secondary mb-2 block">پلتفرم</Label>
+            <Label className="text-sm text-ink-secondary mb-2 block">پلتفرم</Label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {AVAILABLE_PLATFORMS.map((p) => (
                 <button
@@ -551,7 +551,7 @@ function ConnectDialog({
                   )}
                 >
                   <PlatformIcon platform={p.id} className="size-7" />
-                  <span className="text-[11px] font-[700] text-ink-primary">{p.label}</span>
+                  <span className="text-xs font-bold text-ink-primary">{p.label}</span>
                   <ProviderSupportBadge level={getCapabilities(p.id).supportLevel} />
                 </button>
               ))}
@@ -562,8 +562,8 @@ function ConnectDialog({
             <div className="space-y-3">
               <div className="n-card-compact p-4 text-center">
                 <PlugZap className="size-8 text-accent mx-auto mb-2" />
-                <p className="text-[12px] font-[600] text-ink-primary">اتصال با OAuth</p>
-                <p className="text-[11px] text-ink-tertiary mt-1">
+                <p className="text-sm font-semibold text-ink-primary">اتصال با OAuth</p>
+                <p className="text-xs text-ink-tertiary mt-1">
                   با کلیک روی دکمه به صفحه تأیید{' '}
                   {selectedType === 'instagram' ? 'اینستاگرام' : 'لینکدین'} هدایت می‌شوید.
                 </p>
@@ -581,7 +581,7 @@ function ConnectDialog({
           ) : (
             <div className="space-y-3">
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                <Label className="text-sm text-ink-secondary mb-1.5 block">
                   توکن ربات (Bot Token)
                 </Label>
                 <Input
@@ -591,7 +591,7 @@ function ConnectDialog({
                   onChange={(e) => setBotToken(e.target.value)}
                   className="text-left"
                 />
-                <p className="text-[10px] text-ink-tertiary mt-1">
+                <p className="text-2xs text-ink-tertiary mt-1">
                   {selectedType === 'telegram' && 'از @BotFather در تلگرام دریافت کنید'}
                   {selectedType === 'bale' && 'از @botfather در بله دریافت کنید'}
                   {selectedType === 'rubika' && 'از @BotFather در روبیکا دریافت کنید'}
@@ -599,7 +599,7 @@ function ConnectDialog({
                 </p>
               </div>
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+                <Label className="text-sm text-ink-secondary mb-1.5 block">
                   شناسه چت / کانال (اختیاری)
                 </Label>
                 <Input
@@ -609,7 +609,7 @@ function ConnectDialog({
                   onChange={(e) => setChatId(e.target.value)}
                   className="text-left"
                 />
-                <p className="text-[10px] text-ink-tertiary mt-1">
+                <p className="text-2xs text-ink-tertiary mt-1">
                   ربات را به‌عنوان ادمین به کانال اضافه کنید، سپس شناسه کانال را وارد کنید.
                 </p>
               </div>

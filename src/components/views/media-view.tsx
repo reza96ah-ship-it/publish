@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -154,7 +154,7 @@ export function MediaView() {
       <SectionTitle
         icon={ImageIcon}
         badge={
-          <span className="text-[11px] text-ink-tertiary num-tabular">
+          <span className="text-xs text-ink-tertiary num-tabular">
             {toPersianDigits(media?.length ?? 0)} رسانه
           </span>
         }
@@ -167,7 +167,7 @@ export function MediaView() {
         <aside className="n-card p-3 h-fit lg:sticky lg:top-4">
           <div className="flex items-center gap-2 mb-3 px-2">
             <Folder className="size-4 text-accent" />
-            <p className="text-[12px] font-[600] text-ink-primary">پوشه‌ها</p>
+            <p className="text-sm font-semibold text-ink-primary">پوشه‌ها</p>
           </div>
           <div className="space-y-1 max-h-72 lg:max-h-none overflow-y-auto thin-scrollbar">
             {folders.map((f) => {
@@ -179,9 +179,9 @@ export function MediaView() {
                   key={f}
                   onClick={() => setFolder(f)}
                   className={cn(
-                    'n-focus-ring w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-[12px] transition-colors',
+                    'n-focus-ring w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm transition-colors',
                     active
-                      ? 'bg-accent-soft text-accent font-[700]'
+                      ? 'bg-accent-soft text-accent font-bold'
                       : 'text-ink-secondary hover:bg-surface-hover'
                   )}
                 >
@@ -189,7 +189,7 @@ export function MediaView() {
                     <Folder className="size-3.5 shrink-0" />
                     <span className="truncate">{label}</span>
                   </span>
-                  <span className="text-[10px] text-ink-tertiary num-tabular shrink-0">
+                  <span className="text-2xs text-ink-tertiary num-tabular shrink-0">
                     {toPersianDigits(count)}
                   </span>
                 </button>
@@ -302,8 +302,8 @@ export function MediaView() {
           </DialogHeader>
           <div className="rounded-2xl border-2 border-dashed border-border p-8 text-center bg-surface-subtle">
             <UploadCloud className="size-10 text-ink-tertiary mx-auto mb-3" />
-            <p className="text-[13px] font-[600] text-ink-primary">فایل‌ها را بکشید و رها کنید</p>
-            <p className="text-[11px] text-ink-tertiary mt-1">JPG, PNG, MP4 — حداکثر ۵۰MB</p>
+            <p className="text-sm font-semibold text-ink-primary">فایل‌ها را بکشید و رها کنید</p>
+            <p className="text-xs text-ink-tertiary mt-1">JPG, PNG, MP4 — حداکثر ۵۰MB</p>
             <Button
               variant="outline"
               size="sm"
@@ -347,7 +347,7 @@ export function MediaView() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="space-y-2 text-[12px]">
+                <div className="space-y-2 text-sm">
                   <MetaRow label="نوع فایل" value={selected.fileType} />
                   <MetaRow
                     label="ابعاد"
@@ -365,7 +365,7 @@ export function MediaView() {
                       <p className="text-ink-tertiary mb-1">برچسب‌ها</p>
                       <div className="flex flex-wrap gap-1">
                         {selected.tags.map((t) => (
-                          <Badge key={t} variant="secondary" className="text-[10px]">
+                          <Badge key={t} variant="secondary" className="text-2xs">
                             {t}
                           </Badge>
                         ))}
@@ -416,11 +416,11 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
         )}
         <div className="absolute top-2 right-2">
           {kind === 'video' ? (
-            <span className="inline-flex items-center gap-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full">
               <FileVideo className="size-2.5" /> ویدئو
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 bg-black/60 text-white text-[9px] px-1.5 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-1 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full">
               <FileImage className="size-2.5" /> عکس
             </span>
           )}
@@ -467,10 +467,10 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
         </div>
       </div>
       <div className="p-2.5">
-        <p className="text-[12px] font-[600] text-ink-primary truncate">{item.name}</p>
+        <p className="text-sm font-semibold text-ink-primary truncate">{item.name}</p>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[10px] text-ink-tertiary">{formatCompact(item.fileSize)}</span>
-          <span className="text-[10px] text-ink-tertiary">{item.folder}</span>
+          <span className="text-2xs text-ink-tertiary">{formatCompact(item.fileSize)}</span>
+          <span className="text-2xs text-ink-tertiary">{item.folder}</span>
         </div>
       </div>
     </div>
@@ -496,8 +496,8 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-[600] text-ink-primary truncate">{item.name}</p>
-          <p className="text-[11px] text-ink-tertiary">
+          <p className="text-sm font-semibold text-ink-primary truncate">{item.name}</p>
+          <p className="text-xs text-ink-tertiary">
             {item.folder} • {formatCompact(item.fileSize)}
           </p>
         </div>
@@ -535,7 +535,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-ink-tertiary">{label}</span>
-      <span className="text-ink-primary font-[600] text-left truncate max-w-48">{value}</span>
+      <span className="text-ink-primary font-semibold text-left truncate max-w-48">{value}</span>
     </div>
   )
 }

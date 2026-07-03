@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -605,9 +605,9 @@ export function ComposeView() {
           <div className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-right" dir="rtl">
             <div className="flex items-center gap-3 text-amber-500">
               <AlertTriangle className="size-6" />
-              <h3 className="text-[15px] font-[700] text-ink-primary">تغییرات همزمان یافت شد</h3>
+              <h3 className="text-lg font-bold text-ink-primary">تغییرات همزمان یافت شد</h3>
             </div>
-            <p className="text-[13px] text-ink-secondary leading-relaxed">
+            <p className="text-sm text-ink-secondary leading-relaxed">
               ما تغییرات ذخیره نشده‌ای از جلسه قبلی شما پیدا کردیم که با پیش‌نویس سرور متفاوت است. مایلید کدام یک را استفاده کنید؟
             </p>
             <div className="flex justify-end gap-2 pt-2">
@@ -641,7 +641,7 @@ export function ComposeView() {
           badge={
             <span
               className={cn(
-                'text-[11px]',
+                'text-xs',
                 saveState === 'saved'
                   ? 'text-emerald-600'
                   : saveState === 'error'
@@ -670,8 +670,8 @@ export function ComposeView() {
       <div className="n-card p-3">
         <div className="flex items-center gap-2 mb-2">
           <Layers className="size-4 text-ink-tertiary" />
-          <span className="text-[12px] font-[600] text-ink-secondary">انتخاب پلتفرم‌ها</span>
-          <span className="text-[10px] text-ink-tertiary ms-auto">
+          <span className="text-sm font-semibold text-ink-secondary">انتخاب پلتفرم‌ها</span>
+          <span className="text-2xs text-ink-tertiary ms-auto">
             {selectedPlatforms.length > 0
               ? `${toPersianDigits(selectedPlatforms.length)} کانال انتخاب شده`
               : 'حداقل یک کانال انتخاب کنید'}
@@ -680,7 +680,7 @@ export function ComposeView() {
         {/* BUG-08: show actual connected channel instances (with IDs), not hardcoded types */}
         <div className="flex items-center gap-2 flex-wrap">
           {(platforms ?? []).length === 0 ? (
-            <p className="text-[11px] text-ink-tertiary">هیچ کانالی متصل نیست</p>
+            <p className="text-xs text-ink-tertiary">هیچ کانالی متصل نیست</p>
           ) : (
             (platforms ?? []).map((p) => {
               const isSelected = selectedPlatforms.includes(p.id)
@@ -690,7 +690,7 @@ export function ComposeView() {
                   onClick={() => togglePlatform(p.id)}
                   disabled={p.state === 'disconnected'}
                   className={cn(
-                    'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-3 sm:py-2 text-[12px] font-[600] transition-all',
+                    'n-focus-ring flex items-center gap-2 rounded-lg border px-3 py-3 sm:py-2 text-sm font-semibold transition-all',
                     isSelected
                       ? 'border-accent/30 bg-accent-soft text-accent'
                       : p.state === 'disconnected'
@@ -714,9 +714,9 @@ export function ComposeView() {
           <div
             role="alert"
             aria-live="polite"
-            className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
+            className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
           >
-            <div className="flex items-center gap-1.5 mb-1 font-[600]">
+            <div className="flex items-center gap-1.5 mb-1 font-semibold">
               <AlertTriangle className="size-3.5" />
               <span>هشدارهای تطبیق با پلتفرم</span>
             </div>
@@ -724,7 +724,7 @@ export function ComposeView() {
               {capabilityViolations.flatMap((pv) =>
                 pv.issues.map((iss, i) => (
                   <li key={`${pv.platform}-${i}`}>
-                    <span className="font-[600]">{pv.platformName}:</span> {iss.message}
+                    <span className="font-semibold">{pv.platformName}:</span> {iss.message}
                   </li>
                 ))
               )}
@@ -734,8 +734,8 @@ export function ComposeView() {
 
         {/* Issue #117: media-required hint (Instagram) when no media selected */}
         {anyRequiresMedia && selectedMedia.length === 0 && !hasCapabilityViolations && (
-          <div className="mt-2 rounded-lg border border-border bg-surface-subtle p-2.5 text-[11px] text-ink-tertiary">
-            <span className="font-[600]">توجه:</span> یکی از پلتفرم‌های انتخابی (اینستاگرام) به حداقل یک رسانه نیاز دارد.
+          <div className="mt-2 rounded-lg border border-border bg-surface-subtle p-2.5 text-xs text-ink-tertiary">
+            <span className="font-semibold">توجه:</span> یکی از پلتفرم‌های انتخابی (اینستاگرام) به حداقل یک رسانه نیاز دارد.
           </div>
         )}
       </div>
@@ -747,7 +747,7 @@ export function ComposeView() {
           <div className="n-card p-5 space-y-4">
             {/* Title */}
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
               <Input
                 dir="rtl"
                 value={title}
@@ -764,7 +764,7 @@ export function ComposeView() {
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
                 onClick={() => setAiSheetOpen(true)}
-                className="n-focus-ring inline-flex h-8 min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-[11.5px] font-[600] text-accent transition-colors hover:bg-accent/10"
+                className="n-focus-ring inline-flex h-8 min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
               >
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
@@ -773,7 +773,7 @@ export function ComposeView() {
                   <Sparkles className="size-3.5" strokeWidth={2.5} />
                 </motion.span>
                 دستیار هوش مصنوعی
-                <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-[9px] font-[600]">
+                <kbd className="ms-1 rounded border border-accent/20 bg-surface px-1 text-2xs font-semibold">
                   ⌘J
                 </kbd>
               </motion.button>
@@ -781,7 +781,7 @@ export function ComposeView() {
 
             {/* Rich-text editor */}
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">کپشن</Label>
+              <Label className="text-sm text-ink-secondary mb-1.5 block">کپشن</Label>
               <NashrinoEditor
                 content={caption}
                 onChange={(_html, text) => startTransition(() => setCaption(text))}
@@ -792,7 +792,7 @@ export function ComposeView() {
 
             {/* Hashtags */}
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+              <Label className="text-sm text-ink-secondary mb-1.5 block">
                 <span className="inline-flex items-center gap-1">
                   <Hash className="size-3.5" /> هشتگ‌ها
                 </span>
@@ -807,11 +807,11 @@ export function ComposeView() {
 
             {/* Media uploader (drag-drop + library grid) */}
             <div>
-              <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+              <Label className="text-sm text-ink-secondary mb-1.5 block">
                 <span className="inline-flex items-center gap-1">
                   <ImageIcon className="size-3.5" /> رسانه‌ها
                 </span>
-                <span className="text-[10px] text-ink-tertiary ms-2">
+                <span className="text-2xs text-ink-tertiary ms-2">
                   {toPersianDigits(selectedMedia.length)} انتخاب شده
                 </span>
               </Label>
@@ -834,7 +834,7 @@ export function ComposeView() {
             {/* Campaign + Internal note */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">کمپین</Label>
+                <Label className="text-sm text-ink-secondary mb-1.5 block">کمپین</Label>
                 <Select value={campaignId} onValueChange={setCampaignId}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="بدون کمپین" />
@@ -849,7 +849,7 @@ export function ComposeView() {
                 </Select>
               </div>
               <div>
-                <Label className="text-[12px] text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
+                <Label className="text-sm text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
                 <Input
                   dir="rtl"
                   value={note}
@@ -865,7 +865,7 @@ export function ComposeView() {
           <div className="n-card p-4">
             <div className="flex items-center gap-2 mb-3">
               <CalendarClock className="size-4 text-ink-tertiary" />
-              <span className="text-[12px] font-[600] text-ink-secondary">زمان‌بندی انتشار</span>
+              <span className="text-sm font-semibold text-ink-secondary">زمان‌بندی انتشار</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               {[
@@ -877,7 +877,7 @@ export function ComposeView() {
                   key={opt.id}
                   onClick={() => setScheduleMode(opt.id)}
                   className={cn(
-                    'n-focus-ring rounded-lg border px-3 py-2.5 sm:py-1.5 text-[11.5px] font-[600] transition-colors',
+                    'n-focus-ring rounded-lg border px-3 py-2.5 sm:py-1.5 text-xs font-semibold transition-colors',
                     scheduleMode === opt.id
                       ? 'border-accent/30 bg-accent-soft text-accent'
                       : 'border-border bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
@@ -908,8 +908,8 @@ export function ComposeView() {
           <div className="lg:sticky lg:top-4 space-y-3">
             <div className="flex items-center gap-2 px-1">
               <Eye className="size-4 text-accent" />
-              <h3 className="text-sm font-[600] text-ink-primary">پیش‌نمایش زنده</h3>
-              <span className="text-[10px] text-ink-tertiary ms-auto">
+              <h3 className="text-sm font-semibold text-ink-primary">پیش‌نمایش زنده</h3>
+              <span className="text-2xs text-ink-tertiary ms-auto">
                 {selectedPlatforms.length > 0
                   ? `${toPersianDigits(selectedPlatforms.length)} کانال`
                   : 'کانالی انتخاب نشده'}
@@ -924,7 +924,7 @@ export function ComposeView() {
             />
 
             {/* Schedule info (always visible below tabs) */}
-            <div className="n-card-compact flex items-center justify-between p-2.5 text-[10px] text-ink-tertiary">
+            <div className="n-card-compact flex items-center justify-between p-2.5 text-2xs text-ink-tertiary">
               <span>{campaigns?.find((c) => c.id === campaignId)?.name ?? 'بدون کمپین'}</span>
               <span>
                 {scheduleMode === 'now'
@@ -943,7 +943,7 @@ export function ComposeView() {
       {/* ── Bottom action bar ── */}
       <div className="n-card p-4 sticky bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-[11px] text-ink-tertiary num-tabular flex items-center gap-2">
+          <div className="text-xs text-ink-tertiary num-tabular flex items-center gap-2">
             {selectedPlatforms.length > 0 && (
               <>
                 <span className="inline-flex items-center gap-1.5">
@@ -957,7 +957,7 @@ export function ComposeView() {
             <span
               className={cn(
                 caption.length > activeCaptionLimit
-                  ? 'text-danger font-[600]'
+                  ? 'text-danger font-semibold'
                   : caption.length > activeCaptionLimit * 0.9
                     ? 'text-amber-600'
                     : ''
@@ -1029,7 +1029,7 @@ function StepContent(props: {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-[12px] text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
+        <Label className="text-sm text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
         <Input
           dir="rtl"
           value={props.title}
@@ -1050,7 +1050,7 @@ function StepContent(props: {
       )}
 
       <div>
-        <Label className="text-[12px] text-ink-secondary mb-1.5 block">کپشن</Label>
+        <Label className="text-sm text-ink-secondary mb-1.5 block">کپشن</Label>
         <NashrinoEditor
           content={props.caption}
           onChange={(_html, text) => props.setCaption(text)}
@@ -1060,7 +1060,7 @@ function StepContent(props: {
       </div>
 
       <div>
-        <Label className="text-[12px] text-ink-secondary mb-1.5 block">
+        <Label className="text-sm text-ink-secondary mb-1.5 block">
           <span className="inline-flex items-center gap-1">
             <Hash className="size-3.5" /> هشتگ‌ها
           </span>
@@ -1075,7 +1075,7 @@ function StepContent(props: {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <Label className="text-[12px] text-ink-secondary mb-1.5 block">کمپین</Label>
+          <Label className="text-sm text-ink-secondary mb-1.5 block">کمپین</Label>
           <Select value={props.campaignId} onValueChange={props.setCampaignId}>
             <SelectTrigger className="w-full h-10">
               <SelectValue placeholder="انتخاب کمپین" />
@@ -1090,7 +1090,7 @@ function StepContent(props: {
           </Select>
         </div>
         <div>
-          <Label className="text-[12px] text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
+          <Label className="text-sm text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
           <Input
             dir="rtl"
             value={props.note}
@@ -1119,8 +1119,8 @@ function StepMedia({
     <div className="space-y-4">
       <div className="rounded-2xl border-2 border-dashed border-border p-6 text-center bg-surface-subtle">
         <UploadCloud className="size-8 text-ink-tertiary mx-auto mb-2" />
-        <p className="text-[13px] font-[600] text-ink-primary">رسانه را اینجا بکشید یا کلیک کنید</p>
-        <p className="text-[11px] text-ink-tertiary mt-1">
+        <p className="text-sm font-semibold text-ink-primary">رسانه را اینجا بکشید یا کلیک کنید</p>
+        <p className="text-xs text-ink-tertiary mt-1">
           پشتیبانی از JPG، PNG، MP4 (حداکثر ۵۰ مگابایت)
         </p>
         <Button
@@ -1136,7 +1136,7 @@ function StepMedia({
 
       {selected.length > 0 && (
         <div>
-          <p className="text-[11px] text-ink-tertiary mb-2 num-tabular">
+          <p className="text-xs text-ink-tertiary mb-2 num-tabular">
             انتخاب‌شده‌ها ({toPersianDigits(selected.length)})
           </p>
           <div className="flex gap-2 flex-wrap">
@@ -1157,7 +1157,7 @@ function StepMedia({
       )}
 
       <div>
-        <p className="text-[11px] text-ink-tertiary mb-2">رسانه‌های موجود</p>
+        <p className="text-xs text-ink-tertiary mb-2">رسانه‌های موجود</p>
         <LoadingState
           isLoading={isLoading}
           skeleton={
@@ -1196,7 +1196,7 @@ function StepMedia({
                         <Check className="size-3" />
                       </span>
                     )}
-                    <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-white text-[9px] px-1.5 py-1 truncate text-right">
+                    <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-white text-2xs px-1.5 py-1 truncate text-right">
                       {m.name}
                     </span>
                   </button>
@@ -1230,7 +1230,7 @@ function StepPlatform({
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-ink-tertiary">
+      <p className="text-xs text-ink-tertiary">
         انتخاب کنید محتوا در کدام پلتفرم‌ها منتشر شود.
       </p>
       {merged.map((p) => {
@@ -1248,13 +1248,13 @@ function StepPlatform({
               <Checkbox checked={isSelected} onCheckedChange={() => toggle(type)} />
               <PlatformIcon platform={type} className="size-8" />
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-[600] text-ink-primary">{p?.name ?? type}</p>
-                <p className="text-[11px] text-ink-tertiary">@{p?.username || '—'}</p>
+                <p className="text-sm font-semibold text-ink-primary">{p?.name ?? type}</p>
+                <p className="text-xs text-ink-tertiary">@{p?.username || '—'}</p>
               </div>
               {p && (
                 <span
                   className={cn(
-                    'text-[10px] font-[600] px-2 py-0.5 rounded-full border',
+                    'text-2xs font-semibold px-2 py-0.5 rounded-full border',
                     p.stateColor
                   )}
                 >
@@ -1270,7 +1270,7 @@ function StepPlatform({
                   placeholder={`کپشن اختصاصی ${p?.name ?? type} (اختیاری)`}
                   value={captions[type] ?? ''}
                   onChange={(e) => setCaptions((cur) => ({ ...cur, [type]: e.target.value }))}
-                  className="resize-none text-[12px]"
+                  className="resize-none text-sm"
                 />
               </div>
             )}

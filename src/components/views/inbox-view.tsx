@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -244,7 +244,7 @@ export function InboxView() {
         icon={InboxIcon}
         badge={
           unreadCount > 0 && (
-            <span className="inline-flex items-center gap-1 text-[11px] bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
+            <span className="inline-flex items-center gap-1 text-xs bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
               <span className="size-1.5 rounded-full bg-info" />
               {relativeTime(new Date(Date.now() - 1000 * 60 * 5)).replace('پیش', 'پیش')} —{' '}
               {unreadCount} ناخوانده
@@ -317,18 +317,18 @@ export function InboxView() {
                     <AvatarFallback>{selected.senderName.slice(0, 1)}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[14px] font-[600] text-ink-primary truncate">
+                    <p className="text-base font-semibold text-ink-primary truncate">
                       {selected.senderName}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <PlatformIcon platform={selected.platform} className="size-3.5" />
-                      <span className="text-[11px] text-ink-tertiary">{selected.platformName}</span>
+                      <span className="text-xs text-ink-tertiary">{selected.platformName}</span>
                       <span className="text-ink-tertiary">•</span>
                       <TypeBadge type={selected.messageType} />
                       {selected.assigneeName && (
                         <>
                           <span className="text-ink-tertiary">•</span>
-                          <span className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary">
+                          <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary">
                             <UserCheck className="size-3" />
                             {selected.assigneeName}
                           </span>
@@ -336,14 +336,14 @@ export function InboxView() {
                       )}
                     </div>
                   </div>
-                  <span className="text-[11px] text-ink-tertiary">
+                  <span className="text-xs text-ink-tertiary">
                     {relativeTime(new Date(selected.createdAt))}
                   </span>
                 </div>
                 {/* Assign dropdown */}
                 {members && members.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[10px] text-ink-tertiary">ارجاع به:</span>
+                    <span className="text-2xs text-ink-tertiary">ارجاع به:</span>
                     <Select
                       value={selected.assigneeId ?? 'none'}
                       onValueChange={(v) =>
@@ -353,7 +353,7 @@ export function InboxView() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-7 w-full sm:w-40 text-[11px]">
+                      <SelectTrigger className="h-7 w-full sm:w-40 text-xs">
                         <SelectValue placeholder="بدون ارجاع" />
                       </SelectTrigger>
                       <SelectContent>
@@ -373,7 +373,7 @@ export function InboxView() {
               <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3">
                 <div className="flex justify-start">
                   <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
-                    <p className="text-[13px] text-ink-primary whitespace-pre-wrap">
+                    <p className="text-sm text-ink-primary whitespace-pre-wrap">
                       {selected.message}
                     </p>
                   </div>
@@ -381,8 +381,8 @@ export function InboxView() {
                 {selected.isReplied && selected.reply && (
                   <div className="flex justify-end">
                     <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-accent-soft border border-accent/20 px-4 py-2.5">
-                      <p className="text-[10px] text-accent font-[700] mb-1">پاسخ شما</p>
-                      <p className="text-[13px] text-ink-primary whitespace-pre-wrap">
+                      <p className="text-2xs text-accent font-bold mb-1">پاسخ شما</p>
+                      <p className="text-sm text-ink-primary whitespace-pre-wrap">
                         {selected.reply}
                       </p>
                     </div>
@@ -401,7 +401,7 @@ export function InboxView() {
                   className="resize-none bg-background mb-2"
                 />
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[11px] text-ink-tertiary">
+                  <div className="flex items-center gap-1.5 text-xs text-ink-tertiary">
                     {isGeneratingReply ? (
                       <>
                         <Loader2 className="size-3.5 animate-spin" />
@@ -458,9 +458,9 @@ export function InboxView() {
         <div className="lg:col-span-3 n-card p-4 h-fit">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="size-4 text-accent" />
-            <h3 className="text-sm font-[600] text-ink-primary">رویدادهای اتوماسیون</h3>
+            <h3 className="text-sm font-semibold text-ink-primary">رویدادهای اتوماسیون</h3>
           </div>
-          <p className="text-[11px] text-ink-tertiary mb-3">
+          <p className="text-xs text-ink-tertiary mb-3">
             قوانین فعال برای پاسخ‌دهی خودکار به مخاطبان
           </p>
           <Separator className="mb-3" />
@@ -478,8 +478,8 @@ export function InboxView() {
                 <div className="flex items-start gap-2">
                   <PlatformIcon platform={a.platform} className="size-6 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-[600] text-ink-primary truncate">{a.trigger}</p>
-                    <div className="flex items-center gap-1 mt-1 text-[11px] text-ink-tertiary">
+                    <p className="text-sm font-semibold text-ink-primary truncate">{a.trigger}</p>
+                    <div className="flex items-center gap-1 mt-1 text-xs text-ink-tertiary">
                       <ChevronLeft className="size-3" />
                       <span className="truncate">{a.action}</span>
                     </div>
@@ -533,7 +533,7 @@ function MessageListItem({
           {message.senderAvatar && (
             <AvatarImage src={message.senderAvatar} alt={message.senderName} />
           )}
-          <AvatarFallback className="text-[12px]">{message.senderName.slice(0, 1)}</AvatarFallback>
+          <AvatarFallback className="text-sm">{message.senderName.slice(0, 1)}</AvatarFallback>
         </Avatar>
         <span className="absolute -bottom-0.5 -left-0.5 flex size-4 items-center justify-center rounded-full bg-background ring-1 ring-border">
           <PlatformIcon platform={message.platform} className="size-2.5" />
@@ -543,26 +543,26 @@ function MessageListItem({
         <div className="flex items-center justify-between gap-2 mb-0.5">
           <p
             className={cn(
-              'text-[13px] truncate',
-              message.isRead ? 'font-[600] text-ink-secondary' : 'font-[700] text-ink-primary'
+              'text-sm truncate',
+              message.isRead ? 'font-semibold text-ink-secondary' : 'font-bold text-ink-primary'
             )}
           >
             {message.senderName}
           </p>
-          <span className="text-[10px] text-ink-tertiary shrink-0">
+          <span className="text-2xs text-ink-tertiary shrink-0">
             {relativeTime(new Date(message.createdAt))}
           </span>
         </div>
-        <p className="text-[12px] text-ink-tertiary line-clamp-2 leading-relaxed">
+        <p className="text-sm text-ink-tertiary line-clamp-2 leading-relaxed">
           {message.message}
         </p>
         <div className="flex items-center gap-1.5 mt-1">
           <TypeIcon className="size-3 text-ink-tertiary" />
-          <span className="text-[10px] text-ink-tertiary">
+          <span className="text-2xs text-ink-tertiary">
             {MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}
           </span>
           {message.isReplied && (
-            <span className="text-[10px] text-success font-[600] ms-auto">پاسخ داده شد</span>
+            <span className="text-2xs text-success font-semibold ms-auto">پاسخ داده شد</span>
           )}
           {!message.isRead && <span className="size-2 rounded-full bg-accent ms-auto" />}
         </div>
@@ -574,7 +574,7 @@ function MessageListItem({
 function TypeBadge({ type }: { type: string }) {
   const Icon = MESSAGE_TYPE_ICON[type] ?? MessageSquare
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-ink-tertiary">
+    <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary">
       <Icon className="size-3" />
       {MESSAGE_TYPE_LABEL[type] ?? type}
     </span>

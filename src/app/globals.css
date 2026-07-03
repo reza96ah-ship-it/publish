@@ -137,6 +137,22 @@
   --motion-normal: 200ms;
   --motion-slow: 300ms;
   --motion-deliberate: 400ms;
+
+  /* ---- Type scale (Persian-first — slightly larger min and taller line-heights than Latin defaults) ---- */
+  --text-2xs: 0.625rem;           /* 10px — absolute floor: badge micro-labels */
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.6875rem;           /* 11px — timestamps, secondary chip labels */
+  --text-xs--line-height: 1.5;
+  --text-sm: 0.78125rem;          /* 12.5px — captions, helper text */
+  --text-sm--line-height: 1.6;
+  --text-base: 0.875rem;          /* 14px — body, form labels */
+  --text-base--line-height: 1.6;
+  --text-lg: 1rem;                /* 16px — section titles, card headings */
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.25rem;             /* 20px — view headings */
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.625rem;           /* 26px — display / KPI numbers */
+  --text-2xl--line-height: 1.3;
 }
 
 /* ============================================================================

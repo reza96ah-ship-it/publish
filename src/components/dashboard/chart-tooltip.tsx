@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { toPersianDigits, formatCompact } from '@/lib/jalali'
 
@@ -39,7 +39,7 @@ export function ChartTooltip({ active, payload, label, labelMap, formatValue }: 
   return (
     <div className="n-glass-popover px-3 py-2.5 min-w-[140px]" dir="rtl" role="tooltip">
       {label && (
-        <p className="text-[11px] font-[600] text-ink-secondary mb-1.5 pb-1.5 border-b border-border">
+        <p className="text-xs font-semibold text-ink-secondary mb-1.5 pb-1.5 border-b border-border">
           {toPersianDigits(String(label))}
         </p>
       )}
@@ -55,9 +55,9 @@ export function ChartTooltip({ active, payload, label, labelMap, formatValue }: 
                   style={{ background: entry.color }}
                   aria-hidden
                 />
-                <span className="text-[11px] text-ink-secondary">{persianLabel}</span>
+                <span className="text-xs text-ink-secondary">{persianLabel}</span>
               </div>
-              <span className="text-[11px] font-[700] text-ink-primary num-tabular">
+              <span className="text-xs font-bold text-ink-primary num-tabular">
                 {fmt(Number(entry.value))}
               </span>
             </div>
@@ -87,8 +87,8 @@ export function BarChartTooltip({
   return (
     <div className="n-glass-popover px-3 py-2" dir="rtl" role="tooltip">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[11px] text-ink-secondary">{displayLabel}</span>
-        <span className="text-[12px] font-[700] text-ink-primary num-tabular">
+        <span className="text-xs text-ink-secondary">{displayLabel}</span>
+        <span className="text-sm font-bold text-ink-primary num-tabular">
           {fmt(Number(payload[0].value))}
         </span>
       </div>
