@@ -257,7 +257,7 @@ function AppearanceSection() {
   useEffect(() => { setMounted(true) }, [])
 
   return (
-    <div className="n-card p-5 max-w-2xl">
+    <div className="n-card p-5">
       <div className="flex items-center gap-2 mb-4">
         <Sun className="size-4 text-accent" />
         <h2 className="text-sm font-semibold text-ink-primary">ظاهر</h2>
@@ -324,7 +324,7 @@ function OverviewForm({ ws }: { ws: Workspace }) {
   const set = (key: keyof Workspace, value: string) => setForm((cur) => ({ ...cur, [key]: value }))
 
   return (
-    <div className="n-card n-gradient-border p-5 max-w-2xl">
+    <div className="n-card n-gradient-border p-5">
       <div className="flex items-center gap-2 mb-4">
         <Building2 className="size-4 text-accent" />
         <h2 className="text-sm font-semibold text-ink-primary">پروفایل فضای کار</h2>
@@ -807,7 +807,7 @@ function BillingTab() {
 
       <div>
         <p className="text-sm font-bold text-ink-primary mb-3">طرح‌های موجود</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {PLAN_TIERS.map((tier) => {
             const isCurrent = tier.id === currentPlan
             return (
