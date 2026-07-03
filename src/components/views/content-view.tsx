@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -164,7 +164,7 @@ export function ContentView() {
       <SectionTitle
         icon={FileText}
         badge={
-          <span className="text-[11px] text-ink-tertiary num-tabular">
+          <span className="text-xs text-ink-tertiary num-tabular">
             {toPersianDigits(content?.length ?? 0)} مورد
           </span>
         }
@@ -176,13 +176,13 @@ export function ContentView() {
       <div className="n-card p-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-48">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
             <Input
               dir="rtl"
               placeholder="جستجو در عنوان محتوا…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pr-9"
+              className="ps-9"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -260,22 +260,22 @@ export function ContentView() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent">
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                       محتوا
                     </TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                       وضعیت
                     </TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                       کمپین
                     </TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                       پلتفرم‌ها
                     </TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                       نویسنده
                     </TableHead>
-                    <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                    <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                       به‌روزرسانی
                     </TableHead>
                     <TableHead className="w-10"></TableHead>
@@ -298,10 +298,10 @@ export function ContentView() {
                             </div>
                           )}
                           <div className="min-w-0 max-w-48">
-                            <p className="text-[13px] font-[600] text-ink-primary truncate">
+                            <p className="text-sm font-semibold text-ink-primary truncate">
                               {c.title}
                             </p>
-                            <p className="text-[11px] text-ink-tertiary truncate line-clamp-1">
+                            <p className="text-xs text-ink-tertiary truncate line-clamp-1">
                               {c.body ?? '—'}
                             </p>
                           </div>
@@ -313,13 +313,13 @@ export function ContentView() {
                           variant={c.status}
                         />
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-[12px] text-ink-secondary">
+                      <TableCell className="hidden sm:table-cell text-sm text-ink-secondary">
                         {c.campaign}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex items-center gap-1.5">
                           {c.platforms.length === 0 ? (
-                            <span className="text-[11px] text-ink-tertiary">—</span>
+                            <span className="text-xs text-ink-tertiary">—</span>
                           ) : (
                             c.platforms.map((p, i) => (
                               <PlatformDot key={`${p}-${i}`} platform={p} />
@@ -327,10 +327,10 @@ export function ContentView() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-[12px] text-ink-secondary">
+                      <TableCell className="hidden md:table-cell text-sm text-ink-secondary">
                         {c.authorName ?? '—'}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell text-[11px] text-ink-tertiary">
+                      <TableCell className="hidden sm:table-cell text-xs text-ink-tertiary">
                         {relativeTime(new Date(c.updatedAt))}
                       </TableCell>
                       <TableCell>
@@ -427,7 +427,7 @@ export function ContentView() {
       </div>
 
       {filtered.length > 0 && (
-        <div className="text-center text-[11px] text-ink-tertiary num-tabular">
+        <div className="text-center text-xs text-ink-tertiary num-tabular">
           نمایش {toPersianDigits(filtered.length)} مورد از {toPersianDigits(content?.length ?? 0)}
         </div>
       )}

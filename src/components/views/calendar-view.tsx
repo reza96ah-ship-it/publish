@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -90,11 +91,12 @@ interface PublishJob {
 }
 
 const PLATFORM_CHIP: Record<string, string> = {
-  instagram: 'bg-pink-100 text-pink-700 border-pink-200',
-  telegram: 'bg-sky-100 text-sky-700 border-sky-200',
-  linkedin: 'bg-blue-100 text-blue-700 border-blue-200',
-  rubika: 'bg-purple-100 text-purple-700 border-purple-200',
-  eitaa: 'bg-orange-100 text-orange-700 border-orange-200',
+  instagram: 'chip-instagram',
+  telegram: 'chip-telegram',
+  linkedin: 'chip-linkedin',
+  rubika: 'chip-rubika',
+  eitaa: 'chip-eitaa',
+  bale: 'chip-bale',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -111,17 +113,18 @@ export function CalendarView() {
   const { calendarCursor, setCalendarCursor } = useAppStore()
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
-  const [view, setView] = useState<'month' | 'week' | 'agenda'>('month')
+  const [view, setView] = useState<'month' | 'week' | 'agenda'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 'agenda' : 'month'
+  )
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
   const queryClient = useQueryClient()
 
-  // DnD sensors — distance:6 lets pure clicks (open sheet) through while enabling drag
+  // DnD sensors — pointer: distance:6 lets clicks through; touch: 250ms long-press
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   )
 
   // Reschedule mutation — PATCH /api/publish-jobs/[id] { action: 'reschedule', scheduledAt }
@@ -270,11 +273,11 @@ export function CalendarView() {
               <Button variant="ghost" size="icon" onClick={goPrev} aria-label="ماه قبل">
                 <ChevronRight className="size-4" />
               </Button>
-              <div className="text-center min-w-32">
-                <p className="text-sm font-[700] text-ink-primary num-tabular">
+              <div className="text-center min-w-[100px]">
+                <p className="text-sm font-bold text-ink-primary num-tabular">
                   {monthName} {toPersianDigits(calendarCursor.year)}
                 </p>
-                <p className="text-[10px] text-ink-tertiary num-tabular">
+                <p className="text-2xs text-ink-tertiary num-tabular">
                   ماه {toPersianDigits(calendarCursor.month)}
                 </p>
               </div>
@@ -287,16 +290,17 @@ export function CalendarView() {
             </Button>
           </div>
 
-          {/* Month grid */}
-          <div className="n-card p-3 sm:p-4">
+          {/* Month grid — horizontal scroll on mobile so 7-col grid never clips */}
+          <div className="n-card p-3 sm:p-4 overflow-x-auto">
+            <div className="min-w-[320px]">
             {/* Weekday header */}
             <div className="grid grid-cols-7 gap-1 mb-2">
               {JALALI_WEEKDAYS_SHORT.map((d, i) => (
                 <div
                   key={d}
                   className={cn(
-                    'text-center text-[11px] font-[700] py-1.5',
-                    i >= 5 ? 'text-rose-500' : 'text-ink-tertiary'
+                    'text-center text-xs font-bold py-1.5',
+                    i >= 5 ? 'text-danger' : 'text-ink-tertiary'
                   )}
                 >
                   {d}
@@ -328,33 +332,79 @@ export function CalendarView() {
               </div>
               <DragOverlay>
                 {activeDrag ? (
-                  <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-[10px] font-[700] shadow-xl max-w-56 truncate">
+                  <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-2xs font-bold shadow-xl max-w-56 truncate">
                     {activeDrag.title}
                   </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
+            </div>
           </div>
         </TabsContent>
 
         {/* ── Week view (simplified) ── */}
         <TabsContent value="week" className="space-y-4">
-          <div className="n-card p-5">
-            <p className="text-[12px] text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
-            <div className="grid grid-cols-7 gap-2">
-              {cells.slice(7, 14).map((cell, i) => (
-                <DayCell
-                  key={i}
-                  cell={cell}
-                  jobs={
-                    jobsByDay.get(
-                      `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
-                    ) ?? []
-                  }
-                  onSelectJob={setSelectedJob}
-                  tall
-                />
-              ))}
+          <div className="n-card p-3 sm:p-5">
+            <p className="text-sm text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
+            {/* Desktop: 7-col grid */}
+            <div className="hidden sm:block overflow-x-auto">
+              <div className="min-w-[320px] grid grid-cols-7 gap-2">
+                {cells.slice(7, 14).map((cell, i) => (
+                  <DayCell
+                    key={i}
+                    cell={cell}
+                    jobs={
+                      jobsByDay.get(
+                        `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                      ) ?? []
+                    }
+                    onSelectJob={setSelectedJob}
+                    tall
+                  />
+                ))}
+              </div>
+            </div>
+            {/* Mobile: vertical day list */}
+            <div className="sm:hidden space-y-2">
+              {cells.slice(7, 14).map((cell, i) => {
+                const dayJobs = jobsByDay.get(
+                  `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                ) ?? []
+                return (
+                  <div key={i} className={cn(
+                    'rounded-xl border p-3',
+                    cell.isToday ? 'border-accent bg-accent-soft' : 'border-border'
+                  )}>
+                    <p className={cn(
+                      'text-sm font-bold mb-2',
+                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-danger' : 'text-ink-secondary'
+                    )}>
+                      {JALALI_WEEKDAYS_SHORT[i % 7]} {toPersianDigits(cell.jalali.day)}
+                      {cell.holiday && <span className="text-2xs text-danger me-2">— {cell.holiday}</span>}
+                    </p>
+                    {dayJobs.length === 0 ? (
+                      <p className="text-xs text-ink-tertiary">بدون رویداد</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {dayJobs.map((job) => (
+                          <button
+                            key={job.id}
+                            onClick={() => setSelectedJob(job)}
+                            className={cn(
+                              'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-start',
+                              PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
+                            )}
+                          >
+                            <Clock3 className="size-3.5 shrink-0" />
+                            <span className="text-sm font-semibold truncate flex-1">{job.title}</span>
+                            <span className="text-2xs shrink-0">{formatJalaliTime(new Date(job.scheduledAt))}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </TabsContent>
@@ -364,7 +414,7 @@ export function CalendarView() {
           <div className="n-card p-5">
             <div className="flex items-center gap-2 mb-4">
               <ListChecks className="size-4 text-accent" />
-              <h2 className="text-sm font-[600] text-ink-primary">برنامه انتشار این ماه</h2>
+              <h2 className="text-sm font-semibold text-ink-primary">برنامه انتشار این ماه</h2>
             </div>
             {(jobs ?? []).length === 0 ? (
               <EmptyState
@@ -390,14 +440,14 @@ export function CalendarView() {
                     <button
                       key={job.id}
                       onClick={() => setSelectedJob(job)}
-                      className="n-focus-ring w-full n-card-compact flex items-center gap-3 p-3 text-right"
+                      className="n-focus-ring w-full n-card-compact flex items-center gap-3 p-3 text-start"
                     >
                       <PlatformIcon platform={job.platform} className="size-8 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-[600] text-ink-primary truncate">
+                        <p className="text-sm font-semibold text-ink-primary truncate">
                           {job.title}
                         </p>
-                        <p className="text-[11px] text-ink-tertiary mt-0.5">
+                        <p className="text-xs text-ink-tertiary mt-0.5">
                           {formatJalali(new Date(job.scheduledAt), true)} •{' '}
                           {formatJalaliTime(new Date(job.scheduledAt))}
                         </p>
@@ -418,8 +468,8 @@ export function CalendarView() {
       <div className="n-card p-5">
         <div className="flex items-center gap-2 mb-4">
           <Radio className="size-4 text-accent" />
-          <h2 className="text-sm font-[600] text-ink-primary">صف انتشار</h2>
-          <span className="text-[10px] text-ink-tertiary ms-auto num-tabular">
+          <h2 className="text-sm font-semibold text-ink-primary">صف انتشار</h2>
+          <span className="text-2xs text-ink-tertiary ms-auto num-tabular">
             {toPersianDigits(queue?.length ?? 0)} کار در صف
           </span>
         </div>
@@ -445,8 +495,8 @@ export function CalendarView() {
           {selectedJob && (
             <>
               <SheetHeader>
-                <SheetTitle className="text-right">{selectedJob.title}</SheetTitle>
-                <SheetDescription className="text-right">
+                <SheetTitle className="text-start">{selectedJob.title}</SheetTitle>
+                <SheetDescription className="text-start">
                   جزئیات انتشار برنامه‌ریزی‌شده
                 </SheetDescription>
               </SheetHeader>
@@ -461,7 +511,7 @@ export function CalendarView() {
                 <div className="flex items-center gap-3">
                   <PlatformIcon platform={selectedJob.platform} className="size-10" />
                   <div className="flex-1">
-                    <p className="text-[13px] font-[600] text-ink-primary">
+                    <p className="text-sm font-semibold text-ink-primary">
                       {selectedJob.platform}
                     </p>
                     <StatusBadge
@@ -470,10 +520,10 @@ export function CalendarView() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-[12px]">
+                <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl bg-surface-subtle p-3">
-                    <p className="text-[10px] text-ink-tertiary mb-1">زمان انتشار</p>
-                    <p className="font-[700] text-ink-primary">
+                    <p className="text-2xs text-ink-tertiary mb-1">زمان انتشار</p>
+                    <p className="font-bold text-ink-primary">
                       {formatJalali(new Date(selectedJob.scheduledAt), true)}
                     </p>
                     <p className="text-ink-secondary">
@@ -481,8 +531,8 @@ export function CalendarView() {
                     </p>
                   </div>
                   <div className="rounded-xl bg-surface-subtle p-3">
-                    <p className="text-[10px] text-ink-tertiary mb-1">پیشرفت</p>
-                    <p className="font-[700] text-ink-primary num-tabular">
+                    <p className="text-2xs text-ink-tertiary mb-1">پیشرفت</p>
+                    <p className="font-bold text-ink-primary num-tabular">
                       {toPersianDigits(selectedJob.progress)}٪
                     </p>
                   </div>
@@ -496,7 +546,7 @@ export function CalendarView() {
               <div className="rounded-xl border border-border bg-surface-subtle p-3 space-y-3">
                 <div className="flex items-center gap-2">
                   <CalendarClock className="size-4 text-accent" />
-                  <p className="text-[12px] font-[600] text-ink-primary">تغییر زمان‌بندی</p>
+                  <p className="text-sm font-semibold text-ink-primary">تغییر زمان‌بندی</p>
                 </div>
                 <JalaliDatePicker
                   value={editingSchedule ?? new Date(selectedJob.scheduledAt)}
@@ -509,14 +559,14 @@ export function CalendarView() {
                   className="w-full"
                 />
                 {editingSchedule && (
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-ink-tertiary">
                       جدید: {formatJalali(editingSchedule, true)} •{' '}
                       {formatJalaliTime(editingSchedule)}
                     </span>
                     <Button
                       size="sm"
-                      className="h-7 text-[11px]"
+                      className="h-7 text-xs"
                       disabled={rescheduleMutation.isPending}
                       onClick={() =>
                         rescheduleMutation.mutate({
@@ -568,7 +618,7 @@ function DayCell({
         cell.isToday
           ? 'border-accent ring-1 ring-accent/30 bg-accent-soft'
           : cell.holiday
-            ? 'border-rose-200 bg-rose-50/40'
+            ? 'border-danger-soft bg-danger-tint/40'
             : cell.isWeekend && cell.inMonth
               ? 'border-border bg-surface-hover'
               : 'border-border',
@@ -578,20 +628,20 @@ function DayCell({
       <div className="flex items-center justify-between mb-1">
         <span
           className={cn(
-            'text-[11px] font-[700] leading-none',
+            'text-xs font-bold leading-none',
             cell.isToday
               ? 'bg-accent text-white rounded-full size-5 inline-flex items-center justify-center'
               : cell.holiday
-                ? 'text-rose-600'
+                ? 'text-danger'
                 : cell.isWeekend
-                  ? 'text-rose-500'
+                  ? 'text-danger'
                   : 'text-ink-secondary'
           )}
         >
           {day}
         </span>
         {cell.holiday && (
-          <span className="text-[8px] text-rose-500 truncate max-w-12" title={cell.holiday}>
+          <span className="text-2xs text-danger truncate max-w-12" title={cell.holiday}>
             {cell.holiday}
           </span>
         )}
@@ -606,7 +656,7 @@ function DayCell({
           />
         ))}
         {jobs.length > (tall ? 5 : 3) && (
-          <p className="text-[9px] text-ink-tertiary px-1.5">
+          <p className="text-2xs text-ink-tertiary px-1.5">
             +{toPersianDigits(jobs.length - (tall ? 5 : 3))} مورد دیگر
           </p>
         )}
@@ -637,8 +687,8 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-0.5 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
-        PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
+        'n-focus-ring w-full text-start text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border',
         (isDragging || isDimmed) && 'opacity-30'
       )}
     >
@@ -659,28 +709,28 @@ function QueueRow({ job }: { job: PublishJob }) {
             <PlatformIcon platform={job.platform} className="size-5" />
           </div>
         )}
-        <span className="absolute -bottom-1 -left-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
+        <span className="absolute -bottom-1 -end-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
           <PlatformIcon platform={job.platform} className="size-3" />
         </span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-[600] text-ink-primary truncate">{job.title}</p>
+        <p className="text-sm font-semibold text-ink-primary truncate">{job.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[10px] text-ink-tertiary truncate">{job.platformName}</span>
+          <span className="text-2xs text-ink-tertiary truncate">{job.platformName}</span>
           <span className="text-ink-tertiary">•</span>
-          <span className="text-[10px] text-ink-tertiary truncate">{job.campaign}</span>
+          <span className="text-2xs text-ink-tertiary truncate">{job.campaign}</span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <StatusBadge label={job.statusLabel} variant={job.status} />
-          <span className="text-[10px] text-ink-tertiary">
+          <span className="text-2xs text-ink-tertiary">
             {job.scheduledAt ? relativeTime(new Date(job.scheduledAt)) : job.processLabel}
           </span>
         </div>
       </div>
       <Avatar className="size-7 shrink-0 ring-2 ring-background">
         {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
-        <AvatarFallback className="text-[10px]">
-          {job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
+        <AvatarFallback className="text-2xs">
+          {!job.assignee || job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
         </AvatarFallback>
       </Avatar>
     </div>

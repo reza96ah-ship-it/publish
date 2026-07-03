@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -119,7 +119,7 @@ export function NotificationPopover() {
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25, mass: 0.8 }}
-                className="absolute -top-1 -right-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-[9.5px] font-[600] text-white ring-2 ring-white num-tabular"
+                className="absolute -top-1 -end-1 inline-flex min-w-[16px] items-center justify-center rounded-full bg-danger px-1 text-2xs font-semibold text-white ring-2 ring-canvas num-tabular"
               >
                 {toPersianDigits(unreadCount)}
               </motion.span>
@@ -130,18 +130,18 @@ export function NotificationPopover() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="n-glass-popover w-[380px] max-h-[480px] p-0 overflow-hidden"
+        className="n-glass-popover w-[min(380px,calc(100vw-2rem))] max-h-[480px] p-0 overflow-hidden"
       >
         <div className="flex flex-col max-h-[480px]">
           {/* Header */}
           <div className="flex items-center justify-between px-4 h-12 border-b border-border shrink-0">
-            <h3 className="text-[13px] font-[700] text-ink-primary">اعلان‌ها</h3>
+            <h3 className="text-sm font-bold text-ink-primary">اعلان‌ها</h3>
             <div className="flex items-center gap-1">
               {(['all', 'unread'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setFilter(tab)}
-                  className="relative px-2 py-1 text-[11px] font-[600] text-ink-tertiary hover:text-ink-primary transition-colors"
+                  className="relative px-2 py-1 text-xs font-semibold text-ink-tertiary hover:text-ink-primary transition-colors"
                 >
                   {tab === 'all' ? 'همه' : 'خوانده‌نشده'}
                   {filter === tab && (
@@ -177,7 +177,7 @@ export function NotificationPopover() {
               >
                 {grouped.map((group) => (
                   <div key={group.label}>
-                    <div className="px-4 pt-3 pb-1 text-[10px] font-[600] text-ink-tertiary tracking-wide">
+                    <div className="px-4 pt-3 pb-1 text-2xs font-semibold text-ink-tertiary tracking-wide">
                       {group.label}
                     </div>
                     {group.items.map((notif) => {
@@ -190,7 +190,7 @@ export function NotificationPopover() {
                             visible: { opacity: 1, y: 0 },
                           }}
                           onClick={() => handleItemClick(notif)}
-                          className="relative w-full flex items-start gap-3 px-4 py-3 text-right hover:bg-surface-hover/60 transition-colors group"
+                          className="relative w-full flex items-start gap-3 px-4 py-3 text-start hover:bg-surface-hover/60 transition-colors group"
                         >
                           <div
                             className={cn(
@@ -201,15 +201,15 @@ export function NotificationPopover() {
                             <Icon className="size-3.5" strokeWidth={2} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] text-ink-secondary leading-snug">
+                            <p className="text-sm text-ink-secondary leading-snug">
                               {notif.title}
                             </p>
                             {notif.body && (
-                              <p className="text-[11px] text-ink-tertiary truncate mt-0.5 leading-tight">
+                              <p className="text-xs text-ink-tertiary truncate mt-0.5 leading-tight">
                                 {notif.body}
                               </p>
                             )}
-                            <p className="text-[10px] text-ink-tertiary mt-1 leading-tight">
+                            <p className="text-2xs text-ink-tertiary mt-1 leading-tight">
                               {relativeTime(new Date(notif.createdAt))}
                             </p>
                           </div>
@@ -227,8 +227,8 @@ export function NotificationPopover() {
                 <div className="flex size-12 items-center justify-center rounded-xl bg-surface-hover mb-3">
                   <Bell className="size-6 text-ink-tertiary opacity-50" strokeWidth={1.5} />
                 </div>
-                <p className="text-[13px] font-[600] text-ink-secondary">همه‌چیز رو خوندی</p>
-                <p className="text-[11.5px] text-ink-tertiary mt-1">اعلان جدیدی وجود ندارد.</p>
+                <p className="text-sm font-semibold text-ink-secondary">همه‌چیز رو خوندی</p>
+                <p className="text-xs text-ink-tertiary mt-1">اعلان جدیدی وجود ندارد.</p>
               </div>
             )}
           </div>
@@ -240,7 +240,7 @@ export function NotificationPopover() {
                 navigateTo('/inbox')
                 setOpen(false)
               }}
-              className="text-[11px] font-[600] text-accent hover:text-accent-hover transition-colors"
+              className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
             >
               مشاهده همه در صندوق ورودی
             </button>

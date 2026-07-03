@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -42,10 +42,10 @@ export function CampaignsPanel() {
           <div key={c.id} className="n-card-compact p-3">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0">
-                <p className="text-[12.5px] font-[600] text-ink-primary truncate leading-snug">
+                <p className="text-sm font-semibold text-ink-primary truncate leading-snug">
                   {c.name}
                 </p>
-                <p className="text-[10.5px] text-ink-tertiary mt-0.5 leading-tight">
+                <p className="text-xs text-ink-tertiary mt-0.5 leading-tight">
                   مسئول: {c.owner ?? '—'}
                 </p>
               </div>
@@ -56,7 +56,7 @@ export function CampaignsPanel() {
 
             <div className="flex items-center gap-2 mb-2.5">
               <span
-                className={`inline-flex items-center text-[10px] font-[600] px-1.5 py-0.5 rounded-md border ${c.healthColor}`}
+                className={`inline-flex items-center text-2xs font-semibold px-1.5 py-0.5 rounded-md border ${c.healthColor}`}
               >
                 {c.healthLabel}
               </span>
@@ -69,20 +69,20 @@ export function CampaignsPanel() {
                   style={{ width: `${c.pubProgress}%` }}
                 />
               </div>
-              <span className="text-[10px] font-[600] text-ink-secondary num-tabular">
+              <span className="text-2xs font-semibold text-ink-secondary num-tabular">
                 {toPersianDigits(c.pubProgress)}٪
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[10px] text-ink-tertiary">
+            <div className="flex items-center justify-between text-2xs text-ink-tertiary">
               <span>{c.goalCompletion}</span>
-              <span className={c.daysRemaining.includes('پایان') ? 'text-danger font-[600]' : ''}>
+              <span className={c.daysRemaining.includes('پایان') ? 'text-danger font-semibold' : ''}>
                 {c.daysRemaining}
               </span>
             </div>
 
             {c.topBlocker && (
-              <div className="mt-2 flex items-center gap-1 text-[10px] text-warning bg-warning-soft rounded-md px-2 py-1">
+              <div className="mt-2 flex items-center gap-1 text-2xs text-warning bg-warning-soft rounded-md px-2 py-1">
                 <ArrowLeft className="size-2.5" strokeWidth={2.5} />
                 <span>مانع: {c.topBlocker}</span>
               </div>

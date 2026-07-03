@@ -58,10 +58,10 @@ export async function GET() {
         : 'بحرانی'
   const healthColor =
     health === 'healthy'
-      ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+      ? 'text-success bg-success-tint border-success-soft'
       : health === 'warning'
-        ? 'text-amber-700 bg-amber-50 border-amber-200'
-        : 'text-rose-700 bg-rose-50 border-rose-200'
+        ? 'text-warning bg-warning-tint border-warning-soft'
+        : 'text-danger bg-danger-tint border-danger-soft'
 
   return NextResponse.json({
     health,

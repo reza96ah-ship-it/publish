@@ -159,15 +159,10 @@ test.describe('Issue #128 — RTL layout checks', () => {
   })
 })
 
-// Color contrast checks (Issue #128: "Color contrast >= 4.5:1")
-// fixme: Real WCAG contrast violations detected on the login page (issue #157).
-// The Tailwind theme's muted/placeholder tokens fail 4.5:1 against the page
-// background. Tracked under Gate 8 issue #157. Re-enable once UI tokens are fixed.
-test.describe('Issue #128 — Color contrast', () => {
-  test.fixme('login page meets WCAG AA contrast ratios', async ({ page }) => {
+// Color contrast checks (Issue #216: fix --n-text-tertiary tokens to pass WCAG 4.5:1)
+test.describe('Issue #216 — Color contrast', () => {
+  test('login page meets WCAG AA contrast ratios', async ({ page }) => {
     await page.goto('/auth/signin')
-    // 'load' not 'networkidle' — background requests (session polling, sockets)
-    // keep the network active under the production server, so networkidle never fires
     await page.waitForLoadState('load')
 
     const results = await new AxeBuilder({ page })
@@ -175,9 +170,100 @@ test.describe('Issue #128 — Color contrast', () => {
       .withRules(['color-contrast'])
       .analyze()
 
-    const contrastViolations = results.violations.filter(
-      (v) => v.id === 'color-contrast'
-    )
-    expect(contrastViolations).toEqual([])
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('dashboard meets WCAG AA contrast ratios', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('compose view meets WCAG AA contrast ratios', async ({ page }) => {
+    await page.goto('/compose')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('content view meets WCAG AA contrast ratios', async ({ page }) => {
+    await page.goto('/content')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('channels view meets WCAG AA contrast ratios', async ({ page }) => {
+    await page.goto('/channels')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+})
+
+// Dark mode contrast checks (Issue #217: first-class dark mode)
+// Sets next-themes localStorage key to 'dark' so the .dark class is applied,
+// then runs the same axe color-contrast rule on key views.
+test.describe('Issue #217 — Dark mode color contrast', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/auth/signin')
+    await page.waitForLoadState('load')
+    await page.evaluate(() => localStorage.setItem('theme', 'dark'))
+    await page.reload()
+    await page.waitForLoadState('load')
+  })
+
+  test('login page meets WCAG AA contrast in dark mode', async ({ page }) => {
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('dashboard meets WCAG AA contrast in dark mode', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
+  })
+
+  test('compose view meets WCAG AA contrast in dark mode', async ({ page }) => {
+    await page.goto('/compose')
+    await page.waitForLoadState('load')
+
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2aa'])
+      .withRules(['color-contrast'])
+      .analyze()
+
+    expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
   })
 })

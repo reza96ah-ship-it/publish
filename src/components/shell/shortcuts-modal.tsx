@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { Keyboard, X } from 'lucide-react'
@@ -89,7 +89,7 @@ export function ShortcutsModal() {
                 <div className="flex size-7 items-center justify-center rounded-md bg-accent-soft">
                   <Keyboard className="size-4 text-accent" strokeWidth={2} />
                 </div>
-                <h2 className="text-[14px] font-[700] text-ink-primary tracking-tight">
+                <h2 className="text-base font-bold text-ink-primary tracking-tight">
                   میانبرهای صفحه‌کلید
                 </h2>
               </div>
@@ -107,18 +107,18 @@ export function ShortcutsModal() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 {SHORTCUT_GROUPS.map((group) => (
                   <div key={group.title}>
-                    <h3 className="text-[10px] font-[700] uppercase tracking-[0.1em] text-ink-tertiary mb-3">
+                    <h3 className="text-2xs font-bold uppercase tracking-[0.1em] text-ink-tertiary mb-3">
                       {group.title}
                     </h3>
                     <ul className="space-y-2.5">
                       {group.items.map((item, i) => (
                         <li key={i} className="flex items-center justify-between gap-3">
-                          <span className="text-[12.5px] text-ink-secondary">{item.label}</span>
+                          <span className="text-sm text-ink-secondary">{item.label}</span>
                           <span className="flex items-center gap-1 shrink-0">
                             {item.keys.map((key, ki) => (
                               <kbd
                                 key={ki}
-                                className="min-w-[20px] h-[20px] inline-flex items-center justify-center px-1.5 rounded border border-border bg-surface-hover text-[10px] font-[600] text-ink-secondary num-tabular"
+                                className="h-5 min-w-5 inline-flex items-center justify-center px-1.5 rounded border border-border bg-surface-hover text-2xs font-semibold text-ink-secondary num-tabular"
                               >
                                 {key}
                               </kbd>
@@ -133,7 +133,7 @@ export function ShortcutsModal() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-5 h-10 border-t border-border text-[10.5px] text-ink-tertiary">
+            <div className="flex items-center justify-between px-5 h-10 border-t border-border text-xs text-ink-tertiary">
               <span>برای بستن، Esc را بزنید</span>
               <span className="flex items-center gap-1">
                 <kbd className="px-1 rounded border border-border bg-surface-hover">?</kbd>

@@ -47,7 +47,9 @@ function buildCsp(nonce: string, isProd: boolean): string {
   return [
     "default-src 'self'",
     // The sha256 hash covers a static Next.js bootstrap script that doesn't receive a nonce.
-    `script-src 'nonce-${nonce}' 'strict-dynamic' 'sha256-7I2EBeMSjJEuUo9kEh7aZDCwm5KZUpXX/f5Z9gB8oPI='`,
+    // 'unsafe-eval' is required by React dev mode (stack reconstruction via Turbopack).
+    // Never included in production builds -- React never uses eval() there.
+    `script-src 'nonce-${nonce}' 'strict-dynamic' 'sha256-7I2EBeMSjJEuUo9kEh7aZDCwm5KZUpXX/f5Z9gB8oPI='${isProd ? '' : " 'unsafe-eval'"}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",

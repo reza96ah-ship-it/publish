@@ -83,19 +83,20 @@ function statusLabel(s: string) {
 
 function platformColor(t: string) {
   return t === 'instagram'
-    ? 'text-pink-600'
+    ? 'text-[var(--color-platform-instagram)]'
     : t === 'telegram'
-      ? 'text-sky-600'
+      ? 'text-[var(--color-platform-telegram)]'
       : t === 'linkedin'
-        ? 'text-blue-600'
-        : 'text-purple-600'
+        ? 'text-[var(--color-platform-linkedin)]'
+        : 'text-[var(--color-platform-rubika)]'
 }
 function platformBg(t: string) {
+  // Returns the combined chip class for platform badge backgrounds
   return t === 'instagram'
-    ? 'bg-pink-100'
+    ? 'chip-instagram'
     : t === 'telegram'
-      ? 'bg-sky-100'
+      ? 'chip-telegram'
       : t === 'linkedin'
-        ? 'bg-blue-100'
-        : 'bg-purple-100'
+        ? 'chip-linkedin'
+        : 'chip-rubika'
 }

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -45,27 +45,27 @@ export function ActionCenter() {
         {/* Primary critical task */}
         {data?.primary && (
           <div className="relative overflow-hidden rounded-lg border border-danger/20 bg-danger-soft p-3">
-            <div className="absolute top-0 right-0 h-full w-[3px] bg-danger" />
+            <div className="absolute top-0 start-0 h-full w-[3px] bg-danger" />
             <div className="flex items-start gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-danger text-white shrink-0">
                 <AlertTriangle className="size-3.5" strokeWidth={2} />
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-[600] text-ink-primary leading-snug">
+                <p className="text-sm font-semibold text-ink-primary leading-snug">
                   {data.primary.title}
                 </p>
                 {data.primary.context && (
-                  <p className="text-[11px] text-ink-secondary mt-0.5 leading-snug">
+                  <p className="text-xs text-ink-secondary mt-0.5 leading-snug">
                     {data.primary.context}
                   </p>
                 )}
               </div>
             </div>
             <div className="flex items-center justify-between mt-2.5">
-              <span className="text-[10px] text-ink-tertiary">
+              <span className="text-2xs text-ink-tertiary">
                 {relativeTime(new Date(data.primary.time))}
               </span>
-              <button className="inline-flex items-center gap-1 text-[11px] font-[600] text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 py-1 transition-colors">
+              <button className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 py-1 transition-colors">
                 {data.primary.action}
                 <ArrowLeft className="size-3" strokeWidth={2.5} />
               </button>
@@ -84,10 +84,10 @@ export function ActionCenter() {
               >
                 <Icon className="size-3.5" strokeWidth={2} />
               </span>
-              <p className="flex-1 text-[11.5px] font-[500] text-ink-primary leading-snug">
+              <p className="flex-1 text-xs font-medium text-ink-primary leading-snug">
                 {item.title}
               </p>
-              <span className="text-[10px] text-ink-tertiary shrink-0">
+              <span className="text-2xs text-ink-tertiary shrink-0">
                 {relativeTime(new Date(item.time))}
               </span>
             </div>

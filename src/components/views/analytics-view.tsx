@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useMemo, useState } from 'react'
 import { useQuery, useQueries } from '@tanstack/react-query'
@@ -90,10 +90,10 @@ interface PublishJob {
 }
 
 const PLATFORMS = [
-  { id: 'instagram', label: 'اینستاگرام', color: '#ec4899' },
-  { id: 'telegram', label: 'تلگرام', color: '#0ea5e9' },
-  { id: 'linkedin', label: 'لینکدین', color: '#2563eb' },
-  { id: 'rubika', label: 'روبیکا', color: '#a855f7' },
+  { id: 'instagram', label: 'اینستاگرام', color: 'var(--color-platform-instagram)' },
+  { id: 'telegram', label: 'تلگرام', color: 'var(--color-platform-telegram)' },
+  { id: 'linkedin', label: 'لینکدین', color: 'var(--color-platform-linkedin)' },
+  { id: 'rubika', label: 'روبیکا', color: 'var(--color-platform-rubika)' },
 ]
 
 export function AnalyticsView() {
@@ -167,7 +167,7 @@ export function AnalyticsView() {
         label: 'دسترسی',
         value: kpis.reach,
         icon: Eye,
-        iconColor: 'text-violet-600',
+        iconColor: 'text-accent',
         sparkColor: 'var(--color-accent)',
         spark: reach,
         trend: trend(reach),
@@ -179,8 +179,8 @@ export function AnalyticsView() {
         label: 'تعامل',
         value: kpis.engagement,
         icon: Heart,
-        iconColor: 'text-pink-600',
-        sparkColor: '#ec4899',
+        iconColor: 'text-[var(--color-platform-instagram)]',
+        sparkColor: 'var(--color-platform-instagram)',
         spark: engagement,
         trend: trend(engagement),
         prev: prev(engagement),
@@ -191,8 +191,8 @@ export function AnalyticsView() {
         label: 'رشد مخاطبان',
         value: kpis.followers,
         icon: Users,
-        iconColor: 'text-emerald-600',
-        sparkColor: '#10b981',
+        iconColor: 'text-success',
+        sparkColor: 'var(--color-success)',
         spark: followers,
         trend: trend(followers),
         prev: prev(followers),
@@ -203,8 +203,8 @@ export function AnalyticsView() {
         label: 'کلیک',
         value: kpis.clicks,
         icon: MousePointerClick,
-        iconColor: 'text-amber-600',
-        sparkColor: '#f59e0b',
+        iconColor: 'text-warning',
+        sparkColor: 'var(--color-warning)',
         spark: clicks,
         trend: trend(clicks),
         prev: prev(clicks),
@@ -246,7 +246,7 @@ export function AnalyticsView() {
       </SectionTitle>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {kpiCards.map((k) => (
           <KpiCard
             key={k.key}
@@ -270,17 +270,17 @@ export function AnalyticsView() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="size-4 text-accent" />
-            <h2 className="text-sm font-[600] text-ink-primary">روند دسترسی</h2>
+            <h2 className="text-sm font-semibold text-ink-primary">روند دسترسی</h2>
           </div>
-          <span className="text-[11px] text-ink-tertiary num-tabular">
+          <span className="text-xs text-ink-tertiary num-tabular">
             {toPersianDigits(periodSlice.length)} روز
           </span>
         </div>
         <LoadingState
           isLoading={isLoading}
-          skeleton={<Skeleton className="h-64 w-full rounded-xl" />}
+          skeleton={<Skeleton className="h-[200px] sm:h-[240px] md:h-64 w-full rounded-xl" />}
         >
-          <div dir="ltr" className="h-64 w-full">
+          <div dir="ltr" className="h-[200px] sm:h-[240px] md:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                 <defs>
@@ -289,20 +289,20 @@ export function AnalyticsView() {
                     <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => toPersianDigits(v)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
-                  width={45}
+                  width={35}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Area
@@ -320,13 +320,13 @@ export function AnalyticsView() {
       </div>
 
       {/* Platform breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="n-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <Activity className="size-4 text-accent" />
-            <h2 className="text-sm font-[600] text-ink-primary">دسترسی به تفکیک پلتفرم</h2>
+            <h2 className="text-sm font-semibold text-ink-primary">دسترسی به تفکیک پلتفرم</h2>
           </div>
-          <div dir="ltr" className="h-56">
+          <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={PLATFORMS.map((p, i) => {
@@ -336,19 +336,19 @@ export function AnalyticsView() {
                 })}
                 margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'rgb(148 163 184 / 0.7)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
-                  width={45}
+                  width={35}
                 />
                 <Tooltip content={<BarChartTooltip />} />
                 <Bar dataKey="value" radius={[8, 8, 0, 0]} />
@@ -360,10 +360,10 @@ export function AnalyticsView() {
               const pd = platformQueries[i]?.data
               const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
               return (
-                <div key={p.id} className="flex items-center gap-2 text-[11px]">
+                <div key={p.id} className="flex items-center gap-2 text-xs">
                   <PlatformIcon platform={p.id} className="size-5" />
                   <span className="text-ink-secondary">{p.label}</span>
-                  <span className="ms-auto font-[700] text-ink-primary num-tabular">
+                  <span className="ms-auto font-bold text-ink-primary num-tabular">
                     {toPersianDigits(formatCompact(total))}
                   </span>
                 </div>
@@ -376,7 +376,7 @@ export function AnalyticsView() {
         <div className="n-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <Users className="size-4 text-accent" />
-            <h2 className="text-sm font-[600] text-ink-primary">خلاصه عملکرد</h2>
+            <h2 className="text-sm font-semibold text-ink-primary">خلاصه عملکرد</h2>
           </div>
           <div className="space-y-3">
             {[
@@ -404,12 +404,12 @@ export function AnalyticsView() {
               },
             ].map((row) => (
               <div key={row.label} className="n-card-compact flex items-center justify-between p-3">
-                <span className="text-[12px] text-ink-secondary">{row.label}</span>
+                <span className="text-sm text-ink-secondary">{row.label}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-[700] text-ink-primary num-tabular">
+                  <span className="text-sm font-bold text-ink-primary num-tabular">
                     {row.value}
                   </span>
-                  <span className="text-[10px] font-[700] text-success bg-success-soft rounded-full px-1.5 py-0.5">
+                  <span className="text-2xs font-bold text-success bg-success-soft rounded-full px-1.5 py-0.5">
                     {row.trend}
                   </span>
                 </div>
@@ -424,13 +424,13 @@ export function AnalyticsView() {
         <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-border">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-accent" />
-            <h2 className="text-sm font-[600] text-ink-primary">گزارش‌ها و لاگ‌ها</h2>
-            <span className="text-[10px] text-ink-tertiary num-tabular">
+            <h2 className="text-sm font-semibold text-ink-primary">گزارش‌ها و لاگ‌ها</h2>
+            <span className="text-2xs text-ink-tertiary num-tabular">
               {toPersianDigits(filteredJobs.length)} رکورد
             </span>
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-8">
+            <SelectTrigger className="w-36 h-10">
               <SelectValue placeholder="همه" />
             </SelectTrigger>
             <SelectContent>
@@ -448,25 +448,25 @@ export function AnalyticsView() {
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   عنوان
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   پلتفرم
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700]">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                   وضعیت
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden sm:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                   زمان انتشار
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                   تکمیل
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden md:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden md:table-cell">
                   تلاش مجدد
                 </TableHead>
-                <TableHead className="text-right text-[11px] text-ink-tertiary font-[700] hidden lg:table-cell">
+                <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden lg:table-cell">
                   خطا
                 </TableHead>
               </TableRow>
@@ -505,7 +505,7 @@ export function AnalyticsView() {
                             <PlatformIcon platform={j.platform} className="size-4" />
                           </div>
                         )}
-                        <span className="text-[12px] font-[600] text-ink-primary truncate max-w-40">
+                        <span className="text-sm font-semibold text-ink-primary truncate max-w-40">
                           {j.title}
                         </span>
                       </div>
@@ -513,7 +513,7 @@ export function AnalyticsView() {
                     <TableCell>
                       <div className="flex items-center gap-1.5">
                         <PlatformIcon platform={j.platform} className="size-4" />
-                        <span className="text-[11px] text-ink-secondary hidden sm:inline">
+                        <span className="text-xs text-ink-secondary hidden sm:inline">
                           {j.platformName}
                         </span>
                       </div>
@@ -532,19 +532,19 @@ export function AnalyticsView() {
                         }
                       />
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell text-[11px] text-ink-secondary">
+                    <TableCell className="hidden sm:table-cell text-xs text-ink-secondary">
                       {j.scheduledAt
                         ? `${formatJalali(new Date(j.scheduledAt))} ${formatJalaliTime(new Date(j.scheduledAt))}`
                         : '—'}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-[11px] text-ink-secondary">
+                    <TableCell className="hidden md:table-cell text-xs text-ink-secondary">
                       {j.completedAt ? formatJalaliTime(new Date(j.completedAt)) : '—'}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-[11px] num-tabular">
+                    <TableCell className="hidden md:table-cell text-xs num-tabular">
                       {j.retryCount > 0 ? (
                         <span
                           className={cn(
-                            'font-[700]',
+                            'font-bold',
                             j.retryCount > 2 ? 'text-danger' : 'text-warning'
                           )}
                         >
@@ -554,7 +554,7 @@ export function AnalyticsView() {
                         <span className="text-ink-tertiary">۰</span>
                       )}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-[11px] text-danger max-w-48 truncate">
+                    <TableCell className="hidden lg:table-cell text-xs text-danger max-w-48 truncate">
                       {j.error ?? '—'}
                     </TableCell>
                   </TableRow>

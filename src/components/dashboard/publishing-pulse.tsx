@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -146,7 +146,7 @@ function PulseItem({
           </div>
         )}
         <span
-          className={`absolute -bottom-1 -left-1 flex size-4 items-center justify-center rounded-full ${iconBg} ring-2 ring-white`}
+          className={`absolute -bottom-1 -end-1 flex size-4 items-center justify-center rounded-full ${iconBg} ring-2 ring-canvas`}
         >
           <Icon
             className={`size-2.5 ${iconColor} ${job.type === 'live' ? 'animate-spin' : ''}`}
@@ -159,15 +159,15 @@ function PulseItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-0.5">
           <PlatformIcon platform={job.platform} className="size-3.5" />
-          <span className="text-[10.5px] font-[500] text-ink-tertiary truncate">
+          <span className="text-xs font-medium text-ink-tertiary truncate">
             {job.platformName}
           </span>
-          <span className={`text-[10px] font-[600] ${iconColor} ms-auto`}>{job.status}</span>
+          <span className={`text-2xs font-semibold ${iconColor} ms-auto`}>{job.status}</span>
         </div>
-        <p className="text-[12.5px] font-[600] text-ink-primary truncate leading-snug">
+        <p className="text-sm font-semibold text-ink-primary truncate leading-snug">
           {job.title}
         </p>
-        <p className="text-[11px] text-ink-tertiary truncate leading-tight">{job.campaign}</p>
+        <p className="text-xs text-ink-tertiary truncate leading-tight">{job.campaign}</p>
 
         {/* progress */}
         {job.type === 'live' && (
@@ -178,13 +178,13 @@ function PulseItem({
                 style={{ width: `${job.progress}%` }}
               />
             </div>
-            <span className="text-[10px] font-[600] text-ink-secondary num-tabular">
+            <span className="text-2xs font-semibold text-ink-secondary num-tabular">
               {toPersianDigits(job.progress)}٪
             </span>
           </div>
         )}
         {job.type !== 'live' && (
-          <div className="mt-1 flex items-center gap-1 text-[10px] text-ink-tertiary">
+          <div className="mt-1 flex items-center gap-1 text-2xs text-ink-tertiary">
             <Clock3 className="size-2.5" strokeWidth={2} />
             <span>{job.schedule ? relativeTime(new Date(job.schedule)) : job.processLabel}</span>
           </div>
@@ -197,7 +197,7 @@ function PulseItem({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-[10px]"
+                className="h-6 px-2 text-2xs"
                 onClick={onRetry}
               >
                 <RotateCcw className="size-2.5 me-1" />
@@ -208,7 +208,7 @@ function PulseItem({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-[10px]"
+                className="h-6 px-2 text-2xs"
                 onClick={onReconnect}
               >
                 <WifiOff className="size-2.5 me-1" />
@@ -218,7 +218,7 @@ function PulseItem({
             <Button
               size="sm"
               variant="ghost"
-              className="h-6 px-2 text-[10px] text-ink-tertiary"
+              className="h-6 px-2 text-2xs text-ink-tertiary"
               onClick={onCancel}
             >
               <X className="size-2.5 me-1" />

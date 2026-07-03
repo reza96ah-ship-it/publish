@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEditor, EditorContent, type Editor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
@@ -82,7 +82,7 @@ export function NashrinoEditor({
           'prose prose-sm dark:prose-invert max-w-none',
           'min-h-[200px] px-4 py-3',
           'focus:outline-none',
-          'text-[13.5px] leading-relaxed text-ink-primary'
+          'text-base leading-relaxed text-ink-primary'
         ),
       },
     },
@@ -215,10 +215,10 @@ export function NashrinoEditor({
 
       {/* Footer: character count */}
       <div className="flex items-center justify-between border-t border-border px-3 py-1.5 bg-surface-subtle">
-        <span className="text-[10px] text-ink-tertiary">{wordCount} واژه</span>
+        <span className="text-2xs text-ink-tertiary">{wordCount} واژه</span>
         <span
           className={cn(
-            'text-[10px] num-tabular font-[600]',
+            'text-2xs num-tabular font-semibold',
             isOverLimit ? 'text-danger' : isNearLimit ? 'text-warning' : 'text-ink-tertiary'
           )}
         >
