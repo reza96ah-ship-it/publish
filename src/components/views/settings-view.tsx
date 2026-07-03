@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -258,8 +258,7 @@ const THEME_OPTIONS = [
 
 function AppearanceSection() {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
 
   return (
     <div className="n-card p-5">
