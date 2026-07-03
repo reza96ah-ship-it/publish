@@ -38,10 +38,14 @@ const DYNAMIC_MASKS = [
   // KPI numbers and counters
   '.num-tabular',
   // Recharts SVG data paths (bars, lines, areas — vary with real data)
+  '.recharts-wrapper',
   '.recharts-bar-rectangle',
   '.recharts-line-dot',
   '.recharts-area-area',
   '.recharts-curve',
+  // App-native mini charts and sparkline SVGs
+  '.touch-none',
+  'svg.overflow-visible',
   // Avatar images (user photos — may change)
   'img[src*="avatar"]',
   'img[alt*="avatar"]',
@@ -95,6 +99,14 @@ for (const vp of VIEWPORTS) {
 
     for (const view of VIEWS) {
       test(`${view.name} — light + dark`, async ({ page }) => {
+        if (!view.auth) {
+          await page.context().clearCookies()
+          await page.addInitScript(() => {
+            window.localStorage.clear()
+            window.sessionStorage.clear()
+          })
+        }
+
         await page.goto(view.url)
         await waitForStable(page)
 
