@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   X,
 } from 'lucide-react'
+import { useSession, signOut } from 'next-auth/react'
 import { useAppStore } from '@/lib/store'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -30,6 +31,18 @@ interface NavItem {
   icon: LucideIcon
   label: string
   badgeKey?: 'unreadInbox' | 'pendingApproval' | 'failed'
+}
+
+interface Summary {
+  unreadInbox: number
+  pendingApproval: number
+  failed: number
+}
+
+interface Workspace {
+  id: string
+  name: string
+  plan: string
 }
 
 const NAV_MAIN: NavItem[] = [
@@ -48,10 +61,18 @@ const NAV_MANAGE: NavItem[] = [
   { view: 'settings', href: '/settings', icon: Settings, label: 'تنظیمات' },
 ]
 
-interface Summary {
-  unreadInbox: number
-  pendingApproval: number
-  failed: number
+const PLAN_LABELS: Record<string, string> = {
+  free: 'رایگان',
+  pro: 'حرفه‌ای',
+  business: 'تجاری',
+  enterprise: 'سازمانی',
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'مدیر',
+  editor: 'ویرایشگر',
+  approver: 'تأییدکننده',
+  viewer: 'بیننده',
 }
 
 function toPersianDigits(n: number) {
@@ -119,11 +140,18 @@ function SidebarNavItem({
 export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
   const pathname = usePathname()
   const { setMobileMenuOpen } = useAppStore()
+  const { data: session } = useSession()
 
-  const { data: summary } = useQuery<Summary>({
+  const { data: summary, isError: summaryError } = useQuery<Summary>({
     queryKey: ['dashboard-summary'],
     queryFn: () => api.get<Summary>('/api/dashboard/summary'),
     refetchInterval: 30000,
+  })
+
+  const { data: workspace } = useQuery<Workspace>({
+    queryKey: ['workspace'],
+    queryFn: () => api.get<Workspace>('/api/workspace'),
+    staleTime: 60_000,
   })
 
   const badgeFor = (key?: NavItem['badgeKey']) => {
@@ -137,6 +165,20 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
     if (href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
+
+  // Session-derived user info
+  const userName = session?.user?.name ?? ''
+  const userImage = session?.user?.image ?? null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = ROLE_LABELS[(session?.user as any)?.role ?? ''] ?? ''
+
+  // Workspace-derived info
+  const wsName = workspace?.name ?? ''
+  const wsPlan = PLAN_LABELS[workspace?.plan ?? ''] ?? workspace?.plan ?? ''
+  const wsInitial = wsName[0] ?? 'N'
+
+  // Live indicator: connected when summary query succeeded at least once
+  const isConnected = !!summary && !summaryError
 
   return (
     <aside className="n-glass-nav flex h-full w-full flex-col overflow-hidden border-e border-border/60">
@@ -225,11 +267,18 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
           className="flex items-center gap-2.5 px-3 py-1.5 justify-start"
         >
           <span className="relative flex size-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
-            <span className="relative inline-flex size-2 rounded-full bg-success" />
+            {isConnected && (
+              <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
+            )}
+            <span
+              className={cn(
+                'relative inline-flex size-2 rounded-full',
+                isConnected ? 'bg-success' : 'bg-ink-tertiary',
+              )}
+            />
           </span>
           <span className="text-2xs font-medium text-ink-tertiary">
-            متصل لحظه‌ای
+            {isConnected ? 'متصل لحظه‌ای' : 'در حال اتصال…'}
           </span>
         </div>
 
@@ -238,11 +287,13 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-surface-hover/70"
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-bold text-accent">
-            ب
+            {wsInitial}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">برند آرامش</p>
-            <p className="text-2xs text-ink-tertiary truncate leading-tight">پلن حرفه‌ای</p>
+            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">
+              {wsName || <span className="text-ink-tertiary">…</span>}
+            </p>
+            <p className="text-2xs text-ink-tertiary truncate leading-tight">{wsPlan}</p>
           </div>
           <ChevronLeft className="size-3.5 text-ink-tertiary shrink-0" strokeWidth={2} />
         </button>
@@ -251,17 +302,28 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
         <div
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-hover/70 transition-colors cursor-pointer justify-start"
         >
-          <img
-            src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
-            alt="علی احمدی"
-            className="size-8 shrink-0 rounded-full ring-2 ring-border"
-          />
+          {userImage ? (
+            <img
+              src={userImage}
+              alt={userName}
+              className="size-8 shrink-0 rounded-full ring-2 ring-border"
+            />
+          ) : (
+            <div className="size-8 shrink-0 rounded-full ring-2 ring-border bg-accent-soft flex items-center justify-center text-sm font-bold text-accent">
+              {userName[0] ?? '?'}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">علی احمدی</p>
-            <p className="text-2xs font-medium text-ink-tertiary truncate leading-tight">مدیر عملیات</p>
+            <p className="text-sm font-semibold text-ink-primary truncate leading-tight">
+              {userName || <span className="text-ink-tertiary">…</span>}
+            </p>
+            {userRole && (
+              <p className="text-2xs font-medium text-ink-tertiary truncate leading-tight">{userRole}</p>
+            )}
           </div>
           <button
             aria-label="خروج"
+            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
             className="p-1.5 rounded-lg text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors"
           >
             <LogOut className="size-4" strokeWidth={2} />

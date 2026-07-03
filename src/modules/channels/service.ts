@@ -37,9 +37,6 @@ type BotTokenAdapter = {
   }>
 }
 
-function logoFor(t: string) {
-  return `https://picsum.photos/seed/${t}/64/64`
-}
 function stateLabel(p: { status: string; circuitState: string; accountKind: string }) {
   if (p.status === 'expired') return 'نیازمند احراز مجدد'
   if (p.status === 'error' || p.circuitState === 'open') return 'اختلال API'
@@ -77,7 +74,6 @@ export class ChannelsService {
         id: p.id,
         name: p.name,
         type: p.type,
-        logo: logoFor(p.type),
         state: stateLabel(p),
         stateColor: stateColor(p),
         accounts: countMap.get(p.type) ?? 1,

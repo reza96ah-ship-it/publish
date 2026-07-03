@@ -75,7 +75,6 @@ interface Platform {
   id: string
   name: string
   type: string
-  logo: string
   state: string
   stateColor: string
   accounts: number
