@@ -65,7 +65,7 @@ export function ActionCenter() {
               <span className="text-2xs text-ink-tertiary">
                 {relativeTime(new Date(data.primary.time))}
               </span>
-              <button className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 py-1 transition-colors">
+              <button className="n-focus-ring inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 transition-colors">
                 {data.primary.action}
                 <ArrowLeft className="size-3" strokeWidth={2.5} />
               </button>
