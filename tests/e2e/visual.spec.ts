@@ -53,6 +53,8 @@ const DYNAMIC_MASKS = [
   'img[alt*="avatar"]',
   // Skeleton loading placeholders (timing-sensitive)
   '[data-slot="skeleton"]',
+  // App-provided opt-in mask for dynamic metric cards/charts.
+  '[data-visual-mask]',
   // Live connection indicator (animated ping dot)
   '.animate-ping',
   // Timestamp text nodes — broad selector for Persian date strings

@@ -620,6 +620,7 @@ export function KpiCard({
   return (
     <div
       className={cn('n-card-interactive p-4 n-focus-ring', className)}
+      data-visual-mask="metric-card"
       tabIndex={0}
       aria-label={`${label}: ${fmt(value)}${trend != null ? `، ${trend >= 0 ? 'افزایش' : 'کاهش'} ${toPersianDigits(Math.abs(trend).toFixed(1))} درصد` : ''}`}
     >
