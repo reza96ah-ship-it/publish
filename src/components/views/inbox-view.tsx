@@ -121,7 +121,7 @@ export function InboxView() {
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const queryClient = useQueryClient()
 
-  const { data: messages, isLoading } = useQuery<InboxMessage[]>({
+  const { data: messages, isLoading, isError, refetch } = useQuery<InboxMessage[]>({
     queryKey: ['inbox'],
     queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
   })
@@ -273,7 +273,7 @@ export function InboxView() {
           </div>
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
-            <LoadingState isLoading={isLoading} skeleton={<SkeletonList rows={6} avatar />}>
+            <LoadingState isLoading={isLoading} isError={isError} onRetry={refetch} errorLabel="خطا در بارگذاری صندوق ورودی" skeleton={<SkeletonList rows={6} avatar />}>
               {filtered.length === 0 ? (
                 <EmptyState
                   icon={InboxIcon}

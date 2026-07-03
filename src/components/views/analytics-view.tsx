@@ -101,7 +101,7 @@ export function AnalyticsView() {
   const [period, setPeriod] = useState<'7' | '30'>('7')
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
-  const { data, isLoading } = useQuery<AnalyticsData>({
+  const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
     queryKey: ['analytics', 'all'],
     queryFn: () => api.get<AnalyticsData>('/api/analytics?platform=all'),
   })
@@ -279,6 +279,9 @@ export function AnalyticsView() {
         </div>
         <LoadingState
           isLoading={isLoading}
+          isError={isError}
+          onRetry={refetch}
+          errorLabel="خطا در بارگذاری آمار"
           skeleton={<Skeleton className="h-[200px] sm:h-[240px] md:h-64 w-full rounded-xl" />}
         >
           <div dir="ltr" className="h-[200px] sm:h-[240px] md:h-64 w-full">

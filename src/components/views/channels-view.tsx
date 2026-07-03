@@ -114,7 +114,7 @@ export function ChannelsView() {
     }
   }, [searchParams, queryClient])
 
-  const { data: platforms, isLoading } = useQuery<Platform[]>({
+  const { data: platforms, isLoading, isError, refetch } = useQuery<Platform[]>({
     queryKey: ['platforms'],
     queryFn: () => api.getPaginated<Platform>('/api/platforms'),
   })
@@ -181,6 +181,9 @@ export function ChannelsView() {
 
       <LoadingState
         isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        errorLabel="خطا در بارگذاری کانال‌ها"
         skeleton={
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (

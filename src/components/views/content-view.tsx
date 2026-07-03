@@ -92,7 +92,7 @@ export function ContentView() {
   const [campaignFilter, setCampaignFilter] = useState<string>('all')
   const queryClient = useQueryClient()
 
-  const { data: content, isLoading } = useQuery<ContentItem[]>({
+  const { data: content, isLoading, isError, refetch } = useQuery<ContentItem[]>({
     queryKey: ['content'],
     queryFn: () => api.getPaginated<ContentItem>('/api/content'),
   })
@@ -230,6 +230,9 @@ export function ContentView() {
       <div className="n-card n-gradient-border p-0 overflow-hidden">
         <LoadingState
           isLoading={isLoading}
+          isError={isError}
+          onRetry={refetch}
+          errorLabel="خطا در بارگذاری محتوا"
           skeleton={
             <div className="p-5 space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (

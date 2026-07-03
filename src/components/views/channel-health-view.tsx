@@ -58,7 +58,7 @@ interface ChannelHealth {
 }
 
 export function ChannelHealthView() {
-  const { data: channels, isLoading } = useQuery<ChannelHealth[]>({
+  const { data: channels, isLoading, isError, refetch } = useQuery<ChannelHealth[]>({
     queryKey: ['channels-health'],
     queryFn: () => api.get<ChannelHealth[]>('/api/channels/health'),
   })
@@ -80,6 +80,9 @@ export function ChannelHealthView() {
 
       <LoadingState
         isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        errorLabel="خطا در بارگذاری وضعیت کانال‌ها"
         skeleton={
           <div className="grid gap-3">
             {Array.from({ length: 3 }).map((_, i) => (

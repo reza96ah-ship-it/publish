@@ -73,7 +73,7 @@ export function MediaView() {
   const [selected, setSelected] = useState<MediaItem | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: media, isLoading } = useQuery<MediaItem[]>({
+  const { data: media, isLoading, isError, refetch } = useQuery<MediaItem[]>({
     queryKey: ['media'],
     queryFn: () => api.getPaginated<MediaItem>('/api/media'),
   })
@@ -250,6 +250,9 @@ export function MediaView() {
           {/* Media grid/list */}
           <LoadingState
             isLoading={isLoading}
+            isError={isError}
+            onRetry={refetch}
+            errorLabel="خطا در بارگذاری رسانه‌ها"
             skeleton={
               <div className="n-card p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
