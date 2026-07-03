@@ -104,7 +104,7 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
               disabled={!csrfToken || loading}
               aria-label="ورود"
               aria-busy={!csrfToken || loading}
-              className="n-focus-ring w-full h-10 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2"
+              className="n-focus-ring w-full h-10 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2 dark:text-canvas"
             >
               {!csrfToken ? (
                 <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
