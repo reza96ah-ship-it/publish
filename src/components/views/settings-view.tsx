@@ -30,6 +30,7 @@ import {
   SectionTitle,
   Skeleton,
   LoadingState,
+  ErrorState,
   AnimatedTabs,
   EmptyState,
 } from '@/components/dashboard/shared'
@@ -292,10 +293,13 @@ function AppearanceSection() {
 
 /* ── Overview ── */
 function OverviewTab() {
-  const { data: ws, isLoading } = useQuery<Workspace>({
+  const { data: ws, isLoading, isError, refetch } = useQuery<Workspace>({
     queryKey: ['workspace'],
     queryFn: () => api.get<Workspace>('/api/workspace'),
   })
+  if (isError) {
+    return <ErrorState label="خطا در بارگذاری تنظیمات" onRetry={refetch} />
+  }
   // Mount the inner form once we have data, so useState initializer picks it up.
   if (isLoading || !ws) {
     return (
@@ -399,10 +403,13 @@ function OverviewForm({ ws }: { ws: Workspace }) {
 
 /* ── Brand ── */
 function BrandTab() {
-  const { data: ws, isLoading } = useQuery<Workspace>({
+  const { data: ws, isLoading, isError, refetch } = useQuery<Workspace>({
     queryKey: ['workspace'],
     queryFn: () => api.get<Workspace>('/api/workspace'),
   })
+  if (isError) {
+    return <ErrorState label="خطا در بارگذاری تنظیمات برند" onRetry={refetch} />
+  }
   if (isLoading || !ws) {
     return (
       <div className="n-card p-5">
@@ -604,7 +611,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
 
 /* ── Team ── */
 function TeamTab() {
-  const { data: members, isLoading } = useQuery<Member[]>({
+  const { data: members, isLoading, isError, refetch } = useQuery<Member[]>({
     queryKey: ['members'],
     queryFn: () => api.getPaginated<Member>('/api/members'),
   })
@@ -636,6 +643,9 @@ function TeamTab() {
       </div>
       <LoadingState
         isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        errorLabel="خطا در بارگذاری اعضای تیم"
         skeleton={
           <div className="p-4 space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (

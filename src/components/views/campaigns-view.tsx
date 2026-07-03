@@ -90,7 +90,7 @@ export function CampaignsView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: campaigns, isLoading } = useQuery<Campaign[]>({
+  const { data: campaigns, isLoading, isError, refetch } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
     queryFn: () => api.getPaginated<Campaign>('/api/campaigns'),
   })
@@ -231,6 +231,9 @@ export function CampaignsView() {
       {/* Campaigns grid */}
       <LoadingState
         isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        errorLabel="خطا در بارگذاری کمپین‌ها"
         skeleton={
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
