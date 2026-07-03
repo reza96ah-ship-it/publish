@@ -102,28 +102,28 @@ for (const vp of VIEWPORTS) {
     test.use({ viewport: { width: vp.width, height: vp.height } })
 
     for (const view of VIEWS) {
-      test(`${view.name} — light + dark`, async ({ page }) => {
-        if (!view.auth) {
-          await page.context().clearCookies()
-          await page.addInitScript(() => {
-            window.localStorage.clear()
-            window.sessionStorage.clear()
-          })
-        }
+      for (const scheme of ['light', 'dark'] as const) {
+        test(`${view.name} — ${scheme}`, async ({ page }) => {
+          if (!view.auth) {
+            await page.context().clearCookies()
+            await page.addInitScript(() => {
+              window.localStorage.clear()
+              window.sessionStorage.clear()
+            })
+          }
 
-        await page.goto(view.url)
-        await waitForStable(page)
+          await page.goto(view.url)
+          await waitForStable(page)
 
-        // If auth is required but we land on sign-in, skip gracefully
-        if (view.auth && page.url().includes('/auth')) {
-          test.skip(true, `${view.name} requires auth — sign-in redirect; re-run after seed:auth`)
-          return
-        }
+          // If auth is required but we land on sign-in, skip gracefully
+          if (view.auth && page.url().includes('/auth')) {
+            test.skip(true, `${view.name} requires auth — sign-in redirect; re-run after seed:auth`)
+            return
+          }
 
-        const shotName = `${view.name}-${vp.name}`
-        await screenshot(page, shotName, 'light')
-        await screenshot(page, shotName, 'dark')
-      })
+          await screenshot(page, `${view.name}-${vp.name}`, scheme)
+        })
+      }
     }
   })
 }
