@@ -1,7 +1,6 @@
 'use client'
 
 import { type LucideIcon } from 'lucide-react'
-import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -90,17 +89,7 @@ function SidebarNavItem({
           : 'text-ink-secondary hover:bg-surface-hover/80 hover:text-ink-primary',
       )}
     >
-      {/* Active side accent — desktop only */}
-      {!isDrawer && isActive && (
-        <motion.span
-          layoutId="sidebar-active-indicator"
-          className="absolute end-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-accent"
-          aria-hidden
-          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-        />
-      )}
-
-      <Icon
+<Icon
         className={cn(
           'shrink-0 transition-colors',
           'size-[17px]',
