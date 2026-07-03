@@ -285,8 +285,8 @@
   --n-text-tertiary: oklch(0.65 0.01 280);
   --n-text-disabled: oklch(0.48 0.01 280);
 
-  --n-accent: oklch(0.54 0.2 295);
-  --n-accent-hover: oklch(0.59 0.2 295);
+  --n-accent: #a78bfa;
+  --n-accent-hover: #c4b5fd;
   --n-accent-soft: oklch(0.28 0.08 295);
   --n-accent-tint: oklch(0.24 0.06 295);
 
