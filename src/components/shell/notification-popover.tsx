@@ -130,7 +130,7 @@ export function NotificationPopover() {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="n-glass-popover w-[380px] max-h-[480px] p-0 overflow-hidden"
+        className="n-glass-popover w-[min(380px,calc(100vw-2rem))] max-h-[480px] p-0 overflow-hidden"
       >
         <div className="flex flex-col max-h-[480px]">
           {/* Header */}
