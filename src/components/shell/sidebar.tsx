@@ -84,7 +84,7 @@ function SidebarNavItem({
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
         isDrawer
           ? 'justify-start px-3 min-h-[48px] py-2.5 text-sm font-semibold'
-          : 'justify-center px-2 py-2 text-sm font-medium lg:justify-start lg:px-3 lg:py-2',
+          : 'justify-start px-3 py-2 text-sm font-medium',
         isActive
           ? 'bg-accent text-white shadow-sm'
           : 'text-ink-secondary hover:bg-surface-hover/80 hover:text-ink-primary',
@@ -94,7 +94,7 @@ function SidebarNavItem({
       {!isDrawer && isActive && (
         <motion.span
           layoutId="sidebar-active-indicator"
-          className="absolute end-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-accent hidden lg:block"
+          className="absolute end-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-accent"
           aria-hidden
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         />
@@ -103,33 +103,25 @@ function SidebarNavItem({
       <Icon
         className={cn(
           'shrink-0 transition-colors',
-          isDrawer ? 'size-[20px]' : 'size-[18px] lg:size-[17px]',
+          'size-[17px]',
           isActive ? 'text-white' : 'text-ink-tertiary group-hover:text-ink-primary',
         )}
         strokeWidth={isActive ? 2.2 : 1.9}
       />
 
       {/* Label */}
-      <span className={cn('truncate leading-none', isDrawer ? 'inline' : 'hidden lg:inline')}>
-        {item.label}
-      </span>
+      <span className="truncate leading-none">{item.label}</span>
 
       {/* Badge count */}
       {badge != null && badge > 0 && (
         <span
           className={cn(
             'ms-auto inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-0.5 text-2xs font-bold leading-none num-tabular',
-            isDrawer ? 'inline-flex' : 'hidden lg:inline-flex',
             isActive ? 'bg-white/25 text-white' : 'bg-danger/12 text-danger',
           )}
         >
           {toPersianDigits(badge)}
         </span>
-      )}
-
-      {/* Badge dot in icon-rail mode */}
-      {!isDrawer && badge != null && badge > 0 && (
-        <span className="absolute top-1 end-1 size-1.5 rounded-full bg-danger lg:hidden" aria-hidden />
       )}
     </Link>
   )
@@ -163,13 +155,13 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
       <div
         className={cn(
           'flex items-center gap-3 border-b border-border/40',
-          isDrawer ? 'px-4 py-4' : 'justify-center px-2 py-3 lg:justify-start lg:px-4 lg:py-4',
+          'px-4 py-4',
         )}
       >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-accent shadow-sm">
           <span className="text-base font-bold text-white leading-none">N</span>
         </div>
-        <div className={cn('flex-col leading-tight', isDrawer ? 'flex' : 'hidden lg:flex')}>
+        <div className="flex flex-col leading-tight">
           <span className="text-base font-bold tracking-tight text-ink-primary">نشرینو</span>
           <span className="text-2xs font-semibold text-ink-tertiary tracking-[0.08em]">NASHRINO</span>
         </div>
@@ -188,7 +180,7 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
         {/* Bell — desktop full sidebar only */}
         {!isDrawer && (
           <button
-            className="relative ms-auto hidden rounded-lg p-1.5 text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary transition-colors lg:block"
+            className="relative ms-auto rounded-lg p-1.5 text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary transition-colors"
             aria-label="اعلان‌ها"
           >
             <Bell className="size-[16px]" strokeWidth={2} />
@@ -203,10 +195,7 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
       <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-3 space-y-0.5">
         {/* Main section */}
         <p
-          className={cn(
-            'px-3 pb-1.5 pt-1 text-2xs font-bold uppercase tracking-[0.1em] text-ink-tertiary',
-            isDrawer ? 'block' : 'hidden lg:block',
-          )}
+          className="px-3 pb-1.5 pt-1 text-2xs font-bold uppercase tracking-[0.1em] text-ink-tertiary"
         >
           منوی اصلی
         </p>
@@ -225,10 +214,7 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
 
         {/* Manage section */}
         <p
-          className={cn(
-            'px-3 pb-1.5 pt-1 text-2xs font-bold uppercase tracking-[0.1em] text-ink-tertiary',
-            isDrawer ? 'block' : 'hidden lg:block',
-          )}
+          className="px-3 pb-1.5 pt-1 text-2xs font-bold uppercase tracking-[0.1em] text-ink-tertiary"
         >
           مدیریت
         </p>
@@ -247,26 +233,20 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
       <div className="border-t border-border/40 px-2 py-3 space-y-1">
         {/* Live indicator */}
         <div
-          className={cn(
-            'flex items-center gap-2.5 px-3 py-1.5',
-            isDrawer ? 'justify-start' : 'justify-center lg:justify-start',
-          )}
+          className="flex items-center gap-2.5 px-3 py-1.5 justify-start"
         >
           <span className="relative flex size-2 shrink-0">
             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
             <span className="relative inline-flex size-2 rounded-full bg-success" />
           </span>
-          <span className={cn('text-2xs font-medium text-ink-tertiary', isDrawer ? 'inline' : 'hidden lg:inline')}>
+          <span className="text-2xs font-medium text-ink-tertiary">
             متصل لحظه‌ای
           </span>
         </div>
 
         {/* Workspace */}
         <button
-          className={cn(
-            'w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-surface-hover/70',
-            isDrawer ? 'flex' : 'hidden lg:flex',
-          )}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-surface-hover/70"
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-bold text-accent">
             ب
@@ -280,26 +260,20 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
 
         {/* User row */}
         <div
-          className={cn(
-            'flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-hover/70 transition-colors cursor-pointer',
-            isDrawer ? 'justify-start' : 'justify-center lg:justify-start',
-          )}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-hover/70 transition-colors cursor-pointer justify-start"
         >
           <img
             src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
             alt="علی احمدی"
             className="size-8 shrink-0 rounded-full ring-2 ring-border"
           />
-          <div className={cn('flex-1 min-w-0', isDrawer ? 'block' : 'hidden lg:block')}>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-ink-primary truncate leading-tight">علی احمدی</p>
             <p className="text-2xs font-medium text-ink-tertiary truncate leading-tight">مدیر عملیات</p>
           </div>
           <button
             aria-label="خروج"
-            className={cn(
-              'p-1.5 rounded-lg text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors',
-              isDrawer ? 'block' : 'hidden lg:block',
-            )}
+            className="p-1.5 rounded-lg text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors"
           >
             <LogOut className="size-4" strokeWidth={2} />
           </button>
