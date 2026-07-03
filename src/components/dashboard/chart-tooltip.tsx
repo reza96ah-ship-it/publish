@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { toPersianDigits, formatCompact } from '@/lib/jalali'
 

@@ -88,4 +88,6 @@ verify-*.png
 verify-*.jpg
 *.png
 !src/**/*.png
-!public/**/*.pngtests/e2e/.auth/user.json
+!public/**/*.png
+!tests/e2e/visual.spec.ts-snapshots/**/*.png
+tests/e2e/.auth/user.json

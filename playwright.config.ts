@@ -2,6 +2,26 @@ import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 
 const AUTH_FILE = path.resolve(__dirname, 'tests/e2e/.auth/user.json')
+const VISUAL_TEST = /visual\.spec\.ts/
+const isVisualRun = process.argv.some((arg) => arg === '--project=visual' || arg === 'visual')
+
+const visualProjects = isVisualRun
+  ? [
+      {
+        name: 'setup',
+        testMatch: /auth\.setup\.ts/,
+      },
+      {
+        name: 'visual',
+        testMatch: VISUAL_TEST,
+        use: {
+          ...devices['Desktop Chrome'],
+          storageState: AUTH_FILE,
+        },
+        dependencies: ['setup'],
+      },
+    ]
+  : []
 
 /**
  * Issue #153 Tier 6: Browser/accessibility matrix.
@@ -22,52 +42,37 @@ export default defineConfig({
     locale: 'fa-IR',
     timezoneId: 'Asia/Tehran',
   },
-  // Issue #153: browser matrix — Chromium, Firefox, WebKit desktop + mobile
+  // Issue #153: browser matrix - Chromium, Firefox, WebKit desktop + mobile.
+  // Visual regression has its own GitHub Actions job and is included only
+  // when the visual project is explicitly requested.
   projects: [
-    // ── Auth setup (runs once before visual project) ──────────────────────
-    {
-      name: 'setup',
-      testMatch: /auth\.setup\.ts/,
-    },
-
-    // ── Visual regression (Issue #235) ────────────────────────────────────
-    // Chromium only: baselines are platform-specific (linux runner in CI).
-    // Update with: bun run test:visual:update
-    {
-      name: 'visual',
-      testMatch: /visual\.spec\.ts/,
-      use: {
-        ...devices['Desktop Chrome'],
-        storageState: AUTH_FILE,
-      },
-      dependencies: ['setup'],
-    },
-
+    ...visualProjects,
     // Desktop browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: VISUAL_TEST,
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
-      testIgnore: ['**/accessibility.spec.ts'], // axe works best on chromium
+      testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'], // axe works best on chromium
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
-      testIgnore: ['**/accessibility.spec.ts'],
+      testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
     },
     // Mobile viewports (Issue #153: at least one mobile per engine)
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 7'] },
-      testIgnore: ['**/accessibility.spec.ts'],
+      testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
     },
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 14'] },
-      testIgnore: ['**/accessibility.spec.ts'],
+      testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
     },
   ],
   webServer: {

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 /**
  * JalaliDatePicker — Persian-first date picker popover.

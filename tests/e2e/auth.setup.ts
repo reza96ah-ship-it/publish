@@ -6,20 +6,32 @@
  * Run order: 'setup' project runs before 'visual' (see playwright.config.ts).
  */
 
-import { test as setup } from '@playwright/test'
+import { expect, test as setup } from '@playwright/test'
 import path from 'path'
 
 export const AUTH_FILE = path.resolve(__dirname, '.auth/user.json')
 
 setup('authenticate as demo user', async ({ page }) => {
-  await page.goto('/auth/signin')
-  await page.waitForLoadState('load')
+  const csrfResponse = await page.request.get('/api/auth/csrf')
+  expect(csrfResponse.ok()).toBe(true)
+  const { csrfToken } = (await csrfResponse.json()) as { csrfToken?: string }
+  expect(csrfToken).toBeTruthy()
+  if (!csrfToken) throw new Error('NextAuth CSRF token was not returned')
 
-  await page.fill('input[type="email"], input[name="email"]', 'demo@nashrino.ir')
-  await page.fill('input[type="password"]', 'demo1234')
-  await page.click('button[type="submit"]')
+  const signInResponse = await page.request.post('/api/auth/callback/credentials', {
+    form: {
+      csrfToken,
+      email: 'demo@nashrino.ir',
+      password: 'demo1234',
+      callbackUrl: '/',
+    },
+    maxRedirects: 0,
+  })
 
-  // Wait until redirected away from the sign-in page (dashboard or any protected route)
+  expect([302, 303]).toContain(signInResponse.status())
+  expect(signInResponse.headers().location ?? '').not.toContain('/auth/signin')
+
+  await page.goto('/')
   await page.waitForURL((url) => !url.pathname.includes('/auth'), { timeout: 15_000 })
 
   await page.context().storageState({ path: AUTH_FILE })

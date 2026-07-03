@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState, useEffect, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'

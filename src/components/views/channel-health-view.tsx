@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 /**
  * Issue #131: Channel Health Center view.
