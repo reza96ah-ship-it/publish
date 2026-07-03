@@ -195,3 +195,22 @@ test.describe('Issue #226 — Tablet tier (768px)', () => {
     expect(overflow, 'horizontal overflow at 768px').toBe(false)
   })
 })
+
+// ── Issue #228 — Adaptive charts, tables, and zero-breakpoint views ─────────
+
+test.describe('Issue #228 — Zero-breakpoint grid fixes (375px)', () => {
+  test.use({ viewport: { width: 375, height: 812 } })
+
+  test('channel-health — stats grid stacks single-column on mobile', async ({ page }) => {
+    await page.goto('/channel-health')
+    await page.waitForLoadState('load')
+    await assertNoHorizontalOverflow(page)
+  })
+
+  test('channel-health — no horizontal overflow', async ({ page }) => {
+    await page.goto('/channel-health')
+    await page.waitForLoadState('load')
+    const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth)
+    expect(overflow, 'horizontal overflow on /channel-health').toBe(false)
+  })
+})

@@ -310,13 +310,13 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       {/* Role selector */}
       <div>
         <div className="text-[10px] font-[600] text-ink-tertiary mb-1">نقش خالق محتوا:</div>
-        <div className="grid grid-cols-4 gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
           {CREATOR_ROLES.map((r) => (
             <button
               key={r.id}
               onClick={() => setSelectedRole(r.id)}
               disabled={isStreaming}
-              className={`n-focus-ring flex flex-col items-center gap-0.5 rounded-md px-1 py-1.5 text-[9.5px] font-[600] transition-colors disabled:opacity-50 ${selectedRole === r.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+              className={`n-focus-ring flex flex-col items-center gap-0.5 rounded-md px-1 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[9.5px] font-[600] transition-colors disabled:opacity-50 ${selectedRole === r.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
               aria-pressed={selectedRole === r.id}
             >
               <span className="text-sm">{r.emoji}</span>
@@ -329,13 +329,13 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       {/* Goal selector */}
       <div>
         <div className="text-[10px] font-[600] text-ink-tertiary mb-1">هدف محتوا:</div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
           {CONTENT_GOALS.map((g) => (
             <button
               key={g.id}
               onClick={() => setSelectedGoal(g.id)}
               disabled={isStreaming}
-              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedGoal === g.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedGoal === g.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
               aria-pressed={selectedGoal === g.id}
             >
               <span>{g.emoji}</span>
@@ -368,13 +368,13 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
       {/* Length selector */}
       <div>
         <div className="text-[10px] font-[600] text-ink-tertiary mb-1">طول کپشن:</div>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
           {CAPTION_LENGTHS.map((l) => (
             <button
               key={l.id}
               onClick={() => setSelectedLength(l.id)}
               disabled={isStreaming}
-              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedLength === l.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
+              className={`n-focus-ring flex items-center justify-center gap-1 rounded-md px-2 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 text-[10px] font-[600] transition-colors disabled:opacity-50 ${selectedLength === l.id ? 'bg-accent text-white' : 'border border-border bg-surface text-ink-secondary hover:bg-surface-hover'}`}
               aria-pressed={selectedLength === l.id}
             >
               <span>{l.emoji}</span>
