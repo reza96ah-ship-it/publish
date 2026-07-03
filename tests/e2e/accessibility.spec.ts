@@ -18,11 +18,14 @@ const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']
 const AUTH_FILE = 'tests/e2e/.auth/user.json'
 
 async function enableDarkMode(page: Page, target = '/auth/signin') {
-  await page.goto('/auth/signin')
-  await page.waitForLoadState('load')
-  await page.evaluate(() => localStorage.setItem('theme', 'dark'))
+  await page.addInitScript(() => {
+    localStorage.setItem('theme', 'dark')
+    document.documentElement.classList.add('dark')
+    document.documentElement.style.colorScheme = 'dark'
+  })
   await page.goto(target)
   await page.waitForLoadState('load')
+  await expect(page.locator('html')).toHaveClass(/dark/)
 }
 
 // Run each view's accessibility scan.

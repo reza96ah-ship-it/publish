@@ -59,8 +59,9 @@ test.describe('Issue #218 — Authenticated mobile shell (375px RTL)', () => {
     expect(box!.height).toBeGreaterThanOrEqual(44)
     // Click it — sidebar should open
     await hamburgerShell.click()
-    const sidebar = page.locator('nav[aria-label="ناوبری اصلی"]')
-    await expect(sidebar).toBeVisible()
+    const drawer = page.locator('nav[aria-label] > div').first()
+    await expect(drawer).toBeVisible()
+    await expect(drawer).toHaveClass(/translate-x-0/)
   })
 
   test('dashboard — no horizontal overflow at 375px', async ({ page }) => {
