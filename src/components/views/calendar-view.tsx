@@ -8,6 +8,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -90,11 +91,11 @@ interface PublishJob {
 }
 
 const PLATFORM_CHIP: Record<string, string> = {
-  instagram: 'bg-pink-100 text-pink-700 border-pink-200',
-  telegram: 'bg-sky-100 text-sky-700 border-sky-200',
-  linkedin: 'bg-blue-100 text-blue-700 border-blue-200',
-  rubika: 'bg-purple-100 text-purple-700 border-purple-200',
-  eitaa: 'bg-orange-100 text-orange-700 border-orange-200',
+  instagram: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 border-pink-200 dark:border-pink-800/50',
+  telegram: 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-800/50',
+  linkedin: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50',
+  rubika: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50',
+  eitaa: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800/50',
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -111,17 +112,18 @@ export function CalendarView() {
   const { calendarCursor, setCalendarCursor } = useAppStore()
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
-  const [view, setView] = useState<'month' | 'week' | 'agenda'>('month')
+  const [view, setView] = useState<'month' | 'week' | 'agenda'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 640 ? 'agenda' : 'month'
+  )
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
   const queryClient = useQueryClient()
 
-  // DnD sensors — distance:6 lets pure clicks (open sheet) through while enabling drag
+  // DnD sensors — pointer: distance:6 lets clicks through; touch: 250ms long-press
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   )
 
   // Reschedule mutation — PATCH /api/publish-jobs/[id] { action: 'reschedule', scheduledAt }
@@ -341,24 +343,67 @@ export function CalendarView() {
 
         {/* ── Week view (simplified) ── */}
         <TabsContent value="week" className="space-y-4">
-          <div className="n-card p-5 overflow-x-auto">
+          <div className="n-card p-3 sm:p-5">
             <p className="text-[12px] text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
-            <div className="min-w-[320px]">
-            <div className="grid grid-cols-7 gap-2">
-              {cells.slice(7, 14).map((cell, i) => (
-                <DayCell
-                  key={i}
-                  cell={cell}
-                  jobs={
-                    jobsByDay.get(
-                      `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
-                    ) ?? []
-                  }
-                  onSelectJob={setSelectedJob}
-                  tall
-                />
-              ))}
+            {/* Desktop: 7-col grid */}
+            <div className="hidden sm:block overflow-x-auto">
+              <div className="min-w-[320px] grid grid-cols-7 gap-2">
+                {cells.slice(7, 14).map((cell, i) => (
+                  <DayCell
+                    key={i}
+                    cell={cell}
+                    jobs={
+                      jobsByDay.get(
+                        `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                      ) ?? []
+                    }
+                    onSelectJob={setSelectedJob}
+                    tall
+                  />
+                ))}
+              </div>
             </div>
+            {/* Mobile: vertical day list */}
+            <div className="sm:hidden space-y-2">
+              {cells.slice(7, 14).map((cell, i) => {
+                const dayJobs = jobsByDay.get(
+                  `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
+                ) ?? []
+                return (
+                  <div key={i} className={cn(
+                    'rounded-xl border p-3',
+                    cell.isToday ? 'border-accent bg-accent-soft' : 'border-border'
+                  )}>
+                    <p className={cn(
+                      'text-[12px] font-[700] mb-2',
+                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-rose-500' : 'text-ink-secondary'
+                    )}>
+                      {JALALI_WEEKDAYS_SHORT[i % 7]} {toPersianDigits(cell.jalali.day)}
+                      {cell.holiday && <span className="text-[10px] text-rose-500 me-2">— {cell.holiday}</span>}
+                    </p>
+                    {dayJobs.length === 0 ? (
+                      <p className="text-[11px] text-ink-tertiary">بدون رویداد</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {dayJobs.map((job) => (
+                          <button
+                            key={job.id}
+                            onClick={() => setSelectedJob(job)}
+                            className={cn(
+                              'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-right',
+                              PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                            )}
+                          >
+                            <Clock3 className="size-3.5 shrink-0" />
+                            <span className="text-[12px] font-[600] truncate flex-1">{job.title}</span>
+                            <span className="text-[10px] shrink-0">{formatJalaliTime(new Date(job.scheduledAt))}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </TabsContent>
@@ -641,7 +686,7 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring touch-none w-full text-right text-[9px] font-[600] px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        'n-focus-ring w-full text-right text-[9px] font-[600] px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
         PLATFORM_CHIP[job.platform] ?? 'bg-slate-100 text-slate-700 border-slate-200',
         (isDragging || isDimmed) && 'opacity-30'
       )}
