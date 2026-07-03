@@ -361,51 +361,6 @@
     letter-spacing: -0.01em;
   }
 
-  /* ---- Hover state hierarchy (4 levels, Linear-style) ---- */
-  /* Level 1: Subtle — list items, table rows (background only) */
-  .hover-level-1 {
-    transition: background-color var(--motion-quick) var(--ease-standard);
-  }
-  .hover-level-1:hover {
-    background-color: var(--n-surface-hover);
-  }
-
-  /* Level 2: Standard — buttons, chips (background + border) */
-  .hover-level-2 {
-    transition:
-      background-color var(--motion-quick) var(--ease-standard),
-      border-color var(--motion-quick) var(--ease-standard);
-  }
-  .hover-level-2:hover {
-    background-color: var(--n-surface-hover);
-    border-color: var(--n-border-strong);
-  }
-
-  /* Level 3: Elevated — cards (shadow lift + border) */
-  .hover-level-3 {
-    transition:
-      border-color var(--motion-quick) var(--ease-standard),
-      box-shadow var(--motion-fast) var(--ease-standard);
-  }
-  .hover-level-3:hover {
-    border-color: var(--n-border-strong);
-    box-shadow: var(--n-shadow-card-hover);
-  }
-
-  /* Level 4: Interactive — primary CTAs (scale + shadow) */
-  .hover-level-4 {
-    transition:
-      background-color var(--motion-quick) var(--ease-standard),
-      box-shadow var(--motion-fast) var(--ease-standard),
-      transform var(--motion-quick) var(--ease-snap);
-  }
-  .hover-level-4:hover {
-    box-shadow: var(--n-shadow-card-hover);
-  }
-  .hover-level-4:active {
-    transform: scale(0.98);
-  }
-
   /* Refined hover for interactive content cards — subtle lift, Linear-style */
   .card-hover {
     transition:
