@@ -49,7 +49,7 @@ export function CampaignsPanel() {
                   مسئول: {c.owner ?? '—'}
                 </p>
               </div>
-              <button className="text-ink-tertiary hover:text-ink-primary shrink-0 transition-colors p-0.5 rounded-md hover:bg-surface-hover">
+              <button className="n-focus-ring text-ink-tertiary hover:text-ink-primary shrink-0 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-surface-hover">
                 <MoreHorizontal className="size-4" strokeWidth={2} />
               </button>
             </div>

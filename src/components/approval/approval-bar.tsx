@@ -95,7 +95,7 @@ export function ApprovalBar({
             <button
               onClick={() => submitMutation.mutate()}
               disabled={submitMutation.isPending}
-              className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-warning px-3 text-xs font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
+              className="n-focus-ring inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-warning px-3 text-xs font-semibold text-white transition-colors hover:bg-warning/90 disabled:opacity-50"
             >
               {submitMutation.isPending ? (
                 <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
@@ -112,7 +112,7 @@ export function ApprovalBar({
               <button
                 onClick={() => approveMutation.mutate()}
                 disabled={approveMutation.isPending}
-                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg bg-success px-3 text-xs font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
+                className="n-focus-ring inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-success px-3 text-xs font-semibold text-white transition-colors hover:bg-success/90 disabled:opacity-50"
               >
                 {approveMutation.isPending ? (
                   <Loader2 className="size-3.5 animate-spin" strokeWidth={2.5} />
@@ -123,7 +123,7 @@ export function ApprovalBar({
               </button>
               <button
                 onClick={() => setShowRejectModal(true)}
-                className="n-focus-ring inline-flex h-8 items-center gap-1.5 rounded-lg border border-danger/20 bg-danger-soft px-3 text-xs font-semibold text-danger transition-colors hover:bg-danger/20"
+                className="n-focus-ring inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border border-danger/20 bg-danger-soft px-3 text-xs font-semibold text-danger transition-colors hover:bg-danger/20"
               >
                 <X className="size-3.5" strokeWidth={2.5} />
                 رد
@@ -175,14 +175,14 @@ export function ApprovalBar({
               <div className="flex items-center gap-2 justify-end">
                 <button
                   onClick={() => setShowRejectModal(false)}
-                  className="n-focus-ring h-8 rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-secondary hover:bg-surface-hover"
+                  className="n-focus-ring min-h-[44px] rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-secondary hover:bg-surface-hover"
                 >
                   انصراف
                 </button>
                 <button
                   onClick={() => rejectMutation.mutate()}
                   disabled={!rejectReason.trim() || rejectMutation.isPending}
-                  className="n-focus-ring h-8 rounded-lg bg-danger px-3 text-xs font-semibold text-white hover:bg-danger/90 disabled:opacity-50"
+                  className="n-focus-ring min-h-[44px] rounded-lg bg-danger px-3 text-xs font-semibold text-white hover:bg-danger/90 disabled:opacity-50"
                 >
                   {rejectMutation.isPending ? 'در حال رد...' : 'رد کردن'}
                 </button>

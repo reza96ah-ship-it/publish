@@ -168,7 +168,7 @@ export function LinkAction({
   return (
     <button
       onClick={onClick}
-      className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
+      className="n-focus-ring inline-flex min-h-[44px] items-center rounded text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
     >
       {children}
     </button>
@@ -947,7 +947,7 @@ export function ErrorState({
       {onRetry && (
         <button
           onClick={onRetry}
-          className="n-focus-ring inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary"
+          className="n-focus-ring inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-ink-secondary transition-colors hover:bg-surface-hover hover:text-ink-primary"
         >
           <RefreshCw className="size-3.5" strokeWidth={2.5} />
           تلاش مجدد
