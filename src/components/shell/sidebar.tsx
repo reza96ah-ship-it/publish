@@ -69,32 +69,37 @@ function SidebarNavItem({
     <Link
       href={item.href}
       data-active={isActive || undefined}
+      title={item.label}
       onClick={() => setMobileMenuOpen(false)}
-      className="group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-[500] transition-colors duration-150 text-ink-secondary hover:bg-surface-hover/70 hover:text-ink-primary data-[active]:bg-accent data-[active]:text-white data-[active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+      className="group relative flex w-full items-center justify-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] font-[500] transition-colors duration-150 text-ink-secondary hover:bg-surface-hover/70 hover:text-ink-primary data-[active]:bg-accent data-[active]:text-white data-[active]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 lg:justify-start"
     >
       {isActive && (
         <motion.span
           layoutId="sidebar-active-indicator"
-          className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent"
+          className="absolute end-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent hidden lg:block"
           aria-hidden
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
         />
       )}
       {!isActive && (
         <span
-          className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent opacity-0 group-hover:opacity-30 transition-opacity duration-150"
+          className="absolute end-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-accent opacity-0 group-hover:opacity-30 transition-opacity duration-150 hidden lg:block"
           aria-hidden
         />
       )}
       <Icon
-        className="size-[16px] shrink-0 text-ink-tertiary group-data-[active]:text-white/95 transition-colors"
+        className="size-[18px] shrink-0 text-ink-tertiary group-data-[active]:text-white/95 transition-colors lg:size-[16px]"
         strokeWidth={2}
       />
-      <span className="truncate">{item.label}</span>
+      <span className="hidden truncate lg:inline">{item.label}</span>
       {badge != null && badge > 0 && (
-        <span className="ms-auto inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger/12 px-1.5 py-0.5 text-[10px] font-[600] leading-none text-danger num-tabular group-data-[active]:bg-white/20 group-data-[active]:text-white">
+        <span className="ms-auto hidden lg:inline-flex min-w-[18px] items-center justify-center rounded-full bg-danger/12 px-1.5 py-0.5 text-[10px] font-[600] leading-none text-danger num-tabular group-data-[active]:bg-white/20 group-data-[active]:text-white">
           {toPersianDigits(badge)}
         </span>
+      )}
+      {/* Badge dot in icon-rail mode (md only) */}
+      {badge != null && badge > 0 && (
+        <span className="absolute top-1 end-1 size-1.5 rounded-full bg-danger lg:hidden" aria-hidden />
       )}
     </Link>
   )
@@ -123,32 +128,32 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="n-glass-nav flex h-full w-[260px] flex-col overflow-hidden rounded-none border-x border-t border-b-0">
-      {/* Brand Header */}
-      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
+    <aside className="n-glass-nav flex h-full w-full flex-col overflow-hidden rounded-none border-x border-t border-b-0">
+      {/* Brand Header — icon only at md rail, full at lg */}
+      <div className="flex items-center justify-center gap-2.5 px-2 pt-4 pb-3 lg:justify-start lg:px-4">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent shadow-sm">
           <span className="text-[14px] font-[700] text-white leading-none">N</span>
         </div>
-        <div className="flex flex-col leading-tight">
+        <div className="hidden flex-col leading-tight lg:flex">
           <span className="text-[14px] font-[700] tracking-tight text-ink-primary">نشرینو</span>
           <span className="text-[9.5px] font-[600] text-ink-tertiary tracking-[0.1em]">
             NASHRINO
           </span>
         </div>
         <button
-          className="ms-auto relative rounded-md p-1.5 text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary transition-colors"
+          className="relative ms-auto hidden rounded-md p-1.5 text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary transition-colors lg:block"
           aria-label="اعلان‌ها"
         >
           <Bell className="size-[16px]" strokeWidth={2} />
           {notifCount > 0 && (
-            <span className="absolute top-1 left-1 size-1.5 rounded-full bg-danger ring-2 ring-white" />
+            <span className="absolute top-1 start-1 size-1.5 rounded-full bg-danger ring-2 ring-canvas" />
           )}
         </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto no-scrollbar px-2 py-1 space-y-px">
-        <p className="px-2.5 pb-1 pt-2 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary">
+      <nav className="flex-1 overflow-y-auto no-scrollbar px-1.5 py-1 space-y-px lg:px-2">
+        <p className="hidden px-2.5 pb-1 pt-2 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary lg:block">
           منوی اصلی
         </p>
         {navItems.slice(0, 7).map((item) => (
@@ -159,7 +164,7 @@ export function Sidebar() {
             badge={badgeFor(item.badgeKey)}
           />
         ))}
-        <p className="px-2.5 pb-1 pt-3 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary">
+        <p className="hidden px-2.5 pb-1 pt-3 text-[9.5px] font-[600] uppercase tracking-[0.1em] text-ink-tertiary lg:block">
           مدیریت
         </p>
         {navItems.slice(7).map((item) => (
@@ -172,17 +177,19 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Bottom Section */}
-      <div className="mt-auto border-t border-border/60 px-2 py-2 space-y-px">
-        <div className="flex items-center gap-2 px-2.5 py-1">
-          <span className="relative flex size-2">
+      {/* Bottom Section — condensed icon rail at md, full at lg */}
+      <div className="mt-auto border-t border-border/60 px-1.5 py-2 space-y-px lg:px-2">
+        {/* Live indicator */}
+        <div className="flex items-center justify-center gap-2 px-2.5 py-1 lg:justify-start">
+          <span className="relative flex size-2 shrink-0">
             <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
             <span className="relative inline-flex size-2 rounded-full bg-success" />
           </span>
-          <span className="text-[10px] font-[500] text-ink-tertiary">متصل لحظه‌ای</span>
+          <span className="hidden text-[10px] font-[500] text-ink-tertiary lg:inline">متصل لحظه‌ای</span>
         </div>
 
-        <button className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-right transition-colors hover:bg-surface-hover/70">
+        {/* Workspace — hidden in rail */}
+        <button className="hidden w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-right transition-colors hover:bg-surface-hover/70 lg:flex">
           <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-[11px] font-[700] text-accent">
             ب
           </div>
@@ -195,13 +202,14 @@ export function Sidebar() {
           <ChevronLeft className="size-3.5 text-ink-tertiary shrink-0" strokeWidth={2} />
         </button>
 
-        <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-md hover:bg-surface-hover/70 transition-colors cursor-pointer">
+        {/* User row — avatar only in rail, full at lg */}
+        <div className="flex items-center justify-center gap-2.5 rounded-md px-2.5 py-2 hover:bg-surface-hover/70 transition-colors cursor-pointer lg:justify-start">
           <img
             src="https://i.pravatar.cc/150?u=a042581f4e29026704d"
             alt="علی احمدی"
             className="size-7 shrink-0 rounded-full"
           />
-          <div className="flex-1 min-w-0">
+          <div className="hidden flex-1 min-w-0 lg:block">
             <p className="text-[12px] font-[600] text-ink-primary truncate leading-tight">
               علی احمدی
             </p>
@@ -211,7 +219,7 @@ export function Sidebar() {
           </div>
           <button
             aria-label="خروج"
-            className="p-1 rounded-md text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors"
+            className="hidden p-1 rounded-md text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors lg:block"
           >
             <LogOut className="size-3.5" strokeWidth={2} />
           </button>

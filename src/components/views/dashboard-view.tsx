@@ -45,7 +45,7 @@ export function DashboardView() {
       </div>
 
       {/* Campaigns and Platforms */}
-      <div className="order-5 lg:order-none grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
+      <div className="order-5 lg:order-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5">
         <div className="lg:col-span-8">
           <div className="h-[380px] sm:h-[460px]">
             <CampaignsPanel />

@@ -49,7 +49,7 @@ export function MobileBottomNav() {
   return (
     <nav
       aria-label="ناوبری پایین"
-      className="fixed bottom-0 inset-x-0 z-30 lg:hidden"
+      className="fixed bottom-0 inset-x-0 z-30 md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="n-glass-nav border-t border-border/60 flex items-stretch">

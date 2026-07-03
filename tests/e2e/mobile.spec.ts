@@ -148,3 +148,50 @@ test.describe('Issue #218 — Mobile responsive audit (375px RTL)', () => {
     }
   })
 })
+
+// ── Tablet tier (768×1024) ─────────────────────────────────────────────────
+
+test.describe('Issue #226 — Tablet tier (768px)', () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test('sidebar icon rail is visible at 768px', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+    const sidebar = page.locator('nav[aria-label="ناوبری اصلی"]')
+    await expect(sidebar).toBeVisible()
+  })
+
+  test('command bar is visible at 768px (no longer hidden)', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+    const cmdBar = page.locator('[data-testid="command-bar"]')
+    const count = await cmdBar.count()
+    if (count > 0) {
+      await expect(cmdBar).toBeVisible()
+    }
+  })
+
+  test('bottom nav is hidden at 768px', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+    const bottomNav = page.locator('nav[aria-label="ناوبری پایین"]')
+    const count = await bottomNav.count()
+    if (count > 0) {
+      await expect(bottomNav).toBeHidden()
+    }
+  })
+
+  test('dashboard — no horizontal overflow at 768px', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('load')
+    const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth)
+    expect(overflow, 'horizontal overflow at 768px').toBe(false)
+  })
+
+  test('compose — no horizontal overflow at 768px', async ({ page }) => {
+    await page.goto('/compose')
+    await page.waitForLoadState('load')
+    const overflow = await page.evaluate(() => document.body.scrollWidth > window.innerWidth)
+    expect(overflow, 'horizontal overflow at 768px').toBe(false)
+  })
+})

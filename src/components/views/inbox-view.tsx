@@ -255,7 +255,7 @@ export function InboxView() {
         صندوق ورودی یکپارچه
       </SectionTitle>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
         {/* Left: List */}
         <div className="lg:col-span-4 n-card p-0 overflow-hidden">
           <div className="p-3 border-b border-border">

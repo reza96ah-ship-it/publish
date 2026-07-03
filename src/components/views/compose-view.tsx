@@ -741,7 +741,7 @@ export function ComposeView() {
       </div>
 
       {/* ── Main: Editor (left) + Preview (right) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[3fr_2fr] lg:grid-cols-5 gap-4">
         {/* Editor panel */}
         <div className="lg:col-span-3 space-y-4">
           <div className="n-card p-5 space-y-4">

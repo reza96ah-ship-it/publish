@@ -47,20 +47,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         پرش به محتوای اصلی
       </a>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay — visible only below md (tablet+desktop have static sidebar) */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm md:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden
         />
       )}
 
-      {/* Sidebar — glass navigation (fixed drawer on mobile, static on desktop) */}
+      {/* Sidebar — icon rail at md, full at lg, drawer below md */}
       <nav aria-label="ناوبری اصلی">
         <div
-          className={`fixed inset-y-0 right-0 z-40 w-[260px] transform transition-transform duration-300 lg:static lg:z-auto lg:translate-x-0 ${
-            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'
+          className={`fixed inset-y-0 end-0 z-40 w-[260px] transform transition-transform duration-300 md:static md:z-auto md:w-[72px] md:translate-x-0 lg:w-[260px] ${
+            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
           }`}
         >
           <Sidebar />
@@ -69,8 +69,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile top bar */}
-        <header className="flex items-center justify-between px-4 py-3 lg:hidden">
+        {/* Mobile top bar — hidden at md+ (sidebar is always visible) */}
+        <header className="flex items-center justify-between px-4 py-3 md:hidden">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="n-glass-control flex size-11 items-center justify-center text-ink-primary"
@@ -92,8 +92,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
         </header>
 
-        {/* Desktop command bar slot — glass toolbar */}
-        <div className="hidden px-[var(--shell-gutter)] pt-[var(--shell-gap)] lg:block">
+        {/* Command bar — visible from md+ */}
+        <div className="hidden px-[var(--shell-gutter)] pt-[var(--shell-gap)] md:block">
           <CommandBar />
         </div>
 
@@ -116,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {isMobileMenuOpen && (
         <button
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed top-4 left-4 z-50 n-glass-control flex size-10 items-center justify-center text-ink-primary lg:hidden"
+          className="fixed top-4 start-4 z-50 n-glass-control flex size-10 items-center justify-center text-ink-primary md:hidden"
           aria-label="بستن منو"
         >
           <X className="size-5" />

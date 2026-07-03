@@ -162,7 +162,7 @@ export function MediaView() {
         کتابخانه رسانه
       </SectionTitle>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Folder sidebar */}
         <aside className="n-card p-3 h-fit lg:sticky lg:top-4">
           <div className="flex items-center gap-2 mb-3 px-2">
