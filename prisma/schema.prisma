@@ -113,6 +113,9 @@ model Workspace {
   defaultHashtags   String @default("")
   captionFooter     String @default("")
   persianDigits     Boolean @default(true)
+  workWeek          String  @default("sat-wed")
+  onboardingStep    Int     @default(0)
+  onboardingCompleted Boolean @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

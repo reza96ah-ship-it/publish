@@ -32,7 +32,7 @@ export interface OnboardingStartedEvent extends BaseEvent {
 
 export interface OnboardingStepCompletedEvent extends BaseEvent {
   event: 'onboarding_step_completed'
-  step: 'workspace_profile' | 'first_channel' | 'first_draft' | 'first_publish'
+  step: number
 }
 
 export interface OnboardingCompletedEvent extends BaseEvent {
