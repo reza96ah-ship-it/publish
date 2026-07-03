@@ -118,7 +118,7 @@ export function ShortcutsModal() {
                             {item.keys.map((key, ki) => (
                               <kbd
                                 key={ki}
-                                className="min-w-[20px] h-[20px] inline-flex items-center justify-center px-1.5 rounded border border-border bg-surface-hover text-2xs font-semibold text-ink-secondary num-tabular"
+                                className="h-5 min-w-5 inline-flex items-center justify-center px-1.5 rounded border border-border bg-surface-hover text-2xs font-semibold text-ink-secondary num-tabular"
                               >
                                 {key}
                               </kbd>

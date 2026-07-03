@@ -278,9 +278,9 @@ export function AnalyticsView() {
         </div>
         <LoadingState
           isLoading={isLoading}
-          skeleton={<Skeleton className="h-64 w-full rounded-xl" />}
+          skeleton={<Skeleton className="h-[200px] sm:h-[240px] md:h-64 w-full rounded-xl" />}
         >
-          <div dir="ltr" className="h-64 w-full">
+          <div dir="ltr" className="h-[200px] sm:h-[240px] md:h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                 <defs>
@@ -292,13 +292,13 @@ export function AnalyticsView() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => toPersianDigits(v)}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}
@@ -326,7 +326,7 @@ export function AnalyticsView() {
             <Activity className="size-4 text-accent" />
             <h2 className="text-sm font-semibold text-ink-primary">دسترسی به تفکیک پلتفرم</h2>
           </div>
-          <div dir="ltr" className="h-56">
+          <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={PLATFORMS.map((p, i) => {
@@ -339,12 +339,12 @@ export function AnalyticsView() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)' }}
+                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                   tickFormatter={(v) => formatCompact(Number(v))}
                   axisLine={false}
                   tickLine={false}

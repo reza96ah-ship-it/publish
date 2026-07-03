@@ -667,7 +667,7 @@ export function KpiCard({
       {/* Hero chart — full-width, interactive, smooth curves */}
       <div className="mt-0.5">
         {loading ? (
-          <Skeleton className="h-[64px] w-full rounded-md" />
+          <Skeleton className="h-16 w-full rounded-md" />
         ) : (
           <MiniChart
             data={spark}

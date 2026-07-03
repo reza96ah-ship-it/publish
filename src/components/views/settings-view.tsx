@@ -849,13 +849,14 @@ function BillingTab() {
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-ink-primary">تاریخچه فاکتورها</h2>
         </div>
+        <div className="overflow-x-auto thin-scrollbar">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-start text-xs text-ink-tertiary font-bold">
                 شماره فاکتور
               </TableHead>
-              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
+              <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
                 تاریخ
               </TableHead>
               <TableHead className="text-start text-xs text-ink-tertiary font-bold">
@@ -871,7 +872,7 @@ function BillingTab() {
               <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-003
               </TableCell>
-              <TableCell className="text-sm text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30))}
               </TableCell>
               <TableCell className="text-sm text-ink-primary num-tabular">
@@ -890,7 +891,7 @@ function BillingTab() {
               <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-002
               </TableCell>
-              <TableCell className="text-sm text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 60))}
               </TableCell>
               <TableCell className="text-sm text-ink-primary num-tabular">
@@ -909,7 +910,7 @@ function BillingTab() {
               <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
                 INV-1403-001
               </TableCell>
-              <TableCell className="text-sm text-ink-secondary">
+              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
                 {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 90))}
               </TableCell>
               <TableCell className="text-sm text-ink-primary num-tabular">
@@ -926,6 +927,7 @@ function BillingTab() {
             </TableRow>
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   )
