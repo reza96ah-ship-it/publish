@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-dvh bg-canvas">
+    <div className="h-dvh overflow-y-auto thin-scrollbar bg-canvas">
       {children}
     </div>
   )
