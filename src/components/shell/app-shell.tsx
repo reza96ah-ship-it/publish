@@ -60,7 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <nav aria-label="ناوبری اصلی">
         <div
           className={`fixed inset-y-0 end-0 z-40 w-[260px] transform transition-transform duration-300 md:static md:z-auto md:w-[72px] md:translate-x-0 lg:w-[260px] ${
-            isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
         >
           <Sidebar />
