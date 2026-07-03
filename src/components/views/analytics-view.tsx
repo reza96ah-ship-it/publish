@@ -284,7 +284,11 @@ export function AnalyticsView() {
           errorLabel="خطا در بارگذاری آمار"
           skeleton={<Skeleton className="h-[200px] sm:h-[240px] md:h-64 w-full rounded-xl" />}
         >
-          <div dir="ltr" className="h-[200px] sm:h-[240px] md:h-64 w-full">
+          <div
+            dir="ltr"
+            className="h-[200px] sm:h-[240px] md:h-64 w-full"
+            data-visual-mask="analytics-reach-chart"
+          >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                 <defs>
@@ -330,49 +334,51 @@ export function AnalyticsView() {
             <Activity className="size-4 text-accent" />
             <h2 className="text-sm font-semibold text-ink-primary">دسترسی به تفکیک پلتفرم</h2>
           </div>
-          <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={PLATFORMS.map((p, i) => {
-                  const pd = platformQueries[i]?.data
-                  const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
-                  return { name: p.label, value: total, fill: p.color }
-                })}
-                margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="name"
-                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
-                  tickFormatter={(v) => formatCompact(Number(v))}
-                  axisLine={false}
-                  tickLine={false}
-                  width={35}
-                />
-                <Tooltip content={<BarChartTooltip />} />
-                <Bar dataKey="value" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="grid grid-cols-2 gap-2 mt-3">
-            {PLATFORMS.map((p, i) => {
-              const pd = platformQueries[i]?.data
-              const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
-              return (
-                <div key={p.id} className="flex items-center gap-2 text-xs">
-                  <PlatformIcon platform={p.id} className="size-5" />
-                  <span className="text-ink-secondary">{p.label}</span>
-                  <span className="ms-auto font-bold text-ink-primary num-tabular">
-                    {toPersianDigits(formatCompact(total))}
-                  </span>
-                </div>
-              )
-            })}
+          <div data-visual-mask="analytics-platform-breakdown">
+            <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={PLATFORMS.map((p, i) => {
+                    const pd = platformQueries[i]?.data
+                    const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
+                    return { name: p.label, value: total, fill: p.color }
+                  })}
+                  margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                    tickFormatter={(v) => formatCompact(Number(v))}
+                    axisLine={false}
+                    tickLine={false}
+                    width={35}
+                  />
+                  <Tooltip content={<BarChartTooltip />} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              {PLATFORMS.map((p, i) => {
+                const pd = platformQueries[i]?.data
+                const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
+                return (
+                  <div key={p.id} className="flex items-center gap-2 text-xs">
+                    <PlatformIcon platform={p.id} className="size-5" />
+                    <span className="text-ink-secondary">{p.label}</span>
+                    <span className="ms-auto font-bold text-ink-primary num-tabular">
+                      {toPersianDigits(formatCompact(total))}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
 
