@@ -246,7 +246,7 @@ export function AnalyticsView() {
       </SectionTitle>
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {kpiCards.map((k) => (
           <KpiCard
             key={k.key}

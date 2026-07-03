@@ -454,8 +454,8 @@ export function InboxView() {
           )}
         </div>
 
-        {/* Right: Automation events */}
-        <div className="lg:col-span-3 n-card p-4 h-fit">
+        {/* Right: Automation events — desktop only */}
+        <div className="hidden lg:block lg:col-span-3 n-card p-4 h-fit">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="size-4 text-accent" />
             <h3 className="text-sm font-semibold text-ink-primary">رویدادهای اتوماسیون</h3>

@@ -20,19 +20,19 @@ export function DashboardView() {
         <OperationalSummary />
       </div>
 
-      {/* Action Center - Mobile only, above pulse */}
-      <div className="order-2 lg:hidden h-[300px] sm:h-[360px] md:h-[400px]">
+      {/* Action Center - mobile only (hidden at md+, where it's in the grid) */}
+      <div className="order-2 md:hidden h-[300px] sm:h-[360px]">
         <ActionCenter />
       </div>
 
-      {/* Publishing Pulse + Action Center (Desktop) */}
-      <div className="order-3 lg:order-none grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5">
+      {/* Publishing Pulse + Action Center — 2-col at md, 8/4 at lg */}
+      <div className="order-3 lg:order-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5">
         <div className="lg:col-span-8">
           <div className="h-[320px] sm:h-[420px] md:h-[460px] lg:h-[500px]">
             <PublishingPulse />
           </div>
         </div>
-        <div className="hidden lg:block lg:col-span-4">
+        <div className="hidden md:block lg:col-span-4">
           <div className="h-[460px] lg:h-[500px]">
             <ActionCenter />
           </div>
