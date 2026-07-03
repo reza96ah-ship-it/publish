@@ -10,19 +10,7 @@
 
 import { test, expect, type Page } from '@playwright/test'
 
-const CREDENTIALS = {
-  email: 'demo@nashrino.ir',
-  password: 'demo1234',
-}
-
-async function signIn(page: Page) {
-  await page.goto('/auth/signin')
-  await page.waitForLoadState('load')
-  await page.fill('input[type="email"], input[name="email"]', CREDENTIALS.email)
-  await page.fill('input[type="password"]', CREDENTIALS.password)
-  await page.click('button[type="submit"]')
-  await page.waitForLoadState('load')
-}
+const AUTH_FILE = 'tests/e2e/.auth/user.json'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -54,29 +42,25 @@ test.describe('Issue #218 — Mobile responsive audit (375px RTL)', () => {
     // Input should span most of the viewport width (at least 280px)
     expect(box!.width).toBeGreaterThan(280)
   })
+})
+
+test.describe('Issue #218 — Authenticated mobile shell (375px RTL)', () => {
+  test.use({ viewport: { width: 375, height: 812 }, storageState: AUTH_FILE })
 
   test('mobile hamburger opens sidebar drawer', async ({ page }) => {
-    await page.goto('/auth/signin')
+    await page.goto('/')
     await page.waitForLoadState('load')
-    const hamburger = page.locator('button[aria-label="باز کردن منو"]')
-    // Hamburger only appears post-auth on the shell; on signin page it may be absent
-    const onShell = await hamburger.count() > 0
-    if (!onShell) {
-      // Sign in first then check the shell
-      await signIn(page)
-      await page.waitForLoadState('load')
-      const hamburgerShell = page.locator('button[aria-label="باز کردن منو"]')
-      await expect(hamburgerShell).toBeVisible()
-      // Tap target must be ≥ 44px
-      const box = await hamburgerShell.boundingBox()
-      expect(box).not.toBeNull()
-      expect(box!.width).toBeGreaterThanOrEqual(44)
-      expect(box!.height).toBeGreaterThanOrEqual(44)
-      // Click it — sidebar should open
-      await hamburgerShell.click()
-      const sidebar = page.locator('nav[aria-label="ناوبری اصلی"]')
-      await expect(sidebar).toBeVisible()
-    }
+    const hamburgerShell = page.locator('button[aria-label="باز کردن منو"]')
+    await expect(hamburgerShell).toBeVisible()
+    // Tap target must be ≥ 44px
+    const box = await hamburgerShell.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.width).toBeGreaterThanOrEqual(44)
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+    // Click it — sidebar should open
+    await hamburgerShell.click()
+    const sidebar = page.locator('nav[aria-label="ناوبری اصلی"]')
+    await expect(sidebar).toBeVisible()
   })
 
   test('dashboard — no horizontal overflow at 375px', async ({ page }) => {
@@ -152,7 +136,7 @@ test.describe('Issue #218 — Mobile responsive audit (375px RTL)', () => {
 // ── Tablet tier (768×1024) ─────────────────────────────────────────────────
 
 test.describe('Issue #226 — Tablet tier (768px)', () => {
-  test.use({ viewport: { width: 768, height: 1024 } })
+  test.use({ viewport: { width: 768, height: 1024 }, storageState: AUTH_FILE })
 
   test('sidebar icon rail is visible at 768px', async ({ page }) => {
     await page.goto('/')
@@ -199,7 +183,7 @@ test.describe('Issue #226 — Tablet tier (768px)', () => {
 // ── Issue #228 — Adaptive charts, tables, and zero-breakpoint views ─────────
 
 test.describe('Issue #228 — Zero-breakpoint grid fixes (375px)', () => {
-  test.use({ viewport: { width: 375, height: 812 } })
+  test.use({ viewport: { width: 375, height: 812 }, storageState: AUTH_FILE })
 
   test('channel-health — stats grid stacks single-column on mobile', async ({ page }) => {
     await page.goto('/channel-health')

@@ -26,7 +26,7 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
   }, [])
 
   return (
-    <div className="min-h-dvh flex items-center justify-center p-6 bg-canvas">
+    <div className="min-h-dvh flex items-center justify-center p-4 sm:p-6 bg-canvas">
       <motion.div
         initial={false}
         animate={{ opacity: 1, y: 0 }}
@@ -43,7 +43,7 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
         </div>
 
         {/* Native form POST — browser handles cookies + redirect natively */}
-        <div className="n-card p-6">
+        <div className="n-card p-5 sm:p-6">
           <h2 className="text-lg font-semibold text-ink-primary mb-1">ورود به حساب</h2>
           <p className="text-xs text-ink-tertiary mb-5">
             برای ادامه وارد حساب کاربری خود شوید

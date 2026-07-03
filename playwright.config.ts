@@ -3,17 +3,19 @@ import path from 'path'
 
 const AUTH_FILE = path.resolve(__dirname, 'tests/e2e/.auth/user.json')
 const VISUAL_TEST = /visual\.spec\.ts/
+const AUTH_SETUP = /auth\.setup\.ts/
 const scriptName = process.env.npm_lifecycle_event ?? ''
 const isVisualRun =
   scriptName.startsWith('test:visual') ||
   process.argv.some((arg) => arg === '--project=visual' || arg === 'visual')
 
+const setupProject = {
+  name: 'setup',
+  testMatch: AUTH_SETUP,
+}
+
 const visualProjects = isVisualRun
   ? [
-      {
-        name: 'setup',
-        testMatch: /auth\.setup\.ts/,
-      },
       {
         name: 'visual',
         testMatch: VISUAL_TEST,
@@ -49,33 +51,39 @@ export default defineConfig({
   // Visual regression has its own GitHub Actions job and is included only
   // when the visual project is explicitly requested.
   projects: [
+    setupProject,
     ...visualProjects,
     // Desktop browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       testIgnore: VISUAL_TEST,
+      dependencies: ['setup'],
     },
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
       testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'], // axe works best on chromium
+      dependencies: ['setup'],
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
       testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
+      dependencies: ['setup'],
     },
     // Mobile viewports (Issue #153: at least one mobile per engine)
     {
       name: 'mobile-chrome',
       use: { ...devices['Pixel 7'] },
       testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
+      dependencies: ['setup'],
     },
     {
       name: 'mobile-safari',
       use: { ...devices['iPhone 14'] },
       testIgnore: [VISUAL_TEST, '**/accessibility.spec.ts'],
+      dependencies: ['setup'],
     },
   ],
   webServer: {

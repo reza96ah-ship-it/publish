@@ -11,10 +11,19 @@
  *   - wcag22aa — WCAG 2.2 Level AA (must-fix, includes focus/target size)
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']
+const AUTH_FILE = 'tests/e2e/.auth/user.json'
+
+async function enableDarkMode(page: Page, target = '/auth/signin') {
+  await page.goto('/auth/signin')
+  await page.waitForLoadState('load')
+  await page.evaluate(() => localStorage.setItem('theme', 'dark'))
+  await page.goto(target)
+  await page.waitForLoadState('load')
+}
 
 // Run each view's accessibility scan.
 // color-contrast is excluded here — it is tracked separately in the
@@ -226,15 +235,9 @@ test.describe('Issue #216 — Color contrast', () => {
 // Sets next-themes localStorage key to 'dark' so the .dark class is applied,
 // then runs the same axe color-contrast rule on key views.
 test.describe('Issue #217 — Dark mode color contrast', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/auth/signin')
-    await page.waitForLoadState('load')
-    await page.evaluate(() => localStorage.setItem('theme', 'dark'))
-    await page.reload()
-    await page.waitForLoadState('load')
-  })
-
   test('login page meets WCAG AA contrast in dark mode', async ({ page }) => {
+    await enableDarkMode(page, '/auth/signin')
+
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
       .withRules(['color-contrast'])
@@ -242,10 +245,13 @@ test.describe('Issue #217 — Dark mode color contrast', () => {
 
     expect(results.violations.filter((v) => v.id === 'color-contrast')).toEqual([])
   })
+})
+
+test.describe('Issue #217 — Authenticated dark mode color contrast', () => {
+  test.use({ storageState: AUTH_FILE })
 
   test('dashboard meets WCAG AA contrast in dark mode', async ({ page }) => {
-    await page.goto('/')
-    await page.waitForLoadState('load')
+    await enableDarkMode(page, '/')
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
@@ -256,8 +262,7 @@ test.describe('Issue #217 — Dark mode color contrast', () => {
   })
 
   test('compose view meets WCAG AA contrast in dark mode', async ({ page }) => {
-    await page.goto('/compose')
-    await page.waitForLoadState('load')
+    await enableDarkMode(page, '/compose')
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2aa'])
