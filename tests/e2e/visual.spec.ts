@@ -45,6 +45,8 @@ const DYNAMIC_MASKS = [
   '.recharts-curve',
   // App-native mini charts and sparkline SVGs
   '.touch-none',
+  '.touch-none [aria-hidden]',
+  '.touch-none .absolute',
   'svg.overflow-visible',
   // Avatar images (user photos — may change)
   'img[src*="avatar"]',
