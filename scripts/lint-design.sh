@@ -70,7 +70,7 @@ fi
 echo ""
 echo "→ Checking for arbitrary text-size / font-weight classes…"
 HITS=$(grep -rEo \
-  'text-\[[0-9]+(\.[0-9]+)?px\]|font-\[[0-9]+\]' \
+  'text-\[[0-9]+(\.[0-9]+)?(px|rem|em)\]|font-\[[0-9]+\]' \
   src/ \
   --include='*.tsx' --include='*.ts' --include='*.css' \
   2>/dev/null | head -20 || true)

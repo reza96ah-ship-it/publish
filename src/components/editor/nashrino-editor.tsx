@@ -19,6 +19,7 @@ import {
   Code,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface NashrinoEditorProps {
   content?: string
@@ -110,9 +111,9 @@ export function NashrinoEditor({
   if (!editor) {
     return (
       <div className={cn('n-control min-h-[240px] p-4', className)}>
-        <div className="animate-pulse space-y-2">
-          <div className="h-3 w-3/4 bg-surface-hover rounded" />
-          <div className="h-3 w-1/2 bg-surface-hover rounded" />
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-3/4" />
+          <Skeleton className="h-3 w-1/2" />
         </div>
       </div>
     )
