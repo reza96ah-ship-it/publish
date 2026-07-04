@@ -623,6 +623,11 @@ model InboxMessage {
   externalId  String?
   messageType String   @default("comment") // comment, dm, mention
   assigneeId  String?
+  // Status workflow: new → assigned → in_progress → resolved
+  status      String   @default("new") // new, assigned, in_progress, resolved
+  slaStartedAt   DateTime? // when SLA clock started (on first assign / message receipt)
+  firstResponseAt DateTime? // when first reply was sent
+  resolvedAt  DateTime? // when resolved
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -631,6 +636,7 @@ model InboxMessage {
 
   @@index([workspaceId])
   @@index([workspaceId, isRead])
+  @@index([workspaceId, status])
   @@index([platformId])
   @@index([assigneeId])
 }
