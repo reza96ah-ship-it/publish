@@ -14,6 +14,8 @@ async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
     const msg = await res.text().catch(() => res.statusText)
     throw new Error(msg || `خطای سرور (${res.status})`)
   }
+  // 204 No Content (e.g. DELETE routes) has no body to parse
+  if (res.status === 204) return undefined as T
   return res.json() as Promise<T>
 }
 

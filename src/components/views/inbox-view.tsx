@@ -19,6 +19,7 @@ import {
   UserCheck,
   Loader2,
   CheckCheck,
+  BookOpen,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -44,6 +45,8 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { interpolate } from '@/modules/inbox/snippet-shared'
+import type { SavedReply } from '@/modules/inbox/snippet-shared'
 
 interface InboxMessage {
   id: string
@@ -60,6 +63,30 @@ interface InboxMessage {
   assigneeName: string | null
   assigneeAvatar: string | null
   createdAt: string
+  status: 'new' | 'assigned' | 'in_progress' | 'resolved'
+  slaStartedAt: string | null
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  new: 'جدید',
+  assigned: 'ارجاع شده',
+  in_progress: 'در حال بررسی',
+  resolved: 'حل شده',
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  new: 'text-info bg-info-soft border-info/20',
+  assigned: 'text-warning bg-warning-soft border-warning/20',
+  in_progress: 'text-accent bg-accent/10 border-accent/20',
+  resolved: 'text-success bg-success-soft border-success/20',
+}
+
+const SLA_TARGET_MINUTES = 120 // 2h default
+
+function useSlaOverdue(slaStartedAt: string | null): boolean {
+  if (!slaStartedAt) return false
+  const elapsed = (Date.now() - new Date(slaStartedAt).getTime()) / 60000
+  return elapsed > SLA_TARGET_MINUTES
 }
 
 interface Member {
@@ -115,11 +142,17 @@ const AUTOMATIONS = [
 ]
 
 export function InboxView() {
-  const [filter, setFilter] = useState<'all' | 'unread' | 'comment' | 'dm'>('all')
+  const [filter, setFilter] = useState<'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'overdue' | 'resolved'>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
+  const [showSnippets, setShowSnippets] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: savedReplies } = useQuery<SavedReply[]>({
+    queryKey: ['inbox-saved-replies'],
+    queryFn: () => api.get<SavedReply[]>('/api/inbox/saved-replies'),
+  })
 
   const { data: messages, isLoading, isError, refetch } = useQuery<InboxMessage[]>({
     queryKey: ['inbox'],
@@ -137,6 +170,12 @@ export function InboxView() {
       if (filter === 'unread') return !m.isRead
       if (filter === 'comment') return m.messageType === 'comment'
       if (filter === 'dm') return m.messageType === 'dm'
+      if (filter === 'unassigned') return !m.assigneeId && m.status !== 'resolved'
+      if (filter === 'overdue') {
+        if (!m.slaStartedAt || m.status === 'resolved') return false
+        return (Date.now() - new Date(m.slaStartedAt).getTime()) / 60000 > SLA_TARGET_MINUTES
+      }
+      if (filter === 'resolved') return m.status === 'resolved'
       return true
     })
   }, [messages, filter])
@@ -144,6 +183,15 @@ export function InboxView() {
   const selected = messages?.find((m) => m.id === selectedId) ?? null
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0
   useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
+
+  const insertSnippet = useCallback((reply: SavedReply) => {
+    const text = interpolate(reply.body, {
+      senderName: selected?.senderName,
+      channelName: selected?.platform,
+    })
+    setReplyText(text)
+    setShowSnippets(false)
+  }, [selected])
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
@@ -166,6 +214,16 @@ export function InboxView() {
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
     },
     onError: () => toast.error('خطا در ارجاع'),
+  })
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      api.post(`/api/inbox/${id}/status`, { status }),
+    onSuccess: (_data, vars) => {
+      toast.success(STATUS_LABEL[vars.status] ? `وضعیت: ${STATUS_LABEL[vars.status]}` : 'به‌روزشد')
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+    },
+    onError: () => toast.error('خطا در تغییر وضعیت'),
   })
 
   // ── Handlers ───────────────────────────────────────────────────────
@@ -261,6 +319,9 @@ export function InboxView() {
               tabs={[
                 { value: 'all', label: 'همه' },
                 { value: 'unread', label: 'ناخوانده', count: unreadCount },
+                { value: 'unassigned', label: 'بدون ارجاع' },
+                { value: 'overdue', label: 'تأخیر SLA' },
+                { value: 'resolved', label: 'حل‌شده' },
                 { value: 'comment', label: 'کامنت' },
                 { value: 'dm', label: 'پیام مستقیم' },
               ]}
@@ -336,6 +397,43 @@ export function InboxView() {
                     {relativeTime(new Date(selected.createdAt))}
                   </span>
                 </div>
+                {/* Status workflow */}
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <span className={cn('text-2xs font-semibold px-2 py-0.5 rounded-md border', STATUS_COLOR[selected.status ?? 'new'])}>
+                    {STATUS_LABEL[selected.status ?? 'new']}
+                  </span>
+                  {selected.slaStartedAt && selected.status !== 'resolved' && (
+                    <SlaTimer slaStartedAt={selected.slaStartedAt} />
+                  )}
+                  {selected.status !== 'resolved' && (
+                    <button
+                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'resolved' })}
+                      disabled={statusMutation.isPending}
+                      className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-success bg-success-soft border-success/20 hover:bg-success/20 transition-colors"
+                    >
+                      حل شد ✓
+                    </button>
+                  )}
+                  {selected.status === 'resolved' && (
+                    <button
+                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'new' })}
+                      disabled={statusMutation.isPending}
+                      className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-ink-secondary bg-surface border-border hover:bg-surface-hover transition-colors"
+                    >
+                      بازگشایی
+                    </button>
+                  )}
+                  {selected.status === 'new' && (
+                    <button
+                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'in_progress' })}
+                      disabled={statusMutation.isPending}
+                      className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
+                    >
+                      شروع بررسی
+                    </button>
+                  )}
+                </div>
+
                 {/* Assign dropdown */}
                 {members && members.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
@@ -388,12 +486,31 @@ export function InboxView() {
 
               {/* Reply box */}
               <div className="p-3 border-t border-border bg-surface-subtle">
+                {/* Snippet picker */}
+                {showSnippets && savedReplies && savedReplies.length > 0 && (
+                  <div className="mb-2 rounded-xl border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
+                    {savedReplies.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => insertSnippet(r)}
+                        className="n-focus-ring w-full text-start px-3 py-2.5 hover:bg-surface-hover border-b border-border last:border-0"
+                      >
+                        <p className="text-sm font-semibold text-ink-primary">{r.title}</p>
+                        <p className="text-xs text-ink-secondary truncate">{r.body}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Textarea
                   dir="rtl"
                   rows={3}
-                  placeholder="پاسخ خود را بنویسید…"
+                  placeholder="پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)"
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={(e) => {
+                    setReplyText(e.target.value)
+                    if (e.target.value.startsWith('/')) setShowSnippets(true)
+                    else setShowSnippets(false)
+                  }}
                   className="resize-none bg-background mb-2"
                 />
                 <div className="flex items-center justify-between">
@@ -416,6 +533,19 @@ export function InboxView() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {savedReplies && savedReplies.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[44px] sm:min-h-0"
+                        onClick={() => setShowSnippets((v) => !v)}
+                        aria-label="پاسخ‌های ذخیره‌شده"
+                        aria-expanded={showSnippets}
+                      >
+                        <BookOpen className="size-3.5" />
+                        قالب‌ها
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -505,6 +635,19 @@ export function InboxView() {
   )
 }
 
+function SlaTimer({ slaStartedAt }: { slaStartedAt: string }) {
+  const overdue = useSlaOverdue(slaStartedAt)
+  const elapsedMin = Math.floor((Date.now() - new Date(slaStartedAt).getTime()) / 60000)
+  const h = Math.floor(elapsedMin / 60)
+  const m = elapsedMin % 60
+  const label = h > 0 ? `${h}h ${m}m` : `${m}m`
+  return (
+    <span className={cn('text-2xs font-mono px-2 py-0.5 rounded-md border', overdue ? 'text-danger bg-danger-soft border-danger/20' : 'text-ink-tertiary bg-surface border-border')}>
+      ⏱ {label}{overdue ? ' — تأخیر' : ''}
+    </span>
+  )
+}
+
 function MessageListItem({
   message,
   active,
@@ -515,13 +658,15 @@ function MessageListItem({
   onClick: () => void
 }) {
   const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare
+  const overdue = useSlaOverdue(message.slaStartedAt)
   return (
     <button
       onClick={onClick}
       className={cn(
         'n-focus-ring w-full text-start flex items-start gap-3 p-3 border-b border-border transition-colors',
         active ? 'bg-accent-soft' : 'hover:bg-surface-subtle',
-        !message.isRead && 'bg-accent-soft'
+        !message.isRead && 'bg-accent-soft',
+        overdue && 'border-s-2 border-s-danger'
       )}
     >
       <div className="relative shrink-0">
@@ -557,6 +702,11 @@ function MessageListItem({
           <span className="text-2xs text-ink-tertiary">
             {MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}
           </span>
+          {message.status !== 'new' && (
+            <span className={cn('text-2xs font-semibold px-1.5 py-0.5 rounded border', STATUS_COLOR[message.status])}>
+              {STATUS_LABEL[message.status]}
+            </span>
+          )}
           {message.isReplied && (
             <span className="text-2xs text-success font-semibold ms-auto">پاسخ داده شد</span>
           )}

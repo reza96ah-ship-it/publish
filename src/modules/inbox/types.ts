@@ -14,6 +14,10 @@ export interface InboxMessage {
   platformName: string
   messageType: string | null
   assigneeId: string | null
+  status: string
+  slaStartedAt: Date | null
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
 }
 

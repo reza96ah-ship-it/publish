@@ -135,6 +135,10 @@ model Workspace {
   revisions    ContentRevision[]
   featureFlags  FeatureFlag[]
   utmPresets    UtmPreset[]
+  savedReplies   SavedReply[]
+  autoTagRules   AutoTagRule[]
+  commentDmRules CommentDmRule[]
+  commentDmLogs  CommentDmLog[]
 }
 
 model FeatureFlag {
@@ -246,9 +250,10 @@ model Platform {
   updatedAt   DateTime @updatedAt
 
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contentLinks  ContentPlatform[]
-  publishJobs   PublishJob[]
-  inboxMessages InboxMessage[]
+  contentLinks   ContentPlatform[]
+  publishJobs    PublishJob[]
+  inboxMessages  InboxMessage[]
+  commentDmRules CommentDmRule[]
 
   @@index([workspaceId])
   @@index([workspaceId, type])
@@ -621,6 +626,11 @@ model InboxMessage {
   externalId  String?
   messageType String   @default("comment") // comment, dm, mention
   assigneeId  String?
+  // Status workflow: new → assigned → in_progress → resolved
+  status      String   @default("new") // new, assigned, in_progress, resolved
+  slaStartedAt   DateTime? // when SLA clock started (on first assign / message receipt)
+  firstResponseAt DateTime? // when first reply was sent
+  resolvedAt  DateTime? // when resolved
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
@@ -629,6 +639,7 @@ model InboxMessage {
 
   @@index([workspaceId])
   @@index([workspaceId, isRead])
+  @@index([workspaceId, status])
   @@index([platformId])
   @@index([assigneeId])
 }
@@ -733,4 +744,71 @@ model OutboxEvent {
   @@index([aggregateId])
   // Issue #148: index for lease expiry recovery queries
   @@index([status, lockExpiresAt])
+}
+
+/* ─── Inbox Saved Replies ─── */
+
+model SavedReply {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String   // short name shown in picker
+  body        String   // Persian body with {نام}, {کانال} variables
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+/* ─── Inbox Auto-Tag Rules ─── */
+
+model AutoTagRule {
+  id          String   @id @default(cuid())
+  workspaceId String
+  keyword     String   // case-insensitive substring match
+  tag         String   // label applied to matching messages
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+/* ─── Comment-to-DM Automation (#209) ─── */
+
+model CommentDmRule {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  platformId      String   // Instagram platform ID
+  keyword         String   // Persian keyword to match in comment
+  dmTemplate      String   // DM body, supports {نام} variable
+  optOutKeyword   String   @default("نه") // comment keyword to suppress DM
+  freqCapHours    Int      @default(24) // min hours between DMs to same user
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([platformId, isActive])
+}
+
+model CommentDmLog {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  ruleId       String
+  commentId    String   // external comment ID
+  senderUserId String   // Instagram user ID of commenter
+  sentAt       DateTime @default(now())
+  status       String   @default("sent") // sent, skipped, failed
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, commentId])
+  @@index([workspaceId])
+  @@index([ruleId, senderUserId, sentAt])
 }

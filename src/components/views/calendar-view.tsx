@@ -31,12 +31,15 @@ import {
 import { api } from '@/lib/api'
 import {
   JALALI_MONTHS,
+  JALALI_WEEKDAYS,
   JALALI_WEEKDAYS_SHORT,
   toPersianDigits,
   formatJalali,
   formatJalaliTime,
   relativeTime,
   getJalaliMonthGrid,
+  toJalali,
+  isHoliday,
   type CalendarCell,
 } from '@/lib/jalali'
 import { useAppStore } from '@/lib/store'
@@ -114,13 +117,25 @@ export function CalendarView() {
   const { calendarCursor, setCalendarCursor } = useAppStore()
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
-  const [view, setView] = useState<'month' | 'week' | 'agenda'>(() =>
-    typeof window !== 'undefined' && window.innerWidth < 640 ? 'agenda' : 'month'
-  )
+  const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('month')
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
   const queryClient = useQueryClient()
+
+  // Week/day cursors — Saturday-anchored (Jalali week start)
+  const [weekCursor, setWeekCursor] = useState<Date>(() => {
+    const d = new Date()
+    const daysFromSat = (d.getDay() + 1) % 7 // Sat=0, Sun=1, ..., Fri=6
+    d.setDate(d.getDate() - daysFromSat)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+  const [dayCursor, setDayCursor] = useState<Date>(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
 
   // DnD sensors — pointer: distance:6 lets clicks through; touch: 250ms long-press
   const sensors = useSensors(
@@ -167,6 +182,27 @@ export function CalendarView() {
     [calendarCursor]
   )
 
+  // 7-cell week grid starting from weekCursor (Saturday)
+  const weekCells = useMemo<CalendarCell[]>(() => {
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(weekCursor)
+      d.setDate(d.getDate() + i)
+      const j = toJalali(d)
+      const today = new Date()
+      return {
+        date: d,
+        jalali: j,
+        isToday:
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate(),
+        isWeekend: i >= 5,
+        holiday: isHoliday(j),
+        inMonth: true,
+      }
+    })
+  }, [weekCursor])
+
   // Group jobs by their jalali day
   const jobsByDay = useMemo(() => {
     const map = new Map<string, CalendarJob[]>()
@@ -179,6 +215,14 @@ export function CalendarView() {
     }
     return map
   }, [jobs])
+
+  // Day jobs for day view
+  const dayJobs = useMemo(() => {
+    const key = `${dayCursor.getFullYear()}-${dayCursor.getMonth()}-${dayCursor.getDate()}`
+    return (jobsByDay.get(key) ?? []).slice().sort(
+      (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+    )
+  }, [dayCursor, jobsByDay])
 
   const goPrev = () => {
     const newMonth = calendarCursor.month === 1 ? 12 : calendarCursor.month - 1
@@ -215,6 +259,60 @@ export function CalendarView() {
     const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30)
     setCalendarCursor(jy, jm)
     announce(`امروز — ${JALALI_MONTHS[jm - 1]} ${toPersianDigits(jy)}`)
+  }
+
+  const goPrevWeek = () => {
+    setWeekCursor((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() - 7)
+      const j = toJalali(next)
+      setCalendarCursor(j.year, j.month)
+      return next
+    })
+  }
+  const goNextWeek = () => {
+    setWeekCursor((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() + 7)
+      const j = toJalali(next)
+      setCalendarCursor(j.year, j.month)
+      return next
+    })
+  }
+  const goWeekToday = () => {
+    const d = new Date()
+    const daysFromSat = (d.getDay() + 1) % 7
+    d.setDate(d.getDate() - daysFromSat)
+    d.setHours(0, 0, 0, 0)
+    setWeekCursor(d)
+    const j = toJalali(d)
+    setCalendarCursor(j.year, j.month)
+  }
+
+  const goPrevDay = () => {
+    setDayCursor((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() - 1)
+      const j = toJalali(next)
+      setCalendarCursor(j.year, j.month)
+      return next
+    })
+  }
+  const goNextDay = () => {
+    setDayCursor((d) => {
+      const next = new Date(d)
+      next.setDate(next.getDate() + 1)
+      const j = toJalali(next)
+      setCalendarCursor(j.year, j.month)
+      return next
+    })
+  }
+  const goDayToday = () => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    setDayCursor(d)
+    const j = toJalali(d)
+    setCalendarCursor(j.year, j.month)
   }
 
   const monthName = JALALI_MONTHS[calendarCursor.month - 1]
@@ -257,6 +355,7 @@ export function CalendarView() {
             tabs={[
               { value: 'month', label: 'ماه' },
               { value: 'week', label: 'هفته' },
+              { value: 'day', label: 'روز' },
               { value: 'agenda', label: 'برنامه' },
             ]}
           />
@@ -292,7 +391,8 @@ export function CalendarView() {
           </div>
 
           {/* Month grid — horizontal scroll on mobile so 7-col grid never clips */}
-          <div className="n-card p-3 sm:p-4 overflow-x-auto">
+          <div className="n-card p-3 sm:p-4">
+            <div className="overflow-x-auto">
             <div className="min-w-[320px]">
             {/* Weekday header */}
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -340,62 +440,78 @@ export function CalendarView() {
               </DragOverlay>
             </DndContext>
             </div>
+            </div>
           </div>
         </TabsContent>
 
-        {/* ── Week view (simplified) ── */}
+        {/* ── Week view ── */}
         <TabsContent value="week" className="space-y-4">
-          <div className="n-card p-3 sm:p-5">
-            <p className="text-sm text-ink-tertiary mb-3">نمای هفته‌ای — هفته جاری</p>
+          {/* Week nav */}
+          <div className="n-card n-gradient-border p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={goPrevWeek} aria-label="هفته قبل">
+                <ChevronRight className="size-4" />
+              </Button>
+              <div className="text-center min-w-[140px]">
+                <p className="text-sm font-bold text-ink-primary">
+                  {toPersianDigits(toJalali(weekCells[0].date).day)} –{' '}
+                  {toPersianDigits(toJalali(weekCells[6].date).day)}{' '}
+                  {JALALI_MONTHS[toJalali(weekCells[0].date).month - 1]}
+                </p>
+                <p className="text-2xs text-ink-tertiary">
+                  {toPersianDigits(toJalali(weekCells[0].date).year)}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={goNextWeek} aria-label="هفته بعد">
+                <ChevronLeft className="size-4" />
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={goWeekToday}>امروز</Button>
+          </div>
+
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
             {/* Desktop: 7-col grid */}
-            <div className="hidden sm:block overflow-x-auto">
-              <div className="min-w-[320px] grid grid-cols-7 gap-2">
-                {cells.slice(7, 14).map((cell, i) => (
-                  <DayCell
-                    key={i}
-                    cell={cell}
-                    jobs={
-                      jobsByDay.get(
-                        `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
-                      ) ?? []
-                    }
-                    onSelectJob={setSelectedJob}
-                    tall
-                  />
+            <div className="n-card p-3 sm:p-4 hidden sm:block">
+              <div className="overflow-x-auto">
+              <div className="min-w-[560px] grid grid-cols-7 gap-2">
+                {weekCells.map((cell, i) => (
+                  <div key={i} className="space-y-1">
+                    <p className={cn(
+                      'text-center text-xs font-bold py-1',
+                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-danger' : 'text-ink-tertiary'
+                    )}>
+                      {JALALI_WEEKDAYS_SHORT[i]} {toPersianDigits(cell.jalali.day)}
+                    </p>
+                    <DayCell
+                      cell={cell}
+                      jobs={jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []}
+                      onSelectJob={setSelectedJob}
+                      activeDragId={activeDrag?.id ?? null}
+                      tall
+                    />
+                  </div>
                 ))}
               </div>
+              </div>
             </div>
-            {/* Mobile: vertical day list */}
+
+            {/* Mobile: vertical list */}
             <div className="sm:hidden space-y-2">
-              {cells.slice(7, 14).map((cell, i) => {
-                const dayJobs = jobsByDay.get(
-                  `${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`
-                ) ?? []
+              {weekCells.map((cell, i) => {
+                const wJobs = jobsByDay.get(`${cell.date.getFullYear()}-${cell.date.getMonth()}-${cell.date.getDate()}`) ?? []
                 return (
-                  <div key={i} className={cn(
-                    'rounded-xl border p-3',
-                    cell.isToday ? 'border-accent bg-accent-soft' : 'border-border'
-                  )}>
-                    <p className={cn(
-                      'text-sm font-bold mb-2',
-                      cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-danger' : 'text-ink-secondary'
-                    )}>
-                      {JALALI_WEEKDAYS_SHORT[i % 7]} {toPersianDigits(cell.jalali.day)}
-                      {cell.holiday && <span className="text-2xs text-danger me-2">— {cell.holiday}</span>}
+                  <div key={i} className={cn('rounded-xl border p-3', cell.isToday ? 'border-accent bg-accent-soft' : 'border-border')}>
+                    <p className={cn('text-sm font-bold mb-2', cell.isToday ? 'text-accent' : cell.isWeekend ? 'text-danger' : 'text-ink-secondary')}>
+                      {JALALI_WEEKDAYS[i]} {toPersianDigits(cell.jalali.day)}
+                      {cell.holiday && <span className="text-2xs text-danger me-2"> — {cell.holiday}</span>}
                     </p>
-                    {dayJobs.length === 0 ? (
+                    {wJobs.length === 0 ? (
                       <p className="text-xs text-ink-tertiary">بدون رویداد</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {dayJobs.map((job) => (
-                          <button
-                            key={job.id}
-                            onClick={() => setSelectedJob(job)}
-                            className={cn(
-                              'n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-start',
-                              PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
-                            )}
-                          >
+                        {wJobs.map((job) => (
+                          <button key={job.id} onClick={() => setSelectedJob(job)}
+                            className={cn('n-focus-ring w-full flex items-center gap-2.5 rounded-lg border px-3 min-h-[44px] text-start', PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border')}>
                             <Clock3 className="size-3.5 shrink-0" />
                             <span className="text-sm font-semibold truncate flex-1">{job.title}</span>
                             <span className="text-2xs shrink-0">{formatJalaliTime(new Date(job.scheduledAt))}</span>
@@ -407,6 +523,75 @@ export function CalendarView() {
                 )
               })}
             </div>
+
+            <DragOverlay>
+              {activeDrag ? (
+                <div className="rounded-lg bg-primary text-primary-foreground px-2 py-1 text-2xs font-bold shadow-xl max-w-56 truncate">
+                  {activeDrag.title}
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </TabsContent>
+
+        {/* ── Day view ── */}
+        <TabsContent value="day" className="space-y-4">
+          {/* Day nav */}
+          <div className="n-card n-gradient-border p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={goPrevDay} aria-label="روز قبل">
+                <ChevronRight className="size-4" />
+              </Button>
+              <div className="text-center min-w-[140px]">
+                <p className="text-sm font-bold text-ink-primary">
+                  {JALALI_WEEKDAYS[toJalali(dayCursor).weekday]}{' '}
+                  {toPersianDigits(toJalali(dayCursor).day)}{' '}
+                  {JALALI_MONTHS[toJalali(dayCursor).month - 1]}
+                </p>
+                <p className="text-2xs text-ink-tertiary">{toPersianDigits(toJalali(dayCursor).year)}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={goNextDay} aria-label="روز بعد">
+                <ChevronLeft className="size-4" />
+              </Button>
+            </div>
+            <Button variant="outline" size="sm" onClick={goDayToday}>امروز</Button>
+          </div>
+
+          <div className="n-card p-5">
+            {dayJobs.length === 0 ? (
+              <EmptyState
+                icon={CalendarDays}
+                title="رویدادی برای این روز نیست"
+                message="با زمان‌بندی محتوای جدید، این روز را پر کنید."
+                illustration="calendar"
+                action={
+                  <Button size="sm" onClick={() => navigateTo('/compose')}>
+                    <Plus className="size-4" />
+                    ایجاد محتوا
+                  </Button>
+                }
+              />
+            ) : (
+              <div className="space-y-2">
+                {dayJobs.map((job) => (
+                  <button
+                    key={job.id}
+                    onClick={() => setSelectedJob(job)}
+                    className={cn(
+                      'n-focus-ring w-full flex items-center gap-3 rounded-xl border px-4 min-h-[56px] text-start',
+                      PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
+                    )}
+                  >
+                    <span className="text-sm font-bold tabular-nums shrink-0 min-w-12">
+                      {formatJalaliTime(new Date(job.scheduledAt))}
+                    </span>
+                    <PlatformIcon platform={job.platform} className="size-5 shrink-0" />
+                    <span className="text-sm font-semibold flex-1 truncate">{job.title}</span>
+                    <StatusBadge label={STATUS_LABEL[job.status] ?? job.status} variant={job.status} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </TabsContent>
 

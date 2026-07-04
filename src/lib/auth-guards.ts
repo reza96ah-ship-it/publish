@@ -228,6 +228,7 @@ export type Permission =
   | 'platform.connect' // Issue #142: separate credential management from platform settings
   | 'inbox.reply'
   | 'inbox.assign'
+  | 'inbox.snippets'
   | 'member.invite'
   | 'member.remove'
   | 'member.manage'
@@ -251,6 +252,7 @@ const MATRIX: Record<Permission, Role[]> = {
   'platform.connect': ['admin'],
   'inbox.reply': ['admin', 'editor'],
   'inbox.assign': ['admin', 'editor'],
+  'inbox.snippets': ['admin', 'editor'],
   'member.invite': ['admin'],
   'member.remove': ['admin'],
   'member.manage': ['admin'],
