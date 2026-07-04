@@ -10,6 +10,13 @@ import type { CommentDmRule } from './comment-dm-shared'
 export { previewTemplate, detectCommentKeyword, normalizePersian, matchComment, parseKeywordList } from './comment-dm-shared'
 export type { CommentDmRule }
 
+// Input limits — keep rules sane and abuse-resistant.
+const MAX_KEYWORDS = 10
+const MAX_KEYWORD_LENGTH = 40
+const MAX_DM_LENGTH = 1000
+const MAX_PUBLIC_REPLY_LENGTH = 220
+const MAX_BUTTON_TEXT_LENGTH = 40
+
 /** Coerce a Prisma Json column into a string[]. */
 function toStringArray(v: unknown): string[] {
   if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
@@ -90,7 +97,27 @@ export async function createRule(
   const excludeKeywords = (data.excludeKeywords ?? []).map((k) => k.trim()).filter(Boolean)
 
   if (keywords.length === 0) throw new Error('حداقل یک کلیدواژه الزامی است')
-  if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
+  if (keywords.length > MAX_KEYWORDS) throw new Error(`حداکثر ${MAX_KEYWORDS} کلیدواژه مجاز است`)
+  if (keywords.some((k) => k.length > MAX_KEYWORD_LENGTH)) throw new Error('یک کلیدواژه بیش از حد طولانی است')
+
+  const dmTemplate = data.dmTemplate.trim()
+  if (!dmTemplate) throw new Error('متن پیام الزامی است')
+  if (dmTemplate.length > MAX_DM_LENGTH) throw new Error(`متن پیام نباید بیش از ${MAX_DM_LENGTH} نویسه باشد`)
+
+  const publicReply = data.publicReply?.trim() || null
+  if (publicReply && publicReply.length > MAX_PUBLIC_REPLY_LENGTH) {
+    throw new Error(`پاسخ عمومی نباید بیش از ${MAX_PUBLIC_REPLY_LENGTH} نویسه باشد`)
+  }
+
+  const buttonText = data.buttonText?.trim() || null
+  if (buttonText && buttonText.length > MAX_BUTTON_TEXT_LENGTH) {
+    throw new Error('متن دکمه بیش از حد طولانی است')
+  }
+
+  const buttonUrl = data.buttonUrl?.trim() || null
+  if (buttonUrl && !/^https?:\/\/\S+$/i.test(buttonUrl)) {
+    throw new Error('لینک دکمه باید یک آدرس معتبر با http یا https باشد')
+  }
 
   const platform = await db.platform.findFirst({
     where: { id: data.platformId, workspaceId, type: 'instagram' },
@@ -110,10 +137,10 @@ export async function createRule(
       keyword: keywords[0],
       keywords,
       excludeKeywords,
-      dmTemplate: data.dmTemplate.trim(),
-      buttonText: data.buttonText?.trim() || null,
-      buttonUrl: data.buttonUrl?.trim() || null,
-      publicReply: data.publicReply?.trim() || null,
+      dmTemplate,
+      buttonText,
+      buttonUrl,
+      publicReply,
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
     },

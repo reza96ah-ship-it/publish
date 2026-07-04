@@ -872,19 +872,21 @@ export function ComposeView() {
               >
                 <span className="flex items-center gap-2">
                   <Zap className="size-4 text-accent" />
-                  کامنت → پیام مستقیم خودکار
+                  دایرکت خودکار از کامنت
                   {detectedKeyword && !showDmSection && (
                     <span className="text-2xs font-normal text-accent border border-accent/30 rounded-full px-2 py-0.5">
-                      کلیدواژه «{detectedKeyword}» شناسایی شد
+                      کلمه «{detectedKeyword}» در کپشن پیدا شد
                     </span>
                   )}
                 </span>
                 {showDmSection ? <ChevronUp className="size-4 text-ink-tertiary" /> : <ChevronDown className="size-4 text-ink-tertiary" />}
               </button>
 
-              {detectedKeyword && !showDmSection && (
+              {!showDmSection && (
                 <p className="text-xs text-ink-secondary">
-                  در کپشن شما کلیدواژه <strong>«{detectedKeyword}»</strong> شناسایی شد — برای تنظیم پاسخ خودکار DM اینجا را باز کنید.
+                  {detectedKeyword
+                    ? <>کلمه <strong>«{detectedKeyword}»</strong> در کپشن پیدا شد. می‌خواهید اگر کسی این کلمه را کامنت کند، پیام آماده‌ای در دایرکت برایش بفرستید؟</>
+                    : <>اگر مخاطب زیر پست شما کلمه‌ای مثل «قیمت» را کامنت کند، پیام آماده را در دایرکت دریافت می‌کند.</>}
                 </p>
               )}
 
