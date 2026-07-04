@@ -391,7 +391,8 @@ export function CalendarView() {
           </div>
 
           {/* Month grid — horizontal scroll on mobile so 7-col grid never clips */}
-          <div className="n-card p-3 sm:p-4 overflow-x-auto">
+          <div className="n-card p-3 sm:p-4">
+            <div className="overflow-x-auto">
             <div className="min-w-[320px]">
             {/* Weekday header */}
             <div className="grid grid-cols-7 gap-1 mb-2">
@@ -439,6 +440,7 @@ export function CalendarView() {
               </DragOverlay>
             </DndContext>
             </div>
+            </div>
           </div>
         </TabsContent>
 
@@ -469,7 +471,8 @@ export function CalendarView() {
 
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDrag(null)}>
             {/* Desktop: 7-col grid */}
-            <div className="n-card p-3 sm:p-4 hidden sm:block overflow-x-auto">
+            <div className="n-card p-3 sm:p-4 hidden sm:block">
+              <div className="overflow-x-auto">
               <div className="min-w-[560px] grid grid-cols-7 gap-2">
                 {weekCells.map((cell, i) => (
                   <div key={i} className="space-y-1">
@@ -488,6 +491,7 @@ export function CalendarView() {
                     />
                   </div>
                 ))}
+              </div>
               </div>
             </div>
 
