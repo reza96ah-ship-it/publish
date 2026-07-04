@@ -58,7 +58,7 @@ jobs:
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
@@ -135,15 +135,16 @@ jobs:
       - run: bun run scripts/check-bundle-budgets.ts
 
       # Issue #141: Upload all reports as artifacts for release evidence
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: coverage-report
           path: coverage/
+          if-no-files-found: ignore
           retention-days: 30
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results
           path: |
@@ -164,7 +165,7 @@ jobs:
     # Issue #122: all security gates must be blocking — no continue-on-error.
     # If any step fails, the entire pipeline fails.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # full history for secret scanning
       - uses: oven-sh/setup-bun@v2
@@ -203,16 +204,16 @@ jobs:
 
       # 4. Static analysis — CodeQL
       - name: CodeQL init
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           queries: security-extended
       - name: CodeQL analyze
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
 
       # 5. Container scan — trivy on the built Docker image
       - name: Build image for scan
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: app
@@ -234,10 +235,10 @@ jobs:
     # Issue #141: build ALL Docker targets in CI — app, worker, realtime, migrate.
     # If any target fails to build, CI fails and deployment is blocked.
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
       - name: Build app image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: app
@@ -246,7 +247,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build worker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: worker
@@ -255,7 +256,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build realtime image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: realtime
@@ -264,7 +265,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build migrate image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: migrate
@@ -307,7 +308,7 @@ jobs:
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
@@ -357,7 +358,7 @@ jobs:
         run: k6 run k6/smoke.js
       - name: Upload k6 results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: k6-smoke-results
           path: k6/results/
@@ -398,7 +399,7 @@ jobs:
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
@@ -452,7 +453,7 @@ jobs:
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
@@ -472,14 +473,15 @@ jobs:
         run: bun run test:visual
       - name: Upload visual diff report (on failure)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: visual-diff-report
           path: playwright-report/
+          if-no-files-found: ignore
           retention-days: 7
       - name: Upload new snapshots (if missing)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: visual-snapshots
           path: tests/e2e/visual.spec.ts-snapshots/
@@ -525,7 +527,7 @@ jobs:
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
@@ -563,8 +565,9 @@ jobs:
         run: bunx @lhci/cli@0.14.x autorun --config=.lighthouserc.json
       - name: Upload Lighthouse report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: lighthouse-report
           path: .lighthouseci/
+          if-no-files-found: ignore
           retention-days: 30
