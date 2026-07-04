@@ -1,72 +1,99 @@
 /**
  * Comment-to-DM automation module (#209).
- *
- * Worker execution is behind the comment_dm_beta feature flag.
- * The worker TODO: on new InboxMessage of type 'comment', match rules
- * for the platform, check freqCap via CommentDmLog, send DM via
- * Instagram Graph API, and log the result.
+ * Rules are per-post (publicationId set) or workspace-wide (publicationId null).
  */
 
 import { db } from '@/lib/db'
 import type { CommentDmRule } from './comment-dm-shared'
 
-export { previewTemplate } from './comment-dm-shared'
+export { previewTemplate, detectCommentKeyword } from './comment-dm-shared'
 export type { CommentDmRule }
 
-export async function listRules(workspaceId: string): Promise<CommentDmRule[]> {
-  const rows = await db.commentDmRule.findMany({
-    where: { workspaceId },
-    include: { platform: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-  return rows.map((r) => ({
+function toRule(r: {
+  id: string
+  platformId: string
+  platform: { name: string }
+  publicationId: string | null
+  igPostId: string | null
+  keyword: string
+  dmTemplate: string
+  publicReply: string | null
+  optOutKeyword: string
+  freqCapHours: number
+  isActive: boolean
+  createdAt: Date
+}): CommentDmRule {
+  return {
     id: r.id,
     platformId: r.platformId,
     platformName: r.platform.name,
+    publicationId: r.publicationId,
+    igPostId: r.igPostId,
     keyword: r.keyword,
     dmTemplate: r.dmTemplate,
+    publicReply: r.publicReply,
     optOutKeyword: r.optOutKeyword,
     freqCapHours: r.freqCapHours,
     isActive: r.isActive,
     createdAt: r.createdAt,
-  }))
+  }
+}
+
+export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
+  const rows = await db.commentDmRule.findMany({
+    where: {
+      workspaceId,
+      ...(publicationId !== undefined ? { publicationId } : {}),
+    },
+    include: { platform: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return rows.map(toRule)
 }
 
 export async function createRule(
   workspaceId: string,
-  data: { platformId: string; keyword: string; dmTemplate: string; optOutKeyword?: string; freqCapHours?: number }
+  data: {
+    platformId: string
+    keyword: string
+    dmTemplate: string
+    publicReply?: string | null
+    optOutKeyword?: string
+    freqCapHours?: number
+    publicationId?: string | null
+  }
 ): Promise<CommentDmRule> {
   if (!data.keyword.trim()) throw new Error('کلیدواژه الزامی است')
   if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
 
-  // Verify platform belongs to workspace and is Instagram
   const platform = await db.platform.findFirst({
     where: { id: data.platformId, workspaceId, type: 'instagram' },
   })
   if (!platform) throw new Error('پلتفرم اینستاگرام یافت نشد')
 
+  if (data.publicationId) {
+    const pub = await db.publication.findFirst({ where: { id: data.publicationId, workspaceId } })
+    if (!pub) throw new Error('انتشار یافت نشد')
+  }
+
   const row = await db.commentDmRule.create({
     data: {
       workspaceId,
       platformId: data.platformId,
+      publicationId: data.publicationId ?? null,
       keyword: data.keyword.trim().toLowerCase(),
       dmTemplate: data.dmTemplate.trim(),
+      publicReply: data.publicReply?.trim() || null,
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
     },
     include: { platform: { select: { name: true } } },
   })
-  return {
-    id: row.id,
-    platformId: row.platformId,
-    platformName: row.platform.name,
-    keyword: row.keyword,
-    dmTemplate: row.dmTemplate,
-    optOutKeyword: row.optOutKeyword,
-    freqCapHours: row.freqCapHours,
-    isActive: row.isActive,
-    createdAt: row.createdAt,
-  }
+  return toRule(row)
+}
+
+export async function updateRuleIgPostId(id: string, workspaceId: string, igPostId: string): Promise<void> {
+  await db.commentDmRule.updateMany({ where: { id, workspaceId }, data: { igPostId } })
 }
 
 export async function toggleRule(id: string, workspaceId: string, isActive: boolean): Promise<void> {
@@ -81,11 +108,6 @@ export async function deleteRule(id: string, workspaceId: string): Promise<void>
   await db.commentDmRule.delete({ where: { id } })
 }
 
-/**
- * Check if a rule should fire for a comment.
- * Returns false if: frequency cap active, opt-out keyword present, rule inactive.
- * TODO (worker): call this before sending via Instagram Graph API.
- */
 export async function shouldSendDm(
   ruleId: string,
   senderUserId: string,

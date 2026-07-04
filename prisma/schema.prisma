@@ -441,10 +441,11 @@ model Publication {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  content     Content     @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
-  attempts    PublicationAttempt[]
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  content        Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  revision       ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  attempts       PublicationAttempt[]
+  commentDmRules CommentDmRule[]
 
   @@unique([revisionId, platformId])
   @@index([workspaceId])
@@ -785,19 +786,24 @@ model CommentDmRule {
   id              String   @id @default(cuid())
   workspaceId     String
   platformId      String   // Instagram platform ID
+  publicationId   String?  // null = workspace-wide; set = scoped to this publication
+  igPostId        String?  // Instagram post ID, populated after publish succeeds
   keyword         String   // Persian keyword to match in comment
   dmTemplate      String   // DM body, supports {نام} variable
+  publicReply     String?  // Optional public comment reply, e.g. "به DM شما فرستادم"
   optOutKeyword   String   @default("نه") // comment keyword to suppress DM
   freqCapHours    Int      @default(24) // min hours between DMs to same user
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform     Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  publication  Publication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([platformId, isActive])
+  @@index([publicationId])
 }
 
 model CommentDmLog {

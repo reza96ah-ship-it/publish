@@ -5,7 +5,7 @@ import { listRules, createRule } from '@/modules/automation/comment-dm'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const guard = await requirePermissionApi('content.publish')
   if (guard.error) return guard.error
 
@@ -13,7 +13,10 @@ export async function GET() {
     return NextResponse.json({ error: 'این قابلیت در مرحله بتا است' }, { status: 403 })
   }
 
-  const rules = await listRules(guard.workspaceId)
+  const { searchParams } = new URL(req.url)
+  const publicationId = searchParams.get('publicationId') ?? undefined
+
+  const rules = await listRules(guard.workspaceId, publicationId)
   return NextResponse.json(rules)
 }
 
