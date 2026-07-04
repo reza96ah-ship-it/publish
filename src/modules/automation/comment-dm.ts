@@ -13,19 +13,21 @@ import type { CommentDmRule } from './comment-dm-shared'
 export { previewTemplate } from './comment-dm-shared'
 export type { CommentDmRule }
 
-export async function listRules(workspaceId: string): Promise<CommentDmRule[]> {
+export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
+  const where: Record<string, unknown> = { workspaceId }
+  if (publicationId) where.publicationId = publicationId
   const rows = await db.commentDmRule.findMany({
-    where: { workspaceId },
+    where: where as any,
     include: { platform: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
   })
-  return rows.map((r) => ({
+  return rows.map((r): CommentDmRule => ({
     id: r.id,
     platformId: r.platformId,
     platformName: r.platform.name,
     keyword: r.keyword,
-    keywords: r.keywords as string[] | undefined,
-    excludeKeywords: r.excludeKeywords as string[] | undefined,
+    keywords: (r.keywords as string[] | null) ?? undefined,
+    excludeKeywords: (r.excludeKeywords as string[] | null) ?? undefined,
     dmTemplate: r.dmTemplate,
     buttonText: r.buttonText,
     buttonUrl: r.buttonUrl,
@@ -69,8 +71,8 @@ export async function createRule(
     platformId: row.platformId,
     platformName: row.platform.name,
     keyword: row.keyword,
-    keywords: row.keywords as string[] | undefined,
-    excludeKeywords: row.excludeKeywords as string[] | undefined,
+    keywords: (row.keywords as string[] | null) ?? undefined,
+    excludeKeywords: (row.excludeKeywords as string[] | null) ?? undefined,
     dmTemplate: row.dmTemplate,
     buttonText: row.buttonText,
     buttonUrl: row.buttonUrl,
