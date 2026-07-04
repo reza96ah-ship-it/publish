@@ -19,6 +19,7 @@ import {
   UserCheck,
   Loader2,
   CheckCheck,
+  BookOpen,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -44,6 +45,8 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { interpolate } from '@/modules/inbox/saved-replies'
+import type { SavedReply } from '@/modules/inbox/saved-replies'
 
 interface InboxMessage {
   id: string
@@ -119,7 +122,13 @@ export function InboxView() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
+  const [showSnippets, setShowSnippets] = useState(false)
   const queryClient = useQueryClient()
+
+  const { data: savedReplies } = useQuery<SavedReply[]>({
+    queryKey: ['inbox-saved-replies'],
+    queryFn: () => api.get<SavedReply[]>('/api/inbox/saved-replies'),
+  })
 
   const { data: messages, isLoading, isError, refetch } = useQuery<InboxMessage[]>({
     queryKey: ['inbox'],
@@ -144,6 +153,15 @@ export function InboxView() {
   const selected = messages?.find((m) => m.id === selectedId) ?? null
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0
   useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
+
+  const insertSnippet = useCallback((reply: SavedReply) => {
+    const text = interpolate(reply.body, {
+      senderName: selected?.senderName,
+      channelName: selected?.platform,
+    })
+    setReplyText(text)
+    setShowSnippets(false)
+  }, [selected])
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
@@ -388,12 +406,31 @@ export function InboxView() {
 
               {/* Reply box */}
               <div className="p-3 border-t border-border bg-surface-subtle">
+                {/* Snippet picker */}
+                {showSnippets && savedReplies && savedReplies.length > 0 && (
+                  <div className="mb-2 rounded-xl border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
+                    {savedReplies.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => insertSnippet(r)}
+                        className="n-focus-ring w-full text-start px-3 py-2.5 hover:bg-surface-hover border-b border-border last:border-0"
+                      >
+                        <p className="text-sm font-semibold text-ink-primary">{r.title}</p>
+                        <p className="text-xs text-ink-secondary truncate">{r.body}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Textarea
                   dir="rtl"
                   rows={3}
-                  placeholder="پاسخ خود را بنویسید…"
+                  placeholder="پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)"
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={(e) => {
+                    setReplyText(e.target.value)
+                    if (e.target.value.startsWith('/')) setShowSnippets(true)
+                    else setShowSnippets(false)
+                  }}
                   className="resize-none bg-background mb-2"
                 />
                 <div className="flex items-center justify-between">
@@ -416,6 +453,19 @@ export function InboxView() {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {savedReplies && savedReplies.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[44px] sm:min-h-0"
+                        onClick={() => setShowSnippets((v) => !v)}
+                        aria-label="پاسخ‌های ذخیره‌شده"
+                        aria-expanded={showSnippets}
+                      >
+                        <BookOpen className="size-3.5" />
+                        قالب‌ها
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

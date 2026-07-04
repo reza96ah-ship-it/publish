@@ -135,6 +135,8 @@ model Workspace {
   revisions    ContentRevision[]
   featureFlags  FeatureFlag[]
   utmPresets    UtmPreset[]
+  savedReplies  SavedReply[]
+  autoTagRules  AutoTagRule[]
 }
 
 model FeatureFlag {
@@ -733,4 +735,34 @@ model OutboxEvent {
   @@index([aggregateId])
   // Issue #148: index for lease expiry recovery queries
   @@index([status, lockExpiresAt])
+}
+
+/* ─── Inbox Saved Replies ─── */
+
+model SavedReply {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String   // short name shown in picker
+  body        String   // Persian body with {نام}, {کانال} variables
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+/* ─── Inbox Auto-Tag Rules ─── */
+
+model AutoTagRule {
+  id          String   @id @default(cuid())
+  workspaceId String
+  keyword     String   // case-insensitive substring match
+  tag         String   // label applied to matching messages
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
 }
