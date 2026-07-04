@@ -17,4 +17,4 @@ UPDATE "CommentDmRule"
 
 -- AddForeignKey: CommentDmRule -> Publication (per-post scoping)
 ALTER TABLE "CommentDmRule" ADD CONSTRAINT "CommentDmRule_publicationId_fkey"
-  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE CASCADE ON UPDATE CASCADE;
