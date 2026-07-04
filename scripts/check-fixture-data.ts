@@ -12,14 +12,14 @@ import path from 'path'
 
 // Patterns that must NOT appear in production source (src/) components
 const FORBIDDEN = [
-  // Placeholder avatar services
-  { pattern: /pravatar\.cc/g, label: 'pravatar.cc placeholder avatar' },
-  { pattern: /ui-avatars\.com/g, label: 'ui-avatars.com placeholder avatar' },
-  { pattern: /randomuser\.me/g, label: 'randomuser.me fixture avatar' },
-  { pattern: /dicebear\.com/g, label: 'dicebear.com fixture avatar' },
-  { pattern: /picsum\.photos/g, label: 'picsum.photos placeholder image' },
-  { pattern: /placehold\.co/g, label: 'placehold.co placeholder image' },
-  { pattern: /lorempixel\.com/g, label: 'lorempixel placeholder image' },
+  // Placeholder avatar services — anchored to prevent matching arbitrary hosts
+  { pattern: /(^|["'\/])pravatar\.cc/g, label: 'pravatar.cc placeholder avatar' },
+  { pattern: /(^|["'\/])ui-avatars\.com/g, label: 'ui-avatars.com placeholder avatar' },
+  { pattern: /(^|["'\/])randomuser\.me/g, label: 'randomuser.me fixture avatar' },
+  { pattern: /(^|["'\/])dicebear\.com/g, label: 'dicebear.com fixture avatar' },
+  { pattern: /(^|["'\/])picsum\.photos/g, label: 'picsum.photos placeholder image' },
+  { pattern: /(^|["'\/])placehold\.co/g, label: 'placehold.co placeholder image' },
+  { pattern: /(^|["'\/])lorempixel\.com/g, label: 'lorempixel placeholder image' },
 
   // Demo/fixture user names (Persian)
   { pattern: /علی احمدی/g, label: 'hard-coded demo user name (علی احمدی)' },

@@ -14,7 +14,7 @@
 
 import * as OTPAuth from 'otpauth'
 import QRCode from 'qrcode'
-import { randomBytes, createHash } from 'crypto'
+import { randomBytes, randomInt, createHash } from 'crypto'
 import { encrypt, decrypt } from './crypto'
 
 const ISSUER = 'Nashrino'
@@ -93,10 +93,10 @@ export function generateBackupCodes(): { plaintext: string[]; hashed: string[] }
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no ambiguous chars (0/O, 1/I)
   const plaintext: string[] = []
   for (let i = 0; i < 10; i++) {
-    const bytes = randomBytes(8)
     let code = ''
     for (let j = 0; j < 8; j++) {
-      code += chars[bytes[j] % chars.length]
+      // Use randomInt for unbiased random selection (avoids modulo bias)
+      code += chars[randomInt(0, chars.length)]
     }
     plaintext.push(code)
   }

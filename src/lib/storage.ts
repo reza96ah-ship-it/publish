@@ -43,7 +43,7 @@ function getS3Client(): S3Client {
         secretAccessKey: S3_SECRET_ACCESS_KEY,
       },
       // For R2/MinIO, force path-style addressing
-      forcePathStyle: !S3_ENDPOINT.includes('amazonaws.com'),
+      forcePathStyle: !S3_ENDPOINT.endsWith('amazonaws.com') && !new URL(S3_ENDPOINT).hostname.endsWith('.amazonaws.com'),
     })
   }
   return s3Client
@@ -233,7 +233,12 @@ export async function deleteObject(key: string): Promise<void> {
  * would escape the uploads directory (path traversal).
  */
 export function safeLocalPath(key: string): string {
-  const resolved = path.resolve(UPLOAD_DIR, key)
+  // Sanitize: strip any path separators/dots to prevent traversal.
+  // The key format is validated by isValidStorageKey() before this is called,
+  // but we belt-and-suspenders sanitize here for CodeQL path-injection safety.
+  const sanitized = key.replace(/\.\./g, '').replace(/[\\/]+/g, '/')
+  const parts = sanitized.split('/').filter(Boolean)
+  const resolved = path.join(UPLOAD_DIR, ...parts)
   if (!resolved.startsWith(UPLOAD_DIR + path.sep) && resolved !== UPLOAD_DIR) {
     throw new Error('invalid storage key')
   }

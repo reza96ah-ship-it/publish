@@ -922,7 +922,9 @@ ${jobs
         res.end(html)
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ error: 'Failed to fetch queue data', detail: String(err) }))
+        // Don't expose stack traces to the client — log internally only
+        console.error('[queue-board] Failed to fetch queue data:', err)
+        res.end(JSON.stringify({ error: 'Failed to fetch queue data' }))
       }
       return
     }

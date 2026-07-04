@@ -20,10 +20,13 @@ export async function POST(req: NextRequest) {
       return new NextResponse(null, { status: 400 })
     }
 
-    // Log vitals in dev for debugging
+    // Log vitals in dev for debugging — sanitize to prevent log injection
     if (process.env.NODE_ENV !== 'production') {
+      const safeName = String(name).replace(/[\n\r]/g, '')
+      const safeRating = String(rating).replace(/[\n\r]/g, '')
+      const safeId = String(id).replace(/[\n\r]/g, '')
       // eslint-disable-next-line no-console
-      console.log(`[vitals] ${name}: ${Math.round(value)}ms (${rating}) id=${id}`)
+      console.log(`[vitals] ${safeName}: ${Math.round(value)}ms (${safeRating}) id=${safeId}`)
     }
 
     // Issue #127: observe into Prometheus histogram.
