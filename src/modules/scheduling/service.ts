@@ -5,7 +5,7 @@
  * #204: Engagement heatmap for best-time-to-post suggestions.
  */
 import { db } from '@/lib/db'
-import { toJalali } from '@/lib/jalali'
+import { toJalali, isHoliday } from '@/lib/jalali'
 
 // ── #203: Queue-based scheduling ──
 
@@ -66,9 +66,11 @@ export async function upsertSchedule(workspaceId: string, config: PostingSchedul
  */
 export function getNextQueueSlot(
   schedule: ScheduleSlot[],
-  fromDate: Date = new Date()
+  fromDate: Date = new Date(),
+  options: { skipHolidays?: boolean } = {}
 ): Date | null {
   if (!schedule.length) return null
+  const { skipHolidays = true } = options
 
   // Convert Gregorian day to Jalali day (Sat=0, Sun=1, ..., Fri=5)
   const gregorianDay = fromDate.getDay()
@@ -82,6 +84,12 @@ export function getNextQueueSlot(
 
     const checkGregDay = checkDate.getDay()
     const checkJalaliDay = (checkGregDay + 1) % 7
+
+    // Issue #222: Skip holidays by default (override allowed)
+    if (skipHolidays) {
+      const jalaliDate = toJalali(checkDate)
+      if (isHoliday(jalaliDate)) continue
+    }
 
     const daySchedule = schedule.find(s => s.day === checkJalaliDay)
     if (!daySchedule?.slots?.length) continue

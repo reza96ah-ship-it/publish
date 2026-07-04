@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
 import { NashrinoEditor } from '@/components/editor/nashrino-editor'
 import { PlatformPreviewTabs } from '@/components/editor/platform-preview-tabs'
+import { IgGridPreview } from '@/components/editor/ig-grid-preview'
 import { MediaUploader } from '@/components/editor/media-uploader'
 import {
   PenLine,
@@ -29,7 +30,7 @@ import {
 import { api } from '@/lib/api'
 import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
 import { detectCommentKeyword } from '@/modules/automation/comment-dm-shared'
-import { toPersianDigits, formatJalali, formatJalaliTime } from '@/lib/jalali'
+import { toPersianDigits, formatJalali, formatJalaliTime, IRAN_HOLIDAYS, toJalali } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
   SectionTitle,
@@ -961,6 +962,34 @@ export function ComposeView() {
               media={selectedMedia.map((m) => ({ thumbnail: m.thumbnail, name: m.name }))}
               selectedPlatforms={selectedPlatformTypes}
             />
+            {selectedPlatformTypes.includes('instagram') && (
+              <IgGridPreview
+                caption={caption}
+                mediaUrl={selectedMedia[0]?.thumbnail}
+                mediaCount={selectedMedia.length}
+              />
+            )}
+
+            {/* Issue #222: Upcoming holidays hint */}
+            {(() => {
+              const today = toJalali(new Date())
+              const upcoming = Object.entries(IRAN_HOLIDAYS)
+                .map(([key, name]) => {
+                  const [month, day] = key.split('-').map(Number)
+                  const remaining = month - today.month || (month === today.month ? day - today.day : 30)
+                  return { name, month, day, remaining }
+                })
+                .filter(h => h.remaining > 0 && h.remaining <= 14)
+                .sort((a, b) => a.remaining - b.remaining)
+                .slice(0, 2)
+              if (!upcoming.length) return null
+              return (
+                <div className="flex items-center gap-2 text-2xs text-ink-tertiary px-2">
+                  <Sparkles className="size-3 text-accent" />
+                  <span>مناسبت‌های پیش‌رو: {upcoming.map(h => `${h.name} (${toPersianDigits(h.remaining)} روز دیگر)`).join('، ')}</span>
+                </div>
+              )
+            })()}
 
             {/* Schedule info (always visible below tabs) */}
             <div className="n-card-compact flex items-center justify-between p-2.5 text-2xs text-ink-tertiary">
