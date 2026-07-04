@@ -48,12 +48,15 @@ function parseCsvLine(line: string): string[] {
   return result
 }
 
+// Parses ALL data rows — no truncation. Callers must check length against
+// CSV_MAX_ROWS and reject oversized files (silently dropping rows 201+ would
+// let an import "succeed" while losing data).
 export function parseCSV(text: string): CsvRow[] {
   const normalized = text.replace(/^﻿/, '').replace(/\r\n?/g, '\n')
   const lines = normalized.split('\n').filter(l => l.trim())
   if (lines.length < 2) return []
   const headers = parseCsvLine(lines[0]).map(h => h.toLowerCase().trim())
-  return lines.slice(1, CSV_MAX_ROWS + 1).map(line => {
+  return lines.slice(1).map(line => {
     const values = parseCsvLine(line)
     const get = (key: string) => values[headers.indexOf(key)]?.trim() ?? ''
     return {

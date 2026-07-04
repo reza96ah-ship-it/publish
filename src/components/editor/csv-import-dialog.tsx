@@ -14,8 +14,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
-import { parseCSV } from '@/modules/content/csv-shared'
+import { parseCSV, CSV_MAX_ROWS } from '@/modules/content/csv-shared'
 import type { ValidatedRow } from '@/modules/content/csv-shared'
+import { toPersianDigits } from '@/lib/jalali'
 
 type Step = 'upload' | 'validate' | 'done'
 
@@ -65,6 +66,10 @@ export function CsvImportDialog({ open, onOpenChange }: Props) {
     const rows = parseCSV(text)
     if (rows.length === 0) {
       toast.error('فایل خالی است یا فرمت نامعتبر دارد')
+      return
+    }
+    if (rows.length > CSV_MAX_ROWS) {
+      toast.error(`فایل ${toPersianDigits(rows.length)} ردیف دارد — حداکثر ${toPersianDigits(CSV_MAX_ROWS)} ردیف مجاز است. فایل را تقسیم کنید.`)
       return
     }
     validateMutation.mutate(rows)
