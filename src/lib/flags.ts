@@ -23,6 +23,7 @@ export type FlagName =
   | 'ai_caption_v2'          // exp_ — improved caption model
   | 'utm_presets'            // #246 — UTM builder in compose
   | 'jalali_holidays'        // #222 — holiday overlay in calendar
+  | 'comment_dm_beta'        // #209 — Instagram comment-to-DM automation (beta)
 
 /** Default value (false = off for everyone unless overridden). */
 const FLAG_DEFAULTS: Record<FlagName, boolean> = {
@@ -31,6 +32,7 @@ const FLAG_DEFAULTS: Record<FlagName, boolean> = {
   ai_caption_v2: false,
   utm_presets: false,
   jalali_holidays: false,
+  comment_dm_beta: false,
 }
 
 // ─── Evaluation ─────────────────────────────────────────────────────────────

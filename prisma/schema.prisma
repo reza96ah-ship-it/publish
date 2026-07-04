@@ -135,8 +135,10 @@ model Workspace {
   revisions    ContentRevision[]
   featureFlags  FeatureFlag[]
   utmPresets    UtmPreset[]
-  savedReplies  SavedReply[]
-  autoTagRules  AutoTagRule[]
+  savedReplies   SavedReply[]
+  autoTagRules   AutoTagRule[]
+  commentDmRules CommentDmRule[]
+  commentDmLogs  CommentDmLog[]
 }
 
 model FeatureFlag {
@@ -248,9 +250,10 @@ model Platform {
   updatedAt   DateTime @updatedAt
 
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contentLinks  ContentPlatform[]
-  publishJobs   PublishJob[]
-  inboxMessages InboxMessage[]
+  contentLinks   ContentPlatform[]
+  publishJobs    PublishJob[]
+  inboxMessages  InboxMessage[]
+  commentDmRules CommentDmRule[]
 
   @@index([workspaceId])
   @@index([workspaceId, type])
@@ -771,4 +774,41 @@ model AutoTagRule {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
+}
+
+/* ─── Comment-to-DM Automation (#209) ─── */
+
+model CommentDmRule {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  platformId      String   // Instagram platform ID
+  keyword         String   // Persian keyword to match in comment
+  dmTemplate      String   // DM body, supports {نام} variable
+  optOutKeyword   String   @default("نه") // comment keyword to suppress DM
+  freqCapHours    Int      @default(24) // min hours between DMs to same user
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform  Platform  @relation(fields: [platformId], references: [id])
+
+  @@index([workspaceId])
+  @@index([platformId, isActive])
+}
+
+model CommentDmLog {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  ruleId       String
+  commentId    String   // external comment ID
+  senderUserId String   // Instagram user ID of commenter
+  sentAt       DateTime @default(now())
+  status       String   @default("sent") // sent, skipped, failed
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([ruleId, commentId])
+  @@index([workspaceId])
+  @@index([ruleId, senderUserId, sentAt])
 }
