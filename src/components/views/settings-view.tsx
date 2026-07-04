@@ -24,9 +24,11 @@ import {
   Download,
   ExternalLink,
   Link2,
+  Zap,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
 import { toPersianDigits, formatJalali } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
@@ -201,9 +203,15 @@ const NOTIFICATION_TOGGLES = [
 ]
 
 export function SettingsView() {
-  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm'>(
+  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm' | 'automation'>(
     'overview'
   )
+
+  const { data: platforms = [] } = useQuery<{ id: string; name: string; type: string }[]>({
+    queryKey: ['platforms'],
+    queryFn: () => api.getPaginated('/api/platforms'),
+    staleTime: 60_000,
+  })
 
   return (
     <motion.div
@@ -225,6 +233,7 @@ export function SettingsView() {
             { value: 'billing', label: 'صورت‌گیری', icon: CreditCard },
             { value: 'notifications', label: 'اعلان‌ها', icon: Bell },
             { value: 'utm', label: 'ردیابی UTM', icon: Link2 },
+            { value: 'automation', label: 'اتوماسیون', icon: Zap },
           ]}
         />
       </div>
@@ -247,6 +256,9 @@ export function SettingsView() {
         </TabsContent>
         <TabsContent value="utm" className="mt-4">
           <UtmSection />
+        </TabsContent>
+        <TabsContent value="automation" className="mt-4">
+          <CommentDmRulesPanel platforms={platforms} readOnly />
         </TabsContent>
       </Tabs>
     </motion.div>

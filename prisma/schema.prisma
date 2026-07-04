@@ -445,6 +445,7 @@ model Publication {
   content     Content     @relation(fields: [contentId], references: [id], onDelete: Cascade)
   revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
   attempts    PublicationAttempt[]
+  commentDmRules CommentDmRule[]
 
   @@unique([revisionId, platformId])
   @@index([workspaceId])
@@ -785,16 +786,25 @@ model CommentDmRule {
   id              String   @id @default(cuid())
   workspaceId     String
   platformId      String   // Instagram platform ID
-  keyword         String   // Persian keyword to match in comment
+  publicationId   String?  // null = workspace-wide; set = scoped to this publication
+  igPostId        String?  // Instagram post ID, populated after publish succeeds
+  keyword         String   // primary keyword (kept for back-compat + index); keywords[0]
+  keywords        Json?    // string[] of trigger keywords (normalized on match)
+  excludeKeywords Json?    // string[] of negative keywords that suppress the DM
   dmTemplate      String   // DM body, supports {نام} variable
+  buttonText      String?  // optional quick-reply button label
+  buttonUrl       String?  // optional quick-reply button URL
+  publicReply     String?  // Optional public comment reply
   optOutKeyword   String   @default("نه") // comment keyword to suppress DM
   freqCapHours    Int      @default(24) // min hours between DMs to same user
+  status          String   @default("active") // draft, active, paused, needs_attention
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform     Platform     @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  publication  Publication? @relation(fields: [publicationId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([platformId, isActive])

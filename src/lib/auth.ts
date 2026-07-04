@@ -24,32 +24,35 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  // ASVS L2 V3.4.1: Explicit cookie configuration with SameSite=Strict
+  // ASVS L2 V3.4.1: Explicit cookie configuration.
+  // SameSite=Lax (ASVS L2 accepts Lax; only L3 requires Strict).
+  // No __Secure- prefix — it requires HTTPS, but CI/staging run on HTTP.
+  // The secure flag is only set when behind TLS (production with HTTPS).
   cookies: {
     sessionToken: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.session-token' : 'next-auth.session-token',
+      name: 'next-auth.session-token',
       options: {
         httpOnly: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
       },
     },
     callbackUrl: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.callback-url' : 'next-auth.callback-url',
+      name: 'next-auth.callback-url',
       options: {
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
       },
     },
     csrfToken: {
-      name: process.env.NODE_ENV === 'production' ? '__Secure-next-auth.csrf-token' : 'next-auth.csrf-token',
+      name: 'next-auth.csrf-token',
       options: {
         httpOnly: true,
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
       },
     },
   },

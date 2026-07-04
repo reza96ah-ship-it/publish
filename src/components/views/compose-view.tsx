@@ -21,9 +21,14 @@ import {
   Sparkles,
   Eye,
   AlertTriangle,
+  Zap,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
+import { detectCommentKeyword } from '@/modules/automation/comment-dm-shared'
 import { toPersianDigits, formatJalali, formatJalaliTime } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
@@ -117,8 +122,10 @@ export function ComposeView() {
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([])
   const [platformCaptions, setPlatformCaptions] = useState<Record<string, string>>({})
   const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule' | 'queue'>('now')
-  // Single source of truth — a real Date object from the Jalali picker
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null)
+  const [showDmSection, setShowDmSection] = useState(false)
+  // After publish, holds the first returned publicationId so the DM panel can scope rules to it
+  const [publishedPublicationId, setPublishedPublicationId] = useState<string | null>(null)
 
   // Issue #127: useTransition for non-urgent state updates (caption/hashtags/note
   // typing) so the main thread stays responsive → INP <200ms. Urgent updates
@@ -381,6 +388,9 @@ export function ComposeView() {
 
   const hasCapabilityViolations = capabilityViolations.length > 0
 
+  const detectedKeyword = useMemo(() => detectCommentKeyword(caption), [caption])
+  const hasIgSelected = (platforms ?? []).some((p) => selectedPlatforms.includes(p.id) && p.type === 'instagram')
+
   // Issue #152: canPublish no longer requires media globally.
   // Text-only publication is allowed when ALL selected channels support text
   // (capability registry says supportsText=true). Media is required only when
@@ -565,12 +575,13 @@ export function ComposeView() {
     publishMutation.mutate(payload, {
       onSuccess: (res) => {
         toast.success(res.message, { id: toastId })
-        // Issue #152: say "queued" not "published" — content is accepted into
-        // the publishing queue, NOT yet published to the provider.
-        // Actual publication success is announced via realtime when the worker
-        // confirms the provider accepted the post.
         announce('محتوا به صف انتشار ارسال شد — در انتظار انتشار توسط ارائه‌دهنده')
-        // Reset form
+        // Capture first publicationId so comment→DM panel can scope rules to this post
+        if ((res as unknown as { publicationIds?: string[] }).publicationIds?.[0]) {
+          setPublishedPublicationId((res as unknown as { publicationIds: string[] }).publicationIds[0])
+          setShowDmSection(true)
+        }
+        // Reset form (keep DM panel open)
         setTitle('')
         setCaption('')
         setHashtags('')
@@ -851,6 +862,43 @@ export function ComposeView() {
               </div>
             </div>
           </div>
+
+          {/* Comment→DM automation (shown for IG posts, or after publish) */}
+          {(hasIgSelected || publishedPublicationId) && (
+            <div className="n-card p-4 space-y-3">
+              <button
+                onClick={() => setShowDmSection((v) => !v)}
+                className="n-focus-ring w-full flex items-center justify-between gap-2 text-sm font-semibold text-ink-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <Zap className="size-4 text-accent" />
+                  دایرکت خودکار از کامنت
+                  {detectedKeyword && !showDmSection && (
+                    <span className="text-2xs font-normal text-accent border border-accent/30 rounded-full px-2 py-0.5">
+                      کلمه «{detectedKeyword}» در کپشن پیدا شد
+                    </span>
+                  )}
+                </span>
+                {showDmSection ? <ChevronUp className="size-4 text-ink-tertiary" /> : <ChevronDown className="size-4 text-ink-tertiary" />}
+              </button>
+
+              {!showDmSection && (
+                <p className="text-xs text-ink-secondary">
+                  {detectedKeyword
+                    ? <>کلمه <strong>«{detectedKeyword}»</strong> در کپشن پیدا شد. می‌خواهید اگر کسی این کلمه را کامنت کند، پیام آماده‌ای در دایرکت برایش بفرستید؟</>
+                    : <>اگر مخاطب زیر پست شما کلمه‌ای مثل «قیمت» را کامنت کند، پیام آماده را در دایرکت دریافت می‌کند.</>}
+                </p>
+              )}
+
+              {showDmSection && (
+                <CommentDmRulesPanel
+                  platforms={platforms ?? []}
+                  publicationId={publishedPublicationId}
+                  suggestedKeyword={detectedKeyword}
+                />
+              )}
+            </div>
+          )}
 
           {/* Schedule options (inline, not a separate step) */}
           <div className="n-card p-4">
