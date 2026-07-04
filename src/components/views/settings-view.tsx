@@ -258,7 +258,7 @@ export function SettingsView() {
           <UtmSection />
         </TabsContent>
         <TabsContent value="automation" className="mt-4">
-          <CommentDmRulesPanel platforms={platforms} />
+          <CommentDmRulesPanel platforms={platforms} readOnly />
         </TabsContent>
       </Tabs>
     </motion.div>

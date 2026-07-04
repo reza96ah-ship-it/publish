@@ -4,10 +4,17 @@
  */
 
 import { db } from '@/lib/db'
+import { parseKeywordList } from './comment-dm-shared'
 import type { CommentDmRule } from './comment-dm-shared'
 
-export { previewTemplate, detectCommentKeyword } from './comment-dm-shared'
+export { previewTemplate, detectCommentKeyword, normalizePersian, matchComment, parseKeywordList } from './comment-dm-shared'
 export type { CommentDmRule }
+
+/** Coerce a Prisma Json column into a string[]. */
+function toStringArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
+  return []
+}
 
 function toRule(r: {
   id: string
@@ -16,13 +23,18 @@ function toRule(r: {
   publicationId: string | null
   igPostId: string | null
   keyword: string
+  keywords: unknown
+  excludeKeywords: unknown
   dmTemplate: string
+  buttonText: string | null
+  buttonUrl: string | null
   publicReply: string | null
   optOutKeyword: string
-  freqCapHours: number
+  status: string
   isActive: boolean
   createdAt: Date
 }): CommentDmRule {
+  const keywords = toStringArray(r.keywords)
   return {
     id: r.id,
     platformId: r.platformId,
@@ -30,10 +42,14 @@ function toRule(r: {
     publicationId: r.publicationId,
     igPostId: r.igPostId,
     keyword: r.keyword,
+    keywords: keywords.length ? keywords : (r.keyword ? [r.keyword] : []),
+    excludeKeywords: toStringArray(r.excludeKeywords),
     dmTemplate: r.dmTemplate,
+    buttonText: r.buttonText,
+    buttonUrl: r.buttonUrl,
     publicReply: r.publicReply,
     optOutKeyword: r.optOutKeyword,
-    freqCapHours: r.freqCapHours,
+    status: r.status,
     isActive: r.isActive,
     createdAt: r.createdAt,
   }
@@ -55,15 +71,25 @@ export async function createRule(
   workspaceId: string,
   data: {
     platformId: string
-    keyword: string
+    keyword?: string
+    keywords?: string[]
+    excludeKeywords?: string[]
     dmTemplate: string
+    buttonText?: string | null
+    buttonUrl?: string | null
     publicReply?: string | null
     optOutKeyword?: string
     freqCapHours?: number
     publicationId?: string | null
   }
 ): Promise<CommentDmRule> {
-  if (!data.keyword.trim()) throw new Error('کلیدواژه الزامی است')
+  // Accept either a keywords[] array or a single/comma-separated `keyword` field.
+  const keywords = (data.keywords?.length ? data.keywords : parseKeywordList(data.keyword ?? ''))
+    .map((k) => k.trim())
+    .filter(Boolean)
+  const excludeKeywords = (data.excludeKeywords ?? []).map((k) => k.trim()).filter(Boolean)
+
+  if (keywords.length === 0) throw new Error('حداقل یک کلیدواژه الزامی است')
   if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
 
   const platform = await db.platform.findFirst({
@@ -81,8 +107,12 @@ export async function createRule(
       workspaceId,
       platformId: data.platformId,
       publicationId: data.publicationId ?? null,
-      keyword: data.keyword.trim().toLowerCase(),
+      keyword: keywords[0],
+      keywords,
+      excludeKeywords,
       dmTemplate: data.dmTemplate.trim(),
+      buttonText: data.buttonText?.trim() || null,
+      buttonUrl: data.buttonUrl?.trim() || null,
       publicReply: data.publicReply?.trim() || null,
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
@@ -99,7 +129,10 @@ export async function updateRuleIgPostId(id: string, workspaceId: string, igPost
 export async function toggleRule(id: string, workspaceId: string, isActive: boolean): Promise<void> {
   const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('قانون یافت نشد')
-  await db.commentDmRule.update({ where: { id }, data: { isActive } })
+  await db.commentDmRule.update({
+    where: { id },
+    data: { isActive, status: isActive ? 'active' : 'paused' },
+  })
 }
 
 export async function deleteRule(id: string, workspaceId: string): Promise<void> {

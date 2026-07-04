@@ -788,11 +788,16 @@ model CommentDmRule {
   platformId      String   // Instagram platform ID
   publicationId   String?  // null = workspace-wide; set = scoped to this publication
   igPostId        String?  // Instagram post ID, populated after publish succeeds
-  keyword         String   // Persian keyword to match in comment
+  keyword         String   // primary keyword (kept for back-compat + index); keywords[0]
+  keywords        Json?    // string[] of trigger keywords (normalized on match)
+  excludeKeywords Json?    // string[] of negative keywords that suppress the DM
   dmTemplate      String   // DM body, supports {نام} variable
+  buttonText      String?  // optional quick-reply button label (opens 24h window on tap)
+  buttonUrl       String?  // optional quick-reply button URL
   publicReply     String?  // Optional public comment reply, e.g. "به DM شما فرستادم"
   optOutKeyword   String   @default("نه") // comment keyword to suppress DM
   freqCapHours    Int      @default(24) // min hours between DMs to same user
+  status          String   @default("active") // draft, active, paused, needs_attention
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
