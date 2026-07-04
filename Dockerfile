@@ -29,10 +29,12 @@ RUN bunx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Set dummy secrets for build — Next.js build evaluates auth.ts which requires
 # NEXTAUTH_SECRET in production. The real secret is injected at runtime via .env.
+# Use ARG (not ENV) for the build-time secret so it's NOT persisted in the image
+# layer — eliminates Docker Scout SecretsUsedInArgOrEnv warning.
 ENV NODE_ENV=production
-ENV NEXTAUTH_SECRET=build-time-dummy-secret-not-used-at-runtime
+ARG NEXTAUTH_SECRET=build-time-dummy-secret-not-used-at-runtime
 ENV NEXTAUTH_URL=http://localhost:3000
-RUN bun run build
+RUN export NEXTAUTH_SECRET="$NEXTAUTH_SECRET" && bun run build
 
 # ── Stage 3a: app (Next.js standalone) ────────────────────────────────
 FROM oven/bun:1.2-slim AS app

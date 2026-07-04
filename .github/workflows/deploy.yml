@@ -139,7 +139,7 @@ jobs:
       # Issue #141: Build + push all 4 images with provenance (SLSA) attestation
       - name: Build + push app
         id: build-app
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: app
@@ -155,7 +155,7 @@ jobs:
 
       - name: Build + push worker
         id: build-worker
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: worker
@@ -170,7 +170,7 @@ jobs:
 
       - name: Build + push realtime
         id: build-realtime
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: realtime
@@ -186,7 +186,7 @@ jobs:
       # Issue #141: build + push dedicated migration image
       - name: Build + push migrate
         id: build-migrate
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: migrate
@@ -208,7 +208,7 @@ jobs:
           output-file: /tmp/sbom-app.spdx.json
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-app-${{ steps.meta.outputs.tag }}
           path: /tmp/sbom-app.spdx.json

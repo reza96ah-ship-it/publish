@@ -135,7 +135,7 @@ jobs:
       - run: bun run scripts/check-bundle-budgets.ts
 
       # Issue #141: Upload all reports as artifacts for release evidence
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: coverage-report
@@ -144,7 +144,7 @@ jobs:
           retention-days: 30
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: |
@@ -213,7 +213,7 @@ jobs:
 
       # 5. Container scan — trivy on the built Docker image
       - name: Build image for scan
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: app
@@ -238,7 +238,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v4
       - name: Build app image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: app
@@ -247,7 +247,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build worker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: worker
@@ -256,7 +256,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build realtime image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: realtime
@@ -265,7 +265,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Build migrate image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: migrate
@@ -358,7 +358,7 @@ jobs:
         run: k6 run k6/smoke.js
       - name: Upload k6 results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: k6-smoke-results
           path: k6/results/
@@ -473,7 +473,7 @@ jobs:
         run: bun run test:visual
       - name: Upload visual diff report (on failure)
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: visual-diff-report
           path: playwright-report/
@@ -481,7 +481,7 @@ jobs:
           retention-days: 7
       - name: Upload new snapshots (if missing)
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: visual-snapshots
           path: tests/e2e/visual.spec.ts-snapshots/
@@ -565,7 +565,7 @@ jobs:
         run: bunx @lhci/cli@0.14.x autorun --config=.lighthouserc.json
       - name: Upload Lighthouse report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: lighthouse-report
           path: .lighthouseci/
