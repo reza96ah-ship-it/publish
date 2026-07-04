@@ -14,6 +14,7 @@ import {
   Activity,
   FileText,
 } from 'lucide-react'
+import { ChartPanel } from '@/components/dashboard/chart-panel'
 import {
   AreaChart,
   Area,
@@ -39,8 +40,6 @@ import {
   PlatformIcon,
   StatusBadge,
   EmptyState,
-  Skeleton,
-  LoadingState,
   AnimatedTabs,
   KpiCard,
 } from '@/components/dashboard/shared'
@@ -267,73 +266,70 @@ export function AnalyticsView() {
       </div>
 
       {/* Reach area chart */}
-      <div className="n-card n-gradient-border p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-accent" />
-            <h2 className="text-sm font-semibold text-ink-primary">روند دسترسی</h2>
-          </div>
-          <span className="text-xs text-ink-tertiary num-tabular">
-            {toPersianDigits(periodSlice.length)} روز
-          </span>
-        </div>
-        <LoadingState
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={refetch}
-          errorLabel="خطا در بارگذاری آمار"
-          skeleton={<Skeleton className="h-[200px] sm:h-[240px] md:h-64 w-full rounded-xl" />}
+      <ChartPanel
+        title="روند دسترسی"
+        icon={TrendingUp}
+        source="Instagram API"
+        lastUpdated={new Date()}
+        period={period === '7' ? '۷ روز' : '۳۰ روز'}
+        loading={isLoading}
+        error={isError}
+        onRetry={refetch}
+        insufficientData={periodSlice.length < 3}
+        skeletonHeight="h-[200px] sm:h-[240px] md:h-64"
+        className="n-gradient-border"
+      >
+        <div
+          dir="ltr"
+          className="h-[200px] sm:h-[240px] md:h-64 w-full"
+          data-visual-mask="analytics-reach-chart"
         >
-          <div
-            dir="ltr"
-            className="h-[200px] sm:h-[240px] md:h-64 w-full"
-            data-visual-mask="analytics-reach-chart"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                <defs>
-                  <linearGradient id="reachGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
-                  tickFormatter={(v) => toPersianDigits(v)}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
-                  tickFormatter={(v) => formatCompact(Number(v))}
-                  axisLine={false}
-                  tickLine={false}
-                  width={35}
-                />
-                <Tooltip content={<ChartTooltip />} />
-                <Area
-                  type="monotone"
-                  dataKey="reach"
-                  stroke="var(--color-accent)"
-                  strokeWidth={2.5}
-                  fill="url(#reachGrad)"
-                  name="دسترسی"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </LoadingState>
-      </div>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+              <defs>
+                <linearGradient id="reachGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="var(--color-accent)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                tickFormatter={(v) => toPersianDigits(v)}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                tickFormatter={(v) => formatCompact(Number(v))}
+                axisLine={false}
+                tickLine={false}
+                width={35}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="reach"
+                stroke="var(--color-accent)"
+                strokeWidth={2.5}
+                fill="url(#reachGrad)"
+                name="دسترسی"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartPanel>
 
       {/* Platform breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="n-card p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <Activity className="size-4 text-accent" />
-            <h2 className="text-sm font-semibold text-ink-primary">دسترسی به تفکیک پلتفرم</h2>
-          </div>
+        <ChartPanel
+          title="دسترسی به تفکیک پلتفرم"
+          icon={Activity}
+          source="Multi-platform"
+          period={period === '7' ? '۷ روز' : '۳۰ روز'}
+          loading={platformQueries.some((q) => q.isLoading)}
+        >
           <div data-visual-mask="analytics-platform-breakdown">
             <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -380,7 +376,7 @@ export function AnalyticsView() {
               })}
             </div>
           </div>
-        </div>
+        </ChartPanel>
 
         {/* Top metrics summary */}
         <div className="n-card p-5">

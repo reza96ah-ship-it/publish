@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
@@ -255,9 +255,44 @@ const THEME_OPTIONS = [
   { value: 'system', label: 'سیستم', icon: Monitor },
 ] as const
 
+type Density = 'comfortable' | 'compact'
+
+function useDensity(): [Density, (d: Density) => void] {
+  const subscribe = useCallback((onChange: () => void) => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'nashrino-density') onChange()
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
+
+  const density = useSyncExternalStore(
+    subscribe,
+    () => (localStorage.getItem('nashrino-density') ?? 'comfortable') as Density,
+    () => 'comfortable' as Density,
+  )
+
+  // Sync density value to DOM attribute (external system — not a setState call)
+  useEffect(() => {
+    if (density === 'compact') {
+      document.documentElement.setAttribute('data-density', 'compact')
+    } else {
+      document.documentElement.removeAttribute('data-density')
+    }
+  }, [density])
+
+  const setDensity = useCallback((d: Density) => {
+    localStorage.setItem('nashrino-density', d)
+    window.dispatchEvent(new StorageEvent('storage', { key: 'nashrino-density', newValue: d }))
+  }, [])
+
+  return [density, setDensity]
+}
+
 function AppearanceSection() {
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
+  const [density, setDensity] = useDensity()
 
   return (
     <div className="n-card p-5">
@@ -268,7 +303,7 @@ function AppearanceSection() {
       <p className="text-sm text-ink-tertiary mb-4">
         پوسته برنامه را انتخاب کنید. «سیستم» به تنظیم سیستم‌عامل پیروی می‌کند.
       </p>
-      <div className="flex gap-3">
+      <div className="flex gap-3 mb-6">
         {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
           const active = mounted && theme === value
           return (
@@ -287,6 +322,34 @@ function AppearanceSection() {
             </button>
           )
         })}
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-ink-primary">تراکم نمایش</p>
+        <p className="text-xs text-ink-secondary">حالت فشرده برای داشبوردهای عملیاتی مناسب است</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDensity('comfortable')}
+            className={cn(
+              'flex-1 rounded-lg border p-3 text-sm transition-colors n-focus-ring',
+              density === 'comfortable'
+                ? 'border-accent bg-accent/5 text-accent font-medium'
+                : 'border-border text-ink-secondary hover:border-accent/50'
+            )}
+          >
+            عادی
+          </button>
+          <button
+            onClick={() => setDensity('compact')}
+            className={cn(
+              'flex-1 rounded-lg border p-3 text-sm transition-colors n-focus-ring',
+              density === 'compact'
+                ? 'border-accent bg-accent/5 text-accent font-medium'
+                : 'border-border text-ink-secondary hover:border-accent/50'
+            )}
+          >
+            فشرده
+          </button>
+        </div>
       </div>
     </div>
   )
