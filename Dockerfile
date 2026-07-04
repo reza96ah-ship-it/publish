@@ -27,14 +27,13 @@ ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?s
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN bunx prisma generate
 ENV NEXT_TELEMETRY_DISABLED=1
-# Set dummy secrets for build — Next.js build evaluates auth.ts which requires
-# NEXTAUTH_SECRET in production. The real secret is injected at runtime via .env.
-# Use ARG (not ENV) for the build-time secret so it's NOT persisted in the image
-# layer — eliminates Docker Scout SecretsUsedInArgOrEnv warning.
+# Next.js build evaluates auth.ts which requires NEXTAUTH_SECRET in production.
+# Inline the dummy value in the RUN command so it's never declared as an
+# ARG/ENV instruction — eliminates Docker Scout SecretsUsedInArgOrEnv warning.
+# The real secret is injected at runtime via .env.
 ENV NODE_ENV=production
-ARG NEXTAUTH_SECRET=build-time-dummy-secret-not-used-at-runtime
 ENV NEXTAUTH_URL=http://localhost:3000
-RUN export NEXTAUTH_SECRET="$NEXTAUTH_SECRET" && bun run build
+RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime bun run build
 
 # ── Stage 3a: app (Next.js standalone) ────────────────────────────────
 FROM oven/bun:1.2-slim AS app
