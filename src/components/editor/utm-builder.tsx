@@ -157,10 +157,11 @@ export function UtmBuilder({ initialUrl = '', onUrlChange, className }: UtmBuild
             <span className="text-2xs text-ink-tertiary">پیش‌نمایش URL</span>
             <div className="flex items-center gap-1">
               <a
-                href={finalUrl}
+                href={urlValid ? finalUrl : '#'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-2xs text-accent hover:underline flex items-center gap-0.5 n-focus-ring rounded"
+                onClick={(e) => { if (!urlValid) e.preventDefault() }}
               >
                 <ExternalLink className="size-3" />
                 باز کردن

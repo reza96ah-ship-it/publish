@@ -99,9 +99,13 @@ test.describe('Issue #218 — Authenticated mobile shell (375px RTL)', () => {
   test('calendar — calendar card is horizontally scrollable', async ({ page }) => {
     await page.goto('/calendar')
     await page.waitForLoadState('load')
-    // The n-card wrapping the 7-col grid should have overflow-x-auto
-    const calendarCard = page.locator('.overflow-x-auto').first()
-    await expect(calendarCard).toBeVisible()
+    // Wait for React hydration + data to render — the calendar grid is data-driven
+    // and may not be immediately available, especially on Firefox/Webkit
+    await page.waitForTimeout(1500)
+    // The n-card wrapping the 7-col grid should have overflow-x-auto.
+    // Use a more specific selector to avoid matching unrelated .overflow-x-auto elements.
+    const calendarCard = page.locator('.n-card .overflow-x-auto').first()
+    await expect(calendarCard).toBeVisible({ timeout: 10000 })
   })
 
   test('inbox — no horizontal overflow at 375px', async ({ page }) => {
