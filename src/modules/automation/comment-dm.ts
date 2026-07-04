@@ -1,165 +1,94 @@
 /**
  * Comment-to-DM automation module (#209).
- * Rules are per-post (publicationId set) or workspace-wide (publicationId null).
+ *
+ * Worker execution is behind the comment_dm_beta feature flag.
+ * The worker TODO: on new InboxMessage of type 'comment', match rules
+ * for the platform, check freqCap via CommentDmLog, send DM via
+ * Instagram Graph API, and log the result.
  */
 
 import { db } from '@/lib/db'
-import { parseKeywordList } from './comment-dm-shared'
 import type { CommentDmRule } from './comment-dm-shared'
 
-export { previewTemplate, detectCommentKeyword, normalizePersian, matchComment, parseKeywordList } from './comment-dm-shared'
+export { previewTemplate } from './comment-dm-shared'
 export type { CommentDmRule }
 
-// Input limits — keep rules sane and abuse-resistant.
-const MAX_KEYWORDS = 10
-const MAX_KEYWORD_LENGTH = 40
-const MAX_DM_LENGTH = 1000
-const MAX_PUBLIC_REPLY_LENGTH = 220
-const MAX_BUTTON_TEXT_LENGTH = 40
-
-/** Coerce a Prisma Json column into a string[]. */
-function toStringArray(v: unknown): string[] {
-  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === 'string')
-  return []
-}
-
-function toRule(r: {
-  id: string
-  platformId: string
-  platform: { name: string }
-  publicationId: string | null
-  igPostId: string | null
-  keyword: string
-  keywords: unknown
-  excludeKeywords: unknown
-  dmTemplate: string
-  buttonText: string | null
-  buttonUrl: string | null
-  publicReply: string | null
-  optOutKeyword: string
-  status: string
-  isActive: boolean
-  createdAt: Date
-}): CommentDmRule {
-  const keywords = toStringArray(r.keywords)
-  return {
+export async function listRules(workspaceId: string): Promise<CommentDmRule[]> {
+  const rows = await db.commentDmRule.findMany({
+    where: { workspaceId },
+    include: { platform: { select: { name: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return rows.map((r) => ({
     id: r.id,
     platformId: r.platformId,
     platformName: r.platform.name,
-    publicationId: r.publicationId,
-    igPostId: r.igPostId,
     keyword: r.keyword,
-    keywords: keywords.length ? keywords : (r.keyword ? [r.keyword] : []),
-    excludeKeywords: toStringArray(r.excludeKeywords),
+    keywords: r.keywords as string[] | undefined,
+    excludeKeywords: r.excludeKeywords as string[] | undefined,
     dmTemplate: r.dmTemplate,
     buttonText: r.buttonText,
     buttonUrl: r.buttonUrl,
     publicReply: r.publicReply,
     optOutKeyword: r.optOutKeyword,
-    status: r.status,
+    freqCapHours: r.freqCapHours,
     isActive: r.isActive,
+    status: r.status,
+    publicationId: r.publicationId,
+    igPostId: r.igPostId,
     createdAt: r.createdAt,
-  }
-}
-
-export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
-  const rows = await db.commentDmRule.findMany({
-    where: {
-      workspaceId,
-      ...(publicationId !== undefined ? { publicationId } : {}),
-    },
-    include: { platform: { select: { name: true } } },
-    orderBy: { createdAt: 'desc' },
-  })
-  return rows.map(toRule)
+  }))
 }
 
 export async function createRule(
   workspaceId: string,
-  data: {
-    platformId: string
-    keyword?: string
-    keywords?: string[]
-    excludeKeywords?: string[]
-    dmTemplate: string
-    buttonText?: string | null
-    buttonUrl?: string | null
-    publicReply?: string | null
-    optOutKeyword?: string
-    freqCapHours?: number
-    publicationId?: string | null
-  }
+  data: { platformId: string; keyword: string; dmTemplate: string; optOutKeyword?: string; freqCapHours?: number }
 ): Promise<CommentDmRule> {
-  // Accept either a keywords[] array or a single/comma-separated `keyword` field.
-  const keywords = (data.keywords?.length ? data.keywords : parseKeywordList(data.keyword ?? ''))
-    .map((k) => k.trim())
-    .filter(Boolean)
-  const excludeKeywords = (data.excludeKeywords ?? []).map((k) => k.trim()).filter(Boolean)
+  if (!data.keyword.trim()) throw new Error('کلیدواژه الزامی است')
+  if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
 
-  if (keywords.length === 0) throw new Error('حداقل یک کلیدواژه الزامی است')
-  if (keywords.length > MAX_KEYWORDS) throw new Error(`حداکثر ${MAX_KEYWORDS} کلیدواژه مجاز است`)
-  if (keywords.some((k) => k.length > MAX_KEYWORD_LENGTH)) throw new Error('یک کلیدواژه بیش از حد طولانی است')
-
-  const dmTemplate = data.dmTemplate.trim()
-  if (!dmTemplate) throw new Error('متن پیام الزامی است')
-  if (dmTemplate.length > MAX_DM_LENGTH) throw new Error(`متن پیام نباید بیش از ${MAX_DM_LENGTH} نویسه باشد`)
-
-  const publicReply = data.publicReply?.trim() || null
-  if (publicReply && publicReply.length > MAX_PUBLIC_REPLY_LENGTH) {
-    throw new Error(`پاسخ عمومی نباید بیش از ${MAX_PUBLIC_REPLY_LENGTH} نویسه باشد`)
-  }
-
-  const buttonText = data.buttonText?.trim() || null
-  if (buttonText && buttonText.length > MAX_BUTTON_TEXT_LENGTH) {
-    throw new Error('متن دکمه بیش از حد طولانی است')
-  }
-
-  const buttonUrl = data.buttonUrl?.trim() || null
-  if (buttonUrl && !/^https?:\/\/\S+$/i.test(buttonUrl)) {
-    throw new Error('لینک دکمه باید یک آدرس معتبر با http یا https باشد')
-  }
-
+  // Verify platform belongs to workspace and is Instagram
   const platform = await db.platform.findFirst({
     where: { id: data.platformId, workspaceId, type: 'instagram' },
   })
   if (!platform) throw new Error('پلتفرم اینستاگرام یافت نشد')
 
-  if (data.publicationId) {
-    const pub = await db.publication.findFirst({ where: { id: data.publicationId, workspaceId } })
-    if (!pub) throw new Error('انتشار یافت نشد')
-  }
-
   const row = await db.commentDmRule.create({
     data: {
       workspaceId,
       platformId: data.platformId,
-      publicationId: data.publicationId ?? null,
-      keyword: keywords[0],
-      keywords,
-      excludeKeywords,
-      dmTemplate,
-      buttonText,
-      buttonUrl,
-      publicReply,
+      keyword: data.keyword.trim().toLowerCase(),
+      dmTemplate: data.dmTemplate.trim(),
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
     },
     include: { platform: { select: { name: true } } },
   })
-  return toRule(row)
-}
-
-export async function updateRuleIgPostId(id: string, workspaceId: string, igPostId: string): Promise<void> {
-  await db.commentDmRule.updateMany({ where: { id, workspaceId }, data: { igPostId } })
+  return {
+    id: row.id,
+    platformId: row.platformId,
+    platformName: row.platform.name,
+    keyword: row.keyword,
+    keywords: row.keywords as string[] | undefined,
+    excludeKeywords: row.excludeKeywords as string[] | undefined,
+    dmTemplate: row.dmTemplate,
+    buttonText: row.buttonText,
+    buttonUrl: row.buttonUrl,
+    publicReply: row.publicReply,
+    optOutKeyword: row.optOutKeyword,
+    freqCapHours: row.freqCapHours,
+    isActive: row.isActive,
+    status: row.status,
+    publicationId: row.publicationId,
+    igPostId: row.igPostId,
+    createdAt: row.createdAt,
+  }
 }
 
 export async function toggleRule(id: string, workspaceId: string, isActive: boolean): Promise<void> {
   const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('قانون یافت نشد')
-  await db.commentDmRule.update({
-    where: { id },
-    data: { isActive, status: isActive ? 'active' : 'paused' },
-  })
+  await db.commentDmRule.update({ where: { id }, data: { isActive } })
 }
 
 export async function deleteRule(id: string, workspaceId: string): Promise<void> {
@@ -168,6 +97,11 @@ export async function deleteRule(id: string, workspaceId: string): Promise<void>
   await db.commentDmRule.delete({ where: { id } })
 }
 
+/**
+ * Check if a rule should fire for a comment.
+ * Returns false if: frequency cap active, opt-out keyword present, rule inactive.
+ * TODO (worker): call this before sending via Instagram Graph API.
+ */
 export async function shouldSendDm(
   ruleId: string,
   senderUserId: string,

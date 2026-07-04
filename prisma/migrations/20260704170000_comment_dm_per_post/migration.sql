@@ -1,14 +1,12 @@
--- AlterTable: add per-post scoping fields to CommentDmRule
-ALTER TABLE "CommentDmRule"
-  ADD COLUMN "publicationId" TEXT,
-  ADD COLUMN "igPostId"      TEXT,
-  ADD COLUMN "publicReply"   TEXT;
+-- AlterTable: Add per-post fields to CommentDmRule
+ALTER TABLE "CommentDmRule" ADD COLUMN "publicationId" TEXT;
+ALTER TABLE "CommentDmRule" ADD COLUMN "igPostId" TEXT;
+ALTER TABLE "CommentDmRule" ADD COLUMN "keywords" JSONB;
+ALTER TABLE "CommentDmRule" ADD COLUMN "excludeKeywords" JSONB;
+ALTER TABLE "CommentDmRule" ADD COLUMN "buttonText" TEXT;
+ALTER TABLE "CommentDmRule" ADD COLUMN "buttonUrl" TEXT;
+ALTER TABLE "CommentDmRule" ADD COLUMN "publicReply" TEXT;
+ALTER TABLE "CommentDmRule" ADD COLUMN "status" TEXT NOT NULL DEFAULT 'active';
 
--- CreateIndex
-CREATE INDEX "CommentDmRule_publicationId_idx" ON "CommentDmRule"("publicationId");
-
--- AddForeignKey
-ALTER TABLE "CommentDmRule"
-  ADD CONSTRAINT "CommentDmRule_publicationId_fkey"
-  FOREIGN KEY ("publicationId") REFERENCES "Publication"("id")
-  ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey: CommentDmRule -> Publication
+ALTER TABLE "CommentDmRule" ADD CONSTRAINT "CommentDmRule_publicationId_fkey" FOREIGN KEY ("publicationId") REFERENCES "Publication"("id") ON DELETE SET NULL ON UPDATE CASCADE;

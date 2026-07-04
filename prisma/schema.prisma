@@ -441,10 +441,10 @@ model Publication {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  content        Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
-  revision       ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
-  attempts       PublicationAttempt[]
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  content     Content     @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  attempts    PublicationAttempt[]
   commentDmRules CommentDmRule[]
 
   @@unique([revisionId, platformId])
@@ -792,9 +792,9 @@ model CommentDmRule {
   keywords        Json?    // string[] of trigger keywords (normalized on match)
   excludeKeywords Json?    // string[] of negative keywords that suppress the DM
   dmTemplate      String   // DM body, supports {نام} variable
-  buttonText      String?  // optional quick-reply button label (opens 24h window on tap)
+  buttonText      String?  // optional quick-reply button label
   buttonUrl       String?  // optional quick-reply button URL
-  publicReply     String?  // Optional public comment reply, e.g. "به DM شما فرستادم"
+  publicReply     String?  // Optional public comment reply
   optOutKeyword   String   @default("نه") // comment keyword to suppress DM
   freqCapHours    Int      @default(24) // min hours between DMs to same user
   status          String   @default("active") // draft, active, paused, needs_attention
@@ -808,7 +808,6 @@ model CommentDmRule {
 
   @@index([workspaceId])
   @@index([platformId, isActive])
-  @@index([publicationId])
 }
 
 model CommentDmLog {
