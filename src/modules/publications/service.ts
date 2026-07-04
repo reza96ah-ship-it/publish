@@ -9,19 +9,38 @@
  */
 
 import { randomUUID } from 'crypto'
+import { db } from '@/lib/db'
+import { assertExhaustive } from '@/lib/api-contracts'
+import { publishJobsAccepted } from '@/lib/metrics'
+import { structuredLogger } from '@/lib/structured-logger'
+import { track } from '@/lib/track'
 import { PublicationsRepository } from './repository'
 import {
   ValidationError,
   NoChannelsError,
   ChannelsNotFoundError,
+  PublicationNotFoundError,
+  PublicationAlreadyResolvedError,
+  ProviderPostIdRequiredError,
 } from './errors'
-import type { AuthContext, PublishRequest, PublishResult } from './types'
+import type {
+  AuthContext,
+  PublishRequest,
+  PublishResult,
+  ResolveAction,
+  ResolveRequest,
+  ResolveResult,
+} from './types'
 
 export class PublicationsService {
   constructor(private readonly repo: PublicationsRepository = new PublicationsRepository()) {}
 
   /**
    * Create a publication (content + publish jobs + outbox events).
+   *
+   * On success, emits observability signals (publishJobsAccepted counter,
+   * publication_queued product event, structured success log) so route
+   * handlers can stay thin.
    *
    * @throws {ValidationError} — missing channels for publish mode
    * @throws {ChannelsNotFoundError} — channel IDs don't match workspace
@@ -114,12 +133,44 @@ export class PublicationsService {
       )
     }
 
-    return {
+    const publishResult: PublishResult = {
       contentId: result.content.id,
       jobs: result.jobs,
       scheduledAt: scheduledAt?.toISOString() ?? null,
       message: this.buildMessage(body, mode),
     }
+
+    // Issue #200: emit observability signals from the service so route handlers stay thin.
+    // Issue #126: increment accepted counter per platform (for dashboards)
+    for (const job of result.jobs) {
+      publishJobsAccepted.inc({ workspace: workspaceId, platform: job.platform })
+    }
+    // Fire-and-forget product analytics — never block the response
+    void Promise.allSettled(
+      result.jobs.map((job) =>
+        track({
+          event: 'publication_queued',
+          workspaceId,
+          userId: auth.userId,
+          jobId: job.id,
+          platformType: job.platform,
+          scheduleType: body.scheduleMode ?? 'now',
+        }),
+      ),
+    )
+    if (auth.trace) {
+      structuredLogger.info({
+        trace: auth.trace,
+        operation: 'publish.service',
+        workspaceId,
+        contentId: publishResult.contentId,
+        outcome: 'success',
+        msg: `accepted ${result.jobs.length} publish job(s)`,
+        extra: { platforms: result.jobs.map((j) => j.platform) },
+      })
+    }
+
+    return publishResult
   }
 
   /**
@@ -149,4 +200,150 @@ export class PublicationsService {
     if (body.scheduleMode === 'schedule') return 'زمان‌بندی انتشار ثبت شد'
     return 'محتوا به صف انتشار افزوده شد'
   }
+
+  /**
+   * POST /api/publications/[id]/resolve — manual resolution for unknown outcomes (Issue #149).
+   *
+   * Allows an operator to manually resolve a publication stuck in
+   * 'outcome_unknown' state after reconciliation failed. Actions:
+   *   - mark_published: confirm externally published (requires providerPostId)
+   *   - confirm_failure: confirm NOT published → allow retry
+   *   - abandon: give up → mark as permanently failed
+   *   - duplicate_safe_retry: safe to retry (provider idempotency) → re-enqueue
+   *
+   * Preserves the original ambiguous attempt via an audit log entry.
+   *
+   * @throws {PublicationNotFoundError} — id not in workspace
+   * @throws {PublicationAlreadyResolvedError} — already confirmed_success/failure
+   * @throws {ProviderPostIdRequiredError} — mark_published without providerPostId
+   */
+  async resolve(
+    auth: AuthContext,
+    publicationId: string,
+    input: ResolveRequest
+  ): Promise<ResolveResult> {
+    const { workspaceId } = auth
+
+    const publication = await db.publication.findFirst({
+      where: { id: publicationId, workspaceId },
+    })
+    if (!publication) throw new PublicationNotFoundError()
+
+    if (
+      publication.reconciliationStatus === 'confirmed_success' ||
+      publication.reconciliationStatus === 'confirmed_failure'
+    ) {
+      throw new PublicationAlreadyResolvedError()
+    }
+
+    const { action, providerPostId, reason } = input
+    const now = new Date()
+
+    switch (action) {
+      case 'mark_published': {
+        if (!providerPostId) throw new ProviderPostIdRequiredError()
+        await db.publication.update({
+          where: { id: publicationId },
+          data: {
+            status: 'success',
+            providerPostId,
+            providerAcknowledgedAt: now,
+            reconciliationStatus: 'confirmed_success',
+            completedAt: now,
+          },
+        })
+        break
+      }
+      case 'confirm_failure': {
+        await db.publication.update({
+          where: { id: publicationId },
+          data: {
+            status: 'failed',
+            reconciliationStatus: 'confirmed_failure',
+            errorCategory: 'unknown',
+            errorMessage: `تأیید شده توسط اپراتور: ${reason}`,
+            completedAt: now,
+          },
+        })
+        break
+      }
+      case 'abandon': {
+        await db.publication.update({
+          where: { id: publicationId },
+          data: {
+            status: 'failed',
+            reconciliationStatus: 'confirmed_failure',
+            errorCategory: 'unknown',
+            errorMessage: `رها شده توسط اپراتور: ${reason}`,
+            completedAt: now,
+          },
+        })
+        break
+      }
+      case 'duplicate_safe_retry': {
+        // Reset to pending so the outbox dispatcher re-enqueues it
+        await db.publication.update({
+          where: { id: publicationId },
+          data: {
+            status: 'pending',
+            reconciliationStatus: null,
+            errorMessage: null,
+            errorCategory: null,
+          },
+        })
+        await db.outboxEvent.create({
+          data: {
+            workspaceId,
+            aggregateType: 'content',
+            aggregateId: publication.contentId,
+            eventType: 'publish_requested',
+            payload: {
+              jobId: publication.publishJobId,
+              contentId: publication.contentId,
+              platformId: publication.platformId,
+              workspaceId,
+              publicationId,
+              revisionId: publication.revisionId,
+            },
+            status: 'pending',
+            availableAt: now,
+          },
+        })
+        break
+      }
+      default:
+        assertExhaustive(action as never)
+    }
+
+    // Preserve the original ambiguous attempt in the audit trail
+    await db.auditLog.create({
+      data: {
+        userId: auth.userId,
+        workspaceId,
+        action: `publication.resolved.${action}`,
+        resource: 'Publication',
+        metadata: {
+          publicationId,
+          action,
+          providerPostId: providerPostId ?? null,
+          reason,
+          previousStatus: publication.status,
+          previousReconciliation: publication.reconciliationStatus,
+        },
+      },
+    })
+
+    return {
+      ok: true,
+      message: RESOLVE_MESSAGES[action],
+      action: action as ResolveAction,
+    }
+  }
+}
+
+const RESOLVE_MESSAGES: Record<ResolveAction, string> = {
+  mark_published: 'انتشار به عنوان موفق تأیید شد',
+  confirm_failure: 'انتشار به عنوان ناموفق تأیید شد — امکان تلاش مجدد وجود دارد',
+  abandon: 'انتشار رها شد',
+  duplicate_safe_retry: 'انتشار برای تلاش مجدد ایمن به صف بازگردانده شد',
 }

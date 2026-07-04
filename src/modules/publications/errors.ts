@@ -77,3 +77,25 @@ export class InvalidActionError extends PublicationError {
     super(`Invalid action: ${action}`, 400)
   }
 }
+
+// Issue #200: publication manual resolution errors (Issue #149)
+export class PublicationNotFoundError extends PublicationError {
+  constructor(message = 'انتشار یافت نشد') {
+    super(message, 404, message)
+    this.name = 'PublicationNotFoundError'
+  }
+}
+
+export class PublicationAlreadyResolvedError extends PublicationError {
+  constructor(message = 'این انتشار قبلاً حل شده است') {
+    super(message, 400, message)
+    this.name = 'PublicationAlreadyResolvedError'
+  }
+}
+
+export class ProviderPostIdRequiredError extends PublicationError {
+  constructor(message = 'شناسه پست ارائه‌دهنده برای تأیید انتشار الزامی است') {
+    super(message, 400, message)
+    this.name = 'ProviderPostIdRequiredError'
+  }
+}

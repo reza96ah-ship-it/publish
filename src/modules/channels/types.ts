@@ -60,3 +60,28 @@ export interface ValidateResult {
   valid: boolean
   botInfo: { username?: string; firstName?: string } | null
 }
+
+// Issue #200: per-channel health diagnostics (GET /api/channels/health)
+export interface ChannelHealthItem {
+  id: string
+  name: string
+  type: string
+  username: string | null
+  status: string
+  statusLabel: string
+  statusColor: string
+  tokenExpiresAt: string | null
+  daysRemaining: number | null
+  tokenWarning: boolean
+  tokenExpired: boolean
+  grantedScopes: string[]
+  requiredScopes: string[]
+  missingScopes: string[]
+  lastSuccessAt: string | null
+  lastError: string | null
+  lastValidatedAt: string | null
+  failureRate7d: number
+  attemptCount7d: number
+  apiVersion: string
+  reconnectUrl: string
+}

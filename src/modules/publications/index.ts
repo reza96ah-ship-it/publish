@@ -13,6 +13,9 @@ export type {
   PublishMode,
   ScheduleMode,
   AuthContext,
+  ResolveAction,
+  ResolveRequest,
+  ResolveResult,
 } from './types'
 export {
   PublicationError,
@@ -21,8 +24,13 @@ export {
   NoChannelsError,
   ChannelsNotFoundError,
   InvalidBodyError,
+  PublicationNotFoundError,
+  PublicationAlreadyResolvedError,
+  ProviderPostIdRequiredError,
 } from './errors'
 export { canPublish } from './permissions'
+export { mapPublishError, resolveAuthorName, resolveUserId } from './route-helpers'
+export type { PublishErrorResponse } from './route-helpers'
 
 import { PublicationsService } from './service'
 export const publicationsService = new PublicationsService()

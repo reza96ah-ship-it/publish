@@ -19,6 +19,7 @@
 
 import { Worker, UnrecoverableError, DelayedError, type Job } from 'bullmq'
 import { createServer, type IncomingMessage, type ServerResponse } from 'http'
+import { timingSafeEqual } from 'crypto'
 import { db } from './lib/db'
 import { getAdapter } from './adapters'
 import type { AdapterJob, PlatformType } from './adapters/types'
@@ -867,8 +868,12 @@ function startHealthServer() {
       const decoded = Buffer.from(auth.slice(6), 'base64').toString()
       const colonIdx = decoded.indexOf(':')
       const password = colonIdx >= 0 ? decoded.slice(colonIdx + 1) : ''
-      // Issue #151: fail-closed if BOARD_PASSWORD is null (not set in production)
-      if (!BOARD_PASSWORD || password !== BOARD_PASSWORD) {
+      // Issue #151 + ASVS L2 V2.4.1: fail-closed if BOARD_PASSWORD is null
+      // (not set in production) AND constant-time comparison to prevent
+      // timing attacks on the admin dashboard password. The early `!BOARD_PASSWORD`
+      // branch is unavoidable (null has no length), but legitimate users hit
+      // the constant-time path below.
+      if (!BOARD_PASSWORD || !constantTimeEqual(password, BOARD_PASSWORD)) {
         res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="Bull Board"' })
         res.end('Invalid password')
         return
@@ -983,3 +988,22 @@ startMediaCleanup()
 // outcomes get resolved automatically instead of sitting stuck forever
 // waiting for a human to use POST /api/publications/[id]/resolve.
 startReconciliationScanner()
+
+// ── Helpers ───────────────────────────────────────────────────
+
+/**
+ * Constant-time string comparison to prevent timing attacks on shared
+ * secrets (e.g., the Bull Board admin password). Returns true iff both
+ * strings have equal length AND byte-equal content.
+ *
+ * ASVS L2 V2.4.1: authentication secrets must be compared in constant time.
+ * A naive `password !== BOARD_PASSWORD` short-circuits on the first
+ * mismatched byte, leaking the password length and prefix via timing.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  const bufA = Buffer.from(a, 'utf8')
+  const bufB = Buffer.from(b, 'utf8')
+  // Lengths are equal so timingSafeEqual won't throw.
+  return bufA.equals(bufB) && timingSafeEqual(bufA, bufB)
+}

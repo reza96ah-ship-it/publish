@@ -102,6 +102,17 @@ export class MediaRepository {
     return m ? toMediaRow(m) : null
   }
 
+  /** Find a pending Media row by its storage key (dev-only local upload). */
+  async findPendingByStorageKey(
+    storageKey: string,
+    workspaceId: string
+  ): Promise<MediaRow | null> {
+    const m = await db.media.findFirst({
+      where: { workspaceId, storageKey, status: 'pending' },
+    })
+    return m ? toMediaRow(m) : null
+  }
+
   /** Patch a Media row's status only. */
   async updateStatus(
     mediaId: string,

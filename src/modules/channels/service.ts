@@ -26,6 +26,7 @@ import type {
   ConnectResult,
   PlatformListResult,
   ValidateResult,
+  ChannelHealthItem,
 } from './types'
 
 type BotTokenAdapter = {
@@ -238,6 +239,126 @@ export class ChannelsService {
       botInfo: rawBot ? { username: rawBot.username, firstName: rawBot.first_name } : null,
     }
   }
+
+  /**
+   * GET /api/channels/health — per-channel health diagnostics (Issue #131).
+   * Returns connection status, token expiry, granted/missing scopes, last
+   * successful publication, 7-day failure rate, and API version per channel.
+   */
+  async getChannelHealth(auth: AuthContext): Promise<ChannelHealthItem[]> {
+    const workspaceId = auth.workspaceId
+
+    const platforms = await db.platform.findMany({
+      where: { workspaceId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        username: true,
+        status: true,
+        circuitState: true,
+        lastSuccessAt: true,
+        lastError: true,
+        primaryIssue: true,
+        tokenExpiresAt: true,
+        tokenScopes: true,
+        lastValidatedAt: true,
+      },
+    })
+
+    // Aggregate PublicationAttempt outcomes for 7-day failure rate (Issue #131)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    const attempts = await db.publicationAttempt.findMany({
+      where: {
+        startedAt: { gte: sevenDaysAgo },
+        job: { workspaceId },
+      },
+      select: { outcome: true, job: { select: { platformId: true } } },
+    })
+
+    const statsByPlatform = new Map<string, { total: number; failed: number }>()
+    for (const a of attempts) {
+      const pid = a.job.platformId
+      const cur = statsByPlatform.get(pid) ?? { total: 0, failed: 0 }
+      cur.total++
+      if (
+        a.outcome === 'retryable_failure' ||
+        a.outcome === 'permanent_failure' ||
+        a.outcome === 'outcome_unknown'
+      ) {
+        cur.failed++
+      }
+      statsByPlatform.set(pid, cur)
+    }
+
+    return platforms.map((p) => {
+      const daysRemaining = p.tokenExpiresAt
+        ? Math.ceil((p.tokenExpiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+        : null
+
+      // OAuth providers may return scopes in any case — normalise to lowercase
+      const grantedScopes = p.tokenScopes
+        ? p.tokenScopes.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+        : []
+      const requiredScopes = REQUIRED_SCOPES[p.type] ?? []
+      const missingScopes = requiredScopes.filter(
+        (s) => !grantedScopes.includes(s.toLowerCase()),
+      )
+
+      const stats = statsByPlatform.get(p.id) ?? { total: 0, failed: 0 }
+      const failureRate = stats.total > 0 ? (stats.failed / stats.total) * 100 : 0
+
+      return {
+        id: p.id,
+        name: p.name,
+        type: p.type,
+        username: p.username,
+        status: p.status,
+        statusLabel: healthStatusLabel(p.status, p.circuitState),
+        statusColor: healthStatusColor(p.status, p.circuitState),
+        tokenExpiresAt: p.tokenExpiresAt?.toISOString() ?? null,
+        daysRemaining,
+        tokenWarning: daysRemaining !== null && daysRemaining < 7,
+        tokenExpired: daysRemaining !== null && daysRemaining <= 0,
+        grantedScopes,
+        requiredScopes,
+        missingScopes,
+        lastSuccessAt: p.lastSuccessAt?.toISOString() ?? null,
+        lastError: p.lastError,
+        lastValidatedAt: p.lastValidatedAt?.toISOString() ?? null,
+        failureRate7d: Math.round(failureRate * 10) / 10,
+        attemptCount7d: stats.total,
+        apiVersion: API_VERSIONS[p.type] ?? 'نامشخص',
+        reconnectUrl: `/channels?reconnect=${p.id}`,
+      }
+    })
+  }
+}
+
+// API version per platform (Issue #131: "API version in use")
+const API_VERSIONS: Record<string, string> = {
+  instagram: 'Graph API v21.0',
+  linkedin: 'REST Posts API 202505',
+  telegram: 'Bot API 8.x',
+  bale: 'Bot API (Bale)',
+  rubika: 'Bot API v3',
+  eitaa: 'Bot API v3 (Rubika-compatible)',
+}
+
+function healthStatusLabel(status: string, circuitState: string): string {
+  if (status === 'expired') return 'منقضی — نیاز به اتصال مجدد'
+  if (status === 'error' || circuitState === 'open') return 'اختلال API'
+  if (status === 'disconnected') return 'قطع شده'
+  return 'متصل و پایدار'
+}
+
+function healthStatusColor(status: string, circuitState: string): string {
+  if (status === 'expired') return 'text-warning bg-warning-tint border-warning-soft'
+  if (status === 'error' || circuitState === 'open')
+    return 'text-danger bg-danger-tint border-danger-soft'
+  if (status === 'disconnected') return 'text-ink-secondary bg-surface-subtle border-border'
+  return 'text-success bg-success-tint border-success-soft'
 }
 
 export const channelsService = new ChannelsService()
