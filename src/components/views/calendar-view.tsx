@@ -117,9 +117,7 @@ export function CalendarView() {
   const { calendarCursor, setCalendarCursor } = useAppStore()
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
-  const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>(() =>
-    typeof window !== 'undefined' && window.innerWidth < 640 ? 'agenda' : 'month'
-  )
+  const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('month')
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
