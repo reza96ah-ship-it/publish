@@ -421,9 +421,7 @@ jobs:
     name: Visual Regression (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # continue-on-error until baselines are committed — first run creates them.
-    # Remove continue-on-error once tests/e2e/visual.spec.ts-snapshots/ is in git.
-    continue-on-error: true
+    # Baselines committed — visual failures now block merge.
     services:
       postgres:
         image: postgres:16-alpine
