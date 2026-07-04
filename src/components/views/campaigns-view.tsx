@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Plus,
   FileText,
+  Upload,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -40,6 +41,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { CsvImportDialog } from '@/components/editor/csv-import-dialog'
 
 interface Campaign {
   id: string
@@ -87,6 +89,7 @@ const GOAL_TYPE_LABEL: Record<string, string> = {
 export function CampaignsView() {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
   const queryClient = useQueryClient()
 
   const { data: campaigns, isLoading, isError, refetch } = useQuery<Campaign[]>({
@@ -172,18 +175,31 @@ export function CampaignsView() {
       transition={pageTransitionProps}
       className="space-y-5"
     >
+      <CsvImportDialog open={importOpen} onOpenChange={setImportOpen} />
+
       <SectionTitle
         icon={Flag}
         badge={
-          <Button
-            size="sm"
-            className="n-focus-ring"
-            onClick={handleCreateCampaign}
-            disabled={createCampaignMutation.isPending}
-          >
-            <Plus className="size-4" />
-            کمپین جدید
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="n-focus-ring"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="size-4" />
+              وارد کردن CSV
+            </Button>
+            <Button
+              size="sm"
+              className="n-focus-ring"
+              onClick={handleCreateCampaign}
+              disabled={createCampaignMutation.isPending}
+            >
+              <Plus className="size-4" />
+              کمپین جدید
+            </Button>
+          </div>
         }
       >
         مرکز فرماندهی کمپین‌ها
