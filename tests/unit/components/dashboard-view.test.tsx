@@ -1,12 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { screen } from '@testing-library/react'
+import { renderWithProviders } from '../../setup'
+import { DashboardView } from '../../../src/components/views/dashboard-view'
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
-import { screen } from '@testing-library/react'
-import { renderWithProviders } from '../../setup'
-import { DashboardView } from '../../../src/components/views/dashboard-view'
 
 describe('Component: DashboardView', () => {
   it('renders without crashing', () => {

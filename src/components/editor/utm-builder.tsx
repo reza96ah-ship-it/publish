@@ -45,7 +45,7 @@ export function UtmBuilder({ initialUrl = '', onUrlChange, className }: UtmBuild
 
   const { data: presets = [] } = useQuery<UtmPreset[]>({
     queryKey: ['utm-presets'],
-    queryFn: () => api('/api/utm-presets'),
+    queryFn: () => api.get('/api/utm-presets'),
   })
 
   const finalUrl = buildUtmPreview(url, { source, medium, campaign, term, content })

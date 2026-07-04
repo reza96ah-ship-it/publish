@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -54,19 +54,13 @@ function CommentItem({
 
   const resolveMutation = useMutation({
     mutationFn: (resolved: boolean) =>
-      api(`/api/content/${contentId}/comments/${comment.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ resolved }),
-      }),
+      api.patch(`/api/content/${contentId}/comments/${comment.id}`, { resolved }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments', contentId] }),
   })
 
   const replyMutation = useMutation({
     mutationFn: (text: string) =>
-      api(`/api/content/${contentId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ text, parentId: comment.id }),
-      }),
+      api.post(`/api/content/${contentId}/comments`, { text, parentId: comment.id }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['comments', contentId] })
       setReplyText('')
@@ -167,16 +161,13 @@ export function CommentThread({ contentId, className }: CommentThreadProps) {
 
   const { data: comments = [], isLoading } = useQuery<Comment[]>({
     queryKey: ['comments', contentId],
-    queryFn: () => api(`/api/content/${contentId}/comments`),
+    queryFn: () => api.get(`/api/content/${contentId}/comments`),
     enabled: !!contentId,
   })
 
   const postMutation = useMutation({
     mutationFn: (text: string) =>
-      api(`/api/content/${contentId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ text }),
-      }),
+      api.post(`/api/content/${contentId}/comments`, { text }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['comments', contentId] })
       setNewComment('')
