@@ -39,6 +39,14 @@ export {
   TypeMismatchError,
   ImageTooLargeError,
   ImageDecodeFailedError,
+  LocalUploadDisabledError,
+  InvalidStorageKeyError,
+  PendingUploadNotFoundError,
+  NotUploaderError,
+  NoContentLengthError,
+  DeclaredSizeMismatchError,
+  EmptyBodyError,
+  LocalUploadStreamError,
 } from './errors'
 
 import { MediaService } from './service'

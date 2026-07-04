@@ -20,10 +20,19 @@ import {
   buildDerivedKey,
   putObject,
   publicUrlFor,
+  safeLocalPath,
+  isValidStorageKey,
   type MagicByteResult,
 } from '@/lib/storage'
 import { probeVideo } from '@/lib/video-probe'
 import sharp from 'sharp'
+import { createHash } from 'crypto'
+import { createWriteStream } from 'fs'
+import { mkdir, rm } from 'fs/promises'
+import path from 'path'
+import { Readable, Transform } from 'stream'
+import { pipeline } from 'stream/promises'
+import type { ReadableStream as NodeReadableStream } from 'stream/web'
 import { MediaRepository } from './repository'
 import {
   ValidationError,
@@ -41,6 +50,14 @@ import {
   TypeMismatchError,
   ImageTooLargeError,
   ImageDecodeFailedError,
+  LocalUploadDisabledError,
+  InvalidStorageKeyError,
+  PendingUploadNotFoundError,
+  NotUploaderError,
+  NoContentLengthError,
+  DeclaredSizeMismatchError,
+  EmptyBodyError,
+  LocalUploadStreamError,
 } from './errors'
 import type {
   AuthContext,
@@ -71,6 +88,8 @@ const MAX_VIDEO_BYTES = 200 * 1024 * 1024 // 200MB
 const STORAGE_QUOTA_BYTES = 500 * 1024 * 1024 // 500MB per workspace (validated assets only)
 const MAX_CONCURRENT_PENDING = 20 // per workspace — bounds abandoned-upload growth
 const PENDING_UPLOAD_TTL_MS = 15 * 60 * 1000 // 15 minutes
+// Issue #200: dev-only local upload hard ceiling — matches presign's video cap
+const MAX_BODY_BYTES = 200 * 1024 * 1024 // 200MB
 
 // Decompression-bomb guard: refuse to decode images with an absurd pixel count
 // or any single dimension beyond a sane ceiling.
@@ -350,6 +369,109 @@ export class MediaService {
     const data = hasMore ? items.slice(0, query.limit) : items
     const nextCursor = hasMore ? data[data.length - 1]?.id ?? null : null
     return { data: data.map(toMediaPayload), nextCursor }
+  }
+
+  /**
+   * PUT /api/media/local-upload?key=... — dev-only upload transport. (Issue #146)
+   *
+   * Mirrors what an S3 presigned PUT would do: streams the body to disk while
+   * computing a sha256 checksum and byte count. The key must match a pending
+   * Media row created by /api/media/presign for this workspace.
+   *
+   * @throws {LocalUploadDisabledError} — production (S3 configured)
+   * @throws {InvalidStorageKeyError} — key fails workspace-scoped validation
+   * @throws {PendingUploadNotFoundError} — no matching pending row
+   * @throws {NotUploaderError} — different uploader claimed the row
+   * @throws {UploadExpiredError} — pending row TTL elapsed
+   * @throws {NoContentLengthError} — missing Content-Length header
+   * @throws {DeclaredSizeMismatchError} — content-length ≠ declared size or > 200MB
+   * @throws {EmptyBodyError} — request body is null
+   * @throws {LocalUploadStreamError} — pipeline error mid-stream
+   */
+  async localUpload(
+    auth: AuthContext,
+    key: string,
+    body: ReadableStream<Uint8Array> | null,
+    contentLength: number
+  ): Promise<{ ok: true }> {
+    if (isS3Configured) {
+      throw new LocalUploadDisabledError('این مسیر فقط برای توسعه محلی است؛ از S3 استفاده کنید')
+    }
+    const { workspaceId } = auth
+
+    if (!key || !isValidStorageKey(key, workspaceId)) {
+      throw new InvalidStorageKeyError('کلید ذخیره‌سازی نامعتبر است')
+    }
+
+    const media = await this.repo.findPendingByStorageKey(key, workspaceId)
+    if (!media) {
+      throw new PendingUploadNotFoundError('آپلود معتبر یافت نشد یا قبلاً انجام شده است')
+    }
+    if (media.uploaderId && media.uploaderId !== auth.userId) {
+      throw new NotUploaderError('دسترسی غیرمجاز')
+    }
+    if (media.expiresAt && media.expiresAt < new Date()) {
+      await this.repo.markRejected(media.id, 'upload_expired')
+      throw new UploadExpiredError('مهلت آپلود منقضی شده است')
+    }
+
+    if (!contentLength || contentLength <= 0) {
+      throw new NoContentLengthError('طول محتوا نامشخص است')
+    }
+    if (contentLength > MAX_BODY_BYTES || contentLength !== media.fileSize) {
+      throw new DeclaredSizeMismatchError('حجم فایل با مقدار اعلام‌شده مطابقت ندارد')
+    }
+    if (!body) {
+      throw new EmptyBodyError('بدنه درخواست خالی است')
+    }
+
+    const destPath = safeLocalPath(key)
+    await mkdir(path.dirname(destPath), { recursive: true })
+
+    const hash = createHash('sha256')
+    let bytesWritten = 0
+    const declaredSize = media.fileSize
+
+    // Hash + count bytes as they stream through; abort early if the body
+    // exceeds what was declared at presign time (don't trust Content-Length alone).
+    const hashingTransform = new Transform({
+      transform(chunk: Buffer, _enc, callback) {
+        bytesWritten += chunk.length
+        if (bytesWritten > declaredSize) {
+          callback(new Error('body_exceeds_declared_size'))
+          return
+        }
+        hash.update(chunk)
+        callback(null, chunk)
+      },
+    })
+
+    // req.body is the DOM ReadableStream; Readable.fromWeb expects stream/web.ReadableStream —
+    // same object at runtime but two distinct TypeScript ambient declarations.
+    const nodeReadable = Readable.fromWeb(body as unknown as NodeReadableStream<Uint8Array>)
+    const writeStream = createWriteStream(destPath)
+
+    try {
+      await pipeline(nodeReadable, hashingTransform, writeStream)
+    } catch {
+      await rm(destPath, { force: true })
+      await this.repo.markRejected(media.id, 'upload_stream_error')
+      throw new LocalUploadStreamError('خطا در آپلود فایل')
+    }
+
+    if (bytesWritten !== declaredSize) {
+      await rm(destPath, { force: true })
+      await this.repo.markRejected(media.id, 'size_mismatch')
+      throw new DeclaredSizeMismatchError('حجم فایل آپلودشده مطابقت ندارد')
+    }
+
+    await this.repo.updateStatus(media.id, 'uploaded', {
+      actualSize: bytesWritten,
+      checksumAlgo: 'sha256',
+      checksumValue: hash.digest('hex'),
+    })
+
+    return { ok: true }
   }
 
   /**

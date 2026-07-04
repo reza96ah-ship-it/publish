@@ -1,7 +1,13 @@
 /**
  * POST /api/members/invite/accept — accept a workspace invitation (Issue #143, #156).
  *
- * Thin transport handler: session → validate → service.acceptInvitation() → map.
+ * Thin transport handler: session → rate-limit → validate → service.acceptInvitation() → map.
+ *
+ * ASVS L2 V2.5.4 / V11.1.1: rate-limit auth-adjacent + business-flow endpoints.
+ * Acceptance converts a one-time token into workspace membership — rate-limit
+ * per user to defend against token-enumeration attempts and membership-flood
+ * abuse (5 / 5 min / user matches the auth budget). The 256-bit token itself
+ * is infeasible to brute-force, but defense-in-depth requires the limiter.
  *
  * The service (src/modules/membership/service.ts) owns all business logic:
  *   token hash lookup, validity (expired/revoked/accepted), email-match
@@ -12,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { authRateLimit } from '@/lib/ratelimit'
 import { membershipService, MembershipError } from '@/modules/membership'
 
 export const dynamic = 'force-dynamic'
@@ -21,6 +28,17 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'برای پذیرش دعوت‌نامه باید وارد شوید' }, { status: 401 })
+  }
+
+  // ASVS V2.5.4: rate-limit auth-adjacent endpoints. Per-user (not per-IP)
+  // because the user is authenticated — sharing an IP across legitimate users
+  // is common (corporate NAT), and a single attacker can rotate IPs easily.
+  const { success: rateOk } = await authRateLimit(`invite-accept:${session.user.id}`)
+  if (!rateOk) {
+    return NextResponse.json(
+      { error: 'تعداد تلاش‌ها زیاد است — چند دقیقه صبر کنید' },
+      { status: 429 }
+    )
   }
 
   const body = await req.json().catch(() => null)

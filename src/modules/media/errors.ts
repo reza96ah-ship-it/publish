@@ -121,3 +121,60 @@ export class ImageDecodeFailedError extends MediaError {
     this.name = 'ImageDecodeFailedError'
   }
 }
+
+// Issue #200: local-upload transport errors (dev-only upload path)
+export class LocalUploadDisabledError extends MediaError {
+  constructor(message: string) {
+    super(message, 403, message)
+    this.name = 'LocalUploadDisabledError'
+  }
+}
+
+export class InvalidStorageKeyError extends MediaError {
+  constructor(message: string) {
+    super(message, 400, message)
+    this.name = 'InvalidStorageKeyError'
+  }
+}
+
+export class PendingUploadNotFoundError extends MediaError {
+  constructor(message: string) {
+    super(message, 404, message)
+    this.name = 'PendingUploadNotFoundError'
+  }
+}
+
+export class NotUploaderError extends MediaError {
+  constructor(message: string) {
+    super(message, 403, message)
+    this.name = 'NotUploaderError'
+  }
+}
+
+export class NoContentLengthError extends MediaError {
+  constructor(message: string) {
+    super(message, 411, message)
+    this.name = 'NoContentLengthError'
+  }
+}
+
+export class DeclaredSizeMismatchError extends MediaError {
+  constructor(message: string) {
+    super(message, 413, message)
+    this.name = 'DeclaredSizeMismatchError'
+  }
+}
+
+export class EmptyBodyError extends MediaError {
+  constructor(message: string) {
+    super(message, 400, message)
+    this.name = 'EmptyBodyError'
+  }
+}
+
+export class LocalUploadStreamError extends MediaError {
+  constructor(message: string) {
+    super(message, 400, message)
+    this.name = 'LocalUploadStreamError'
+  }
+}

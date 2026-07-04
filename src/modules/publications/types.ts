@@ -43,3 +43,22 @@ export interface AuthContext {
    */
   trace?: import('@/lib/tracing').TraceContext
 }
+
+// Issue #200: manual resolution for unknown publication outcomes (Issue #149)
+export type ResolveAction =
+  | 'mark_published'
+  | 'confirm_failure'
+  | 'abandon'
+  | 'duplicate_safe_retry'
+
+export interface ResolveRequest {
+  action: ResolveAction
+  providerPostId?: string
+  reason: string
+}
+
+export interface ResolveResult {
+  ok: true
+  message: string
+  action: ResolveAction
+}
