@@ -116,6 +116,7 @@ export class ContentRepository {
       body: r.body,
       parentId: r.parentId,
       createdAt: r.createdAt,
+      resolved: r.resolved,
     }))
   }
 
@@ -137,7 +138,15 @@ export class ContentRepository {
       body: row.body,
       parentId: row.parentId,
       createdAt: row.createdAt,
+      resolved: row.resolved,
     }
+  }
+
+  async resolveComment(commentId: string, contentId: string, resolved: boolean): Promise<void> {
+    await db.contentComment.updateMany({
+      where: { id: commentId, contentId },
+      data: { resolved },
+    })
   }
 
 }

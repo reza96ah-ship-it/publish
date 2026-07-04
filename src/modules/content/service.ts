@@ -85,6 +85,12 @@ export class ContentService {
     if (!content) throw new ContentNotFoundError()
     return this.repo.addComment(contentId, auth.userId, 'کاربر', input.text, input.parentId)
   }
+
+  async resolveComment(auth: AuthContext, contentId: string, commentId: string, resolved: boolean): Promise<void> {
+    const content = await this.repo.findInWorkspace(contentId, auth.workspaceId)
+    if (!content) throw new ContentNotFoundError()
+    await this.repo.resolveComment(commentId, contentId, resolved)
+  }
 }
 
 export const contentService = new ContentService()

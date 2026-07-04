@@ -37,6 +37,7 @@ export interface ContentComment {
   body: string
   parentId: string | null
   createdAt: Date
+  resolved: boolean
 }
 
 export interface AddCommentInput {
