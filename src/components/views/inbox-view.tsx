@@ -300,7 +300,7 @@ export function InboxView() {
           unreadCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
               <span className="size-1.5 rounded-full bg-info" />
-              {relativeTime(new Date(Date.now() - 1000 * 60 * 5)).replace('پیش', 'پیش')} —{' '}
+              {relativeTime(new Date(Date.now() - 1000 * 60 * 5))} —{' '}
               {unreadCount} ناخوانده
             </span>
           )

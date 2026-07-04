@@ -104,7 +104,8 @@ export async function POST(req: NextRequest) {
             )
           } catch (err: unknown) {
             // eslint-disable-next-line no-console
-            console.error(`[ai/caption-multi] stream error for ${p}:`, err)
+            const safePlatform = String(p).replace(/[\n\r]/g, '')
+            console.error('[ai/caption-multi] stream error for %s:', safePlatform, err)
             controller.enqueue(
               encoder.encode(
                 `data: ${JSON.stringify({ error: 'خطا در تولید کپشن. لطفاً دوباره تلاش کنید.', platform: p })}\n\n`
