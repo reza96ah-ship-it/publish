@@ -134,6 +134,7 @@ model Workspace {
   publications  Publication[]
   revisions    ContentRevision[]
   featureFlags  FeatureFlag[]
+  utmPresets    UtmPreset[]
 }
 
 model FeatureFlag {
@@ -147,6 +148,26 @@ model FeatureFlag {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, flag])
+}
+
+/* ─── UTM Presets (Issue #246) ─── */
+model UtmPreset {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String                    // Display name, e.g. "Instagram Organic"
+  source      String                    // utm_source
+  medium      String                    // utm_medium
+  campaign    String   @default("")     // utm_campaign (template, may include {title})
+  term        String   @default("")     // utm_term (optional)
+  content     String   @default("")     // utm_content (optional)
+  platforms   String[] @default([])     // platform ids this preset applies to
+  isDefault   Boolean  @default(false)  // auto-apply to new posts
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name])
 }
 
 model WorkspaceMember {

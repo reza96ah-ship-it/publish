@@ -550,6 +550,36 @@
     box-shadow: var(--n-shadow-card-hover);
   }
 
+  /* ── Density system (issue #245) ─────────────────────────────────────────
+     Two density modes: comfortable (default) and compact.
+     Toggle by adding data-density="compact" to <html> element.
+     Compact mode targets inbox, operations dashboards, and agency views.   */
+  :root {
+    --density-card-px: 1.25rem;   /* comfortable: p-5 equivalent */
+    --density-card-py: 1.25rem;
+    --density-row-py: 0.625rem;   /* comfortable: py-2.5 */
+    --density-gap: 0.75rem;       /* comfortable: gap-3 */
+    --density-input-h: 2.5rem;    /* comfortable: h-10 */
+  }
+
+  [data-density="compact"] {
+    --density-card-px: 0.75rem;   /* compact: p-3 equivalent */
+    --density-card-py: 0.75rem;
+    --density-row-py: 0.375rem;   /* compact: py-1.5 */
+    --density-gap: 0.5rem;        /* compact: gap-2 */
+    --density-input-h: 2rem;      /* compact: h-8 */
+  }
+
+  /* Density-aware card — use .n-card-density instead of .n-card + p-5 */
+  .n-card-density {
+    padding: var(--density-card-py) var(--density-card-px);
+  }
+
+  /* Density-aware table rows */
+  .density-row {
+    padding-block: var(--density-row-py);
+  }
+
   /* ===== GLASS — NAVIGATION ONLY =====
      Apple HIG: "Liquid Glass is exclusively for the navigation layer."
      4-ingredient recipe: blur(20-32px) + saturate(1.8) + luminance border + inset highlight. */

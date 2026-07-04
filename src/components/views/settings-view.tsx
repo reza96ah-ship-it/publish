@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
+import { useState, useEffect, useCallback, useSyncExternalStore } from 'react'
 import { useTheme } from 'next-themes'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ import {
   HelpCircle,
   Download,
   ExternalLink,
+  Link2,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -200,7 +201,7 @@ const NOTIFICATION_TOGGLES = [
 ]
 
 export function SettingsView() {
-  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications'>(
+  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm'>(
     'overview'
   )
 
@@ -223,6 +224,7 @@ export function SettingsView() {
             { value: 'team', label: 'تیم', icon: Users },
             { value: 'billing', label: 'صورت‌گیری', icon: CreditCard },
             { value: 'notifications', label: 'اعلان‌ها', icon: Bell },
+            { value: 'utm', label: 'ردیابی UTM', icon: Link2 },
           ]}
         />
       </div>
@@ -243,6 +245,9 @@ export function SettingsView() {
         <TabsContent value="notifications" className="mt-4">
           <NotificationsTab />
         </TabsContent>
+        <TabsContent value="utm" className="mt-4">
+          <UtmSection />
+        </TabsContent>
       </Tabs>
     </motion.div>
   )
@@ -255,9 +260,44 @@ const THEME_OPTIONS = [
   { value: 'system', label: 'سیستم', icon: Monitor },
 ] as const
 
+type Density = 'comfortable' | 'compact'
+
+function useDensity(): [Density, (d: Density) => void] {
+  const subscribe = useCallback((onChange: () => void) => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'nashrino-density') onChange()
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
+
+  const density = useSyncExternalStore(
+    subscribe,
+    () => (localStorage.getItem('nashrino-density') ?? 'comfortable') as Density,
+    () => 'comfortable' as Density,
+  )
+
+  // Sync density value to DOM attribute (external system — not a setState call)
+  useEffect(() => {
+    if (density === 'compact') {
+      document.documentElement.setAttribute('data-density', 'compact')
+    } else {
+      document.documentElement.removeAttribute('data-density')
+    }
+  }, [density])
+
+  const setDensity = useCallback((d: Density) => {
+    localStorage.setItem('nashrino-density', d)
+    window.dispatchEvent(new StorageEvent('storage', { key: 'nashrino-density', newValue: d }))
+  }, [])
+
+  return [density, setDensity]
+}
+
 function AppearanceSection() {
   const { theme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false)
+  const [density, setDensity] = useDensity()
 
   return (
     <div className="n-card p-5">
@@ -268,7 +308,7 @@ function AppearanceSection() {
       <p className="text-sm text-ink-tertiary mb-4">
         پوسته برنامه را انتخاب کنید. «سیستم» به تنظیم سیستم‌عامل پیروی می‌کند.
       </p>
-      <div className="flex gap-3">
+      <div className="flex gap-3 mb-6">
         {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
           const active = mounted && theme === value
           return (
@@ -287,6 +327,34 @@ function AppearanceSection() {
             </button>
           )
         })}
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-ink-primary">تراکم نمایش</p>
+        <p className="text-xs text-ink-secondary">حالت فشرده برای داشبوردهای عملیاتی مناسب است</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDensity('comfortable')}
+            className={cn(
+              'flex-1 rounded-lg border p-3 text-sm transition-colors n-focus-ring',
+              density === 'comfortable'
+                ? 'border-accent bg-accent/5 text-accent font-medium'
+                : 'border-border text-ink-secondary hover:border-accent/50'
+            )}
+          >
+            عادی
+          </button>
+          <button
+            onClick={() => setDensity('compact')}
+            className={cn(
+              'flex-1 rounded-lg border p-3 text-sm transition-colors n-focus-ring',
+              density === 'compact'
+                ? 'border-accent bg-accent/5 text-accent font-medium'
+                : 'border-border text-ink-secondary hover:border-accent/50'
+            )}
+          >
+            فشرده
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -1011,6 +1079,121 @@ function BillingTab() {
         </Table>
         </div>
       </div>
+    </div>
+  )
+}
+
+/* ── UTM Presets ── */
+function UtmSection() {
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ name: '', source: '', medium: '', campaign: '' })
+
+  const { data: presets = [], isLoading } = useQuery({
+    queryKey: ['utm-presets'],
+    queryFn: () => api.get<{ id: string; name: string; source: string; medium: string; campaign: string; isDefault: boolean }[]>('/api/utm-presets'),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (body: typeof form) =>
+      api.post('/api/utm-presets', body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['utm-presets'] })
+      setShowForm(false)
+      setForm({ name: '', source: '', medium: '', campaign: '' })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/api/utm-presets/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['utm-presets'] }),
+  })
+
+  return (
+    <div className="n-card p-5 space-y-5 max-w-2xl">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Link2 className="size-4 text-accent" />
+          <h2 className="text-sm font-semibold text-ink-primary">پیش‌تنظیم‌های UTM</h2>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => setShowForm((v) => !v)}>
+          {showForm ? 'انصراف' : '+ پیش‌تنظیم جدید'}
+        </Button>
+      </div>
+
+      <p className="text-xs text-ink-secondary">
+        پیش‌تنظیم‌های UTM برای ردیابی ترافیک از شبکه‌های اجتماعی به وب‌سایت شما.
+      </p>
+
+      {showForm && (
+        <div className="n-card-compact p-4 border border-border rounded-xl space-y-3">
+          <p className="text-xs font-semibold text-ink-primary">پیش‌تنظیم جدید</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">نام</Label>
+              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Instagram Organic" className="text-sm" dir="ltr" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">منبع (source)</Label>
+              <Input value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} placeholder="instagram" className="text-sm" dir="ltr" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">رسانه (medium)</Label>
+              <Input value={form.medium} onChange={(e) => setForm((f) => ({ ...f, medium: e.target.value }))} placeholder="social" className="text-sm" dir="ltr" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">کمپین (campaign)</Label>
+              <Input value={form.campaign} onChange={(e) => setForm((f) => ({ ...f, campaign: e.target.value }))} placeholder="spring_2026" className="text-sm" dir="ltr" />
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => createMutation.mutate(form)}
+            disabled={!form.name || !form.source || !form.medium || createMutation.isPending}
+          >
+            {createMutation.isPending ? 'در حال ذخیره…' : 'ذخیره پیش‌تنظیم'}
+          </Button>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-12 w-full rounded-lg" />
+          <Skeleton className="h-12 w-full rounded-lg" />
+        </div>
+      ) : presets.length === 0 ? (
+        <div className="text-center py-8 text-ink-tertiary">
+          <Link2 className="size-8 mx-auto mb-2 opacity-30" />
+          <p className="text-sm">هنوز پیش‌تنظیمی ندارید</p>
+          <p className="text-xs mt-1">پیش‌تنظیم بسازید تا در ویرایشگر پست استفاده کنید</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {presets.map((preset) => (
+            <div key={preset.id} className="n-card-compact flex items-center justify-between p-3 rounded-lg border border-border">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-ink-primary">{preset.name}</span>
+                  {preset.isDefault && (
+                    <span className="text-2xs bg-accent/10 text-accent rounded-full px-1.5 py-0.5">پیش‌فرض</span>
+                  )}
+                </div>
+                <span className="text-xs text-ink-tertiary font-mono">{preset.source}/{preset.medium}{preset.campaign ? `/${preset.campaign}` : ''}</span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => deleteMutation.mutate(preset.id)}
+                disabled={deleteMutation.isPending}
+                className="text-danger hover:text-danger hover:bg-danger-soft shrink-0"
+              >
+                حذف
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -3,9 +3,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Check, X, Send, Loader2 } from 'lucide-react'
+import { Check, X, Send, Loader2, MessageSquare, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
+import { CommentThread } from '@/components/collaboration/comment-thread'
 
 /** StatusBadge — colored pill showing content approval status */
 export function ApprovalStatusBadge({ status }: { status: string }) {
@@ -36,16 +38,17 @@ export function ApprovalBar({
   status,
   rejectedReason,
 }: {
-  contentId: string
+  contentId?: string
   status: string
   rejectedReason?: string | null
 }) {
   const queryClient = useQueryClient()
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [showComments, setShowComments] = useState(false)
 
   const submitMutation = useMutation({
-    mutationFn: () => api.post(`/api/content/${contentId}/submit-review`, {}),
+    mutationFn: () => api.post(`/api/content/${contentId ?? ''}/submit-review`, {}),
     onSuccess: () => {
       toast.success('برای بررسی ارسال شد')
       queryClient.invalidateQueries({ queryKey: ['content'] })
@@ -55,7 +58,7 @@ export function ApprovalBar({
   })
 
   const approveMutation = useMutation({
-    mutationFn: () => api.post(`/api/content/${contentId}/approve`, {}),
+    mutationFn: () => api.post(`/api/content/${contentId ?? ''}/approve`, {}),
     onSuccess: () => {
       toast.success('محتوا تأیید شد ✓')
       queryClient.invalidateQueries({ queryKey: ['content'] })
@@ -65,7 +68,7 @@ export function ApprovalBar({
   })
 
   const rejectMutation = useMutation({
-    mutationFn: () => api.post(`/api/content/${contentId}/reject`, { reason: rejectReason }),
+    mutationFn: () => api.post(`/api/content/${contentId ?? ''}/reject`, { reason: rejectReason }),
     onSuccess: () => {
       toast.success('رد شد')
       setShowRejectModal(false)
@@ -141,6 +144,23 @@ export function ApprovalBar({
           <p className="text-xs text-danger">دلیل رد: {rejectedReason}</p>
         </div>
       )}
+
+      {/* Comments toggle */}
+      <div className="border-t border-border mt-3 pt-3">
+        <button
+          onClick={() => setShowComments((v) => !v)}
+          className="flex items-center gap-2 text-sm text-ink-secondary hover:text-ink-primary transition-colors w-full n-focus-ring rounded"
+        >
+          <MessageSquare className="size-4" />
+          نظرات و بازخورد
+          <ChevronDown className={cn('size-4 ms-auto transition-transform', showComments && 'rotate-180')} />
+        </button>
+        {showComments && contentId && (
+          <div className="mt-3">
+            <CommentThread contentId={contentId} />
+          </div>
+        )}
+      </div>
 
       {/* Reject reason modal */}
       <AnimatePresence>
