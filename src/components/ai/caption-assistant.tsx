@@ -188,7 +188,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
           setIsThinking(false)
         }
       } catch (err: unknown) {
-        if (err.name === 'AbortError') {
+        if (err instanceof Error && err.name === 'AbortError') {
           // keep partial
         } else {
           toast.error('خطا در ارتباط با سرور هوش مصنوعی')

@@ -102,7 +102,7 @@ export function PlatformPreviewTabs({
                   : 'text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary'
               )}
             >
-              <PlatformLogo platform={p as unknown} className="size-3.5" />
+              <PlatformLogo platform={p as string} className="size-3.5" />
               <span>{PLATFORM_LABELS[p] ?? p}</span>
               <span
                 className={cn(

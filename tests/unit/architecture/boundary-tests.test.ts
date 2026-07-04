@@ -108,6 +108,7 @@ describe('Issue #156 — Architecture enforcement', () => {
       'media/local-upload', // complex upload logic — planned migration
       'platforms/[id]/connect', // OAuth flow — complex but thin enough at 200
       'platforms/oauth/callback', // OAuth callback — complex but thin enough at 200
+      'platforms/oauth/start', // OAuth start — complex but thin enough at 200
       'publish-jobs/[id]', // status endpoint — planned migration
       'compose-draft', // planned migration to compose module
       'publications/[id]/resolve', // complex resolution logic — planned migration

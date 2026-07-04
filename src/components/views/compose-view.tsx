@@ -187,11 +187,11 @@ export function ComposeView() {
     draftRestored.current = true
 
     // 1. Read local storage draft
-    let localDraft: Record<string, unknown> | null = null
+    let localDraft: any = null
     try {
       const rawLocal = localStorage.getItem('nashrino_unsaved_draft')
       if (rawLocal) {
-        localDraft = JSON.parse(rawLocal) as Record<string, unknown>
+        localDraft = JSON.parse(rawLocal)
       }
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -203,7 +203,7 @@ export function ComposeView() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const serverDraftRaw = data?.draft
-        const serverDraft = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
+        const serverDraft: any = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
 
         const hasServer = serverDraft && (serverDraft.content?.title || serverDraft.content?.caption || serverDraft.channelIds?.length)
         const hasLocal = localDraft && (localDraft.content?.title || localDraft.content?.caption || localDraft.channelIds?.length)
@@ -224,7 +224,7 @@ export function ComposeView() {
 
         if (hasServer) {
           applyDraft(serverDraft)
-        } else if (hasLocal) {
+        } else if (hasLocal && localDraft) {
           applyDraft(localDraft)
         }
 
@@ -435,7 +435,7 @@ export function ComposeView() {
       queryClient.setQueryData<ContentItem[]>(['content'], (old) => [optimistic, ...(old ?? [])])
       return { previous }
     },
-    onError: (err, _payload, context: unknown) => {
+    onError: (err, _payload, context: any) => {
       if ((context as { previous?: unknown })?.previous) queryClient.setQueryData(['content'], (context as { previous: unknown }).previous)
       toast.error(err.message || 'انتشار محتوا ناموفق بود. تغییرات برگردانده شد.')
     },
@@ -993,7 +993,7 @@ export function ComposeView() {
       <AIAssistantSheet
         open={aiSheetOpen}
         onClose={() => setAiSheetOpen(false)}
-        platform={(selectedPlatforms[0] as string) || 'instagram'}
+        platform={(selectedPlatforms[0] as any) || 'instagram'}
         topic={title}
         onInsert={(text) => setCaption(text)}
         onHashtags={(tags) => setHashtags(tags.join(' '))}
