@@ -309,6 +309,7 @@ export function logSpan(trace: TraceContext, attrs: SpanAttributes): void {
     ...attrs,
   }
   if (typeof console !== 'undefined') {
+    // eslint-disable-next-line no-console
     console.info(JSON.stringify(entry))
   }
 }
@@ -353,10 +354,12 @@ export function initTracing(serviceName: string = 'nashrino-app'): void {
           // publish-correctness SLO (target 99.5% — we cannot afford blind spots).
         })
         sdk.start()
+        // eslint-disable-next-line no-console
         console.info(`[otel] SDK started for service "${serviceName}"`)
       })
     )
     .catch((err) => {
+      // eslint-disable-next-line no-console
       console.error('[otel] failed to start SDK (continuing with noop tracer):', err)
     })
 }

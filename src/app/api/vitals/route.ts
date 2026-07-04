@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
 
     // Log vitals in dev for debugging
     if (process.env.NODE_ENV !== 'production') {
+      // eslint-disable-next-line no-console
       console.log(`[vitals] ${name}: ${Math.round(value)}ms (${rating}) id=${id}`)
     }
 

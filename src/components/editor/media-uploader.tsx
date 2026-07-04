@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { UploadCloud, Loader2, Check, X, Image as ImageIcon } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { UploadCloud, Loader2, Check, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { toPersianDigits } from '@/lib/jalali'
@@ -129,7 +129,7 @@ export function MediaUploader({
           setUploadedFiles((prev) => [...prev, media])
           onUploaded(media)
           toast.success(`${file.name} آپلود شد ✓`)
-        } catch (err) {
+        } catch {
           toast.error(`خطا در آپلود: ${file.name}`)
         }
       }

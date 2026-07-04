@@ -131,7 +131,8 @@ export class PublicationsRepository {
 
     // Issue #145: create an immutable ContentRevision (snapshot of the content at publish time)
     const revisionId = crypto.randomUUID()
-    const revision = await (tx as any).contentRevision.create({
+    const txExt = tx as unknown as Record<string, { create: (a: { data: unknown }) => Promise<{ id: string }> }>
+    const revision = await txExt.contentRevision.create({
       data: {
         id: revisionId,
         contentId: content.id,
@@ -148,7 +149,7 @@ export class PublicationsRepository {
     // Issue #145: create ordered RevisionMedia links (replaces thumbnailUrl-as-media)
     if (params.mediaItems && params.mediaItems.length > 0) {
       for (const m of params.mediaItems) {
-        await (tx as any).revisionMedia.create({
+        await txExt.revisionMedia.create({
           data: {
             revisionId: revision.id,
             mediaId: m.id,
@@ -168,7 +169,7 @@ export class PublicationsRepository {
       // Issue #145: create ChannelVariant for per-channel caption overrides
       const overrideCaption = params.platformCaptions?.[ch.id]
       if (overrideCaption !== undefined) {
-        await (tx as any).channelVariant.create({
+        await txExt.channelVariant.create({
           data: {
             revisionId: revision.id,
             platformId: ch.id,
@@ -216,7 +217,7 @@ export class PublicationsRepository {
             .update(`${ch.id}:${content.id}:${revision.id}`)
             .digest('hex')
             .substring(0, 32)
-        await (tx as any).publication.create({
+        await txExt.publication.create({
           data: {
             id: publicationId,
             workspaceId: params.workspaceId,

@@ -1,10 +1,5 @@
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals'
 import nextTypescript from 'eslint-config-next/typescript'
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 const eslintConfig = [
   ...nextCoreWebVitals,
@@ -15,7 +10,7 @@ const eslintConfig = [
       // "warn" = visible in CI but doesn't fail the build.
       // "error" = fails the build (only for clear bugs).
       '@typescript-eslint/no-explicit-any': 'warn', // global default; overridden to error for API/lib below
-      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { varsIgnorePattern: '^_', argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/prefer-as-const': 'off',
@@ -60,6 +55,25 @@ const eslintConfig = [
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
+  // Test files: any/!, console, and unused vars are normal in test code
+  {
+    files: ['tests/**/*.ts', 'tests/**/*.tsx', 'tests/**/*.js'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      'import/no-anonymous-default-export': 'off',
+      'no-useless-escape': 'off',
+    },
+  },
+  // CLI scripts, seed files, shared lib: console output is intentional
+  {
+    files: ['scripts/**/*.ts', 'prisma/**/*.ts', 'shared/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
   {
     ignores: [
       'node_modules/**',
@@ -69,7 +83,8 @@ const eslintConfig = [
       'next-env.d.ts',
       'examples/**',
       'skills/**',
-      'mini-services/publish-worker/**', // separate bun project with its own lint
+      'k6/**', // k6 load test scripts — separate runtime with its own globals
+      'mini-services/**', // separate bun projects with their own lint configs
     ],
   },
 ]

@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
-import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import {
   Bell,

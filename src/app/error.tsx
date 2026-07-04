@@ -21,6 +21,7 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log to console (replace with Sentry/PostHog in production)
+    // eslint-disable-next-line no-console
     console.error('[نشرینو] Route error boundary:', error)
   }, [error])
 

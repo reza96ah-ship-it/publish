@@ -261,7 +261,7 @@ async function main() {
   const [summerSale, featureIntro, photoContest, academy] = campaigns
 
   // ─── Media ───
-  const media = await db.$transaction([
+  const _media = await db.$transaction([
     db.media.create({
       data: {
         workspaceId: ws.id,
@@ -404,7 +404,7 @@ async function main() {
     thumbnailUrl: 'https://picsum.photos/seed/webinar5/100/100',
     scheduledAt: hoursAhead(20),
   })
-  const c6 = await mkContent({
+  const _c6 = await mkContent({
     workspaceId: ws.id,
     campaignId: photoContest.id,
     title: 'برندگان مسابقه عکاسی',
@@ -414,7 +414,7 @@ async function main() {
     authorName: 'علی احمدی',
     thumbnailUrl: 'https://picsum.photos/seed/photo6/100/100',
   })
-  const c7 = await mkContent({
+  const _c7 = await mkContent({
     workspaceId: ws.id,
     campaignId: summerSale.id,
     title: 'پست داستان مشتری',
@@ -423,7 +423,7 @@ async function main() {
     status: 'review',
     authorName: 'سارا مرادی',
   })
-  const c8 = await mkContent({
+  const _c8 = await mkContent({
     workspaceId: ws.id,
     title: 'محتوای همیشه سبز SEO',
     body: 'راهنمای کامل سئو برای کسب‌وکارهای کوچک.',

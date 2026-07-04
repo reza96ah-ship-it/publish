@@ -70,7 +70,13 @@ export async function GET(req: NextRequest) {
 
   const state = randomBytes(16).toString('hex')
 
-  const { authorizationUrl, codeVerifier } = await adapter.getAuthorizationUrl!({
+  const getAuthorizationUrl = adapter.getAuthorizationUrl
+  if (!getAuthorizationUrl) {
+    return NextResponse.redirect(
+      new URL(`/channels?oauth_error=unsupported_type&type=${type}`, BASE_URL)
+    )
+  }
+  const { authorizationUrl, codeVerifier } = await getAuthorizationUrl({
     workspaceId: guard.workspaceId,
     redirectUri: REDIRECT_URI,
     state,

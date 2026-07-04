@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useShouldAnimate } from '@/lib/motion'
 import {
   Sparkles,
-  Send,
   Loader2,
   Check,
   X,
@@ -14,7 +13,6 @@ import {
   RefreshCw,
   Save,
   Copy,
-  ChevronLeft,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { toPersianDigits } from '@/lib/jalali'
@@ -97,7 +95,7 @@ export function AIAssistantSheet({
   const [isThinking, setIsThinking] = useState(false)
   const [streamedText, setStreamedText] = useState('')
   const [hasResult, setHasResult] = useState(false)
-  const [streamError, setStreamError] = useState<string | null>(null)
+  const [, setStreamError] = useState<string | null>(null)
   const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false)
   const [hashtags, setHashtags] = useState<HashtagSuggestion[]>([])
   const [appendedHashtags, setAppendedHashtags] = useState<Set<string>>(new Set())
@@ -231,8 +229,8 @@ export function AIAssistantSheet({
           setIsStreaming(false)
           setIsThinking(false)
         }
-      } catch (err: any) {
-        if (err.name !== 'AbortError') {
+      } catch (err: unknown) {
+        if ((err as { name?: string }).name !== 'AbortError') {
           toast.error('خطا در ارتباط با سرور هوش مصنوعی')
         }
         setIsStreaming(false)

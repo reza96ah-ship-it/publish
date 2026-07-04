@@ -6,7 +6,6 @@ import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { toPersianDigits } from '@/lib/jalali'
 import { NotificationPopover } from './notification-popover'
 import { ThemeToggle } from './theme-toggle'
 
@@ -21,7 +20,7 @@ export function CommandBar() {
   const navigateTo = (path: string) => router.push(path)
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen)
   const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen)
-  const { data: summary } = useQuery<Summary>({
+  useQuery<Summary>({
     queryKey: ['dashboard-summary'],
     queryFn: () => api.get<Summary>('/api/dashboard/summary'),
     refetchInterval: 30000,

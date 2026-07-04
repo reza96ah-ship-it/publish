@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toPersianDigits } from '@/lib/jalali'
 import { Flag, MoreHorizontal, ArrowLeft } from 'lucide-react'
-import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { PanelHeader, LinkAction, EmptyState } from './shared'
 

@@ -75,8 +75,9 @@ export function paginated<T>(
 ): PaginatedResponse<T> {
   const hasMore = data.length > limit
   const trimmed = hasMore ? data.slice(0, limit) : data
-  const nextCursor = hasMore && trimmed.length > 0
-    ? cursorExtractor(trimmed[trimmed.length - 1]!)
+  const lastItem = trimmed[trimmed.length - 1]
+  const nextCursor = hasMore && lastItem !== undefined
+    ? cursorExtractor(lastItem)
     : null
 
   return {

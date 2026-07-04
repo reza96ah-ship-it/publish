@@ -193,7 +193,6 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
 
 // ── LinkedIn ──────────────────────────────────────────────────
 
-const LI_API_VERSION = process.env.LINKEDIN_API_VERSION || '202505'
 const LI_API = 'https://api.linkedin.com'
 const LI_AUTH = 'https://www.linkedin.com/oauth/v2'
 

@@ -5,14 +5,14 @@
  * Business logic lives in src/modules/identity (Issue #156).
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { identityService, IdentityError } from '@/modules/identity'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(_req: NextRequest) {
+export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

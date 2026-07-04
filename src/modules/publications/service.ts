@@ -14,7 +14,6 @@ import {
   ValidationError,
   NoChannelsError,
   ChannelsNotFoundError,
-  type PublicationError,
 } from './errors'
 import type { AuthContext, PublishRequest, PublishResult } from './types'
 

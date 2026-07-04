@@ -7,12 +7,6 @@ import { toPersianDigits, formatCompact } from '@/lib/jalali'
    For use with recharts: <Tooltip content={<ChartTooltip />} />
    ============================================================================ */
 
-interface ChartTooltipEntry {
-  name: string
-  value: number
-  color: string
-}
-
 interface ChartTooltipProps {
   active?: boolean
   payload?: Array<{ name: string; value: number; color: string; dataKey?: string }>

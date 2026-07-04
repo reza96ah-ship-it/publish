@@ -15,7 +15,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       richColors
       closeButton
       // Swipe-to-dismiss with velocity threshold
-      swipeDirections={['left', 'right', 'up'] as any}
+      swipeDirections={['left', 'right', 'up'] as ToasterProps['swipeDirections']}
       style={
         {
           '--normal-bg': 'var(--n-glass-popover-bg)',

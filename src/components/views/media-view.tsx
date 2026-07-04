@@ -93,7 +93,7 @@ export function MediaView() {
       announce('رسانه جدید اضافه شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
+    onError: (_err, _newItem, context: unknown) => {
       if (context?.previous) queryClient.setQueryData(['media'], context.previous)
       toast.error('آپلود رسانه ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در آپلود رسانه', 'assertive')

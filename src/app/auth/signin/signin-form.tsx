@@ -8,11 +8,10 @@ interface SignInFormProps {
   callbackUrl: string
 }
 
-export function SignInForm({ callbackUrl }: SignInFormProps) {
+export function SignInForm(_props: SignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [csrfToken, setCsrfToken] = useState('')
-  const [loading, setLoading] = useState(false)
 
   // Fetch CSRF token CLIENT-SIDE — this sets the next-auth.csrf-token COOKIE
   // on the user's browser. The server-side getCsrfToken() does NOT set the
@@ -101,9 +100,9 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
             {/* Submit — disabled until CSRF token loads (prevents race condition) */}
             <button
               type="submit"
-              disabled={!csrfToken || loading}
+              disabled={!csrfToken}
               aria-label="ورود"
-              aria-busy={!csrfToken || loading}
+              aria-busy={!csrfToken}
               className="n-focus-ring w-full h-10 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2 dark:text-canvas"
             >
               {!csrfToken ? (

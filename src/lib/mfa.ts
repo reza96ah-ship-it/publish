@@ -44,7 +44,7 @@ function makeTotp(secret: string, label = 'user'): OTPAuth.TOTP {
 /**
  * Build the otpauth:// URI for QR code scanners (Google Authenticator, Authy, etc.).
  */
-export function buildOtpAuthUri(email: string, secret: string, issuer = ISSUER): string {
+export function buildOtpAuthUri(email: string, secret: string): string {
   return makeTotp(secret, email).toString()
 }
 

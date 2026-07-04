@@ -141,6 +141,7 @@ export class PublishJobRepository {
         data: { status: 'cancelled', completedAt: new Date() },
       })
       .catch((err: unknown) =>
+        // eslint-disable-next-line no-console
         console.error('[publish-jobs] failed to sync Publication on cancel:', err)
       )
   }

@@ -149,7 +149,7 @@ export function CalendarView() {
     },
   })
 
-  const { data: jobs, isLoading } = useQuery<CalendarJob[]>({
+  const { data: jobs } = useQuery<CalendarJob[]>({
     queryKey: ['calendar', calendarCursor.year, calendarCursor.month],
     queryFn: () =>
       api.get<CalendarJob[]>(

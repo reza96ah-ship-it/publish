@@ -116,6 +116,7 @@ export async function probeVideo(
       durationMs = probed.durationMs
       codec = probed.codec
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[video-probe] ffprobe failed (non-fatal):', err)
     }
 
@@ -126,6 +127,7 @@ export async function probeVideo(
       await runFfmpegThumbnail(inputPath, thumbPath, seekSeconds)
       thumbnail = await fs.readFile(thumbPath)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[video-probe] thumbnail extraction failed (non-fatal):', err)
     }
 

@@ -23,27 +23,6 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
-const VALID_PLATFORMS: Platform[] = ['instagram', 'telegram', 'linkedin', 'rubika', 'bale', 'eitaa']
-const VALID_TONES = [
-  'formal',
-  'friendly',
-  'professional',
-  'storytelling',
-  'sales',
-  'educational',
-  'poetic',
-] as const
-const VALID_ROLES = [
-  'influencer',
-  'store',
-  'reviewer',
-  'educator',
-  'brand',
-  'news',
-  'community',
-] as const
-const VALID_GOALS = ['sell', 'educate', 'review', 'announce', 'engage', 'inspire'] as const
-const VALID_LENGTHS = ['short', 'standard', 'long'] as const
 
 export async function POST(req: NextRequest) {
   // Permission guard: content.create required
@@ -71,7 +50,7 @@ export async function POST(req: NextRequest) {
     if (!validation.success) {
       return Response.json({ error: validation.error }, { status: 400 })
     }
-    const { topic, platform, tone, role, goal, length, variation, voiceExamples } = validation.data
+    const { topic, platform, tone, role, goal, length, variation } = validation.data
 
     const validTone = tone as Tone | undefined
     const validRole = role as CreatorRole | undefined
@@ -128,6 +107,7 @@ export async function POST(req: NextRequest) {
           // Log the full error server-side for debugging, but send a generic
           // Persian message to the client to avoid leaking internal details
           // (e.g., "GapGPT 401: Invalid API key").
+          // eslint-disable-next-line no-console
           console.error('[ai/caption] stream error:', err)
           const errorData = JSON.stringify({
             error: 'خطا در تولید کپشن. لطفاً دوباره تلاش کنید.',
@@ -150,6 +130,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err: unknown) {
     // Log the full error server-side, return generic Persian message to client
+    // eslint-disable-next-line no-console
     console.error('[ai/caption] route error:', err)
     return Response.json(
       {

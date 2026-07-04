@@ -168,11 +168,6 @@ export function InboxView() {
     onError: () => toast.error('خطا در ارجاع'),
   })
 
-  const readMutation = useMutation({
-    mutationFn: (id: string) => api.post(`/api/inbox/${id}/read`, {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['inbox'] }),
-  })
-
   // ── Handlers ───────────────────────────────────────────────────────
   const handleSelectMessage = useCallback((id: string) => {
     setSelectedId(id)
@@ -221,7 +216,7 @@ export function InboxView() {
                   fullText += json.content
                   setReplyText(fullText)
                 }
-              } catch {}
+              } catch { /* intentional no-op */ }
             }
           }
         }

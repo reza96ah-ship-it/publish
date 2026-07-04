@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
 
     return Response.json({ hashtags })
   } catch (err: unknown) {
+    // eslint-disable-next-line no-console
     console.error('[ai/hashtags] error:', err)
     return Response.json(
       { error: 'خطا در تولید هشتگ. لطفاً دوباره تلاش کنید.' },

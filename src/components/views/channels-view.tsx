@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import { toast } from 'sonner'
@@ -16,7 +16,6 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
-  ChevronLeft,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -49,7 +48,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   AlertDialog,
@@ -297,7 +295,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
   const handleValidate = async () => {
     setIsValidating(true)
     try {
-      const res = await api.post<{ valid: boolean; botInfo?: any }>(
+      const res = await api.post<{ valid: boolean; botInfo?: { username: string } }>(
         `/api/platforms/${platform.id}/validate`,
         {}
       )
@@ -309,8 +307,8 @@ function PlatformCard({ platform }: { platform: Platform }) {
         toast.error('اتصال نامعتبر است')
       }
       queryClient.invalidateQueries({ queryKey: ['platforms'] })
-    } catch (err: any) {
-      toast.error(err.message || 'خطا در تست اتصال')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'خطا در تست اتصال')
     } finally {
       setIsValidating(false)
     }
@@ -500,7 +498,7 @@ function ConnectDialog({
 
       if (existing) {
         // Update existing platform with token
-        const res = await api.post<{ ok: boolean; botInfo?: any }>(
+        const res = await api.post<{ ok: boolean; botInfo?: { username: string } }>(
           `/api/platforms/${existing.id}/connect`,
           {
             token: botToken,
@@ -520,8 +518,8 @@ function ConnectDialog({
       setBotToken('')
       setChatId('')
       onOpenChange(false)
-    } catch (err: any) {
-      const msg = err.message || 'خطا در اتصال'
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'خطا در اتصال'
       toast.error(msg)
     } finally {
       setConnecting(false)

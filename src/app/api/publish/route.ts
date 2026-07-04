@@ -24,8 +24,6 @@ import { structuredLogger } from '@/lib/structured-logger'
 import { track } from '@/lib/track'
 import {
   publicationsService,
-  PermissionDeniedError,
-  InvalidBodyError,
   PublicationError,
   type AuthContext,
   type PublishRequest,

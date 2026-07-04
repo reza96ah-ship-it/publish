@@ -133,7 +133,7 @@ export class TelegramAuthAdapter implements ProviderAuthAdapter {
         },
         botInfo,
       }
-    } catch (err) {
+    } catch {
       return {
         valid: false,
         health: {

@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
 import { Link2, MoreHorizontal } from 'lucide-react'
-import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { PanelHeader, LinkAction, EmptyState } from './shared'
 import { PlatformLogo } from '@/components/ui/platform-logo'
@@ -59,7 +58,7 @@ export function PlatformsPanel() {
                 <div className="flex items-center gap-1.5">
                   <p className="text-sm font-semibold text-ink-primary truncate">{p.name}</p>
                   <span className="text-2xs text-ink-tertiary">
-                    @{(p as any).username || '—'}
+                    @{(p as unknown as { username?: string }).username || '—'}
                   </span>
                 </div>
                 <span

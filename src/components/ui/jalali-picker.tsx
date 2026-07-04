@@ -37,7 +37,6 @@ import {
   jalaliToDate,
   formatJalali,
   formatJalaliTime,
-  isHoliday,
   toPersianDigits,
   getJalaliMonthGrid,
   type JalaliDate,

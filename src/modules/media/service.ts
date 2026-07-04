@@ -173,7 +173,7 @@ export class MediaService {
     }
 
     if (media.expiresAt && media.expiresAt < new Date()) {
-      await this.reject(media.id, media.storageKey, 'expired', 'مهلت آپلود منقضی شده است')
+      await this.reject(media.id, media.storageKey, 'expired')
       throw new UploadExpiredError('مهلت آپلود منقضی شده است')
     }
 
@@ -181,34 +181,29 @@ export class MediaService {
 
     const buffer = await fetchObject(media.storageKey)
     if (!buffer) {
-      await this.reject(media.id, media.storageKey, 'object_missing', 'فایل آپلودشده یافت نشد')
+      await this.reject(media.id, media.storageKey, 'object_missing')
       throw new MediaNotFoundError('فایل آپلودشده یافت نشد')
     }
 
     // Defense in depth: the bytes we validate must match what was hashed during upload
     if (media.checksumValue && sha256(buffer) !== media.checksumValue) {
-      await this.reject(media.id, media.storageKey, 'checksum_mismatch', 'فایل آپلودشده دستکاری شده است')
+      await this.reject(media.id, media.storageKey, 'checksum_mismatch')
       throw new ChecksumMismatchError('فایل آپلودشده دستکاری شده است')
     }
     if (media.actualSize != null && buffer.length !== media.actualSize) {
-      await this.reject(media.id, media.storageKey, 'size_mismatch', 'حجم فایل مطابقت ندارد')
+      await this.reject(media.id, media.storageKey, 'size_mismatch')
       throw new SizeMismatchError('حجم فایل مطابقت ندارد')
     }
 
     const detected = validateMagicBytes(buffer)
     if (!detected.valid || !detected.kind) {
-      await this.reject(media.id, media.storageKey, 'unsupported_format', 'فرمت فایل پشتیبانی نمی‌شود')
+      await this.reject(media.id, media.storageKey, 'unsupported_format')
       throw new UnsupportedFormatError('فرمت فایل پشتیبانی نمی‌شود')
     }
 
     const declaredKind = media.declaredType?.startsWith('video/') ? 'video' : 'image'
     if (detected.kind !== declaredKind) {
-      await this.reject(
-        media.id,
-        media.storageKey,
-        'type_mismatch',
-        'نوع فایل واقعی با نوع اعلام‌شده مطابقت ندارد'
-      )
+      await this.reject(media.id, media.storageKey, 'type_mismatch')
       throw new TypeMismatchError('نوع فایل واقعی با نوع اعلام‌شده مطابقت ندارد')
     }
 
@@ -240,6 +235,7 @@ export class MediaService {
           thumbnailUrl = await putObject(thumbKey, probed.thumbnail, 'image/jpeg')
         }
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error('[media/confirm] video probe failed (non-fatal):', err)
       }
     }
@@ -283,12 +279,7 @@ export class MediaService {
         height > MAX_IMAGE_DIMENSION ||
         width * height > MAX_IMAGE_PIXELS
       ) {
-        await this.reject(
-          media.id,
-          media.storageKey,
-          'image_too_large',
-          'ابعاد تصویر بیش از حد مجاز است'
-        )
+        await this.reject(media.id, media.storageKey, 'image_too_large')
         throw new ImageTooLargeError('ابعاد تصویر بیش از حد مجاز است')
       }
 
@@ -301,7 +292,7 @@ export class MediaService {
       thumbnailUrl = await putObject(thumbKey, thumbBuffer, 'image/webp')
     } catch (err) {
       if (err instanceof ImageTooLargeError) throw err
-      await this.reject(media.id, media.storageKey, 'decode_failed', 'پردازش تصویر ناموفق بود')
+      await this.reject(media.id, media.storageKey, 'decode_failed')
       throw new ImageDecodeFailedError('پردازش تصویر ناموفق بود')
     }
     return { width, height, thumbnailUrl }
@@ -369,12 +360,12 @@ export class MediaService {
   private async reject(
     mediaId: string,
     storageKey: string,
-    reason: RejectedReason,
-    _userMessage: string
+    reason: RejectedReason
   ): Promise<void> {
     try {
       await deleteObject(storageKey)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[media] reject: failed to delete storage object:', err)
     }
     await this.repo.markRejected(mediaId, reason)

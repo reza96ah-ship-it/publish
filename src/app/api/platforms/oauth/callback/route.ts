@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   let response: NextResponse
   try {
-    const credential = await adapter.exchangeCode!({
+    const credential = await adapter.exchangeCode({
       code,
       state,
       redirectUri: REDIRECT_URI,

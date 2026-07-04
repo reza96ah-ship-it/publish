@@ -13,7 +13,6 @@ import {
   Pencil,
   Copy,
   Trash2,
-  Filter,
   Send,
   Check,
   X,
@@ -54,7 +53,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
 
 interface ContentItem {
   id: string
@@ -126,7 +124,7 @@ export function ContentView() {
       announce('محتوای جدید اضافه شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
+    onError: (_err, _newItem, context: unknown) => {
       if (context?.previous) queryClient.setQueryData(['content'], context.previous)
       toast.error('ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در ایجاد محتوا', 'assertive')

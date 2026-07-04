@@ -24,7 +24,7 @@
  *   DRY_RUN=true   — preview actions without flushing (also: --dry-run flag)
  */
 
-import { Queue, QueueEvents } from 'bullmq'
+import { Queue } from 'bullmq'
 import { PrismaClient } from '@prisma/client'
 import { Redis } from 'ioredis'
 

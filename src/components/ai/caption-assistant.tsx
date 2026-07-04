@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Send, Loader2, Check, X, Hash, RefreshCw, Save, Copy } from 'lucide-react'
+import { Sparkles, Loader2, Check, X, Hash, RefreshCw, Save, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { toPersianDigits } from '@/lib/jalali'
 import { api } from '@/lib/api'
@@ -67,7 +67,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
   const [isThinking, setIsThinking] = useState(false)
   const [streamedText, setStreamedText] = useState('')
   const [hasResult, setHasResult] = useState(false)
-  const [streamError, setStreamError] = useState<string | null>(null)
+  const [, setStreamError] = useState<string | null>(null)
   const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false)
   const [hashtags, setHashtags] = useState<HashtagSuggestion[]>([])
   const [appendedHashtags, setAppendedHashtags] = useState<Set<string>>(new Set())
@@ -187,7 +187,7 @@ export function CaptionAssistant({ platform, topic, onInsert, onHashtags }: Capt
           setIsStreaming(false)
           setIsThinking(false)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err.name === 'AbortError') {
           // keep partial
         } else {

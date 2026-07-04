@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
               encoder.encode(`data: ${JSON.stringify({ done: true, platform: p })}\n\n`)
             )
           } catch (err: unknown) {
+            // eslint-disable-next-line no-console
             console.error(`[ai/caption-multi] stream error for ${p}:`, err)
             controller.enqueue(
               encoder.encode(
@@ -127,6 +128,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (err: unknown) {
+    // eslint-disable-next-line no-console
     console.error('[ai/caption-multi] route error:', err)
     return Response.json(
       {

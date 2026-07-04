@@ -7,9 +7,6 @@ import { Check, X, Send, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '@/lib/api'
 
-type ApprovalStatus =
-  'draft' | 'review' | 'approved' | 'rejected' | 'scheduled' | 'published' | 'failed'
-
 /** StatusBadge — colored pill showing content approval status */
 export function ApprovalStatusBadge({ status }: { status: string }) {
   const config: Record<string, { label: string; className: string }> = {
@@ -54,7 +51,7 @@ export function ApprovalBar({
       queryClient.invalidateQueries({ queryKey: ['content'] })
       queryClient.invalidateQueries({ queryKey: ['content', contentId] })
     },
-    onError: (err: any) => toast.error(err.message || 'خطا در ارسال'),
+    onError: (err: unknown) => toast.error((err as Error).message || 'خطا در ارسال'),
   })
 
   const approveMutation = useMutation({
@@ -64,7 +61,7 @@ export function ApprovalBar({
       queryClient.invalidateQueries({ queryKey: ['content'] })
       queryClient.invalidateQueries({ queryKey: ['content', contentId] })
     },
-    onError: (err: any) => toast.error(err.message || 'خطا در تأیید'),
+    onError: (err: unknown) => toast.error((err as Error).message || 'خطا در تأیید'),
   })
 
   const rejectMutation = useMutation({
@@ -76,7 +73,7 @@ export function ApprovalBar({
       queryClient.invalidateQueries({ queryKey: ['content'] })
       queryClient.invalidateQueries({ queryKey: ['content', contentId] })
     },
-    onError: (err: any) => toast.error(err.message || 'خطا در رد'),
+    onError: (err: unknown) => toast.error((err as Error).message || 'خطا در رد'),
   })
 
   return (

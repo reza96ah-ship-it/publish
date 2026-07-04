@@ -341,6 +341,7 @@ export class MembershipRepository {
         },
       })
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[membership] audit log write failed (non-fatal):', err)
     }
   }

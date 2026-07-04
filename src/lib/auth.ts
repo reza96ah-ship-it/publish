@@ -144,7 +144,7 @@ export const authOptions: NextAuthOptions = {
     // behind the Z.ai preview gateway (iframe on *.space-z.ai). Without this,
     // NextAuth redirects to http://localhost:3000/ which the user's browser
     // can't reach (localhost = their machine, not the sandbox).
-    async redirect({ url, baseUrl }) {
+    async redirect({ url }) {
       // If it's already a relative URL, return as-is
       if (url.startsWith('/')) return url
       // If it's an absolute URL, extract just the pathname (+ search)
@@ -225,6 +225,7 @@ export const authOptions: NextAuthOptions = {
         )
       }
       // Dev-only fallback (so local dev works without an .env entry).
+      // eslint-disable-next-line no-console
       console.warn(
         '[auth] NEXTAUTH_SECRET missing — using insecure dev fallback. ' +
           'Set NEXTAUTH_SECRET in .env for production.'

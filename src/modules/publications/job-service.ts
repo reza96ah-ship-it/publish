@@ -290,6 +290,7 @@ export class PublishJobService {
     try {
       await publishQueue.remove(idempotencyKey)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error(`[publish-jobs] failed to remove old BullMQ job (${context}):`, err)
     }
   }

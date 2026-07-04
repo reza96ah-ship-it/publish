@@ -16,6 +16,7 @@ export function getRedisClient(): Redis {
     })
     _client.on('error', (err) => {
       // Non-fatal: rate limiting degrades gracefully when Redis is down
+      // eslint-disable-next-line no-console
       console.error('[redis] client error:', err.message)
     })
   }

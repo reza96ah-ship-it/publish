@@ -8,7 +8,6 @@ import {
   Circle,
   ChevronLeft,
   ChevronRight,
-  Link2,
   Send,
   BarChart3,
   Users,
@@ -93,7 +92,7 @@ const PLATFORM_PERMS: Record<string, string[]> = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-const slide = {
+const _slide = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -24 },
@@ -595,7 +594,7 @@ export function OnboardingWizard({ initialStep, workspace }: WizardProps) {
   const [wsName, setWsName] = useState(workspace?.name ?? '')
   const [timezone, setTimezone] = useState(workspace?.timezone ?? 'Asia/Tehran')
   const [workWeek, setWorkWeek] = useState(workspace?.workWeek ?? 'sat-wed')
-  const [platforms, setPlatforms] = useState<Platform[]>(workspace?.platforms ?? [])
+  const [platforms] = useState<Platform[]>(workspace?.platforms ?? [])
 
   const canAdvance = useCallback(() => {
     if (step === 0) return role !== '' && objective !== ''

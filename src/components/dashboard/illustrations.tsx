@@ -36,7 +36,7 @@ function FloatGroup({ children }: { children: ReactNode }) {
 export function InboxIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -105,7 +105,7 @@ export function InboxIllustration({ className = '' }: IllustrationProps) {
 export function ContentIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -195,7 +195,7 @@ export function ContentIllustration({ className = '' }: IllustrationProps) {
 export function MediaIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -245,7 +245,7 @@ export function MediaIllustration({ className = '' }: IllustrationProps) {
 export function CampaignsIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -305,7 +305,7 @@ export function CampaignsIllustration({ className = '' }: IllustrationProps) {
 export function AnalyticsIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -398,7 +398,7 @@ export function AnalyticsIllustration({ className = '' }: IllustrationProps) {
 export function CalendarIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -465,7 +465,7 @@ export function CalendarIllustration({ className = '' }: IllustrationProps) {
 export function ChannelsIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"
@@ -568,7 +568,7 @@ export function ChannelsIllustration({ className = '' }: IllustrationProps) {
 export function SearchIllustration({ className = '' }: IllustrationProps) {
   return (
     <motion.svg
-      {...(containerMotion as any)}
+      {...(containerMotion as Record<string, unknown>)}
       viewBox="0 0 120 120"
       className={className}
       fill="none"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Heart,
@@ -15,8 +15,6 @@ import {
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { cn } from '@/lib/utils'
 import { toPersianDigits } from '@/lib/jalali'
-
-type Platform = 'instagram' | 'telegram' | 'linkedin' | 'rubika' | 'bale' | 'eitaa'
 
 interface MediaItem {
   thumbnail: string
@@ -67,7 +65,10 @@ export function PlatformPreviewTabs({
   selectedPlatforms,
   authorName = 'نشرینو',
 }: PlatformPreviewTabsProps) {
-  const platforms = selectedPlatforms.length > 0 ? selectedPlatforms : ['instagram']
+  const platforms = useMemo(
+    () => (selectedPlatforms.length > 0 ? selectedPlatforms : ['instagram']),
+    [selectedPlatforms],
+  )
 
   // Track active tab — reset to first platform when the platform list changes.
   const [active, setActive] = useState(platforms[0])
@@ -77,7 +78,7 @@ export function PlatformPreviewTabs({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActive(platforms[0])
     }
-  }, [platformsKey])
+  }, [platformsKey, active, platforms])
 
   const fullText = [caption, hashtags].filter(Boolean).join('\n\n')
 
@@ -101,7 +102,7 @@ export function PlatformPreviewTabs({
                   : 'text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary'
               )}
             >
-              <PlatformLogo platform={p as any} className="size-3.5" />
+              <PlatformLogo platform={p as unknown} className="size-3.5" />
               <span>{PLATFORM_LABELS[p] ?? p}</span>
               <span
                 className={cn(
@@ -161,7 +162,7 @@ export function PlatformPreviewTabs({
 /* ── Instagram Preview ──────────────────────────────────────────────── */
 function InstagramPreview({
   caption,
-  title,
+  title: _title,
   media,
   author,
 }: {
@@ -285,7 +286,7 @@ function TelegramPreview({
 /* ── LinkedIn Preview (article card) ────────────────────────────────── */
 function LinkedInPreview({
   caption,
-  title,
+  title: _title,
   media,
   author,
 }: {

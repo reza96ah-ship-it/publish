@@ -80,6 +80,7 @@ export class AnalyticsService {
           }
         }
       } catch (err) {
+        // eslint-disable-next-line no-console
         console.error(`[analytics] ${platform.type} error:`, err)
       }
     }

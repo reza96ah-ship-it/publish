@@ -17,6 +17,7 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
+    // eslint-disable-next-line no-console
     console.error('[نشرینو] Global error boundary:', error)
   }, [error])
 

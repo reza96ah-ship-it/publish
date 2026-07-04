@@ -7,7 +7,6 @@ import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import { toast } from 'sonner'
 import {
   Flag,
-  MoreHorizontal,
   ArrowLeft,
   Calendar,
   Target,
@@ -134,7 +133,7 @@ export function CampaignsView() {
       announce('کمپین جدید ایجاد شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
+    onError: (_err, _newItem, context: unknown) => {
       if (context?.previous) queryClient.setQueryData(['campaigns'], context.previous)
       toast.error('ایجاد کمپین ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در ایجاد کمپین', 'assertive')

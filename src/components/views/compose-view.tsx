@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useShouldAnimate } from '@/lib/motion'
 import { toast } from 'sonner'
-import { CaptionAssistant } from '@/components/ai/caption-assistant'
 import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
 import { NashrinoEditor } from '@/components/editor/nashrino-editor'
 import { PlatformPreviewTabs } from '@/components/editor/platform-preview-tabs'
@@ -21,10 +20,6 @@ import {
   Layers,
   Sparkles,
   Eye,
-  MessageSquare,
-  UploadCloud,
-  X,
-  Plus,
   AlertTriangle,
 } from 'lucide-react'
 
@@ -34,17 +29,11 @@ import { announce } from '@/lib/aria-live'
 import {
   SectionTitle,
   PlatformIcon,
-  PlatformBadge,
   ProviderSupportBadge,
-  Skeleton,
-  LoadingState,
-  EmptyState,
 } from '@/components/dashboard/shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { JalaliDatePicker } from '@/components/ui/jalali-picker'
 import {
   Select,
@@ -58,7 +47,6 @@ import {
   PROVIDER_CAPABILITIES,
   getCapabilities,
   validateAgainstCapabilities,
-  type PlatformKey,
 } from '@/lib/provider-capabilities'
 
 interface Campaign {
@@ -135,7 +123,7 @@ export function ComposeView() {
   // Issue #127: useTransition for non-urgent state updates (caption/hashtags/note
   // typing) so the main thread stays responsive → INP <200ms. Urgent updates
   // (title, platform selection) stay synchronous for immediate feedback.
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   // MISS-04: debounced autosave state
   type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict'
@@ -145,20 +133,20 @@ export function ComposeView() {
   // Issue #152: draft versioning & conflict resolution state
   const draftVersion = useRef<number | null>(null)
   const [showConflictModal, setShowConflictModal] = useState(false)
-  const [pendingLocalDraft, setPendingLocalDraft] = useState<any>(null)
-  const [pendingServerDraft, setPendingServerDraft] = useState<any>(null)
+  const [pendingLocalDraft, setPendingLocalDraft] = useState<Record<string, unknown> | null>(null)
+  const [pendingServerDraft, setPendingServerDraft] = useState<Record<string, unknown> | null>(null)
 
-  const applyDraft = useCallback((draft: any) => {
-    const c = draft.content
-    if (c?.title) setTitle(c.title)
-    if (c?.caption) setCaption(c.caption)
-    if (c?.hashtags) setHashtags(c.hashtags)
-    if (c?.note) setNote(c.note)
-    if (c?.campaignId) setCampaignId(c.campaignId)
-    if (c?.scheduleMode) setScheduleMode(c.scheduleMode)
-    if (draft.channelIds?.length) setSelectedPlatforms(draft.channelIds)
+  const applyDraft = useCallback((draft: Record<string, unknown>) => {
+    const c = draft.content as Record<string, unknown> | undefined
+    if (c?.title) setTitle(c.title as string)
+    if (c?.caption) setCaption(c.caption as string)
+    if (c?.hashtags) setHashtags(c.hashtags as string)
+    if (c?.note) setNote(c.note as string)
+    if (c?.campaignId) setCampaignId(c.campaignId as string)
+    if (c?.scheduleMode) setScheduleMode(c.scheduleMode as 'now' | 'schedule' | 'queue')
+    if ((draft.channelIds as string[] | undefined)?.length) setSelectedPlatforms(draft.channelIds as string[])
     if (draft.scheduledAt) {
-      const d = new Date(draft.scheduledAt)
+      const d = new Date(draft.scheduledAt as string)
       if (!isNaN(d.getTime())) setScheduledAt(d)
     }
     if (typeof draft.version === 'number') {
@@ -199,13 +187,14 @@ export function ComposeView() {
     draftRestored.current = true
 
     // 1. Read local storage draft
-    let localDraft: any = null
+    let localDraft: Record<string, unknown> | null = null
     try {
       const rawLocal = localStorage.getItem('nashrino_unsaved_draft')
       if (rawLocal) {
-        localDraft = JSON.parse(rawLocal)
+        localDraft = JSON.parse(rawLocal) as Record<string, unknown>
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to parse local draft', e)
     }
 
@@ -321,7 +310,7 @@ export function ComposeView() {
     queryKey: ['campaigns'],
     queryFn: () => api.getPaginated<Campaign>('/api/campaigns'),
   })
-  const { data: media, isLoading: mediaIsLoading } = useQuery<MediaItem[]>({
+  const { data: media } = useQuery<MediaItem[]>({
     queryKey: ['media'],
     queryFn: () => api.getPaginated<MediaItem>('/api/media'),
   })
@@ -446,8 +435,8 @@ export function ComposeView() {
       queryClient.setQueryData<ContentItem[]>(['content'], (old) => [optimistic, ...(old ?? [])])
       return { previous }
     },
-    onError: (err, _payload, context: any) => {
-      if (context?.previous) queryClient.setQueryData(['content'], context.previous)
+    onError: (err, _payload, context: unknown) => {
+      if ((context as { previous?: unknown })?.previous) queryClient.setQueryData(['content'], (context as { previous: unknown }).previous)
       toast.error(err.message || 'انتشار محتوا ناموفق بود. تغییرات برگردانده شد.')
     },
     onSettled: () => {
@@ -533,7 +522,7 @@ export function ComposeView() {
 
       const toastId = toast.loading('در حال ارسال برای بررسی…')
       publishMutation.mutate(payload, {
-        onSuccess: (res) => {
+        onSuccess: () => {
           toast.success('محتوا برای تأیید ارسال شد', { id: toastId })
           setTitle('')
           setCaption('')
@@ -824,7 +813,7 @@ export function ComposeView() {
                   name: m.name,
                   thumbnail: m.thumbnail,
                 }))}
-                onToggle={(m) => toggleMedia(m as any)}
+                onToggle={(m) => toggleMedia(m as MediaItem)}
                 existingMedia={(media ?? []).map((m) => ({
                   id: m.id,
                   name: m.name,
@@ -1004,7 +993,7 @@ export function ComposeView() {
       <AIAssistantSheet
         open={aiSheetOpen}
         onClose={() => setAiSheetOpen(false)}
-        platform={(selectedPlatforms[0] as any) || 'instagram'}
+        platform={(selectedPlatforms[0] as string) || 'instagram'}
         topic={title}
         onInsert={(text) => setCaption(text)}
         onHashtags={(tags) => setHashtags(tags.join(' '))}
@@ -1014,273 +1003,4 @@ export function ComposeView() {
 )
 }
 
-/* ── Step 1: Content ── */
-function StepContent(props: {
-  title: string
-  setTitle: (v: string) => void
-  caption: string
-  setCaption: (v: string) => void
-  hashtags: string
-  setHashtags: (v: string) => void
-  note: string
-  setNote: (v: string) => void
-  campaignId: string
-  setCampaignId: (v: string) => void
-  campaigns: Campaign[]
-}) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label className="text-sm text-ink-secondary mb-1.5 block">عنوان محتوا</Label>
-        <Input
-          dir="rtl"
-          value={props.title}
-          onChange={(e) => props.setTitle(e.target.value)}
-          placeholder="مثال: معرفی محصول جدید"
-          className="h-10"
-        />
-      </div>
-
-      {/* AI Caption Assistant — Persian streaming caption generation */}
-      {props.title.trim().length >= 3 && (
-        <CaptionAssistant
-          platform="instagram"
-          topic={props.title}
-          onInsert={(text) => props.setCaption(text)}
-          onHashtags={(tags) => props.setHashtags(tags.join(' '))}
-        />
-      )}
-
-      <div>
-        <Label className="text-sm text-ink-secondary mb-1.5 block">کپشن</Label>
-        <NashrinoEditor
-          content={props.caption}
-          onChange={(_html, text) => props.setCaption(text)}
-          placeholder="متن کامل کپشن… (پشتیبانی از متن غنی)"
-          maxLength={IG_LIMIT}
-        />
-      </div>
-
-      <div>
-        <Label className="text-sm text-ink-secondary mb-1.5 block">
-          <span className="inline-flex items-center gap-1">
-            <Hash className="size-3.5" /> هشتگ‌ها
-          </span>
-        </Label>
-        <Input
-          dir="rtl"
-          value={props.hashtags}
-          onChange={(e) => props.setHashtags(e.target.value)}
-          placeholder="#برند_من #محصول_جدید"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm text-ink-secondary mb-1.5 block">کمپین</Label>
-          <Select value={props.campaignId} onValueChange={props.setCampaignId}>
-            <SelectTrigger className="w-full h-10">
-              <SelectValue placeholder="انتخاب کمپین" />
-            </SelectTrigger>
-            <SelectContent>
-              {props.campaigns.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-sm text-ink-secondary mb-1.5 block">یادداشت داخلی</Label>
-          <Input
-            dir="rtl"
-            value={props.note}
-            onChange={(e) => props.setNote(e.target.value)}
-            placeholder="یادداشت برای تیم (اختیاری)"
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/* ── Step 2: Media ── */
-function StepMedia({
-  media,
-  isLoading,
-  selected,
-  toggle,
-}: {
-  media: MediaItem[]
-  isLoading: boolean
-  selected: MediaItem[]
-  toggle: (m: MediaItem) => void
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border-2 border-dashed border-border p-6 text-center bg-surface-subtle">
-        <UploadCloud className="size-8 text-ink-tertiary mx-auto mb-2" />
-        <p className="text-sm font-semibold text-ink-primary">رسانه را اینجا بکشید یا کلیک کنید</p>
-        <p className="text-xs text-ink-tertiary mt-1">
-          پشتیبانی از JPG، PNG، MP4 (حداکثر ۵۰ مگابایت)
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-3 n-focus-ring"
-          onClick={() => toast.info('آپلود فایل به‌زودی فعال خواهد شد.')}
-        >
-          <Plus className="size-4" />
-          انتخاب فایل
-        </Button>
-      </div>
-
-      {selected.length > 0 && (
-        <div>
-          <p className="text-xs text-ink-tertiary mb-2 num-tabular">
-            انتخاب‌شده‌ها ({toPersianDigits(selected.length)})
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            {selected.map((m) => (
-              <div key={m.id} className="relative">
-                <img src={m.thumbnail} alt={m.name} className="size-16 rounded-xl object-cover" />
-                <button
-                  onClick={() => toggle(m)}
-                  className="n-focus-ring absolute -top-1.5 -end-1.5 bg-danger text-white rounded-full p-1.5 ring-2 ring-background"
-                  aria-label="حذف"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div>
-        <p className="text-xs text-ink-tertiary mb-2">رسانه‌های موجود</p>
-        <LoadingState
-          isLoading={isLoading}
-          skeleton={
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 p-1">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="aspect-square rounded-xl" />
-              ))}
-            </div>
-          }
-        >
-          {media.length === 0 ? (
-            <EmptyState
-              size="compact"
-              icon={ImageIcon}
-              title="رسانه‌ای موجود نیست"
-              message="برای انتخاب، ابتدا یک رسانه آپلود کنید."
-            />
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-72 overflow-y-auto thin-scrollbar p-1">
-              {media.map((m) => {
-                const isSel = selected.some((x) => x.id === m.id)
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => toggle(m)}
-                    className={cn(
-                      'n-focus-ring relative aspect-square rounded-xl overflow-hidden border-2 transition-all',
-                      isSel
-                        ? 'border-accent ring-2 ring-accent/30'
-                        : 'border-transparent hover:border-border'
-                    )}
-                  >
-                    <img src={m.thumbnail} alt={m.name} className="w-full h-full object-cover" />
-                    {isSel && (
-                      <span className="absolute top-1 end-1 bg-accent text-white rounded-full p-0.5">
-                        <Check className="size-3" />
-                      </span>
-                    )}
-                    <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent text-white text-2xs px-1.5 py-1 truncate text-start">
-                      {m.name}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </LoadingState>
-      </div>
-    </div>
-  )
-}
-
-/* ── Step 3: Platforms ── */
-function StepPlatform({
-  platforms,
-  selected,
-  toggle,
-  captions,
-  setCaptions,
-}: {
-  platforms: Platform[]
-  selected: string[]
-  toggle: (type: string) => void
-  captions: Record<string, string>
-  setCaptions: (updater: (cur: Record<string, string>) => Record<string, string>) => void
-}) {
-  // Ensure all 4 platform types are shown even if not connected
-  const allTypes = ['instagram', 'telegram', 'linkedin', 'rubika']
-  const merged = allTypes.map((t) => platforms.find((p) => p.type === t) ?? null)
-
-  return (
-    <div className="space-y-3">
-      <p className="text-xs text-ink-tertiary">
-        انتخاب کنید محتوا در کدام پلتفرم‌ها منتشر شود.
-      </p>
-      {merged.map((p) => {
-        const type = p?.type ?? ''
-        const isSelected = selected.includes(type)
-        return (
-          <div
-            key={type}
-            className={cn(
-              'rounded-2xl border p-4 transition-all',
-              isSelected ? 'border-accent/30 bg-accent-soft' : 'border-border bg-surface-subtle'
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <Checkbox checked={isSelected} onCheckedChange={() => toggle(type)} />
-              <PlatformIcon platform={type} className="size-8" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">{p?.name ?? type}</p>
-                <p className="text-xs text-ink-tertiary">@{p?.username || '—'}</p>
-              </div>
-              {p && (
-                <span
-                  className={cn(
-                    'text-2xs font-semibold px-2 py-0.5 rounded-full border',
-                    p.stateColor
-                  )}
-                >
-                  {p.state}
-                </span>
-              )}
-            </div>
-            {isSelected && (
-              <div className="mt-3 ps-9">
-                <Textarea
-                  dir="rtl"
-                  rows={2}
-                  placeholder={`کپشن اختصاصی ${p?.name ?? type} (اختیاری)`}
-                  value={captions[type] ?? ''}
-                  onChange={(e) => setCaptions((cur) => ({ ...cur, [type]: e.target.value }))}
-                  className="resize-none text-sm"
-                />
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/* (Legacy StepSchedule removed — replaced by inline JalaliDatePicker in schedule section) */
+/* (Legacy StepContent, StepMedia, StepPlatform, StepSchedule removed — replaced by inline UI in ComposeView) */

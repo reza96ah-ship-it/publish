@@ -90,8 +90,9 @@ function loadKeys(): Map<string, EncryptionKey> {
 function getActiveKey(): EncryptionKey {
   const keys = loadKeys()
   const activeId = process.env.ACTIVE_ENCRYPTION_KEY_ID
-  if (activeId && keys.has(activeId)) {
-    return keys.get(activeId)!
+  if (activeId) {
+    const key = keys.get(activeId)
+    if (key) return key
   }
   // Default: the first key (lowest version number)
   const first = keys.values().next()

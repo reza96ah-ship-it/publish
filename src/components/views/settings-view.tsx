@@ -14,7 +14,6 @@ import {
   CreditCard,
   Bell,
   Plus,
-  Eye,
   Hash,
   Check,
   Sparkles,

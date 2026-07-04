@@ -33,7 +33,7 @@ export async function GET() {
       try {
         const metaStr = (c.internalNote ?? '').replace('[ai-draft]', '')
         meta = JSON.parse(metaStr)
-      } catch {}
+      } catch { /* invalid JSON — keep empty meta */ }
 
       return {
         id: c.id,

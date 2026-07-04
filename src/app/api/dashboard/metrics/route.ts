@@ -23,7 +23,7 @@ export async function GET() {
   const reach = byMetric('reach')
   const engagement = byMetric('engagement')
   const followers = byMetric('followers')
-  const clicks = byMetric('clicks')
+  const _clicks = byMetric('clicks')
 
   const last = (arr: number[]) => arr[arr.length - 1] ?? 0
   const prev = (arr: number[]) => arr[arr.length - 2] ?? arr[arr.length - 1] ?? 0

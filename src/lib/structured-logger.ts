@@ -132,7 +132,7 @@ const SENSITIVE_KEY_PATTERNS = [
 
 const SENSITIVE_VALUE_PATTERNS = [
   // Bearer / Basic auth tokens
-  /Bearer\s+[A-Za-z0-9\-._~+\/=]+/g,
+  /Bearer\s+[A-Za-z0-9\-._~+/=]+/g,
   /Basic\s+[A-Za-z0-9+/=]+/g,
   // OAuth code / state query params
   /[?&]code=[^&\s"']+/g,

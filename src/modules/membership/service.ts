@@ -181,7 +181,7 @@ export class MembershipService {
     const result = await this.repo.acceptInvitationTx(
       invitation,
       auth.userId,
-      auth.name || invitation.emailNormalized.split('@')[0]!
+      auth.name || invitation.emailNormalized.split('@')[0] || invitation.emailNormalized
     )
 
     // Audit (best-effort)

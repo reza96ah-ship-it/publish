@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import type { ContentListQuery, ContentComment, ContentStatus } from './types'
+import type { ContentListQuery, ContentComment } from './types'
 
 const CONTENT_SELECT = {
   id: true,

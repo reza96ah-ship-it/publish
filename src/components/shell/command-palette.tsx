@@ -21,7 +21,6 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
-import { toPersianDigits } from '@/lib/jalali'
 import { modalBackdrop, modalContent } from '@/lib/motion'
 
 interface NavAction {

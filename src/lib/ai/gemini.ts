@@ -185,6 +185,7 @@ export async function generateCaption(
       )
       if (text && text.trim().length > 10) return text
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] GapGPT error, trying Gemini:', err)
     }
   }
@@ -192,13 +193,15 @@ export async function generateCaption(
   // Try Gemini
   if (hasGemini()) {
     try {
-      const gemini = getGemini()!
+      const gemini = getGemini()
+      if (!gemini) throw new Error('Gemini not initialized')
       const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' })
       const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`
       const result = await model.generateContent(prompt)
       const text = result.response.text()
       if (text && text.trim().length > 10) return text
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] Gemini error, falling back to z-ai:', err)
     }
   }
@@ -256,6 +259,7 @@ export async function* streamCaption(
       }
       if (yielded) return // Success — don't fall through
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] GapGPT stream error, trying Gemini:', err)
     }
   }
@@ -263,7 +267,8 @@ export async function* streamCaption(
   // Try Gemini streaming
   if (hasGemini()) {
     try {
-      const gemini = getGemini()!
+      const gemini = getGemini()
+      if (!gemini) throw new Error('Gemini not initialized')
       const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' })
       const prompt = `${system}\n\nموضوع: ${topic}\n\nکپشن را بنویس.`
       const stream = await model.generateContentStream(prompt)
@@ -278,6 +283,7 @@ export async function* streamCaption(
       }
       if (yielded) return
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] Gemini stream error, falling back to z-ai:', err)
     }
   }
@@ -361,6 +367,7 @@ ${goalIntent ? `هدف: ${goalIntent}.` : ''}
     try {
       text = await gapgptComplete(system, userMsg, 0.8)
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] GapGPT hashtag error, trying Gemini:', err)
     }
   }
@@ -368,11 +375,13 @@ ${goalIntent ? `هدف: ${goalIntent}.` : ''}
   // Try Gemini
   if (!text && hasGemini()) {
     try {
-      const gemini = getGemini()!
+      const gemini = getGemini()
+      if (!gemini) throw new Error('Gemini not initialized')
       const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' })
       const result = await model.generateContent(`${system}\n\n${userMsg}`)
       text = result.response.text()
     } catch (err) {
+      // eslint-disable-next-line no-console
       console.error('[ai] Gemini hashtag error, falling back to z-ai:', err)
     }
   }
@@ -449,7 +458,8 @@ ${brandVoice ? `لحن برند: ${brandVoice}` : ''}
 
   if (!text && hasGemini()) {
     try {
-      const gemini = getGemini()!
+      const gemini = getGemini()
+      if (!gemini) throw new Error('Gemini not initialized')
       const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' })
       const result = await model.generateContent(`${system}\n\n${userMsg}`)
       text = result.response.text()

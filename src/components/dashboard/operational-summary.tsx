@@ -2,7 +2,6 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { toPersianDigits } from '@/lib/jalali'
 import { CountUp } from '@/lib/motion'
 import { Activity, CheckCircle2, Clock, AlertTriangle, Inbox, Flag, Zap } from 'lucide-react'
 

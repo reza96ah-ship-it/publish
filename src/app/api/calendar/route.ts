@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { jalaliToDate } from '@/lib/jalali'
-import { validateParams, contentListQuerySchema } from '@/lib/validations'
+import { validateParams } from '@/lib/validations'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
