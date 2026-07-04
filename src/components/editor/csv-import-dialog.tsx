@@ -14,8 +14,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
-import { parseCSV } from '@/modules/content/csv-import'
-import type { ValidatedRow } from '@/modules/content/csv-import'
+import { parseCSV } from '@/modules/content/csv-shared'
+import type { ValidatedRow } from '@/modules/content/csv-shared'
 
 type Step = 'upload' | 'validate' | 'done'
 

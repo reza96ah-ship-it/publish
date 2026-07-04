@@ -45,8 +45,8 @@ import {
   SelectItem,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { interpolate } from '@/modules/inbox/saved-replies'
-import type { SavedReply } from '@/modules/inbox/saved-replies'
+import { interpolate } from '@/modules/inbox/snippet-shared'
+import type { SavedReply } from '@/modules/inbox/snippet-shared'
 
 interface InboxMessage {
   id: string

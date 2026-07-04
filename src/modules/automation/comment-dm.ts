@@ -8,18 +8,10 @@
  */
 
 import { db } from '@/lib/db'
+import type { CommentDmRule } from './comment-dm-shared'
 
-export interface CommentDmRule {
-  id: string
-  platformId: string
-  platformName: string
-  keyword: string
-  dmTemplate: string
-  optOutKeyword: string
-  freqCapHours: number
-  isActive: boolean
-  createdAt: Date
-}
+export { previewTemplate } from './comment-dm-shared'
+export type { CommentDmRule }
 
 export async function listRules(workspaceId: string): Promise<CommentDmRule[]> {
   const rows = await db.commentDmRule.findMany({
@@ -87,11 +79,6 @@ export async function deleteRule(id: string, workspaceId: string): Promise<void>
   const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('قانون یافت نشد')
   await db.commentDmRule.delete({ where: { id } })
-}
-
-/** Preview: interpolate {نام} variable in DM template. */
-export function previewTemplate(template: string, senderName: string): string {
-  return template.replace(/\{نام\}/g, senderName || 'کاربر')
 }
 
 /**

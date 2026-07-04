@@ -9,8 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { api } from '@/lib/api'
-import { previewTemplate } from '@/modules/automation/comment-dm'
-import type { CommentDmRule } from '@/modules/automation/comment-dm'
+import { previewTemplate } from '@/modules/automation/comment-dm-shared'
+import type { CommentDmRule } from '@/modules/automation/comment-dm-shared'
 import { cn } from '@/lib/utils'
 
 interface Platform {

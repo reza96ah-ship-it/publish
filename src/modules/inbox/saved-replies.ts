@@ -1,11 +1,8 @@
 import { db } from '@/lib/db'
+import type { SavedReply } from './snippet-shared'
 
-export interface SavedReply {
-  id: string
-  title: string
-  body: string
-  createdAt: Date
-}
+export { interpolate } from './snippet-shared'
+export type { SavedReply }
 
 export interface AutoTagRule {
   id: string
@@ -58,14 +55,6 @@ export async function deleteSavedReply(id: string, workspaceId: string): Promise
   const existing = await db.savedReply.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('پاسخ ذخیره‌شده یافت نشد')
   await db.savedReply.delete({ where: { id } })
-}
-
-// ── Variable substitution ─────────────────────────────────────────────────────
-
-export function interpolate(body: string, vars: { senderName?: string; channelName?: string }): string {
-  return body
-    .replace(/\{نام\}/g, vars.senderName ?? '')
-    .replace(/\{کانال\}/g, vars.channelName ?? '')
 }
 
 // ── Auto-Tag Rules ────────────────────────────────────────────────────────────
