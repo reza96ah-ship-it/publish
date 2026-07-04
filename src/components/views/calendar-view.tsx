@@ -395,7 +395,7 @@ export function CalendarView() {
             <div className="overflow-x-auto">
             <div className="min-w-[320px]">
             {/* Weekday header */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
+            <div dir="rtl" className="grid grid-cols-7 gap-1 mb-2">
               {JALALI_WEEKDAYS_SHORT.map((d, i) => (
                 <div
                   key={d}
@@ -416,7 +416,7 @@ export function CalendarView() {
               onDragEnd={handleDragEnd}
               onDragCancel={() => setActiveDrag(null)}
             >
-              <div className="grid grid-cols-7 gap-1">
+              <div dir="rtl" className="grid grid-cols-7 gap-1">
                 {cells.map((cell, idx) => (
                   <DayCell
                     key={idx}
@@ -473,7 +473,7 @@ export function CalendarView() {
             {/* Desktop: 7-col grid */}
             <div className="n-card p-3 sm:p-4 hidden sm:block">
               <div className="overflow-x-auto">
-              <div className="min-w-[560px] grid grid-cols-7 gap-2">
+              <div dir="rtl" className="min-w-[560px] grid grid-cols-7 gap-2">
                 {weekCells.map((cell, i) => (
                   <div key={i} className="space-y-1">
                     <p className={cn(

@@ -139,6 +139,8 @@ model Workspace {
   autoTagRules   AutoTagRule[]
   commentDmRules CommentDmRule[]
   commentDmLogs  CommentDmLog[]
+  postingSchedules PostingSchedule[]
+  engagementHeatmaps EngagementHeatmap[]
 }
 
 model FeatureFlag {
@@ -254,6 +256,7 @@ model Platform {
   publishJobs    PublishJob[]
   inboxMessages  InboxMessage[]
   commentDmRules CommentDmRule[]
+  postingSchedules PostingSchedule[]
 
   @@index([workspaceId])
   @@index([workspaceId, type])
@@ -811,4 +814,43 @@ model CommentDmLog {
   @@unique([ruleId, commentId])
   @@index([workspaceId])
   @@index([ruleId, senderUserId, sentAt])
+}
+
+/* ─── #203: Queue-based scheduling (Buffer model) ─── */
+
+model PostingSchedule {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  platformId   String
+  // JSON array of { day: 0-6 (Sat=0), slots: ["09:00", "12:30", ...] }
+  // Sat-Wed = work days (0-3), Thu=4, Fri=5 (weekend)
+  schedule     Json
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, platformId])
+  @@index([workspaceId])
+}
+
+/* ─── #204: Best-time-to-post suggestions ─── */
+
+model EngagementHeatmap {
+  id           String   @id @default(cuid())
+  workspaceId  String
+  platform     String   // telegram, instagram, linkedin, etc.
+  // weekday: 0-6 (Sat=0), hour: 0-23
+  weekday      Int
+  hour         Int
+  avgEngagement Float  @default(0) // average engagement score (normalized)
+  sampleCount  Int      @default(0) // number of posts analyzed
+  updatedAt    DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, platform, weekday, hour])
+  @@index([workspaceId, platform])
 }
