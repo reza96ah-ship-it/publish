@@ -98,19 +98,14 @@ describe('Issue #156 — Architecture enforcement', () => {
     // Grace list: routes not yet migrated to thin handlers.
     // These have TODO comments and will be migrated in follow-up PRs.
     const GRACE_LIST = [
-      'workspace', // planned migration
-      'calendar', // read-model, not a command handler
       'dashboard', // read-model, not a command handler
       'ai/caption', // AI routes — planned for AI module
       'ai/caption-multi', // AI routes — planned for AI module
       'ai/drafts', // AI routes — planned for AI module
       'channels/health', // read-model endpoint
       'media/local-upload', // complex upload logic — planned migration
-      'platforms/[id]/connect', // OAuth flow — complex but thin enough at 200
       'platforms/oauth/callback', // OAuth callback — complex but thin enough at 200
       'platforms/oauth/start', // OAuth start — complex but thin enough at 200
-      'publish-jobs/[id]', // status endpoint — planned migration
-      'compose-draft', // planned migration to compose module
       'publications/[id]/resolve', // complex resolution logic — planned migration
       'publish', // orchestration route — planned migration to publish module
     ]
