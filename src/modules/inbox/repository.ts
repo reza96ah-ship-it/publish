@@ -12,6 +12,10 @@ function toMessage(m: {
   platformType: string
   messageType: string | null
   assigneeId: string | null
+  status: string
+  slaStartedAt: Date | null
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
   platform: { type: string; name: string } | null
 }): InboxMessage {
@@ -27,6 +31,10 @@ function toMessage(m: {
     platformName: m.platform?.name ?? m.platformType,
     messageType: m.messageType,
     assigneeId: m.assigneeId,
+    status: m.status,
+    slaStartedAt: m.slaStartedAt,
+    firstResponseAt: m.firstResponseAt,
+    resolvedAt: m.resolvedAt,
     createdAt: m.createdAt,
   }
 }
@@ -58,13 +66,40 @@ export class InboxRepository {
   }
 
   async assign(id: string, assigneeId: string | null) {
-    return db.inboxMessage.update({ where: { id }, data: { assigneeId } })
+    // #208: assigning moves the workflow forward and starts the SLA clock.
+    // Un-assigning an unresolved message returns it to `new`.
+    const current = await db.inboxMessage.findUnique({
+      where: { id },
+      select: { status: true, slaStartedAt: true },
+    })
+    const isResolved = current?.status === 'resolved'
+    return db.inboxMessage.update({
+      where: { id },
+      data: {
+        assigneeId,
+        ...(isResolved
+          ? {}
+          : assigneeId
+            ? { status: 'assigned', slaStartedAt: current?.slaStartedAt ?? new Date() }
+            : { status: 'new' }),
+      },
+    })
   }
 
   async reply(id: string, replyText: string) {
+    // #208: first reply stamps firstResponseAt for first-response-time metrics.
+    const current = await db.inboxMessage.findUnique({
+      where: { id },
+      select: { firstResponseAt: true },
+    })
     return db.inboxMessage.update({
       where: { id },
-      data: { reply: replyText.trim(), isReplied: true, isRead: true },
+      data: {
+        reply: replyText.trim(),
+        isReplied: true,
+        isRead: true,
+        ...(current?.firstResponseAt ? {} : { firstResponseAt: new Date() }),
+      },
     })
   }
 }
