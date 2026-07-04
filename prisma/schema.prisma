@@ -791,7 +791,7 @@ model CommentDmRule {
   updatedAt       DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  platform  Platform  @relation(fields: [platformId], references: [id])
+  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId])
   @@index([platformId, isActive])
