@@ -124,7 +124,7 @@ export function ContentView() {
       announce('محتوای جدید اضافه شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: unknown) => {
+    onError: (_err, _newItem, context: any) => {
       if (context?.previous) queryClient.setQueryData(['content'], context.previous)
       toast.error('ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در ایجاد محتوا', 'assertive')

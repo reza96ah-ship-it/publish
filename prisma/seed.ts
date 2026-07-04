@@ -670,8 +670,17 @@ async function main() {
   ])
 
   // ─── Analytics snapshots (last 7 days) ───
+  // Use createMany to avoid Prisma 7.8.0 query compiler panic on individual
+  // create calls with nullable fields (Rust panic at parser.rs:855).
   const metricTypes = ['reach', 'engagement', 'followers', 'clicks']
   const platformsForAn = ['instagram', 'telegram', 'linkedin', 'rubika', null]
+  const analyticsData: Array<{
+    workspaceId: string
+    date: string
+    platform: string | null
+    metricType: string
+    value: number
+  }> = []
   for (let d = 6; d >= 0; d--) {
     const date = new Date(now.getTime() - d * 86400_000).toISOString().slice(0, 10)
     for (const m of metricTypes) {
@@ -679,18 +688,17 @@ async function main() {
         const base =
           m === 'reach' ? 320000 : m === 'engagement' ? 18000 : m === 'followers' ? 1780 : 4200
         const noise = Math.floor((Math.random() - 0.3) * base * 0.15)
-        await db.analyticsSnapshot.create({
-          data: {
-            workspaceId: ws.id,
-            date,
-            platform: p,
-            metricType: m,
-            value: Math.max(0, base + noise + (6 - d) * (base * 0.02)),
-          },
+        analyticsData.push({
+          workspaceId: ws.id,
+          date,
+          platform: p,
+          metricType: m,
+          value: Math.max(0, base + noise + (6 - d) * (base * 0.02)),
         })
       }
     }
   }
+  await db.analyticsSnapshot.createMany({ data: analyticsData })
 
   // ─── Notifications ───
   await db.$transaction([
