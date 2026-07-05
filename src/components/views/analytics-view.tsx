@@ -280,12 +280,12 @@ export function AnalyticsView() {
         className="n-gradient-border"
       >
         <div
-          dir="ltr"
           className="h-[200px] sm:h-[240px] md:h-64 w-full"
           data-visual-mask="analytics-reach-chart"
         >
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            {/* P0-6: reverse data for RTL — newest on left, oldest on right (Persian reading direction) */}
+            <AreaChart data={[...periodSlice].reverse()} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <defs>
                 <linearGradient id="reachGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4} />
@@ -301,6 +301,7 @@ export function AnalyticsView() {
                 tickLine={false}
               />
               <YAxis
+                orientation="right"
                 tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
                 tickFormatter={(v) => formatCompact(Number(v))}
                 axisLine={false}
@@ -331,7 +332,7 @@ export function AnalyticsView() {
           loading={platformQueries.some((q) => q.isLoading)}
         >
           <div data-visual-mask="analytics-platform-breakdown">
-            <div dir="ltr" className="h-[160px] sm:h-[200px] md:h-56">
+            <div className="h-[160px] sm:h-[200px] md:h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={PLATFORMS.map((p, i) => {

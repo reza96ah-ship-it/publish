@@ -455,8 +455,8 @@ function DisconnectItem({ platformName }: { platformName: string }) {
           <AlertDialogAction
             className="bg-danger hover:bg-danger"
             onClick={() => {
-              toast.success('پلتفرم با موفقیت قطع شد.')
-              announce('پلتفرم با موفقیت قطع شد')
+              toast.info('قطع اتصال به‌زودی فعال خواهد شد')
+              announce('قطع اتصال به‌زودی فعال خواهد شد')
             }}
           >
             قطع اتصال

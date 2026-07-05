@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -78,24 +78,62 @@ export function MediaView() {
     queryFn: () => api.getPaginated<MediaItem>('/api/media'),
   })
 
-  // Optimistic upload: append a placeholder media item to the ["media"] cache
-  // in <100ms. The backend upload endpoint is not wired yet; mutationFn resolves
-  // immediately so the optimistic row remains visible.
-  const uploadMutation = useMutation<MediaItem, Error, MediaItem>({
-    mutationFn: async (newItem) => {
-      await new Promise((r) => setTimeout(r, 120))
-      return newItem
+  // Real upload: presign → PUT to storage → confirm + magic-byte validation.
+  // Mirrors the flow in src/components/editor/media-uploader.tsx. The mutation
+  // takes a File and returns the validated MediaItem from /api/media/confirm.
+  // No optimistic placeholder — we only have real metadata after confirm.
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadMutation = useMutation<MediaItem, Error, File>({
+    mutationFn: async (file) => {
+      // Step 1: get a presigned URL (or local-upload key in dev) + pending mediaId
+      const presignRes = await fetch('/api/media/presign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        }),
+      })
+      if (!presignRes.ok) {
+        const err = await presignRes.json().catch(() => ({ error: 'خطا در آماده‌سازی آپلود' }))
+        throw new Error(err.error || `آپلود ناموفق: ${file.name}`)
+      }
+      const { uploadUrl, mediaId } = await presignRes.json()
+
+      // Step 2: upload directly to storage (S3 in prod, local-upload in dev).
+      // Bypasses Next.js body limit. Use raw fetch — the api helper forces
+      // Content-Type: application/json which S3 rejects.
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!uploadRes.ok) {
+        throw new Error(`آپلود ناموفق: ${file.name}`)
+      }
+
+      // Step 3: confirm + server-side magic-byte / dimension validation.
+      // The server derives the storage key from the pending Media row, so a
+      // client can't confirm an arbitrary key.
+      const confirmRes = await fetch('/api/media/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mediaId }),
+      })
+      if (!confirmRes.ok) {
+        const err = await confirmRes.json().catch(() => ({ error: 'اعتبارسنجی ناموفق' }))
+        throw new Error(err.error || `فایل نامعتبر: ${file.name}`)
+      }
+      const data = await confirmRes.json()
+      return data.media as MediaItem
     },
-    onMutate: async (newItem) => {
-      await queryClient.cancelQueries({ queryKey: ['media'] })
-      const previous = queryClient.getQueryData<MediaItem[]>(['media'])
-      queryClient.setQueryData<MediaItem[]>(['media'], (old) => [newItem, ...(old ?? [])])
+    onSuccess: (_media, file) => {
+      toast.success(`${file.name} آپلود شد ✓`)
       announce('رسانه جدید اضافه شد')
-      return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
-      if (context?.previous) queryClient.setQueryData(['media'], context.previous)
-      toast.error('آپلود رسانه ناموفق بود. تغییرات برگردانده شد.')
+    onError: (err) => {
+      toast.error(err.message || 'آپلود رسانه ناموفق بود.')
       announce('خطا در آپلود رسانه', 'assertive')
     },
     onSettled: () => {
@@ -103,23 +141,13 @@ export function MediaView() {
     },
   })
 
-  const handleUpload = () => {
-    const newItem: MediaItem = {
-      id: `optimistic-${Date.now()}`,
-      name: 'رسانه جدید',
-      fileType: 'image/png',
-      fileSize: 0,
-      url: '',
-      thumbnail: '',
-      folder: folder === 'all' ? 'عمومی' : folder,
-      tags: [],
-      width: null,
-      height: null,
-      createdAt: new Date().toISOString(),
-    }
-    uploadMutation.mutate(newItem)
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return
+    const files = Array.from(e.target.files)
+    files.forEach((file) => uploadMutation.mutate(file))
+    // Reset so selecting the same file again still fires onChange
+    e.target.value = ''
     setUploadOpen(false)
-    toast.success('رسانه با موفقیت آپلود شد.')
   }
 
   const folders = useMemo(() => {
@@ -307,26 +335,29 @@ export function MediaView() {
           <div className="rounded-2xl border-2 border-dashed border-border p-8 text-center bg-surface-subtle">
             <UploadCloud className="size-10 text-ink-tertiary mx-auto mb-3" />
             <p className="text-sm font-semibold text-ink-primary">فایل‌ها را بکشید و رها کنید</p>
-            <p className="text-xs text-ink-tertiary mt-1">JPG, PNG, MP4 — حداکثر ۵۰MB</p>
+            <p className="text-xs text-ink-tertiary mt-1">JPG, PNG, WebP, GIF — MP4, MOV, WebM (حداکثر ۲۰۰MB)</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              aria-label="آپلود فایل تصویری یا ویدیویی"
+            />
             <Button
               variant="outline"
               size="sm"
               className="mt-3 n-focus-ring"
-              onClick={() => toast.info('آپلود شبیه‌سازی‌شده با موفقیت انجام شد.')}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadMutation.isPending}
             >
-              انتخاب فایل
+              {uploadMutation.isPending ? 'در حال آپلود…' : 'انتخاب فایل'}
             </Button>
           </div>
           <DialogFooter>
             <Button variant="ghost" className="n-focus-ring" onClick={() => setUploadOpen(false)}>
               انصراف
-            </Button>
-            <Button
-              className="n-focus-ring"
-              onClick={handleUpload}
-              disabled={uploadMutation.isPending}
-            >
-              {uploadMutation.isPending ? 'در حال آپلود…' : 'آپلود'}
             </Button>
           </DialogFooter>
         </DialogContent>

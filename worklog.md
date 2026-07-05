@@ -4241,3 +4241,38 @@ Positive findings (verified working):
 - All `.then()` chains in client components have matching `.catch()` (verified in compose-view.tsx:211-251).
 
 Highest-impact action: fix P1-1 — three stub mutations are silently losing user-created campaigns/content/media. Either wire them to their APIs or disable the Create/Upload buttons in the UI.
+
+---
+Task ID: P0-3-7-fix
+Agent: Code fixer
+Task: Fix 4 fake settings saves + 1 fake disconnect
+
+Work Log:
+- Profile save (settings-view.tsx ~L542): no PATCH /api/workspace endpoint exists → replaced fake-success Button with `<Button disabled>` + `<Badge>به‌زودی</Badge>`.
+- Brand kit save (settings-view.tsx ~L710): same — no backend endpoint → `<Button disabled>` + به‌زودی badge.
+- Team invite (settings-view.tsx ~L914): real backend exists at POST /api/members/invite (Zod-validated via memberInviteSchema `{ email, role, name? }`, rate-limited, service-backed). Wired with useMutation: api.post('/api/members/invite', { email, role }). On success → toast.success + announce + qc.invalidateQueries(['members']) + clear email + close dialog. On error → extract Persian message from JSON.parse(err.message).error (fetcher wraps body text in Error.message); fallback chain to 'خطا در ارسال دعوت‌نامه'. Button disabled while pending; label flips to "در حال ارسال…". Read route at src/app/api/members/invite/route.ts + schema at src/lib/validations.ts to confirm body shape.
+- Notifications toggle (settings-view.tsx ~L1241): no notifications-settings endpoint exists → disabled all Switches (`disabled` + `aria-label`), removed the now-unused `toggles` useState, added `<Badge>به‌زودی</Badge>` to the section header. Each Switch shows its defaultOn value, non-interactive.
+- Channel disconnect (channels-view.tsx ~L455-463): no DELETE /api/platforms endpoint exists → AlertDialogAction onClick changed from `toast.success('پلتفرم با موفقیت قطع شد.')` to `toast.info('قطع اتصال به‌زودی فعال خواهد شد')`. Dialog auto-closes on action (Radix default).
+
+Stage Summary:
+- WIRED (1): Team invite button → POST /api/members/invite (settings-view.tsx:941-952, mutation at L775-798).
+- DISABLED with honest به‌زودی badge (3): Profile save (settings-view.tsx:542-549), Brand kit save (settings-view.tsx:710-717), Notifications switches (settings-view.tsx:1264-1268, badge at L1246-1248).
+- FAKE SUCCESS → toast.info (1): Channel disconnect (channels-view.tsx:455-463).
+- Verified: `bun run lint` 0 errors / 25 warnings (none in edited files; -1 from prior 26 by removing unused setToggles). `bun run typecheck` clean.
+
+---
+Task ID: P0-2-fix
+Agent: Code fixer
+Task: Wire 3 fake create mutations to real APIs
+
+Work Log:
+- campaigns-view.tsx:128-152 — Replaced fake `setTimeout` mutationFn with `api.post<Campaign>('/api/campaigns', { name, description })`. Body shape verified against `campaignCreateSchema` in src/lib/validations.ts. Kept onMutate optimistic append + onError rollback. Added onSuccess toast.success. Removed synchronous toast in handleCreateCampaign. onError now surfaces real API error message via err.message.
+- content-view.tsx:117-140 — The task said backend was at POST /api/content, but only GET existed. Added a new POST handler to src/app/api/content/route.ts that auths via `requirePermissionApi('content.create')`, validates `{ title, campaignId? }` via new `contentCreateSchema` (zod), and delegates to `publicationsService.create(auth, { title, mode: 'draft', scheduleMode: 'now', mediaIds: [], campaignId })` (same service /api/publish and CSV import use). Draft mode skips channel resolution so no `NoChannelsError`. Returns `{ id: contentId }` with 201. Maps PublicationError → HTTP via existing `mapPublishError()`. Frontend mutationFn now calls `api.post<{ id: string }>('/api/content', { title: newItem.title })`. Kept optimistic row in cache; onSettled invalidate refetches the canonical list. Added onSuccess toast. Removed synchronous toast in handleCreateContent.
+- media-view.tsx:81-151, 335-362 — Replaced fake `setTimeout` mutationFn with the real 3-step presign→PUT→confirm flow (mirrors src/components/editor/media-uploader.tsx:78-134). Mutation input type changed from MediaItem to File. Step 1: POST /api/media/presign → { uploadUrl, mediaId }. Step 2: PUT uploadUrl with raw File body (uses raw fetch, not the api helper, because the helper forces Content-Type: application/json which S3 rejects). Step 3: POST /api/media/confirm → { ok, media } (server validates magic bytes + dimensions). Removed the broken onMutate optimistic placeholder (the old code appended a fake MediaItem with empty url/thumbnail → broken-image cards). Added onSuccess toast with filename, onError surfaces real API error. Added a real hidden `<input type="file" multiple accept="...">` with useRef. The "انتخاب فایل" button now triggers fileInputRef.current?.click() and is disabled during upload. New handleFileSelect fires uploadMutation.mutate(file) per file, resets the input, and closes the dialog. Removed the old handleUpload and the redundant footer "آپلود" button (uploads start immediately on file selection). Updated drop-zone hint to match real limits (200MB for video, not 50MB). Added useRef to imports.
+
+Stage Summary:
+- campaigns-view.tsx:128-152 — WIRED to POST /api/campaigns (existing backend). Optimistic update preserved.
+- content-view.tsx:117-140 — WIRED. Added new POST /api/content route at src/app/api/content/route.ts:42-84 that creates a draft via publicationsService.create. Optimistic update preserved (refetch replaces placeholder).
+- media-view.tsx:81-151 — WIRED to POST /api/media/presign + PUT storage + POST /api/media/confirm. Removed broken optimistic placeholder; added real file input + drag-free click-to-upload UX.
+- Verification: `bun run lint` → 0 errors, 24 warnings (same count as before edits; no new warnings introduced). `bun run typecheck` → clean.
+- Work record: /home/z/my-project/agent-ctx/P0-2-fix-code-fixer.md

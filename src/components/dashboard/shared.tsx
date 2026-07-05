@@ -673,7 +673,7 @@ export function KpiCard({
           <Skeleton className="h-16 w-full rounded-md" />
         ) : (
           <MiniChart
-            data={spark}
+            data={[...spark].reverse()}
             color={sparkColor}
             height={64}
             formatValue={sparkFmt}
@@ -682,10 +682,9 @@ export function KpiCard({
         )}
       </div>
 
-      {/* Time anchors (LTR: oldest left → today right) */}
+      {/* Time anchors (RTL: today left → oldest right, matches reversed sparkline) */}
       {!loading && spark.length >= 2 && (
         <div
-          dir="ltr"
           className="flex items-center justify-between mt-1.5 text-2xs text-ink-tertiary/60 num-tabular"
         >
           <span>{timeLabel}</span>

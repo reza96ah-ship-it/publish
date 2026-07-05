@@ -122,13 +122,15 @@ export function CampaignsView() {
 
   // Optimistic create: append a fresh active campaign to the ["campaigns"] cache
   // synchronously inside onMutate so the new card appears in <100ms (Linear feel).
-  // The backend create endpoint is not wired yet; mutationFn resolves after a
-  // short delay so the optimistic card remains visible.
+  // The mutationFn hits the real POST /api/campaigns endpoint; on success the
+  // onSettled invalidate refetches the list and replaces the optimistic card
+  // with the persisted row (real id + server-set defaults).
   const createCampaignMutation = useMutation<Campaign, Error, Campaign>({
-    mutationFn: async (newItem) => {
-      await new Promise((r) => setTimeout(r, 120))
-      return newItem
-    },
+    mutationFn: (newItem) =>
+      api.post<Campaign>('/api/campaigns', {
+        name: newItem.name,
+        description: newItem.description ?? undefined,
+      }),
     onMutate: async (newItem) => {
       await queryClient.cancelQueries({ queryKey: ['campaigns'] })
       const previous = queryClient.getQueryData<Campaign[]>(['campaigns'])
@@ -136,10 +138,13 @@ export function CampaignsView() {
       announce('کمپین جدید ایجاد شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
+    onError: (err, _newItem, context: any) => {
       if (context?.previous) queryClient.setQueryData(['campaigns'], context.previous)
-      toast.error('ایجاد کمپین ناموفق بود. تغییرات برگردانده شد.')
+      toast.error(err.message || 'ایجاد کمپین ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در ایجاد کمپین', 'assertive')
+    },
+    onSuccess: () => {
+      toast.success('کمپین جدید ایجاد شد.')
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['campaigns'] })
@@ -165,7 +170,6 @@ export function CampaignsView() {
       goalValue: 0,
     }
     createCampaignMutation.mutate(newItem)
-    toast.success('کمپین جدید ایجاد شد.')
   }
 
   return (
