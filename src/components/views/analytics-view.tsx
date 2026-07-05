@@ -386,42 +386,74 @@ export function AnalyticsView() {
             <h2 className="text-sm font-semibold text-ink-primary">خلاصه عملکرد</h2>
           </div>
           <div className="space-y-3">
-            {[
-              {
-                label: 'میانگین نرخ تعامل',
-                value: `${toPersianDigits(4.8)}٪`,
-                trend: `+${toPersianDigits(0.6)}٪`,
-              },
-              {
-                label: 'میانگین دسترسی روزانه',
-                value: toPersianDigits(formatCompact(kpis.reach)),
-                trend: `+${toPersianDigits(12)}٪`,
-              },
-              {
-                label: 'رشد فالوور (۳۰ روز)',
-                value: toPersianDigits(
-                  formatCompact(data?.followers.reduce((s, v) => s + v, 0) ?? 0)
-                ),
-                trend: `+${toPersianDigits(8)}٪`,
-              },
-              {
-                label: 'کل کلیک‌ها',
-                value: toPersianDigits(formatCompact(data?.clicks.reduce((s, v) => s + v, 0) ?? 0)),
-                trend: `+${toPersianDigits(3)}٪`,
-              },
-            ].map((row) => (
-              <div key={row.label} className="n-card-compact flex items-center justify-between p-3">
-                <span className="text-sm text-ink-secondary">{row.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-ink-primary num-tabular">
-                    {row.value}
-                  </span>
-                  <span className="text-2xs font-bold text-success bg-success-soft rounded-full px-1.5 py-0.5">
-                    {row.trend}
-                  </span>
+            {(() => {
+              // P1-12: Compute real values from the analytics data instead of
+              // showing hardcoded fake metrics (4.8% engagement, +12%, +8%, +3%).
+              const reachArr = (data?.reach ?? []).slice(period === '7' ? -7 : -30)
+              const engArr = (data?.engagement ?? []).slice(period === '7' ? -7 : -30)
+              const folArr = (data?.followers ?? []).slice(period === '7' ? -7 : -30)
+              const clickArr = (data?.clicks ?? []).slice(period === '7' ? -7 : -30)
+
+              const avgReach = reachArr.length ? reachArr.reduce((s, v) => s + v, 0) / reachArr.length : 0
+              const totalEng = engArr.reduce((s, v) => s + v, 0)
+              const totalReach = reachArr.reduce((s, v) => s + v, 0)
+              // Engagement rate = total engagement / total reach (as percentage)
+              const engRate = totalReach > 0 ? (totalEng / totalReach) * 100 : 0
+              const folGrowth = folArr.length >= 2 && folArr[0] > 0
+                ? ((folArr[folArr.length - 1] - folArr[0]) / folArr[0]) * 100
+                : 0
+              const totalClicks = clickArr.reduce((s, v) => s + v, 0)
+
+              // Trend = first-half vs second-half comparison
+              const halfTrend = (arr: number[]) => {
+                if (arr.length < 2) return 0
+                const mid = Math.floor(arr.length / 2)
+                const firstHalf = arr.slice(0, mid).reduce((s, v) => s + v, 0)
+                const secondHalf = arr.slice(mid).reduce((s, v) => s + v, 0)
+                return firstHalf > 0 ? ((secondHalf - firstHalf) / firstHalf) * 100 : 0
+              }
+              const reachTrend = halfTrend(reachArr)
+              const clickTrend = halfTrend(clickArr)
+
+              const rows = [
+                {
+                  label: 'میانگین نرخ تعامل',
+                  value: `${toPersianDigits(engRate.toFixed(1))}٪`,
+                  trend: engRate >= 0 ? `+${toPersianDigits(engRate.toFixed(1))}٪` : `${toPersianDigits(engRate.toFixed(1))}٪`,
+                },
+                {
+                  label: 'میانگین دسترسی روزانه',
+                  value: toPersianDigits(formatCompact(avgReach)),
+                  trend: reachTrend >= 0 ? `+${toPersianDigits(reachTrend.toFixed(0))}٪` : `${toPersianDigits(reachTrend.toFixed(0))}٪`,
+                },
+                {
+                  label: 'رشد فالوور',
+                  value: toPersianDigits(formatCompact(folArr.length ? folArr[folArr.length - 1] : 0)),
+                  trend: folGrowth >= 0 ? `+${toPersianDigits(folGrowth.toFixed(0))}٪` : `${toPersianDigits(folGrowth.toFixed(0))}٪`,
+                },
+                {
+                  label: 'کل کلیک‌ها',
+                  value: toPersianDigits(formatCompact(totalClicks)),
+                  trend: clickTrend >= 0 ? `+${toPersianDigits(clickTrend.toFixed(0))}٪` : `${toPersianDigits(clickTrend.toFixed(0))}٪`,
+                },
+              ]
+              return rows.map((row) => (
+                <div key={row.label} className="n-card-compact flex items-center justify-between p-3">
+                  <span className="text-sm text-ink-secondary">{row.label}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-ink-primary num-tabular">
+                      {row.value}
+                    </span>
+                    <span className={cn(
+                      'text-2xs font-bold rounded-full px-1.5 py-0.5',
+                      row.trend.startsWith('+') ? 'text-success bg-success-soft' : 'text-danger bg-danger-soft'
+                    )}>
+                      {row.trend}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            })()}
           </div>
         </div>
       </div>

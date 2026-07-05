@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Link2,
   Zap,
+  Receipt,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -1037,84 +1038,18 @@ function BillingTab() {
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-ink-primary">تاریخچه فاکتورها</h2>
         </div>
-        <div className="overflow-x-auto thin-scrollbar">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
-                شماره فاکتور
-              </TableHead>
-              <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">
-                تاریخ
-              </TableHead>
-              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
-                مبلغ
-              </TableHead>
-              <TableHead className="text-start text-xs text-ink-tertiary font-bold">
-                وضعیت
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow className="border-border">
-              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
-                INV-1403-003
-              </TableCell>
-              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
-                {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30))}
-              </TableCell>
-              <TableCell className="text-sm text-ink-primary num-tabular">
-                {toPersianDigits('۲۹۰,۰۰۰')} تومان
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className="text-2xs bg-success-soft text-success border-success/20"
-                  variant="outline"
-                >
-                  پرداخت‌شده
-                </Badge>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border">
-              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
-                INV-1403-002
-              </TableCell>
-              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
-                {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 60))}
-              </TableCell>
-              <TableCell className="text-sm text-ink-primary num-tabular">
-                {toPersianDigits('۲۹۰,۰۰۰')} تومان
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className="text-2xs bg-success-soft text-success border-success/20"
-                  variant="outline"
-                >
-                  پرداخت‌شده
-                </Badge>
-              </TableCell>
-            </TableRow>
-            <TableRow className="border-border">
-              <TableCell className="text-sm font-semibold text-ink-primary" dir="ltr">
-                INV-1403-001
-              </TableCell>
-              <TableCell className="text-sm text-ink-secondary hidden sm:table-cell">
-                {formatJalali(new Date(Date.now() - 1000 * 60 * 60 * 24 * 90))}
-              </TableCell>
-              <TableCell className="text-sm text-ink-primary num-tabular">
-                {toPersianDigits('۲۹۰,۰۰۰')} تومان
-              </TableCell>
-              <TableCell>
-                <Badge
-                  className="text-2xs bg-success-soft text-success border-success/20"
-                  variant="outline"
-                >
-                  پرداخت‌شده
-                </Badge>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+        {/* P1-13: No billing backend exists — show honest empty state instead of 3 fake mock rows. */}
+        <div className="p-8 text-center space-y-3">
+          <div className="flex justify-center">
+            <Receipt className="size-8 text-ink-tertiary" />
+          </div>
+          <p className="text-sm text-ink-secondary">هنوز فاکتوری صادر نشده</p>
+          <p className="text-xs text-ink-tertiary">
+            پس از اولین پرداخت، تاریخچه فاکتورهای شما اینجا نمایش داده می‌شود.
+          </p>
+          <Badge variant="outline" className="text-2xs bg-surface-subtle text-ink-tertiary border-border">
+            به‌زودی
+          </Badge>
         </div>
       </div>
     </div>

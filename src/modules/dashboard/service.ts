@@ -16,6 +16,7 @@ export interface ActionCenterResult {
     context: string
     time: Date
     action: string
+    href: string
   } | null
   secondary: {
     id: string
@@ -27,6 +28,7 @@ export interface ActionCenterResult {
     border: string
     time: Date
     isRead: boolean
+    href: string | null
   }[]
 }
 
@@ -100,6 +102,19 @@ const ACTION_CENTER_BORDERS: Record<string, string> = {
   publish_success: 'border-success-soft',
 }
 
+// Issue #213: destination routes for action-center items so the CTA buttons
+// can actually navigate. The primary href is the most important page for the
+// notification category; secondary items only get an href when we know where
+// to send the user (otherwise the item stays non-interactive but focusable).
+const ACTION_CENTER_HREFS: Record<string, string> = {
+  publish_failed: '/calendar?status=failed',
+  publish_success: '/analytics',
+  approval_requested: '/inbox',
+  token_expiring: '/channels',
+  channel_disconnected: '/channels',
+  inbox_new: '/inbox',
+}
+
 function statusLabel(s: string): string {
   switch (s) {
     case 'processing': return 'در حال پردازش'
@@ -133,6 +148,7 @@ export class DashboardService {
           context: failed.body ?? '',
           time: failed.createdAt,
           action: 'بررسی و تلاش مجدد',
+          href: ACTION_CENTER_HREFS[failed.type] ?? '/calendar',
         }
       : null
 
@@ -148,6 +164,7 @@ export class DashboardService {
         border: ACTION_CENTER_BORDERS[n.type] ?? 'border-border',
         time: n.createdAt,
         isRead: n.isRead,
+        href: ACTION_CENTER_HREFS[n.type] ?? null,
       }))
 
     return { primary, secondary }

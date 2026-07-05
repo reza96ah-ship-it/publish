@@ -2,16 +2,38 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Coffee, Mail, Lock, ArrowLeft, Loader2 } from 'lucide-react'
+import { Coffee, Mail, Lock, ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
 
 interface SignInFormProps {
   callbackUrl: string
+  error?: string
 }
 
-export function SignInForm(_props: SignInFormProps) {
+/** Map next-auth error codes to Persian user-facing messages. */
+function mapAuthError(code?: string): string | null {
+  if (!code) return null
+  switch (code) {
+    case 'CredentialsSignin':
+      return 'ایمیل یا رمز عبور اشتباه است'
+    case 'Callback':
+      return 'خطا در ورود — لطفاً دوباره تلاش کنید'
+    case 'Configuration':
+      return 'خطای پیکربندی سرور'
+    case 'AccessDenied':
+      return 'دسترسی رد شد'
+    default:
+      return 'خطا در ورود'
+  }
+}
+
+export function SignInForm({ error }: SignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [csrfToken, setCsrfToken] = useState('')
+  // Derive the error message directly from the prop (P1-18). Reading the
+  // next-auth ?error= param server-side and passing it down avoids both
+  // useSearchParams + a Suspense boundary and a setState-in-effect cascade.
+  const errorMessage = mapAuthError(error)
 
   // Fetch CSRF token CLIENT-SIDE — this sets the next-auth.csrf-token COOKIE
   // on the user's browser. The server-side getCsrfToken() does NOT set the
@@ -47,6 +69,17 @@ export function SignInForm(_props: SignInFormProps) {
           <p className="text-xs text-ink-tertiary mb-5">
             برای ادامه وارد حساب کاربری خود شوید
           </p>
+
+          {errorMessage && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="flex items-start gap-2 bg-danger-soft text-danger border border-danger/20 rounded-lg p-3 text-sm mb-4"
+            >
+              <AlertCircle className="size-4 shrink-0 mt-0.5" strokeWidth={2} />
+              <span className="leading-snug">{errorMessage}</span>
+            </div>
+          )}
 
           <form action="/api/auth/callback/credentials" method="POST" className="space-y-4">
             {/* Client-fetched CSRF token (cookie is set on browser) */}

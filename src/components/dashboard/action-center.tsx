@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { relativeTime } from '@/lib/jalali'
 import * as Lucide from 'lucide-react'
@@ -17,6 +18,7 @@ interface ActionItem {
   border: string
   time: string
   isRead: boolean
+  href: string | null
 }
 interface ActionCenterData {
   primary: {
@@ -26,16 +28,36 @@ interface ActionCenterData {
     context: string
     time: string
     action: string
+    href: string
   } | null
   secondary: ActionItem[]
 }
 
 export function ActionCenter() {
+  const router = useRouter()
   const { data } = useQuery<ActionCenterData>({
     queryKey: ['dashboard-action-center'],
     queryFn: () => api.get<ActionCenterData>('/api/dashboard/action-center'),
     refetchInterval: 30000,
   })
+
+  // Primary CTA navigates to the route the service layer attached, with a
+  // sensible fallback to /compose so the button is never a no-op.
+  const handlePrimaryClick = () => {
+    router.push(data?.primary?.href ?? '/compose')
+  }
+
+  // Secondary items: navigate when we have an href; otherwise the row is a
+  // plain status display (focusable + role=button for a11y, but no nav).
+  const handleSecondaryClick = (item: ActionItem) => {
+    if (item.href) router.push(item.href)
+  }
+  const handleSecondaryKey = (e: React.KeyboardEvent, item: ActionItem) => {
+    if ((e.key === 'Enter' || e.key === ' ') && item.href) {
+      e.preventDefault()
+      router.push(item.href)
+    }
+  }
 
   return (
     <div className="n-card p-5 h-full flex flex-col">
@@ -65,7 +87,11 @@ export function ActionCenter() {
               <span className="text-2xs text-ink-tertiary">
                 {relativeTime(new Date(data.primary.time))}
               </span>
-              <button className="n-focus-ring inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 transition-colors">
+              <button
+                type="button"
+                onClick={handlePrimaryClick}
+                className="n-focus-ring inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 transition-colors"
+              >
                 {data.primary.action}
                 <ArrowLeft className="size-3" strokeWidth={2.5} />
               </button>
@@ -77,8 +103,18 @@ export function ActionCenter() {
         {data?.secondary.map((item) => {
           const Icon =
             (Lucide as unknown as Record<string, Lucide.LucideIcon>)[item.iconName] ?? Lucide.Bell
+          const interactive = !!item.href
           return (
-            <div key={item.id} className="n-card-compact flex items-center gap-2.5 p-2.5">
+            <div
+              key={item.id}
+              role={interactive ? 'button' : undefined}
+              tabIndex={interactive ? 0 : undefined}
+              onClick={() => handleSecondaryClick(item)}
+              onKeyDown={(e) => handleSecondaryKey(e, item)}
+              className={`n-card-compact flex items-center gap-2.5 p-2.5 ${
+                interactive ? 'cursor-pointer hover:bg-surface-hover transition-colors' : ''
+              }`}
+            >
               <span
                 className={`flex size-7 items-center justify-center rounded-md ${item.bg} ${item.color} shrink-0`}
               >
