@@ -2914,3 +2914,1330 @@ Work Log:
 
 Stage Summary:
 DM Auto is now functionally complete end-to-end. The worker (comment-dm-scanner) polls IG for new comments every 60s, matches them against active rules, and sends DMs via the IG Messaging API with full idempotency (CommentDmLog @@unique), frequency capping, opt-out handling, and optional public replies. 3 new worker files + 2 test files, 31 new tests, all passing. Combined with prior commits (backend CRUD #267 + UI edit/freqcap b320233), the full DM Auto pipeline now exists: create rule → publish post → worker detects comment → sends DM → logs result. Live browser verification deferred (sandbox has no Postgres + no IG API credentials); static verification (typecheck + lint + 973 tests) all green.
+
+---
+Task ID: 2
+Agent: Theme & Visual Design Audit
+Task: Full theme/visual audit of Nashrino app
+
+Work Log:
+- Read /home/z/my-project/worklog.md (2916 lines) to understand prior work — Phase 4-7 + gate1 + DM-auto work complete; design system v2 in place.
+- Read full globals.css (1017 lines): theme tokens, light + dark mode, glass vs solid surfaces, motion vocabulary (--ease-*, --motion-*), density system (data-density=compact), platform brand colors as oklch tokens (--color-platform-telegram/linkedin/etc.), Persian typography (Vazirmatn, num-tabular, num-display), skeleton shimmer, n-gradient-border, n-focus-ring utility.
+- Read src/lib/motion.tsx (242 lines): MotionProvider, ease/duration/spring vocabularies, pageTransition, listContainer, popoverVariants, modalContent, useReducedMotionTransition, useCountUp, CountUp. Confirmed MotionProvider is wired into layout.tsx:61.
+- Read postcss.config.mjs (uses @tailwindcss/postcss, no tailwind.config — Tailwind v4 @theme inline).
+- Read app/layout.tsx: ThemeProvider (next-themes attribute="class" defaultTheme="light" enableSystem) + MotionProvider + WebVitals + LiveRegionProvider.
+- Grep'd for color rule violations: indigo/blue Tailwind palette, hardcoded hex, rgb(), oklch() in components.
+- Grep'd for spacing inconsistency (n-card p-3/4/5/6/8), radius inconsistency (rounded-lg/xl/2xl/3xl), gap inconsistency.
+- Grep'd for RTL issues: physical (left/right/pl/pr/ml/mr) vs logical (start/end/ps/pe/ms/me) properties, translateX transforms, slide animations.
+- Grep'd for dark-mode coverage gaps: dark: variants, prefers-contrast, prefers-color-scheme, forced-colors.
+- Grep'd for focus-ring patterns: n-focus-ring utility vs shadcn focus-visible:ring.
+- Verified all claims against actual file contents (Read tool).
+- Cross-referenced platform-preview-tabs hex colors against --color-platform-* tokens defined in globals.css.
+
+Stage Summary:
+
+═══════════════════════════════════════════════════════════════════════════════
+P0 — Critical (block release)
+═══════════════════════════════════════════════════════════════════════════════
+None found. No contrast failures on body text. No broken primary-surface dark mode.
+No critical-path UI rendered with hardcoded black-on-black or white-on-white.
+
+═══════════════════════════════════════════════════════════════════════════════
+P1 — High (rule violations + broken semantics)
+═══════════════════════════════════════════════════════════════════════════════
+
+P1-1  src/components/views/settings-view.tsx:775
+      Problem: `editor: 'text-blue-700 bg-blue-50 border-blue-200'` — explicit
+      Tailwind blue palette for the "editor" role badge (1 of 4 roles).
+      Visual impact: 25% of team-member role badges are blue, violating the
+      project rule "NO indigo/blue unless requested". Other roles use violet /
+      amber / slate — only editor is blue. Jarring inconsistency in the role
+      badge row.
+      Fix: change to `text-accent bg-accent-soft border-accent/20` (use the
+      project's violet accent token) or `text-info` if a distinct slot is
+      needed.
+
+P1-2  src/components/views/settings-view.tsx:630, 740, 753
+      Problem: `'#2563EB'` (Tailwind blue-600) hardcoded as the default
+      `brandAccentColor` in the Brand Kit. Used in 3 places: color picker
+      default, live-preview background, and hashtag preview text color.
+      Visual impact: every new workspace that opens the Brand Kit tab sees a
+      blue accent color as the "default", normalizing blue usage and
+      contradicting the project's violet-first identity.
+      Fix: change default to a brand-neutral violet (e.g. `#7c3aed` violet-600
+      matching --n-accent) or to the workspace's actual configured accent.
+
+P1-3  src/components/views/settings-view.tsx:773-778
+      Problem: `ROLE_COLOR` map mixes 4 different Tailwind palettes
+      (violet-700/50/200, blue-700/50/200, amber-700/50/200, slate-700/50/200)
+      instead of theme tokens.
+      Visual impact: badges look "off-theme" compared to the rest of the app
+      which uses `text-success bg-success-soft border-success/20` etc. The
+      status badges in shared.tsx:23-35 use proper semantic tokens; role
+      badges don't.
+      Fix: replace with semantic tokens: admin=`accent`, editor=`info` or
+      `accent`, approver=`warning`, viewer=`muted`.
+
+P1-4  src/components/editor/platform-preview-tabs.tsx:255,306,320,334
+      Problem: Telegram and LinkedIn brand colors hardcoded as raw hex:
+      `bg-[#0088cc]` (Telegram), `bg-[#0a66c2]`, `text-[#0a66c2]`,
+      `fill-[#0a66c2]` (LinkedIn). The design system defines
+      `--color-platform-telegram` (oklch(0.62 0.17 222)) and
+      `--color-platform-linkedin` (oklch(0.48 0.18 255)) tokens in
+      globals.css:143-144 but they're not used.
+      Visual impact: the platform-preview-tabs colors won't update if the
+      platform tokens are retuned. Also they're slightly different hex values
+      than the oklch tokens (e.g. #0a66c2 vs oklch(0.48 0.18 255) ≈ #1456a8).
+      Fix: use `bg-platform-linkedin`, `text-platform-telegram`, etc.
+
+P1-5  src/components/editor/platform-preview-tabs.tsx:335
+      Problem: `text-[#5cb85c]` hardcoded green for LinkedIn "Repeat2"
+      (repost) icon.
+      Visual impact: uses an off-brand green that doesn't match the
+      project's `--n-success` token. Inconsistent with how success is
+      represented elsewhere.
+      Fix: use `text-success` token.
+
+P1-6  src/components/ui/toast.tsx:79
+      Problem: `text-red-300`, `text-red-50`, `ring-red-400`,
+      `ring-offset-red-600` — raw Tailwind red palette for destructive
+      toast close button. The design system has `--n-danger` token used
+      elsewhere.
+      Visual impact: destructive toast close-button states (hover, focus,
+      focus-ring-offset) use a different red than destructive buttons
+      elsewhere in the app (which use `bg-destructive` / `text-danger`).
+      Fix: replace with `text-danger-soft`, `text-danger`, `ring-danger`,
+      `ring-offset-danger`.
+
+P1-7  src/app/globals.css (whole file) + src/ (no matches)
+      Problem: NO `prefers-contrast: more` or `forced-colors` media query
+      anywhere in the codebase. Only `prefers-reduced-motion` (globals.css:839)
+      and `prefers-reduced-transparency` (globals.css:732) exist.
+      Visual impact: Windows High Contrast Mode users (forced-colors active)
+      see broken visuals — glass surfaces collapse to default system colors,
+      text-on-glass may become unreadable. Users with prefers-contrast: more
+      (macOS "Increase contrast") get no enhanced-contrast variant.
+      WCAG 2.2 SC 1.4.11 (Non-text Contrast) borderline.
+      Fix: add `@media (forced-colors: active) { … }` block that adjusts
+      borders/outlines, and `@media (prefers-contrast: more) { … }` that
+      strengthens text-tertiary and border-subtle.
+
+═══════════════════════════════════════════════════════════════════════════════
+P2 — Medium (consistency / polish)
+═══════════════════════════════════════════════════════════════════════════════
+
+P2-1  src/app/globals.css:234 (light) + 302 (dark)
+      Problem: `--n-info: oklch(0.58 0.12 240)` — hue 240 = BLUE. The `info`
+      semantic color is used in 15+ components for "scheduled", "queued",
+      "unread inbox", "new" status (operational-summary.tsx:73,99;
+      publishing-pulse.tsx:127; shared.tsx:26; approval-bar.tsx:19;
+      inbox-view.tsx:78; campaigns-view.tsx:223; channels service.ts:52;
+      dashboard service.ts:81,90,99).
+      Visual impact: every "scheduled" / "queued" / "new" badge is blue. This
+      may technically violate the "NO indigo/blue unless requested" rule,
+      depending on interpretation — `info` is a semantic slot, but it's the
+      only blue in the palette.
+      Fix: either (a) document `info` as the approved blue exception, or
+      (b) shift hue to 295 (violet) or 200 (cyan) to align with the violet-
+      first palette.
+
+P2-2  src/app/globals.css:288-289 (dark mode only)
+      Problem: `--n-accent: #a78bfa` and `--n-accent-hover: #c4b5fd` use
+      raw hex format. Every other color in the theme uses oklch(). Light
+      mode accent uses oklch(0.52 0.2 295).
+      Visual impact: no visual bug, but format inconsistency makes
+      programmatic color manipulation (e.g. generating tints) harder.
+      Fix: convert to oklch: `--n-accent: oklch(0.65 0.18 295)` and
+      `--n-accent-hover: oklch(0.72 0.16 295)`.
+
+P2-3  Spacing inconsistency (multiple files)
+      Problem: `n-card` is used with 4 different paddings across the app:
+      - `n-card p-3` (compose-view.tsx:673, calendar-view.tsx:394,
+        campaigns-view.tsx:234, media-view.tsx:168)
+      - `n-card p-4` (12+ places: shared.tsx:866, comment-dm-rules:275,
+        inbox-view:584, content-view:175, compose-view:869/905/1012,
+        channel-health-view:120, etc.)
+      - `n-card p-5` (most common, 15+ places: all dashboard panels,
+        settings tabs, analytics, etc.)
+      - `n-card p-8` (channels-view.tsx:256)
+      The `.n-card-density` utility (globals.css:574) which would unify
+      these via `data-density` attribute is NEVER used in any component.
+      Visual impact: cards in adjacent grid columns have visibly different
+      internal padding — feels like different designers built them.
+      Fix: standardize on `p-5` for top-level cards, `p-4` for nested cards,
+      and adopt `.n-card-density` for any card whose padding should follow
+      the comfortable/compact density toggle.
+
+P2-4  src/components/views/inbox-view.tsx:469,477 vs
+      src/components/automation/comment-dm-rules.tsx:341
+      Problem: two chat-bubble implementations use different corner-flattening:
+      - inbox-view uses PHYSICAL corners: `rounded-2xl rounded-tr-sm`
+        (incoming bubble) and `rounded-2xl rounded-tl-sm` (outgoing bubble)
+      - comment-dm-rules uses LOGICAL corner: `rounded-2xl rounded-ee-sm`
+        (outgoing bubble)
+      Visual impact: both currently render correctly in RTL Persian, but
+      if the app ever supports LTR English, inbox-view bubbles will have
+      tails on the wrong side. Inconsistent RTL strategy between two
+      components that do the same thing.
+      Fix: pick one strategy. Recommend logical properties everywhere:
+      `rounded-ss-sm` for incoming (start-start), `rounded-ee-sm` for
+      outgoing (end-end).
+
+P2-5  src/components/editor/platform-preview-tabs.tsx:199
+      Problem: `absolute top-2 left-2` for the Instagram multi-image badge.
+      Visual impact: in RTL, `left-2` places the badge on the visual LEFT
+      (end side). Instagram's actual UI puts this badge on the TOP-RIGHT
+      universally. Users familiar with Instagram will find the badge in the
+      "wrong" corner.
+      Fix: change to `top-2 right-2` (matches Instagram's visual
+      convention regardless of locale) or `top-2 end-2` (auto-flips).
+
+P2-6  src/components/ui/progress.tsx:22
+      Problem: `transform: translateX(-${100 - value}%)` — the indicator
+      slides from the LEFT edge and fills LEFT→RIGHT.
+      Visual impact: in RTL Persian (dir=rtl on <html>), progress bars
+      conventionally fill RIGHT→LEFT (matching reading direction). Current
+      implementation fills left→right, looking "backwards" to Persian
+      readers. A 30% progress bar shows the filled portion on the LEFT,
+      but Persian users expect it on the RIGHT.
+      Fix: detect RTL via `dir` attribute or CSS, and use
+      `translateX(${100 - value}%)` (positive) in RTL, or use
+      `inset-inline-start: 0` + width-based fill instead of transform.
+
+P2-7  src/components/ui/toast.tsx:19, 28
+      Problem: `sm:right-0` (physical right) for toast container position +
+      `slide-out-to-right-full` for swipe-out + `pr-6` for close-button
+      padding. All physical.
+      Visual impact: in RTL, toasts appear in the bottom-RIGHT corner
+      (where Persian users expect the empty/secondary area to be bottom-
+      LEFT). Swipe-to-dismiss goes RIGHT (toward center), opposite of
+      natural RTL swipe direction (LEFT). Close button is on the right
+      with pr-6, but Persian users expect it on the left.
+      Fix: use `sm:left-0` (or `sm:end-0`) for RTL, `slide-out-to-left-full`
+      for swipe direction, and `pl-6` for close-button padding — or use
+      logical `ps-6` / `pe-6` with `start-0` / `end-0`.
+
+P2-8  src/components/ui/sheet.tsx:57, 59
+      Problem: mixes logical and physical — `end-0`/`start-0` (logical) for
+      position but `slide-out-to-right`/`slide-in-from-right` (physical)
+      for animation.
+      Visual impact: in RTL, a sheet on the END side (visual LEFT) animates
+      by sliding FROM the RIGHT (across the screen) — looks like it's
+      coming from the wrong direction.
+      Fix: pair `end-0` with `slide-out-to-left`/`slide-in-from-left`, and
+      `start-0` with `slide-out-to-right`/`slide-in-from-right` — or use
+      CSS logical `inset-inline-start/end` with transform-based animations.
+
+P2-9  src/components/ui/accordion.tsx:36, dialog.tsx:79, alert-dialog.tsx:62
+      Problem: shadcn defaults `text-left` / `sm:text-left` instead of
+      `text-start`.
+      Visual impact: in RTL, accordion headers and dialog/alert footers
+      left-align their text — looks wrong for Persian (which should be
+      right-aligned). Minor but pervasive.
+      Fix: replace `text-left` with `text-start` in these primitives.
+
+P2-10 Focus-ring inconsistency (whole codebase)
+       Problem: two coexisting focus-ring styles:
+       - Nashrino `n-focus-ring` utility (globals.css:471):
+         `box-shadow: 0 0 0 2px var(--n-surface), 0 0 0 4px var(--n-accent)`
+         — solid 4px violet ring with 2px gap from surface
+       - shadcn primitives (button.tsx:8, input.tsx:12, textarea.tsx:10,
+         toggle.tsx:10):
+         `focus-visible:ring-ring/50 focus-visible:ring-[3px]`
+         — 3px violet ring at 50% opacity
+       Visual impact: tabbing through mixed UI shows two different focus
+       indicators — solid thick ring on ai-assistant buttons (n-focus-ring)
+       vs translucent thin ring on shadcn Buttons. Keyboard users can't
+       predict what focus will look like.
+       Fix: converge on one style. Recommend keeping n-focus-ring (more
+       visible, WCAG 2.4.7-stronger) and applying it to shadcn primitives
+       via global CSS override, OR updating n-focus-ring to match shadcn's
+       ring pattern.
+
+P2-11 src/components/ui/switch.tsx:21
+      Problem: `data-[state=checked]:translate-x-[calc(100%-2px)]` — thumb
+      slides RIGHT when checked. In RTL, the conventional "on" position is
+      on the LEFT.
+      Visual impact: in RTL Persian, the switch thumb moves right when
+      toggled on, but Persian users expect it to move LEFT. Looks
+      "backwards". Also `data-[state=unchecked]:bg-input` is the same in
+      both directions.
+      Fix: use `rtl:translate-x-[calc(-100%+2px)]` for checked state in
+      RTL, or use a CSS variable + `inset-inline-end` positioning instead
+      of translate.
+
+═══════════════════════════════════════════════════════════════════════════════
+P3 — Low (minor polish / shadcn defaults)
+═══════════════════════════════════════════════════════════════════════════════
+
+P3-1  src/app/global-error.tsx:30-92
+      Problem: hardcodes inline `oklch()` values and `#fff` instead of
+      theme tokens; no dark-mode variant (forces light background).
+      Visual impact: error fallback page is always light — in dark mode,
+      users see a bright white page flash before recovering. Acceptable
+      for an emergency error boundary but inconsistent with the theme
+      system.
+      Fix: optional — could detect `prefers-color-scheme: dark` via
+      inline media query, or just use system colors.
+
+P3-2  src/components/editor/platform-preview-tabs.tsx:182
+      Problem: `bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600`
+      hardcoded Instagram brand gradient.
+      Visual impact: authentic Instagram look, acceptable for preview
+      authenticity. No theme token exists for Instagram's multi-stop
+      gradient. Leave as-is or extract to a `.ig-gradient` utility.
+
+P3-3  src/app/globals.css:401-413
+      Problem: skeleton shimmer uses `transform: translateX(-100%)` →
+      `translateX(100%)` — sweeps LEFT→RIGHT.
+      Visual impact: in RTL, the shimmer direction matches Latin reading
+      direction. Most sites keep shimmer LTR even in RTL, so this is
+      conventional. Optional: sweep R→L for Persian.
+      Fix: optional — add `html[dir='rtl'] .n-skeleton::after { animation-
+      direction: reverse; }` if Persian-first shimmer is desired.
+
+P3-4  shadcn UI RTL gaps (multiple files)
+      Problem: shadcn primitives use physical `pl-8`, `pr-2`, `left-2`,
+      `right-0` for inset icons and chevrons (dropdown-menu.tsx:82,88,118;
+      context-menu.tsx:128,134,153; menubar.tsx:93,111,117,136,141,162;
+      select.tsx:101,106; navigation-menu.tsx:75,90,104; carousel.tsx:
+      138,155,179,180,209,210).
+      Visual impact: in RTL, inset icons (checkboxes, chevrons) appear
+      on the "wrong" side of dropdown items. Functionally OK — clicking
+      still works — but visually awkward.
+      Fix: bulk replace `pl-8` → `ps-8`, `pr-2` → `pe-2`, `left-2` →
+      `start-2`, `right-0` → `end-0` in shadcn primitives.
+
+P3-5  Motion vocabulary defined but not enforced (multiple files)
+      Problem: src/lib/motion.tsx exports `ease`, `duration`, `spring`,
+      `pageTransition`, `popoverVariants`, etc. But many components hardcode
+      the same easing curves as raw arrays:
+      - global-error.tsx:42 `transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}` (= ease.emphasized + duration.slow, but hardcoded)
+      - compose-view.tsx:639 `ease: [0.22, 1, 0.36, 1]` (close to ease.emphasized but not exactly)
+      - channel-health-view.tsx:70 same as compose-view
+      - theme-toggle.tsx:40 `ease: [0.4, 0, 0.2, 1]` (= ease.standard, hardcoded)
+      - shared.tsx:901,918 `ease: [0, 0, 0.2, 1]` (= ease.enter, hardcoded)
+      Visual impact: animations look slightly different across views
+      because the hardcoded easings drift from the canonical tokens.
+      Fix: import from motion.tsx — `import { ease, duration } from
+      '@/lib/motion'` — and use `transition={{ duration: duration.slow,
+      ease: ease.emphasized }}` everywhere.
+
+═══════════════════════════════════════════════════════════════════════════════
+STRENGTHS (no action needed)
+═══════════════════════════════════════════════════════════════════════════════
++ Loading/empty state quality is excellent. `EmptyState` (shared.tsx:731)
+  supports custom SVG illustrations, icon-in-circle fallback, compact mode.
+  `LoadingState` (shared.tsx:880) handles loading/error/content with
+  cross-fade. `SkeletonCard`, `SkeletonList`, `SkeletonKPI`, `SkeletonText`
+  all match real content layout (NN/G-compliant). `ChartPanel` handles
+  loading/error/insufficientData explicitly.
++ `MotionProvider` IS wired in layout.tsx:61. `prefers-reduced-motion`
+  respected both globally (globals.css:839 disables all transitions) and
+  per-component (useReducedMotion / useShouldAnimate hooks).
++ Logical properties (`ms-auto`, `me-auto`, `ps-`, `pe-`, `start-`, `end-`,
+  `border-s`, `border-e`) used extensively in Nashrino-specific components
+  (sidebar, command-bar, notification-popover, mobile-bottom-nav,
+  publishing-pulse, app-shell, ai-assistant-sheet, jalali-picker).
++ Theme tokens are comprehensive: surfaces (5 levels), ink (4 levels),
+  accent + soft/tint, 4 semantic colors each with soft/tint, 6 platform
+  brand colors, 5 chart colors, 7 radii, 7 shadows, 6 motion durations,
+  6 easing curves.
++ Density system is DEFINED in CSS (`--density-card-px`, `data-density=
+  compact`) — just not yet ADOPTED in components (see P2-3).
++ Vazirmatn font with proper Persian typography: `num-tabular` for data,
+  `num-display` for KPI hero numbers, `lang=fa` letter-spacing: 0 (never
+  letter-space Persian — breaks connected glyphs), ZWNJ handling notes.
++ `prefers-reduced-transparency: reduce` media query (globals.css:732)
+  disables glass effects for users who prefer reduced transparency
+  (Apple HIG accessibility).
++ `n-gradient-border` (globals.css:427) — premium hover effect using
+  @property --gradient-angle + conic-gradient mask technique.
+
+---
+Task ID: 1
+Agent: UI/UX Audit
+Task: Full UI/UX audit of Nashrino app
+
+Work Log:
+  - Read worklog.md (last ~250 lines) to understand prior audit work (benchmark research, security hardening plan, fix-list). No prior UI/UX audit exists; this is the first pass.
+  - Inspected /tmp/nashrino-dev.log: Next.js dev server "Ready" but with 3 ⨯ Module-not-found warnings (@grpc/grpc-js → 'stream', @opentelemetry/sdk-node → '@opentelemetry/shim-opencensus') and, critically, **3 consecutive HTTP 500 responses on `GET /auth/signin?callbackUrl=%2F`** (27.9s, 15.6s, 18ms — the long ones smell like a server-side timeout/hang on the signin page server component).
+  - Read every shell component: app-shell.tsx, sidebar.tsx, mobile-bottom-nav.tsx, command-bar.tsx, command-palette.tsx, shortcuts-modal.tsx, notification-popover.tsx.
+  - Read every view: compose, content, channels, inbox, analytics, media, settings, calendar, dashboard, channel-health, campaigns.
+  - Read editor: nashrino-editor.tsx, platform-preview-tabs.tsx, media-uploader.tsx.
+  - Read automation/comment-dm-rules.tsx and onboarding/wizard.tsx.
+  - Read ai/ai-assistant-sheet.tsx, dashboard/action-center.tsx, dashboard/publishing-pulse.tsx, dashboard/shared.tsx.
+  - Read ui/button.tsx (shadcn primitive) and confirmed app/(dashboard)/routes layout.
+  - Verified every "broken" claim against the actual code — opened file, found the line, confirmed the handler is missing or fake.
+
+Stage Summary:
+
+═══════════════════════════════════════════════════════════════════════════════
+P0 — BLOCKERS (sign-in broken, entry-point unusable, core flows fake)
+═══════════════════════════════════════════════════════════════════════════════
+
+P0-1  /tmp/nashrino-dev.log:105-107
+  Problem: `GET /auth/signin?callbackUrl=%2F` returns HTTP 500 three times in a row (27.9s, 15.6s, 18ms). The 27.9s response time suggests the server component hangs/times out (likely `getServerSession(authOptions)` + DB round-trip under missing-secret conditions). The third 500 (18ms) is a cached 500 response.
+  Impact: Users cannot reach the app at all. Even if some requests succeed in other envs, the dev environment blocks all UI/UX validation.
+  Fix: Add `NEXTAUTH_SECRET`/`AUTH_SECRET` to `.env` (currently only `.env.example` documents them), and investigate why `getServerSession` takes 27s — likely a DB connection timeout. Also add an error.tsx boundary around the signin route so a 500 doesn't render a blank page.
+
+P0-2  src/components/views/media-view.tsx:84-123, 311-330
+  Problem: The entire media upload flow is fake. `uploadMutation.mutationFn` is `setTimeout(120)` with no API call (line 86). `handleUpload` (106-123) creates a placeholder MediaItem with `thumbnail: ''`, `fileSize: 0`, `url: ''`. The dialog's "انتخاب فایل" button (311-318) just shows `toast.info('آپلود شبیه‌سازی‌شده…')`. The footer "آپلود" button (324-330) calls the fake `handleUpload`.
+  Impact: Users think they uploaded media but nothing actually lands. The phantom row disappears on next refetch. The real `MediaUploader` component (used in compose-view) DOES work via /api/media/presign → /api/media/confirm, but MediaView uses a separate fake dialog instead of reusing it.
+  Fix: Replace the entire fake upload dialog with the existing `<MediaUploader>` component (which already does presign + S3 PUT + confirm). Delete `uploadMutation` and `handleUpload`.
+
+P0-3  src/components/views/content-view.tsx:115-154
+  Problem: `createContentMutation` is `setTimeout(120)` — no API call. Comment confirms: "The backend create endpoint is not implemented yet". `handleCreateContent` (137-154) creates an `optimistic-{timestamp}` row with placeholder data; on next refetch it disappears.
+  Impact: "محتوای جدید" button in Content Library is broken — users cannot create content from this view. Phantom rows appear and vanish.
+  Fix: Either wire to a real `POST /api/content` endpoint, or remove the button entirely (redirect to /compose instead, which already works).
+
+P0-4  src/components/views/campaigns-view.tsx:127-169
+  Problem: Same pattern as P0-3. `createCampaignMutation.mutationFn` is `setTimeout(120)`. `handleCreateCampaign` (149-169) creates a fake "کمپین جدید" with `pubProgress: 0`, `goalCompletion: 'بدون هدف'`. Comment confirms: "backend create endpoint is not wired yet".
+  Impact: "کمپین جدید" button is dead. Phantom campaign card appears, then vanishes on refetch. Users have no way to create a campaign.
+  Fix: Wire `POST /api/campaigns` or open a "new campaign" modal/sheet that collects name + dates before creating.
+
+P0-5  src/components/views/settings-view.tsx:542-549, 710-717, 914-926, 1241-1244
+  Problem: Four save/submit handlers across Settings only call `toast.success(...)` with NO API call:
+    • OverviewForm.save (542-549) — workspace profile changes
+    • BrandForm.save (710-717) — brand kit
+    • TeamTab.invite (914-926) — invite member
+    • NotificationsTab.toggle (1241-1244) — notification preferences
+  Impact: Every "save" in Settings silently discards user input. The toast claims success, but nothing persists. Users who set up brand colors, team members, or notification prefs will lose all of it on refresh.
+  Fix: Wire each to its respective API (PATCH /api/workspace, POST /api/invitations, PUT /api/notifications/preferences). At minimum, disable the buttons and show "به‌زودی" instead of fake success.
+
+═══════════════════════════════════════════════════════════════════════════════
+P1 — MAJOR (broken interactions, fake success, missing destructive-action guards)
+═══════════════════════════════════════════════════════════════════════════════
+
+P1-1  src/components/views/channels-view.tsx:455-460
+  Problem: AlertDialogAction for "قطع اتصال" (disconnect) only calls `toast.success('پلتفرم با موفقیت قطع شد.')` — no API call. User confirms the destructive action, sees a green success toast, but the platform is still connected.
+  Impact: Destructive fake-success. Users think they disconnected a compromised token; it stays active.
+  Fix: Call `DELETE /api/platforms/{id}` (or whatever the disconnect endpoint is) inside the action handler. Disable the button while pending. Only toast on success.
+
+P1-2  src/components/views/content-view.tsx:405-418
+  Problem: "ایجاد کپی" (Create copy) menu item calls `toast.success('محتوا با موفقیت کپی شد.')` with no API call. "حذف" (Delete) calls `toast.error('حذف محتوا نیاز به تأیید دارد.')` — there's no confirmation dialog, just an error toast.
+  Impact: Copy is fake-success. Delete is non-functional AND uses an error toast for what should be a confirmation dialog. Both are broken.
+  Fix: Wrap delete in `<AlertDialog>` (the project already has this primitive — see channels-view). Wire copy to `POST /api/content/{id}/duplicate` or similar.
+
+P1-3  src/components/views/media-view.tsx:462-469, 526-531
+  Problem: Delete media button (both grid hover and list dropdown) shows `toast.error('حذف نیازمند تأیید است.')` — but there's no actual confirmation dialog. User can never delete.
+  Impact: No way to delete uploaded media. Error toast on a click is confusing UX (looks like a system error, not a "click confirm first" hint).
+  Fix: Wrap in `<AlertDialog>` and call `DELETE /api/media/{id}`.
+
+P1-4  src/components/views/analytics-view.tsx:388-410
+  Problem: "خلاصه عملکرد" (Performance Summary) card shows hardcoded fake values: engagement rate `4.8٪`, trend `+0.6٪`, daily reach trend `+12٪`, follower growth `+8٪`, clicks `+3٪`. These are static literals, not derived from data.
+  Impact: Users see misleading "real" metrics. Decisions made on fake numbers.
+  Fix: Either compute these from `data` (the analytics API response) or label the card clearly as "نمونه" (sample) until real metrics are computed.
+
+P1-5  src/components/views/settings-view.tsx:1032-1090
+  Problem: Billing "تاریخچه فاکتورها" (Invoice History) table has 3 hardcoded mock rows: INV-1403-001/002/003, all ۲۹۰,۰۰۰ تومان, all "پرداخت‌شده". No API fetch, no empty state, no way to view actual invoices.
+  Impact: Misleading — users see fake invoices and think they have billing history when they may not.
+  Fix: Fetch from `/api/invoices` (or remove the section entirely until backend exists).
+
+P1-6  src/components/onboarding/wizard.tsx:415-419, 597, 602-603
+  Problem: Three onboarding issues:
+    (a) `handlePublish` catch block (415) silently swallows errors — user gets no feedback if publish fails.
+    (b) `setTimeout(onPublished, 1200)` (414) auto-advances to "done" after 1.2s whether publish succeeded or failed.
+    (c) `platforms` is frozen at mount via `useState(workspace?.platforms ?? [])` (597). After OAuth redirect returns the user to step 2/3, the platforms list is stale — `canAdvance()` (602-603) returns false, so the user is stuck.
+  Impact: New users are forced past a failed first-post, and can't advance past "Connect" without a full page reload.
+  Fix: (a) Show a toast on error. (b) Only advance on actual success. (c) Refetch platforms via `useQuery` instead of frozen `useState`, or `router.refresh()` after OAuth redirect.
+
+P1-7  src/components/dashboard/action-center.tsx:68-71, 77-95
+  Problem: The primary critical action button (68-71) has NO `onClick` handler — it renders `data.primary.action` (e.g. "تأیید محتوا") + arrow icon, but clicking does nothing. Secondary items (77-95) are plain `<div>`s with no click handler at all.
+  Impact: The dashboard's "مرکز اقدام" (Action Center) — the most prominent CTA panel — is completely non-interactive. Users see "نیازمند توجه" items but can't act on them.
+  Fix: Each `ActionItem` should carry an `href` or `onAction`. Wire the primary button to `router.push(primary.href)` and secondary items to their respective routes.
+
+P1-8  src/components/views/calendar-view.tsx:678-772
+  Problem: The job detail Sheet lets the user reschedule but has NO cancel/delete action. A scheduled job that needs to be aborted cannot be removed from the calendar UI.
+  Impact: Users can't cancel a scheduled post from the calendar. They have to find it in /analytics logs or wait for it to fail.
+  Fix: Add a "لغو انتشار" button (AlertDialog-confirmed) that calls `PATCH /api/publish-jobs/{id} { action: 'cancel' }` — the same endpoint already used by PublishingPulse (line 62 of publishing-pulse.tsx).
+
+P1-9  src/components/views/inbox-view.tsx:111-142, 627
+  Problem: The "رویدادهای اتوماسیون" (Automation Events) right panel is hardcoded mock data — 5 fake `AUTOMATIONS` entries with no API fetch. The "اتوماسیون جدید" button (623-631) just shows `toast.info('ساخت اتوماسیون جدید به‌زودی فعال خواهد شد.')`.
+  Impact: Users see automation rules that don't exist, can't create real ones from this surface. (Real automation is managed in /compose or /settings/automation.)
+  Fix: Either fetch real automations from `/api/automation/comment-dm-rules` and render them, or remove the panel and link to /settings/automation instead.
+
+P1-10 src/app/auth/signin/signin-form.tsx (whole file)
+  Problem: Form posts to next-auth callback. On wrong credentials, next-auth redirects back with `?error=CredentialsSignin` (or `?error=Configuration` if secret is missing). The form ignores the searchParams entirely — no error message is shown. Combined with the P0-1 500 errors, users see a blank-then-reloaded form with zero feedback.
+  Impact: Silent auth failures. Users can't tell whether their password was wrong or the server is broken.
+  Fix: Read `searchParams.get('error')` and render a Persian error message above the form. Map next-auth error codes to friendly Persian strings.
+
+P1-11 src/components/views/compose-view.tsx:1073
+  Problem: `<AIAssistantSheet platform={(selectedPlatforms[0] as any) || 'instagram'} ...>` — `selectedPlatforms` holds channel UUIDs (per BUG-08 comment), but `AIAssistantSheet` expects a platform type literal ('instagram' | 'telegram' | …). The `as any` hides the type error.
+  Impact: AI assistant receives a UUID string instead of 'instagram', so the generated caption's platform-specific tone/length may be wrong (defaults to whatever the API falls back to).
+  Fix: Pass `selectedPlatformTypes[0]` (already computed at line 342) instead of `selectedPlatforms[0]`.
+
+P1-12 src/components/views/content-view.tsx:399-404, channels-view.tsx:337,426, media-view.tsx:383,522
+  Problem: Five different "ویرایش" (Edit) buttons across content/channels/media views all show `toast.info('… به‌زودی فعال خواهد شد.')`. Edit is dead everywhere.
+  Impact: Users can create things but can never edit them — a fundamental CRUD gap.
+  Fix: At minimum, route "edit" to /compose with the content ID as a query param so the existing composer can load and edit it.
+
+═══════════════════════════════════════════════════════════════════════════════
+P2 — MINOR (missing states, fake toasts, dead links, fragile patterns)
+═══════════════════════════════════════════════════════════════════════════════
+
+P2-1  src/components/shell/sidebar.tsx:213-222, 297-310, 313-342
+  Problem: Three dead buttons in the sidebar:
+    • Bell button (213-222) — `aria-label="اعلان‌ها"`, no `onClick`. The CommandBar already has a working NotificationPopover, so this is a duplicate that does nothing.
+    • Workspace button (297-310) — `cursor-pointer` styling, ChevronLeft hint, but no `onClick`. Should open a workspace switcher.
+    • User row (313-342) — `cursor-pointer` on the parent div, but only the inner LogOut button works. Clicking elsewhere does nothing.
+  Impact: Three clickable-looking elements that do nothing. Users try to open notifications/workspace/profile and get no response.
+  Fix: Either remove the dead buttons or wire them. Bell → setCommandPaletteOpen or remove (already in command bar). Workspace → workspace switcher dropdown. User row → profile menu.
+
+P2-2  src/components/shell/mobile-bottom-nav.tsx:17-23
+  Problem: Mobile bottom nav only exposes 5 of 10 routes: Analytics, Inbox, Compose, Calendar, Dashboard. Missing: Campaigns, Content, Media, Channels, Settings. There's also no "More" overflow.
+  Impact: Mobile users can't reach 50% of the app without typing a URL. Content Library, Media, Channels, Settings, Campaigns are all unreachable on mobile.
+  Fix: Either add a "More" tab that opens a sheet with the remaining routes, or rotate the 5 visible tabs based on usage frequency. At minimum, add Settings + Channels.
+
+P2-3  src/components/views/channels-view.tsx:86-92, 596
+  Problem: `AVAILABLE_PLATFORMS` array omits 'bale' (only instagram/telegram/linkedin/rubika/eitaa). But the helper text at line 596 references 'bale': "از @botfather در بله دریافت کنید". Users can never select Bale in the connect dialog, yet the UI mentions it.
+  Impact: Users trying to connect Bale are stuck — no way to select it.
+  Fix: Add `{ id: 'bale', label: 'بله', method: 'bot' }` to AVAILABLE_PLATFORMS.
+
+P2-4  src/components/views/channels-view.tsx:125,133,141,293
+  Problem: "Healthy" detection uses fragile Persian string matching: `p.state.includes('متصل') || p.state.includes('پایدار')`. If the API ever changes the wording (e.g. to 'فعال'), every filter silently breaks.
+  Impact: Future API wording changes break the UI silently.
+  Fix: Use a stable enum on the API side (e.g. `state: 'connected' | 'degraded' | 'disconnected'`) and map to Persian labels in the UI.
+
+P2-5  src/components/views/channels-view.tsx:167-177
+  Problem: Breadcrumb "تنظیمات > پلتفرم‌ها" — the parent "تنظیمات" is `<BreadcrumbLink className="cursor-pointer">` with no `href` or `onClick`. Looks clickable, isn't.
+  Impact: Users expect to navigate back to Settings; nothing happens.
+  Fix: Add `href="/settings"` or remove the breadcrumb entirely (Channels isn't actually a child of Settings in the IA).
+
+P2-6  src/components/shell/notification-popover.tsx:85-91
+  Problem: `markAllRead` does optimistic update only — no API call. Comment says "API doesn't have a bulk endpoint yet, that's OK". But the popover refetches every 30s (line 77), so the unread state reverts 30s later.
+  Impact: User clicks "علامت‌گذاری همه به‌عنوان خوانده‌شده", sees them go read, then 30s later they're unread again. Confusing.
+  Fix: Either add `POST /api/notifications/mark-all-read` or call the existing per-notification endpoint in a Promise.all. Until then, disable the button with a tooltip.
+
+P2-7  src/components/views/analytics-view.tsx:481-498, 499
+  Problem: Publish-jobs table has no loading skeleton — when `isLoading`, `filteredJobs.length === 0` triggers the EmptyState ("رکوردی یافت نشد"). Also hard limit `slice(0, 30)` with no pagination.
+  Impact: Users see "no records" briefly during load, then records appear. With >30 jobs, older ones are invisible.
+  Fix: Add a `<LoadingState>` wrapper (the project has this component). Add a "مشاهده بیشتر" button or proper pagination.
+
+P2-8  src/components/views/inbox-view.tsx:300-305
+  Problem: SectionTitle badge shows `{unreadCount > 0 && (<span>... {relativeTime(new Date(Date.now() - 1000 * 60 * 5))} — {unreadCount} ناخوانده</span>)}`. The `relativeTime(...)` produces "۵ دقیقه" regardless of when the last message arrived — it's a fake "5 minutes ago" label.
+  Impact: Misleading timestamp — users think the last unread arrived exactly 5 minutes ago.
+  Fix: Either remove the `relativeTime` label or compute it from `messages[0].createdAt`.
+
+P2-9  src/components/views/inbox-view.tsx:304, 411-433
+  Problem: `{unreadCount}` rendered without `toPersianDigits()` (line 304) — Latin digits in an otherwise-Persian UI. Also: status workflow buttons (حل شد ✓, شروع بررسی, بازگشایی) use `text-2xs` + `py-0.5` → ~20px tall, way below the 44px touch target.
+  Impact: Inconsistent number formatting; unusable status buttons on mobile.
+  Fix: Wrap in `toPersianDigits(unreadCount)`. Increase button padding to `min-h-[44px]`.
+
+P2-10 src/components/views/inbox-view.tsx:467-485
+  Problem: Thread body shows only the original inbound message + the single most recent `selected.reply`. There's no conversation history — if the user replied 3 times, only the last reply is shown.
+  Impact: Users lose context of ongoing conversations.
+  Fix: Fetch the full reply thread from `/api/inbox/{id}/thread` and render as a chat scrollback. Or at minimum label "آخرین پاسخ شما" so users know it's not the full history.
+
+P2-11 src/components/views/calendar-view.tsx:700-701
+  Problem: In the job detail sheet, `{selectedJob.platform}` is rendered as plain text — it's a raw type string like "instagram", not a Persian label.
+  Impact: Users see English "instagram" / "telegram" in an otherwise-Persian UI.
+  Fix: Use `PLATFORM_LABELS[selectedJob.platform] ?? selectedJob.platform` (the labels already exist in platform-preview-tabs.tsx — extract to a shared module).
+
+P2-12 src/components/views/calendar-view.tsx:868-884
+  Problem: `JobChip` is a `<button>` with both drag listeners AND `onClick={onSelectJob}`. The `aria-label="کشیدن برای جابجایی"` (Drag to move) is wrong — the button is also click-to-select.
+  Impact: Screen-reader users hear "drag to move" but the button also opens the detail sheet on click. Misleading.
+  Fix: `aria-label` should say "انتخاب یا کشیدن" (Select or drag) or split into two separate elements.
+
+P2-13 src/components/views/calendar-view.tsx:726-728
+  Problem: The "ایجاد محتوای جدید" button in the job detail sheet navigates to `/compose` but doesn't prefill anything related to the selected job. Looks like an "edit job" action but actually starts a fresh compose.
+  Impact: Users expect to edit the scheduled job; instead they land on a blank composer.
+  Fix: Either rename to "ایجاد محتوای دیگر" (create other content) or actually load the job's content into the composer via `/compose?jobId={id}`.
+
+P2-14 src/components/views/settings-view.tsx:1109-1123
+  Problem: UTM preset `createMutation` and `deleteMutation` have no `onSuccess`/`onError` toast (createMutation has only `onSuccess` that invalidates queries — no toast). `deleteMutation` has no toast at all. Silent failures.
+  Also: delete has no confirmation dialog — destructive action without confirm.
+  Impact: User clicks "حذف" — preset vanishes with no feedback. If delete fails, user doesn't know.
+  Fix: Add `toast.success('حذف شد')` on success and `toast.error(...)` on error. Wrap delete in `<AlertDialog>`.
+
+P2-15 src/components/views/settings-view.tsx:963, 1000
+  Problem: Billing "ارتقا طرح" + each plan card's "انتخاب این طرح" both show `toast.info('… به‌زودی فعال خواهد شد.')`. Entire billing flow is a placeholder.
+  Impact: Users can't upgrade. Free-tier limits stay forever.
+  Fix: Disable the buttons with a "به‌زودی" badge, OR remove the billing tab until the payment backend is ready.
+
+P2-16 src/components/views/media-view.tsx:217-242
+  Problem: Grid/list layout toggle buttons are `size-8` (32px) — below the 44px touch target.
+  Impact: Hard to hit on mobile.
+  Fix: Use `size-9` or `min-h-[44px] min-w-[44px]`.
+
+P2-17 src/components/views/inbox-view.tsx:412-433
+  Problem: Status workflow buttons (حل شد ✓, شروع بررسی, بازگشایی) have `disabled={statusMutation.isPending}` but no visual loading state — user can't tell if the click registered.
+  Impact: Users double-click; multiple mutations fire.
+  Fix: Show a `<Loader2 className="animate-spin">` inside the button while pending.
+
+P2-18 src/components/views/content-view.tsx:341
+  Problem: `<Button variant="ghost" size="icon" className="size-8">` for the row menu trigger — no `aria-label`. Screen readers announce nothing useful.
+  Impact: A11y gap.
+  Fix: Add `aria-label="عملیات محتوا"` or similar.
+
+P2-19 src/components/onboarding/wizard.tsx:547, 573
+  Problem: Done step links to `/settings?tab=team` — but settings-view.tsx:206 initializes `tab` as local state `'overview'` and never reads the query param.
+  Impact: Clicking "دعوت تیم" from onboarding lands on the Overview tab, not Team. User has to manually click the Team tab.
+  Fix: In settings-view, `useSearchParams()` and initialize `tab` from `?tab=` if present.
+
+P2-20 src/components/views/compose-view.tsx:606-634
+  Problem: Conflict-resolution modal has NO way to dismiss without choosing. Clicking outside doesn't close it. No "انصراف" button.
+  Impact: User is forced to choose between local/server draft — can't say "neither, start fresh".
+  Fix: Add a third button "شروع از نو" (Start fresh) that clears both drafts.
+
+P2-21 src/components/views/compose-view.tsx:1012-1067
+  Problem: The sticky bottom action bar (`sticky bottom-0`) overlaps with the fixed `MobileBottomNav` (also `bottom-0`, 56px tall). On mobile, the "انتشار" button may be hidden behind the bottom nav.
+  Impact: Mobile users can't see/tap the publish button.
+  Fix: Add `mb-[56px] md:mb-0` to the action bar so it sits above the mobile nav.
+
+P2-22 src/components/views/inbox-view.tsx:174-176
+  Problem: Filter `overdue` computes against `Date.now()` once on render. If the user keeps the page open, an item that becomes overdue won't appear in the filter until they re-trigger a render.
+  Impact: Stale overdue list.
+  Fix: Add a `setInterval` tick every 60s to force re-render, or use `useQuery` refetchInterval.
+
+═══════════════════════════════════════════════════════════════════════════════
+P3 — POLISH (consistency, copy, minor a11y)
+═══════════════════════════════════════════════════════════════════════════════
+
+P3-1  src/components/views/inbox-view.tsx:643
+  SLA timer label uses English `h`/`m` abbreviations (`${h}h ${m}m`) in an otherwise Persian UI. Use `س` / `د`.
+
+P3-2  src/components/views/media-view.tsx:310 vs src/components/editor/media-uploader.tsx:231
+  Inconsistent file-size limits: MediaView dialog says "حداکثر ۵۰MB" but MediaUploader (in compose) says "۱۰ مگابایت (image) / ۲۰۰ مگابایت (video)". Pick one source of truth.
+
+P3-3  src/components/views/settings-view.tsx:1041,1060,1079
+  `toPersianDigits('۲۹۰,۰۰۰')` — already Persian digits, the function is a no-op. Cosmetic.
+
+P3-4  src/components/views/content-view.tsx:209
+  Campaign `<SelectItem value={c.name}>` uses campaign name as the value (not id). If two campaigns share a name, the filter is ambiguous. Use `c.id` and resolve name in the filter predicate.
+
+P3-5  src/components/onboarding/wizard.tsx:492
+  `{caption.length} کاراکتر` — Latin digits. Use `toPersianDigits(caption.length)`.
+
+P3-6  src/components/onboarding/wizard.tsx:206-213, 220-230
+  Wizard uses raw `<input>`/`<select>` instead of shadcn `<Input>`/`<Select>` used elsewhere. Inconsistent styling.
+
+P3-7  src/components/ui/button.tsx:11-26
+  Default button variants use `bg-primary`/`bg-destructive`, but the app's design system uses `bg-accent`/`bg-danger` tokens. Every call site overrides via className (`bg-accent text-white hover:bg-accent-hover`). The `default` and `destructive` variants are effectively unused. Consider aligning the primitive with the design tokens, or document the override pattern.
+
+P3-8  src/components/editor/platform-preview-tabs.tsx:197, 268, 327
+  Preview images use `alt=""` (empty) — acceptable for decorative, but in IG/LinkedIn previews the image IS the content. Add `alt={title || 'پیش‌نمایش محتوا'}`.
+
+P3-9  src/components/views/compose-view.tsx:974-992
+  IRAN_HOLIDAYS calculation: `const remaining = month - today.month || (month === today.month ? day - today.day : 30)` — the `|| 30` fallback is suspicious. For a holiday next month it returns `month - today.month` (correct), but for same-month it returns `day - today.day` only if positive, otherwise 30 (wrong for past-day holidays in current month). Logic should be a proper date diff.
+
+P3-10 src/components/shell/sidebar.tsx:264-272
+  "راهنما" / "وضعیت سرویس" links go to `/help` and `/status` — both routes exist (verified in src/app/help/ and src/app/status/), so these are fine. Noting as verified-working to avoid the previous audit's false-positive.
+
+P3-11 src/components/views/compose-view.tsx:846-852
+  Campaign `<Select>` has no empty/none option. Once a campaign is selected, the user can't deselect — the placeholder "بدون کمپین" is shown only when value is empty. Add a `<SelectItem value="">بدون کمپین</SelectItem>` option.
+
+P3-12 src/components/editor/nashrino-editor.tsx:100
+  Link insertion uses `window.prompt()` — breaks the design system and is blocked by some popup blockers. Should be a small inline popover dialog.
+
+P3-13 src/components/automation/comment-dm-rules.tsx:116, 511
+  Uses native `window.confirm()` for unsaved-changes and delete confirmation. Works, but breaks the visual design system. Should use `<AlertDialog>`.
+
+═══════════════════════════════════════════════════════════════════════════════
+CROSS-CUTTING OBSERVATIONS (not individual bugs, but patterns to fix)
+═══════════════════════════════════════════════════════════════════════════════
+
+X-1  "به‌زودی" (Coming soon) anti-pattern: at least 9 buttons across the app use `toast.info('… به‌زودی فعال خواهد شد.')` instead of being disabled or hidden. This trains users to distrust the UI. Either implement the feature, hide the button, or use a visible "به‌زودی" badge with `disabled` so users know upfront.
+
+X-2  Optimistic-update-without-API anti-pattern: content-view, campaigns-view, media-view all use `useMutation` whose `mutationFn` is `setTimeout(120)` — i.e. fake. The optimistic row appears, then vanishes on next refetch. This is worse than no button at all. Audit all `mutationFn: async () => { await new Promise(r => setTimeout(r, ...)) }` patterns and either wire real endpoints or remove the buttons.
+
+X-3  Inconsistent number formatting: most of the app wraps numbers in `toPersianDigits()`, but ~10 call sites render raw Latin digits (inbox unreadCount, onboarding caption.length, analytics logs in some cells). Run `rg "\{.*\.length\}"` and audit each.
+
+X-4  Touch target compliance: many interactive elements are `size-8` (32px) or `text-2xs + py-0.5` (~20px). Apple HIG / WCAG 2.5.5 recommends ≥44×44px. Systematically audit icon-only buttons and ensure `min-h-[44px] min-w-[44px]` on mobile-visible controls.
+
+X-5  Destructive-action guards: delete/disconnect actions are inconsistent — channels-view uses `<AlertDialog>` (good), content-view/media-view use `toast.error('نیازمند تأیید است')` with no actual confirm (bad). Standardize on `<AlertDialog>` for all destructive actions.
+
+X-6  Routing orphan: `/channels/health` (ChannelHealthView) exists as a route but has NO link from anywhere in the sidebar, mobile nav, or channels-view. Users can only reach it by typing the URL. Either add a link from channels-view (e.g. a "سلامت کانال‌ها" button) or remove the route.
+
+---
+Task ID: 3
+Agent: Persian/RTL/Jalali Localization Audit
+Task: Full localization audit of Nashrino app
+
+Work Log:
+- Read worklog.md (last 220 lines) to understand project state: Nashrino is a Persian-first RTL social media management app at /home/z/my-project. Prior research established the rule "Persian digits for prose/UI counts, Western digits for analytics/charts/code" (worklog:431, 492).
+- Read /home/z/my-project/src/lib/jalali.ts (full file, 280 lines) — verified the gregorianToJalaliHelper algorithm (line 53-75) is the standard astronomical-arithmetic algorithm used by jalaali-js. jalaliToDate uses a 2-pass approach (find Persian 1/1, then add days) — correct. formatJalali output is "YYYY/MM/DD" (line 137) using Latin digits — consumers wrap in toPersianDigits.
+- Read /home/z/my-project/src/lib/validations.ts (full) — confirmed: NO Persian phone regex, no email locale handling, all error messages Persian.
+- Read /home/z/my-project/src/modules/automation/comment-dm-shared.ts (full) — confirmed normalizePersian only converts Arabic ي→ی and ك→ک + presentation-form variants for keyword matching. NOT applied to user-typed inputs (titles, captions, comments) elsewhere.
+- Read /home/z/my-project/src/components/views/calendar-view.tsx (lines 1-924) — calendar grid uses dir="rtl" with Saturday-first weekdays, Persian month names, Persian digits — looks correct. Found goToday (lines 241-262) duplicates the entire Jalali conversion algorithm inline instead of calling toJalali(new Date()).
+- Read /home/z/my-project/src/components/views/analytics-view.tsx (lines 1-576) — VERIFIED previous audit claim: Recharts container has dir="ltr" (lines 283, 334) forcing LTR X-axis (oldest left → newest right) and Y-axis on left side. KPI cards use Persian digit formatting via toPersianDigits (correct).
+- Read /home/z/my-project/src/components/dashboard/shared.tsx (lines 1-1032) — found KpiCard time-anchors use dir="ltr" with reversed labels (line 686-694). MiniChart (lines 305-574) SVG paths flow LTR by default — chart reads oldest→newest left→right.
+- Read /home/z/my-project/src/components/ui/jalali-picker.tsx (full) — JalaliDatePicker is correctly RTL with Persian month names + digits.
+- Read /home/z/my-project/src/components/ui/pagination.tsx + grep for sr-only English labels — found English aria-labels and visible labels in pagination/dialog/sheet/breadcrumb/carousel.
+- Read /home/z/my-project/src/components/views/channels-view.tsx, content-view.tsx, settings-view.tsx, campaigns-view.tsx, inbox-view.tsx, channel-health-view.tsx, compose-view.tsx, media-view.tsx (selected sections).
+- Read /home/z/my-project/src/components/automation/comment-dm-rules.tsx, ai-assistant-sheet.tsx, dashboard/publishing-pulse.tsx, operational-summary.tsx, executive-metrics.tsx, platforms-panel.tsx, chart-panel.tsx, editor/platform-preview-tabs.tsx, csv-import-dialog.tsx, media-uploader.tsx, utm-builder.tsx, nashrino-editor.tsx, ig-grid-preview.tsx, collaboration/comment-thread.tsx, shell/sidebar.tsx, mobile-bottom-nav.tsx, notification-popover.tsx, command-palette.tsx, onboarding/wizard.tsx.
+- Read /home/z/my-project/src/lib/api.ts — confirmed fetcher (line 14) treats response body text as the error message, leaking English API error strings into UI toasts.
+- Read /home/z/my-project/src/app/api/publish/route.ts, publish-jobs/route.ts, publish-jobs/[id]/route.ts, calendar/route.ts, analytics/route.ts, dashboard/metrics/route.ts, platforms/route.ts, workspace/route.ts, inbox/[id]/read/route.ts, inbox/[id]/assign/route.ts.
+- Read /home/z/my-project/src/modules/publications/errors.ts, job-errors.ts, route-helpers.ts, service.ts (selected), job-service.ts (lines 1-60, 200-299), analytics/service.ts, analytics/repository.ts, channels/service.ts (lines 30-130).
+- Grep checks: recharts/XAxis/YAxis, dir="ltr", dir="rtl", normalizePersian, normalizeDigits, toPersianDigits, Persian comma/semicolon/period patterns, ZWNJ usage, English error strings ("not_found", "member not found"), Persian compound words ("ثبت نام", "به روز", "می‌کنم"), keyword terminology ("کلمه کلیدی" vs "کلیدواژه"), phone validation regexes.
+- Verified IRAN_HOLIDAYS in jalali.ts has wrong dates: '7-28' (Mehr 28) and '9-30' (Mehr 30) are labeled "انقلاب اسلامی" and "پیروزی انقلاب" respectively, but the actual Iranian holiday "پیروزی انقلاب اسلامی" is on Bahman 22 (11-22). Mehr 28 and Mehr 30 are NOT national holidays.
+- Confirmed 11+ call sites interpolate raw Latin-digit numbers in Persian sentences without toPersianDigits wrap.
+- Confirmed 5+ Recharts containers force dir="ltr" (analytics-view + KpiCard time anchors).
+- Confirmed 8+ API routes return English error strings ('not_found', 'member not found') that leak through fetcher to UI toasts.
+- Confirmed normalizePersian is only applied in DM-matching context (comment-dm-shared.ts), NOT globally to user inputs (titles, captions, comment text).
+
+Stage Summary:
+
+═══════════════════════════════════════════════════════════════════════════════
+P0 — CRITICAL (broken or wrong for Persian users)
+═══════════════════════════════════════════════════════════════════════════════
+
+P0-1 src/lib/jalali.ts:41-42 — IRAN_HOLIDAYS has wrong dates for Islamic Revolution
+  Problem: '7-28': 'انقلاب اسلامی' (= Mehr 28 / Oct 20) and '9-30': 'پیروزی انقلاب' (= Mehr 30 / Oct 22). Both are wrong; the actual Iranian national holiday "پیروزی انقلاب اسلامی" is on Bahman 22 (= 11-22, February 11).
+  User impact: Persian users see red holiday annotations on Mehr 28 and Mehr 30 in the calendar (false positives) and MISS the actual Bahman 22 holiday annotation (false negative). The calendar actively misleads users about Iranian public holidays.
+  Fix: Replace both entries with `'11-22': 'پیروزی انقلاب اسلامی'` (single correct entry, Bahman 22 = February 11). The two wrong entries (7-28, 9-30) should be deleted entirely.
+
+P0-2 src/components/views/analytics-view.tsx:283, 334 + src/components/dashboard/shared.tsx:686-694 — LTR chart axes in RTL UI
+  Problem: All Recharts container divs are wrapped with `dir="ltr"` forcing (a) X-axis time to flow left→right (oldest left, newest right), and (b) Y-axis to render on the LEFT side. The KpiCard time anchors (shared.tsx:686-694) explicitly use `dir="ltr"` with "امروز" on the right and "۷ روز پیش" on the left, with the comment "LTR: oldest left → today right". This is REVERSED from Persian RTL reading order.
+  User impact: Charts look "foreign" in an otherwise RTL dashboard. Persian users read right-to-left, so they expect time to flow right→left (newest on left, oldest on right) and Y-axis on the right side (start of reading). The current layout forces eyes to track LTR against the natural reading direction, and the time-anchor labels are reversed relative to the chart's data flow.
+  Fix: Remove `dir="ltr"` from the chart containers. For Recharts, add `<XAxis reversed />` and `<YAxis orientation="right" />` to flip axes for RTL. For KpiCard time anchors, swap "امروز" and timeLabel positions and remove `dir="ltr"` (or change comment to "RTL: امروز right (start), oldest left (end)"). NOTE: many Persian financial apps keep chart X-axis LTR (matches global convention) — that is a defensible choice; the audit's complaint is that the choice is invisible and inconsistent with the surrounding RTL UI. At minimum, the time-anchor labels should be RTL-aligned regardless.
+
+═══════════════════════════════════════════════════════════════════════════════
+P1 — HIGH (visible inconsistency that confuses users)
+═══════════════════════════════════════════════════════════════════════════════
+
+P1-3 src/lib/api.ts:14 — English API error strings leak to UI toasts
+  Problem: fetcher throws `new Error(msg || ...)` using the raw response body text as the error message. Many API routes return English error strings:
+    - src/app/api/inbox/[id]/read/route.ts:23 — `{ error: 'not_found' }`
+    - src/app/api/inbox/[id]/assign/route.ts:28-29 — `{ error: 'not_found' }` and `{ error: 'member not found' }`
+    - src/app/api/inbox/[id]/reply/route.ts:27 — `{ error: 'not_found' }`
+    - src/app/api/content/[id]/reject/route.ts:28, content/[id]/approve/route.ts:23, content/[id]/submit-review/route.ts:23, content/[id]/comments/route.ts:34, 59, content/[id]/comments/[commentId]/route.ts:35 — `{ error: 'not_found' }`
+    - src/app/api/platforms/[id]/connect/route.ts:48 — `{ error: 'not_found' }`
+  User impact: When an action fails (e.g. trying to assign an inbox message to a deleted member), the toast.error displays "not_found" or "member not found" in English in the middle of a Persian UI. Breaks immersion and confuses non-technical users.
+  Fix: Either (a) replace English error strings with Persian ones in all API routes (`'not_found'` → `'یافت نشد'`, `'member not found'` → `'عضو تیم یافت نشد'`); OR (b) in api.ts fetcher, parse JSON and translate known error codes via a lookup table; OR (c) in each UI toast.error call, check for known English codes and replace. Recommend (a) — every other API route already returns Persian errors (publish, calendar, etc.).
+
+P1-4 Digit inconsistency — Latin digits interpolated in Persian sentences (no toPersianDigits wrap)
+  Multiple call sites render raw Latin numbers next to Persian words:
+  - src/components/onboarding/wizard.tsx:276 — `{connected.length} کانال متصل شده`
+  - src/components/onboarding/wizard.tsx:380 — `{healthy.length} کانال آماده انتشار است.`
+  - src/components/onboarding/wizard.tsx:492 — `{caption.length} کاراکتر`
+  - src/components/onboarding/wizard.tsx:652 — `{step + 1} از {STEPS.length}` (header progress)
+  - src/components/dashboard/shared.tsx:443 — aria-label `نمودار ${data.length} نقطه‌ای، آخرین مقدار ${fmt(data[lastIdx])}` (screen reader reads Latin digits)
+  - src/components/editor/ig-grid-preview.tsx:34 — `${mediaCount} رسانه`
+  - src/components/editor/nashrino-editor.tsx:219 — `{wordCount} واژه` (NOTE: line 226 in same file correctly uses `charCount.toLocaleString('fa-IR')` — inconsistent within same component)
+  - src/components/editor/csv-import-dialog.tsx:172, 177, 228, 241, 244 — `{validCount} ردیف معتبر`, `{errorCount} ردیف خطا`, `ایجاد ${validCount} پست`, `{result.created} پست با موفقیت ایجاد شد`, `{result.failed} پست ایجاد نشد`
+  - src/components/collaboration/comment-thread.tsx:116, 194, 203 — `{replies.length} پاسخ`, `{topLevel.length}`, `${resolvedCount} حل شده`
+  - src/components/views/inbox-view.tsx:304 — `{unreadCount} ناخوانده`
+  - src/components/views/inbox-view.tsx:643 — `const label = h > 0 ? \`${h}h ${m}m\` : \`${m}m\`` — uses Latin letters "h"/"m" with Latin digits for SLA timer, displayed next to Persian "تأخیر" on line 646
+  User impact: Numbers flip between Persian (۰-۹) and Latin (0-9) within the same Persian sentence, looking unprofessional and forcing the eye to context-switch.
+  Fix: Wrap every prose/UI count in `toPersianDigits(...)` or `.toLocaleString('fa-IR')`. For inbox-view.tsx:643 SLA timer, use `${toPersianDigits(h)}س ${toPersianDigits(m)}د` (س for ساعت, د for دقیقه). Run `rg "\{[a-zA-Z_][a-zA-Z0-9_.?\[\]]*(\.length)?\}\s*[ا-ی]"` and audit each match.
+
+P1-5 Persian phone validation missing
+  - src/components/views/settings-view.tsx:507-513 — phone Input has dir="ltr" but accepts any string. No regex like `^(\+98|0)?9\d{9}$`.
+  - src/lib/validations.ts — no phoneSchema. The workspace profile save endpoint (src/app/api/workspace/route.ts) only implements GET — there is no PATCH/PUT to save the phone at all (separate functional bug).
+  User impact: Persian users can type anything in the phone field (Persian digits, Arabic digits, letters) with no validation feedback.
+  Fix: Add `phoneSchema = z.string().regex(/^(\+98|0)?9\d{9}$/, 'شماره موبایل معتبر وارد کنید (مثال: 09121234567)')` to validations.ts and apply in a workspace PATCH route. Apply `normalizeDigits` before validation so users who type ۰۹۱۲... are accepted.
+
+P1-6 Arabic letter bleeding — normalizePersian NOT applied to user inputs
+  - src/modules/automation/comment-dm-shared.ts:73-74 — normalizePersian (ي→ی, ك→ک, presentation-forms unification) is ONLY called inside matchComment / parseKeywordList for the DM matching context.
+  - User-typed content (titles, captions, comments, hashtag, brand voice, campaign names) is stored and rendered RAW. If user types "كیفیت" (Arabic kaf ك U+0643) instead of "کیفیت" (Persian kaf ک U+06A9), or "كيك" (Arabic yeh ي) instead of "کیک" (Persian yeh ی), the text is stored with the wrong script and renders with different glyphs.
+  User impact: Two captions that look identical to the user but use different Arabic/Persian letter variants will not match in search, will not group together, and visually render with subtly different glyphs (Arabic yeh has two dots below in some fonts; Persian yeh is the same shape but is encoded differently). Persian users typing on Arabic keyboards (common on Windows) inadvertently produce Arabic letters.
+  Fix: Apply normalizePersian at the API/validation boundary for all free-text fields: title, caption, hashtags, comment text, campaign name, brand voice. Either add a `.transform(normalizePersian)` to each Zod schema in validations.ts, or normalize in the service layer before persisting. Document this in the API contract.
+
+═══════════════════════════════════════════════════════════════════════════════
+P2 — MEDIUM (inconsistency that hurts professionalism)
+═══════════════════════════════════════════════════════════════════════════════
+
+P2-7 src/components/views/settings-view.tsx:122 — mixed English "DM" in Persian feature label
+  Problem: `'اتوماسیون کامنت به DM'` — uses English "DM" abbreviation. The rest of the app uses "دایرکت" or "پیام مستقیم" (e.g., comment-dm-rules.tsx:163 "دایرکت خودکار", inbox-view.tsx:101 "پیام مستقیم").
+  Fix: Replace with `'اتوماسیون کامنت به دایرکت'`.
+
+P2-8 src/components/views/settings-view.tsx:139 — wrong Persian word order
+  Problem: `'API دسترسی'` — reads "API access" in awkward word order. Persian ezafe construction should be "دسترسی API" (access of API) or "دسترسی به API" (access to API).
+  Fix: Replace with `'دسترسی به API'`.
+
+P2-9 English sr-only and aria-label strings in shared UI components
+  - src/components/ui/pagination.tsx:59, 65, 73, 78, 93 — "Go to previous page", "Previous", "Go to next page", "Next", "More pages" (sr-only and visible labels)
+  - src/components/ui/dialog.tsx:67 — `<span className="sr-only">Close</span>`
+  - src/components/ui/sheet.tsx:71 — `<span className="sr-only">Close</span>`
+  - src/components/ui/breadcrumb.tsx:89 — `<span className="sr-only">More</span>`
+  - src/components/ui/carousel.tsx:188, 218 — `<span className="sr-only">Previous slide</span>`, `<span className="sr-only">Next slide</span>`
+  User impact: Persian screen-reader users hear English words ("Close", "Next", "More") when navigating these components.
+  Fix: Translate sr-only strings to Persian ("بستن", "قبلی", "بعدی", "بیشتر", "اسلاید قبلی", "اسلاید بعدی"). For pagination visible labels "Previous"/"Next", translate to "قبلی"/"بعدی".
+
+P2-10 src/components/views/settings-view.tsx:1041, 1060, 1079 — `toPersianDigits('۲۹۰,۰۰۰')` is a no-op + Latin thousand separator
+  Problem: The function `toPersianDigits` (jalali.ts:174) uses regex `/[0-9]/g` which only matches ASCII digits. The input `'۲۹۰,۰۰۰'` already has Persian digits (۰-۹), so the regex matches nothing and the function returns the input unchanged — the call is misleading. Additionally, the thousand separator is the English comma "," (U+002C) — Persian uses "٬" (U+066C, Arabic thousands separator).
+  Fix: Either change the input to ASCII digits and let the function do the conversion: `toPersianDigits('290,000')` — but this still leaves the Latin comma. Best fix: use Persian thousand separator directly: `toPersianDigits(290000)` (let toLocaleString handle grouping) or `'۲۹۰٬۰۰۰'` (with U+066C separator). Same fix needed at lines 116 and 132 (priceLabel fields).
+
+P2-11 src/components/views/settings-view.tsx:1034, 1053, 1072 — Latin "INV" prefix on invoice numbers
+  Problem: Invoice numbers like "INV-1403-003" use English "INV" prefix mixed with Jalali year 1403.
+  Fix: Either keep "INV-1403-003" (acceptable as a system identifier) OR translate to "فاکتور-۱۴۰۳-۰۰۳" for full Persian consistency.
+
+P2-12 src/components/shell/notification-popover.tsx:229 — informal Persian in formal UI
+  Problem: `'همه‌چیز رو خوندی'` — uses colloquial Persian ("رو" instead of "را", dropped "ه" on "چیز"). The rest of the notification UI uses formal register (e.g., line 230 "اعلان جدیدی وجود ندارد").
+  Fix: Replace with `'همه اعلان‌ها را خوانده‌اید'` for formal consistency.
+
+P2-13 src/components/dashboard/action-center.tsx:101 vs notification-popover.tsx:229 — inconsistent compound word spelling
+  Problem: action-center:101 uses "همه چیز" (with space), notification-popover:229 uses "همه‌چیز" (with ZWNJ). Persian orthography rule: indefinite pronoun "همه چیز" should be two words with regular space (it's not a compound noun). So action-center is correct; notification-popover is wrong on top of the register issue (P2-12).
+  Fix: Standardize on "همه چیز" (space, not ZWNJ) across the codebase.
+
+P2-14 src/components/views/inbox-view.tsx:223 — incorrect ZWNJ placement
+  Problem: `'به‌روزشد'` — uses TWO ZWNJs (one between به and روز, another between روز and شد). The verb "شد" should be a separate word, not joined with ZWNJ. The first ZWNJ (به‌روز) is correct (compound adjective); the second is wrong.
+  Fix: Replace with `'به‌روز شد'` (regular space between "روز" and "شد").
+
+P2-15 Terminology inconsistency: "keyword"
+  - src/components/views/inbox-view.tsx:113, 119 — "کلمه کلیدی" (with regular space, no ezafe yeh)
+  - src/modules/inbox/saved-replies.ts:74 — "کلیدواژه" (one compound word)
+  Persian orthography prefers "کلیدواژه" (single compound word). "کلمه کلیدی" should at minimum use ZWNJ + ezafe yeh: "کلمه‌ی کلیدی". But "کلیدواژه" is the cleaner term.
+  Fix: Pick one — recommend "کلیدواژه" everywhere for consistency. Update inbox-view.tsx:113, 119.
+
+P2-16 Terminology inconsistency: "reviewer" role label
+  - src/lib/ai/types.ts:22 — `{ id: 'reviewer', label: 'بلاگر', ... }` — "بلاگر" means "blogger", not "reviewer". The English id is "reviewer" but the Persian label is for a different concept.
+  Fix: Change label to "نقدکننده" or "بازبین" (reviewer).
+
+P2-17 Terminology inconsistency: "comment" / "likes"
+  - src/components/editor/platform-preview-tabs.tsx:223 — `{toPersianDigits(124)} پسند` — "پسند" alone is awkward; IG Persian UI uses "لایک".
+  - src/components/editor/platform-preview-tabs.tsx:340 — `{toPersianDigits(7)} نظر` — "نظر" for comment.
+  - src/components/views/inbox-view.tsx:100 — `'کامنت'` (transliteration) for comment.
+  - src/components/views/inbox-view.tsx:113, 119, 125 — "کامنت" again.
+  - src/lib/validations.ts:114 — `'کامنت خالی است'`.
+  Pick one term for "comment": "نظر" (formal Persian) OR "کامنت" (colloquial transliteration). Currently both used. Recommend "نظر" for formal UI.
+
+P2-18 Duplicate toPersianDigits function (DRY violation)
+  - src/components/shell/sidebar.tsx:78-80 — local `function toPersianDigits(n: number)` (only handles numbers, not strings)
+  - src/components/shell/mobile-bottom-nav.tsx:31-33 — local `function toPersianDigits(n: number)` (same)
+  - src/lib/jalali.ts:174 — canonical `toPersianDigits(input: string | number)` (handles both)
+  Problem: The two local copies only accept `number`, so they break if a string ever gets passed; changes to the canonical version (e.g., adding Arabic-Indic normalization) don't propagate.
+  Fix: Delete the local copies and `import { toPersianDigits } from '@/lib/jalali'` in both files.
+
+P2-19 src/app/api/dashboard/metrics/route.ts:13 — mojibake in source comment
+  Problem: `// There are 7 days أ— 4 metrics = 28 rows;` — contains Arabic alef-hamza "أ" (U+0623) plus em-dash "—" instead of multiplication sign "×" (U+00D7). Mojibake from a prior encoding conversion.
+  Fix: Replace with `// There are 7 days × 4 metrics = 28 rows;` (multiplication sign).
+
+P2-20 src/components/onboarding/wizard.tsx:71-74, 88-90 — mixed Latin/Persian in onboarding labels
+  - Line 71-74: `TIMEZONES` labels: "تهران (UTC+3:30)", "دبی (UTC+4)", "استانبول (UTC+3)", "UTC" — uses Latin digits and English "UTC" acronym.
+  - Line 88-90: `PLATFORM_PERMS` values: "Bot token از BotFather", "Bot token از پنل بله", "API key از پنل روبیکا" — mixes English "Bot token"/"API key" with Persian "از".
+  Fix: Translate "Bot token" → "توکن ربات", "API key" → "کلید API". For timezone labels, either keep "UTC±X:XX" (universal technical notation, acceptable) or translate to "تهمزن (UTC+۳:۳۰)" with Persian digits.
+
+P2-21 src/components/views/settings-view.tsx:151-152 — mixed English acronyms in feature list
+  - `'SSO و SAML'` — English acronyms mixed with Persian و.
+  - `'SLA 99.9٪'` — English "SLA" with Persian percent sign.
+  Tech acronyms are commonly kept in English in Persian tech writing, so acceptable, but should be consistent across the app. Currently "SLA" also appears in inbox-view.tsx:323 ("تأخیر SLA").
+
+P2-22 src/components/views/analytics-view.tsx:272, 329 — English source labels in ChartPanel
+  - Line 272: `source="Instagram API"` — rendered as "منبع: Instagram API" (Persian label + English value).
+  - Line 329: `source="Multi-platform"` — rendered as "منبع: Multi-platform".
+  Fix: "Multi-platform" should be "چند پلتفرمی" or "چندسکویی" (Persian). "Instagram API" is a proper noun, can stay in English.
+
+═══════════════════════════════════════════════════════════════════════════════
+P3 — LOW (minor polish)
+═══════════════════════════════════════════════════════════════════════════════
+
+P3-23 src/components/views/calendar-view.tsx:241-262 — `goToday` duplicates the Jalali conversion algorithm inline
+  Problem: Instead of calling `const j = toJalali(new Date()); setCalendarCursor(j.year, j.month)`, the function re-implements the entire gregorianToJalaliHelper algorithm (lines 241-259) inline. Fragile: if jalali.ts algorithm changes, this copy goes stale silently.
+  Fix: Replace inline algorithm with `const j = toJalali(new Date()); setCalendarCursor(j.year, j.month); announce(\`امروز — ${JALALI_MONTHS[j.month - 1]} ${toPersianDigits(j.year)}\`)`.
+
+P3-24 src/components/views/media-view.tsx:310 vs src/components/editor/media-uploader.tsx:231 — inconsistent megabyte unit
+  - media-view.tsx:310: "JPG, PNG, MP4 — حداکثر ۵۰MB" — Latin "MB".
+  - media-uploader.tsx:231: "JPEG, PNG, WebP, GIF (حداکثر ۱۰ مگابایت) — MP4, MOV, WebM (حداکثر ۲۰۰ مگابایت)" — Persian "مگابایت".
+  Fix: Pick one. Recommend Persian "مگابایت" for user-facing text. Update media-view.tsx:310 to "حداکثر ۵۰ مگابایت".
+
+P3-25 src/components/views/inbox-view.tsx:323 — "تأخیر SLA" tab label uses English acronym
+  Tech acronym acceptable, but should be consistent. "SLA" appears here and in settings-view.tsx:152 ("SLA 99.9٪"). Either keep "SLA" everywhere or translate to "توافق سطح خدمات" everywhere.
+
+P3-26 src/app/help/page.tsx:80, 81, 82, 117 — Persian digits mixed with Latin unit abbreviations
+  - "۸MB (JPG/PNG)", "۴GB (MP4)", "۵MB", "۵GB", "۵۰MB", "JPG، PNG، GIF، WebP ... MP4، MOV، AVI ... حداکثر حجم فایل: ۵۰MB"
+  Persian digits + Latin abbreviations. Acceptable since file format names are universal, but the unit "MB"/"GB" could be Persian "مگابایت"/"گیگابایت" for consistency with media-uploader.tsx:231.
+
+P3-27 src/components/views/settings-view.tsx:1147 — English placeholder "Instagram Organic"
+  Problem: UTM preset name input has `placeholder="Instagram Organic"` (English). Other UTM field placeholders are also English (`"instagram"`, `"social"`, `"spring_2026"`) — these are correct since UTM parameters are URL query strings (must be ASCII). But the user-visible "Name" field placeholder should be Persian.
+  Fix: Change line 1147 placeholder to `"مثال: اینستاگرام ارگانیک"`. Leave source/medium/campaign placeholders as English (they go into URLs).
+
+P3-28 src/components/views/calendar-view.tsx:919 — fallback assignee initial uses Persian question mark correctly
+  `{!job.assignee || job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}` — uses Persian "؟" (U+061F). Correct.
+
+P3-29 ZWNJ usage is generally correct across the codebase
+  Audited: "ثبت‌نام", "می‌کنم", "می‌رود", "برمی‌گردد", "به‌روزرسانی", "پیش‌نویس", "نیازمند", "ارسال‌نامه" all use ZWNJ correctly. AI prompt guidance in src/lib/ai/zai.ts:196 and gemini.ts:593-594 explicitly instructs the LLM to use ZWNJ in compound verbs and plural suffixes. Only the two issues in P2-13 (همه‌چیز vs همه چیز) and P2-14 (به‌روزشد) need fixing.
+
+═══════════════════════════════════════════════════════════════════════════════
+WHAT IS ALREADY CORRECT (verified — no action needed)
+═══════════════════════════════════════════════════════════════════════════════
+
+✓ src/lib/jalali.ts gregorianToJalaliHelper algorithm — verified correct (matches jalaali-js community algorithm).
+✓ Calendar grid (calendar-view.tsx) — Saturday-first weekdays, Persian month names, Persian digits, dir="rtl" on grid, Iranian holiday annotations, weekend tinting. Solid implementation.
+✓ JalaliDatePicker (jalali-picker.tsx) — native Persian calendar grid, no react-day-picker wrapper, Persian digits + month names, dir="rtl", keyboard accessible.
+✓ formatJalali / formatJalaliTime / formatJalaliShort / relativeTime — all use Persian output where appropriate.
+✓ toPersianDigits / normalizeDigits (jalali.ts:174-183) — handle both Persian (۰-۹) and Arabic-Indic (٠-٩) digit normalization.
+✓ Most of the dashboard (executive-metrics, publishing-pulse, platforms-panel, channel-health-view, campaigns-panel, operational-summary) consistently wraps numeric output in toPersianDigits or formatCompact.
+✓ Persian punctuation: comma "،", question mark "؟", percent "٪" used consistently across UI prose.
+✓ Persian ZWNJ: used correctly in compound verbs (می‌روم, نمی‌خواهم), plural suffixes (پست‌ها, کاربران), and compound nouns (ثبت‌نام, گفت‌وگو) throughout the codebase.
+✓ API routes mostly return Persian error messages (publish/route.ts, calendar/route.ts, workspace, channels, publications domain errors — all Persian). Only inbox/content member routes leak English (P1-3).
+✓ Vazirmatn font loaded with arabic+latin subsets (layout.tsx:13-17), lang="fa" dir="rtl" on <html> (layout.tsx:49), Persian-friendly font-feature-settings (globals.css:742-770).
+✓ Auth pages (signin-form.tsx) use dir="ltr" appropriately for email/password inputs (ASCII content).
+✓ Analytics API stores dates as ISO "YYYY-MM-DD" (Gregorian) in DB, frontend converts to Jalali via formatJalaliShort on display — correct pattern.
+
+
+---
+Task ID: 6
+Agent: Backend/API Audit
+Task: Full backend, API, security, worker audit (read-only)
+
+Work Log:
+- Read worklog.md tail to understand prior phase work (Phases 1–7, gate1, DM-auto UI/worker, accessibility audit complete).
+- Enumerated all 75 API route files via `find src/app/api -name route.ts`.
+- Read core guard/middleware infrastructure: src/lib/auth-guards.ts (requirePermissionApi + 21-permission matrix), src/lib/auth.ts (NextAuth + MFA + lockout), src/lib/validations.ts (Zod schemas + helpers), src/lib/ratelimit.ts (Redis fixed-window), src/proxy.ts (middleware + CSP).
+- Spot-read ~30 representative route files across every category: auth/MFA, members+invitations, platforms+oauth, content review/comments/import, inbox + saved-replies, automation comment-dm-rules, publish + publish-jobs + outbox + publications resolve, media (presign/local-upload/confirm/list/delete), utm-presets, ai (caption/caption-multi/hashtags/drafts), campaigns, calendar, channels/health, dashboard (summary/metrics/pulse/action-center), analytics (route/per-post/real), best-time-to-post, posting-schedule, compose-draft, support-bundle, vitals, metrics, health/readyz, realtime-token.
+- Read all domain service+repository modules: publications (service/repository/job-service/route-helpers), membership, channels, content, inbox, identity, media, automation/comment-dm, scheduling, oauth, dashboard, analytics, support-bundle, utm.
+- Read prisma/schema.prisma (866 lines, 30+ models) — checked indexes, cascades, unique constraints.
+- Read worker (mini-services/publish-worker/index.ts 1015 lines + lib/queue.ts + lib/circuit.ts + lib/retry.ts + lib/retry-directive.ts + lib/attempt-ledger.ts + lib/outbox-dispatcher.ts + lib/rate-limiter.ts + lib/comment-dm-scanner.ts + lib/reconciliation-scanner.ts + lib/token-expiry-scanner.ts + lib/media-cleanup.ts).
+- Read realtime (mini-services/realtime/index.ts + shared/realtime-jwt.ts) — verified JWT handshake, room scoping, EMIT_SECRET comparison.
+- Read src/lib/crypto.ts, src/lib/mfa.ts, src/lib/password.ts, src/lib/audit.ts for secret handling.
+- Grep-verified: 67/75 routes call an auth function; 12 routes have rate-limiting; 24 routes use `throw err` for unknown errors; routes lacking `.catch()` on req.json().
+- Cross-checked producer-side queue config (src/lib/queue.ts has attempts:5) vs worker-side (mini-services/publish-worker/lib/queue.ts has NO attempts config) → identified major retry-reliability gap.
+
+Stage Summary:
+
+# P0 — Security/Data-loss
+
+(none found — auth/permission matrix, transactional outbox, MFA, password hashing, JWT verification, and tenant isolation are all in place. No P0 issues.)
+
+# P1 — Broken or Unsafe
+
+P1-1  Worker retry reliability gap — BullMQ `attempts` not set on the producer side used by the outbox dispatcher.
+  File: mini-services/publish-worker/lib/queue.ts:23-29 (defaultJobOptions lacks `attempts`/`backoff`).
+  Cross-ref: src/lib/queue.ts:22 sets `attempts: 5, backoff: { type: 'exponential', delay: 1000 }` — but that Queue instance is only used by job-service.ts (retry/reschedule paths). All NEW publish jobs go through the outbox dispatcher, which uses the worker's queue.ts.
+  Problem: New publish jobs are created with BullMQ default attempts=0 (=1 attempt total). When the worker hits a retryable error without `retryAfterMs` (every adapter except Telegram 429), the worker throws plain Error → BullMQ marks the job permanently failed with no retry.
+  Attack/failure scenario: Any transient provider 5xx or network blip on a new publish → permanent failure, no automatic retry. The user sees "ناموفق" and must manually click retry. For high-volume publishers this is a chronic reliability gap.
+  Fix: Add `attempts: 5, backoff: { type: 'exponential', delay: 1000 }` to mini-services/publish-worker/lib/queue.ts defaultJobOptions (mirror src/lib/queue.ts).
+
+P1-2  `publicationsService.resolve()` performs 3 separate DB writes (Publication.update + OutboxEvent.create + AuditLog.create) WITHOUT a transaction.
+  File: src/modules/publications/service.ts:243-334 (all 4 action branches + audit log).
+  Problem: For `duplicate_safe_retry`, if OutboxEvent.create fails (DB hiccup, connection drop) AFTER Publication.update succeeds, the publication is reset to `status:'pending'` + `reconciliationStatus:null` but NO outbox event is created → the dispatcher never re-enqueues it → the publication sits in 'pending' forever, invisible to the user.
+  Attack/failure scenario: Operator clicks "duplicate_safe_retry" during a brief DB connection blip → publication silently stuck in 'pending' state, never re-dispatched. No error surfaced to operator.
+  Fix: Wrap the action switch + outboxEvent.create in `db.$transaction(async (tx) => { ... })`. Audit log can stay outside (best-effort) or be moved inside.
+
+P1-3  `/api/automation/comment-dm-rules` POST + PATCH + DELETE — no Zod validation, trusts `req.json()` directly.
+  File: src/app/api/automation/comment-dm-rules/route.ts:33 (`const body = await req.json()`), :36-61 manual field extraction with no length/type limits.
+  File: src/app/api/automation/comment-dm-rules/[id]/route.ts:17 (PATCH), :61 (DELETE).
+  Problem: `dmTemplate`, `buttonText`, `buttonUrl`, `publicReply`, `optOutKeyword` are unbounded strings — attacker can POST a 10MB `dmTemplate`. `buttonUrl` not validated as URL (could be `javascript:alert(1)` reflected in admin UI). `freqCapHours` not bounded (could be negative or 999999). `platformId` not validated as UUID. Catch-all `catch (err) { return 400 }` masks server errors as client errors. DELETE catch-all returns 404 for any error (masks 500s).
+  Attack/failure scenario: DoS via huge unbounded strings; invalid data persisted; server errors hidden from operators; potential XSS if buttonUrl rendered as link without sanitization.
+  Fix: Add a Zod schema (e.g. `commentDmRuleCreateSchema`, `commentDmRuleUpdateSchema`) to src/lib/validations.ts with bounded strings (max 2000 for dmTemplate, max 200 for buttonText, z.string().url() for buttonUrl, freqCapHours int 0-168). Validate `platformId` as UUID. Map known errors to 400/404, rethrow unknowns.
+
+P1-4  `/api/utm-presets` POST + `/api/utm-presets/[id]` PATCH — no Zod validation, trusts `req.json()` directly.
+  File: src/app/api/utm-presets/route.ts:19 (`const body = await req.json()`)
+  File: src/app/api/utm-presets/[id]/route.ts:13 (PATCH)
+  Problem: `name`, `source`, `medium`, `campaign`, `term`, `content` are unbounded strings. `platforms` array unbounded. `isDefault` not type-checked. Service does minimal presence check (name/source/medium required) but no length limits. Catch-all returns 400 for any error.
+  Attack/failure scenario: DoS via huge name/source strings; invalid data persisted.
+  Fix: Add `utmPresetSchema` to validations.ts with bounded strings (max 100 for name, max 200 for others), validate platforms as UUID array, isDefault as boolean.
+
+P1-5  `/api/inbox/saved-replies` POST + `/api/inbox/saved-replies/[id]` PATCH — no Zod validation, trusts `req.json()` directly.
+  File: src/app/api/inbox/saved-replies/route.ts:21 (`const body = await req.json()`)
+  File: src/app/api/inbox/saved-replies/[id]/route.ts:12 (PATCH)
+  Problem: `title` and `body` unbounded strings. Service does `data.title.trim()` presence check but no max length. Catch-all returns 400 for any error (masks 500s).
+  Attack/failure scenario: DoS via huge title/body; server errors hidden.
+  Fix: Add `savedReplySchema` to validations.ts (title max 100, body max 2000).
+
+P1-6  `/api/compose-draft` POST — minimal validation, unsafe type assertions.
+  File: src/app/api/compose-draft/route.ts:29-43
+  Problem: `content` validated only as `typeof content === 'object'` — accepts any structure including 10MB nested object. `channelIds` cast `as string[]` without UUID validation. `scheduledAt` cast `as string | null` without ISO date validation. `version` not type-checked. The `contentJson = content as Parameters<...>` cast bypasses Prisma's type safety.
+  Attack/failure scenario: DoS via huge `content` object; invalid channelIds persisted; malformed scheduledAt stored; corrupt draft JSON crashes the compose UI on next load.
+  Fix: Add `composeDraftSchema` to validations.ts: content as z.object with bounded fields, channelIds as z.array(z.string().uuid()).max(20), scheduledAt as z.string().datetime().nullable(), version as z.number().int().optional().
+
+P1-7  `/api/calendar` — no pagination, returns ALL jobs in 30-day window.
+  File: src/app/api/calendar/route.ts:37-46 (`findMany` with no `take`/`cursor`)
+  Problem: For workspaces with many scheduled jobs (e.g. 500+ in a month), this returns 500+ records in one response. No upper bound.
+  Attack/failure scenario: Slow response + high memory for high-volume workspaces; calendar UI renders sluggishly.
+  Fix: Add `take: 500` ceiling or cursor pagination. Document the limit in the response.
+
+P1-8  `/api/analytics/per-post` — `take: limit` with no cursor; `limit` and `campaignId` unvalidated.
+  File: src/app/api/analytics/per-post/route.ts:16-26
+  Problem: `limit = Math.min(Number(req.nextUrl.searchParams.get('limit') ?? 50), 100)` — manual parsing, no Zod. `campaignId` taken raw from query string with no validation. No cursor pagination → can never paginate beyond first 100. Audit claimed pagination was fixed but this endpoint was missed.
+  Attack/failure scenario: NaN limit (Number(undefined) → NaN → Math.min(NaN,100) → NaN → Prisma throws). Invalid campaignId triggers DB error.
+  Fix: Use `cursorPaginationSchema` + `z.object({ campaignId: z.string().uuid().optional() })`. Add cursor pagination.
+
+P1-9  Worker's per-platform circuit breaker + rate-limiter are in-memory only — multi-instance hazard.
+  File: mini-services/publish-worker/lib/circuit.ts (whole file, `breakers = new Map()`)
+  File: mini-services/publish-worker/lib/rate-limiter.ts:51 (`buckets = new Map()`)
+  Problem: With N worker replicas, each maintains independent breaker state. A provider 5x-failure trips one worker's breaker; the other N-1 workers keep hammering the broken provider (multiplied load). Same for rate-limiter — N workers each get full token bucket = N× rate limit.
+  Attack/failure scenario: Scaling workers horizontally (HA / throughput) silently breaks the rate-limit + circuit-breaker contracts. Could cause provider bans (Telegram/IG 429 storms) or mask real outages.
+  Fix: Move breaker state to Redis (SET + EXPIRE per (workspace,platform) key). Move rate-limiter to Redis token-bucket (Lua script for atomic check+decrement). The rate-limiter file already documents this as a known limitation (line 14-19) — flagging as P1 because the worker is designed for HA (see compose.production.yaml).
+
+P1-10  `/api/metrics` and realtime `/metrics` are unauthenticated.
+  File: src/app/api/metrics/route.ts:22 (no auth check)
+  File: mini-services/realtime/index.ts:200-204 (no auth check)
+  Problem: Anyone on the network can fetch Prometheus metrics — exposes route labels, request counts, publish job outcomes by platform, process memory/CPU, internal service topology. Middleware (src/proxy.ts:137) explicitly skips /api/metrics with a comment saying "restrict via network policy or reverse-proxy at the edge" — but no enforcement in app code.
+  Attack/failure scenario: Information disclosure to anyone who can reach the app/realtime port. In a misconfigured deployment (metrics port exposed publicly), leaks business volume + tech stack.
+  Fix: Either (a) add a `METRICS_TOKEN` env var and require `Authorization: Bearer <token>` header, or (b) bind the metrics endpoint to localhost only (separate HTTP server on 127.0.0.1), or (c) document loudly in DEPLOYMENT.md that network policy MUST block /api/metrics and /metrics from public access (current state — relies on operator discipline).
+
+# P2 — Degraded
+
+P2-1  `/api/vitals` accepts arbitrary `name` strings as Prometheus histogram labels → cardinality attack.
+  File: src/app/api/vitals/route.ts:14-44 (POST handler)
+  Problem: No auth required, no validation that `name` is one of LCP/INP/CLS/FCP/TTFB. Any string becomes a histogram label combo `{metric: name, rating: rating}`. An attacker can POST 1000 requests with unique `name` values → 1000×N label series → Prometheus OOM / query slowdown.
+  Attack/failure scenario: Unauthenticated DoS via label cardinality explosion. The histogram becomes useless for legitimate dashboards.
+  Fix: Validate `name` against `z.enum(['LCP','INP','CLS','FCP','TTFB'])`. Reject unknown values with 400.
+
+P2-2  UTM preset `isDefault` clear-then-write is NOT atomic.
+  File: src/modules/utm/repository.ts:26-31 (create) and :55-61 (update)
+  Problem: `updateMany({ isDefault: false })` then `create/update({ isDefault: true })` — two separate writes. If the second fails (DB error), all presets in the workspace lose `isDefault` with no preset marked default.
+  Attack/failure scenario: Brief DB hiccup during preset save → workspace loses its default preset silently. User sees "no default" until manually re-set.
+  Fix: Wrap in `db.$transaction([updateMany, create/update])`.
+
+P2-3  6 routes use `await req.json()` without `.catch()` → malformed JSON throws → 500.
+  Files:
+    - src/app/api/inbox/saved-replies/route.ts:21
+    - src/app/api/inbox/saved-replies/[id]/route.ts:12
+    - src/app/api/utm-presets/route.ts:19
+    - src/app/api/utm-presets/[id]/route.ts:13
+    - src/app/api/automation/comment-dm-rules/route.ts:33
+    - src/app/api/automation/comment-dm-rules/[id]/route.ts:17
+    - src/app/api/ai/caption-multi/route.ts:33
+    - src/app/api/onboarding/route.ts:42
+  Problem: If the client sends malformed JSON (truncated POST body, bad proxy), `req.json()` throws SyntaxError → unhandled → Next.js returns generic 500 with English error. User sees "Internal Server Error" instead of a Persian validation message.
+  Attack/failure scenario: Bad client request → 500 instead of 400. Pollutes error dashboards.
+  Fix: Use `await req.json().catch(() => null)` + null-check pattern (already used in 25+ other routes).
+
+P2-4  24 routes use `throw err` for unknown errors → no Persian message, no structured logging.
+  Files: content/[id]/approve|reject|submit-review|comments, inbox/[id]/read|reply|assign, members/[id], members/invite (3 routes), mfa/setup|verify|disable, publications/[id]/resolve, publish-jobs/[id], platforms/[id]/connect|validate, media/[id]|presign|local-upload|confirm.
+  Problem: Unhandled errors propagate to Next.js default handler → returns English "Internal Server Error" + stack in dev. No Persian user message. No structured log line. Inconsistent with the routes that catch + return `{ error: 'خطای داخلی سرور' }` (e.g. publish/route.ts:65, ai/caption:53).
+  Attack/failure scenario: User sees English error during a server-side failure. Operator has no audit trail of the failure.
+  Fix: Standardize on a `handleRouteError(err, trace?, operation?)` helper that maps known domain errors to status codes, logs structured warn/error, and returns Persian `{ error: 'خطای داخلی سرور' }` for unknown errors. Apply to all 24 routes.
+
+P2-5  `/api/notifications` requires `analytics.view` permission — viewers can't read their own notifications.
+  File: src/app/api/notifications/route.ts:9
+  Problem: `analytics.view` matrix = admin/editor/approver (excludes viewer). Viewers can be mentioned/assigned but can't see notifications. Probably should be any authenticated workspace member.
+  Attack/failure scenario: Viewer-role users get inbox messages assigned to them but can't see the notification badge. UX bug, not security.
+  Fix: Use `requireWorkspaceApi()` (any member) instead of `requirePermissionApi('analytics.view')`. Or add a `notifications.read` permission granted to all roles.
+
+P2-6  `getChannelHealth` query on PublicationAttempt lacks `startedAt` index.
+  File: src/modules/channels/service.ts:272-278 (`where: { startedAt: { gte: sevenDaysAgo }, job: { workspaceId } }`)
+  File: prisma/schema.prisma:566-569 — PublicationAttempt indexes are [publishJobId], [publicationId], [requestFingerprint]. No index on `startedAt`.
+  Problem: For workspaces with many historical attempts, the 7-day scan joins PublicationAttempt with PublishJob to filter by workspaceId. Without a `startedAt` index, Postgres must scan + filter.
+  Attack/failure scenario: Slow channels/health page for high-volume workspaces (10k+ historical attempts). Dashboard latency.
+  Fix: Add `@@index([startedAt])` to PublicationAttempt in schema.prisma + migration.
+
+P2-7  `analytics/service.getRealStats` makes sequential provider API calls + puts IG access_token in URL.
+  File: src/modules/analytics/service.ts:38-86 (for...of with await inside)
+  File: src/modules/analytics/service.ts:66 (`?access_token=${token}` in URL)
+  Problem: (a) Sequential fetches — 5 platforms = 5× latency. (b) IG access_token in URL query string is logged in server access logs (Caddy/nginx default logs), proxy logs, APM traces. Token leak risk.
+  Attack/failure scenario: Slow analytics page; token leak via log aggregation.
+  Fix: (a) Use `Promise.allSettled(platforms.map(...))` for parallelism. (b) Move IG access_token to `Authorization: Bearer` header (Facebook Graph API supports both).
+
+P2-8  Realtime membership cache 60s TTL delays revocation.
+  File: mini-services/realtime/index.ts:83-107 (`membershipCache` with CACHE_TTL_MS = 60_000)
+  Problem: When admin revokes a member's workspace access, the revoked user can still subscribe to realtime events for up to 60 seconds (until their cache entry expires).
+  Attack/failure scenario: Disgruntled employee revoked at T=0 can still see real-time publish events until T+60s.
+  Fix: Reduce TTL to 10s, or invalidate cache on revoke (publish a Redis pub/sub message that all realtime instances consume), or check DB on every subscribe (skip cache) for higher fidelity.
+
+P2-9  PostingSchedule PUT doesn't verify `platformId` belongs to the workspace.
+  File: src/app/api/posting-schedule/[platformId]/route.ts:20-28
+  Problem: `upsertSchedule(workspaceId, { platformId, schedule, isActive })` creates a PostingSchedule row with the user-supplied `platformId` + the user's `workspaceId`. No check that the platform belongs to this workspace.
+  Attack/failure scenario: User in workspace A passes platformId from workspace B → creates a dangling PostingSchedule row (workspaceId=A, platformId=B's-platform). The schedule is never used (workspace A's publish flow queries by platformId in workspace A's platforms). Mostly harmless but allows existence probing of foreign platformIds (no 404) and creates orphan rows.
+  Fix: Add `await db.platform.findFirst({ where: { id: platformId, workspaceId } })` check before upsert. Also validate `schedule` body with a Zod schema.
+
+P2-10  `/api/posting-schedule/[platformId]` PUT — no Zod validation on `schedule` body.
+  File: src/app/api/posting-schedule/[platformId]/route.ts:24-27
+  Problem: `body.schedule` accepted as any structure. The service (`upsertSchedule`) casts it `as any` and stores as JSON. The worker's `getNextQueueSlot` reads `schedule.find(s => s.day === checkJalaliDay).slots` — if schedule is malformed (e.g. `{day: "monday"}` instead of `{day: 0, slots: ["09:00"]}`), `getNextQueueSlot` returns null silently.
+  Attack/failure scenario: Malformed schedule stored → scheduled publishes silently skip queue slots → user thinks they're queued but they're not.
+  Fix: Add Zod schema: `z.array(z.object({ day: z.number().int().min(0).max(6), slots: z.array(z.string().regex(/^\d{2}:\d{2}$/)).max(20) })).max(50)`.
+
+# P3 — Minor
+
+P3-1  HTTP method semantics inconsistencies:
+  - POST `/api/content/[id]/comments` returns 200 (not 201) on create — src/app/api/content/[id]/comments/route.ts:57
+  - POST `/api/inbox/[id]/reply` returns 200 (not 201) — src/app/api/inbox/[id]/reply/route.ts:25
+  - POST `/api/inbox/[id]/read` returns 200 (idempotent mark-read, OK)
+  - POST `/api/inbox/[id]/assign` returns 200 (idempotent, OK)
+  - POST `/api/content/[id]/approve|reject|submit-review` return 200 (state transitions, OK)
+  - DELETE `/api/media/[id]` returns `{ ok: true }` 200 instead of 204 — src/app/api/media/[id]/route.ts:25
+  - DELETE `/api/members/[id]` returns `{ ok: true }` 200 instead of 204 — src/app/api/members/[id]/route.ts:64
+  - DELETE `/api/ai/drafts/[id]` returns `{ ok: true, id }` 200 instead of 204 — src/app/api/ai/drafts/[id]/route.ts:28
+  Fix: Standardize — 201 for creates, 204 for deletes, 200 for state transitions / idempotent ops.
+
+P3-2  Error shape inconsistency across routes:
+  - `{ error: 'not_found' }` (English code) — content/[id]/approve:23, inbox/[id]/reply:27, etc.
+  - `{ error: 'پیام یافت نشد' }` (Persian) — inbox/[id]/status:37
+  - `{ error: 'invalid_transition', message: err.message }` (mixed code+message) — content/[id]/submit-review:25
+  - `{ error: 'forbidden', message: 'دسترسی کافی برای این عملیات ندارید' }` — auth-guards.ts:337
+  - `{ ok: true, ... }` — many routes
+  - `{ error: err.message }` (raw Error.message) — automation/comment-dm-rules:64, utm-presets:24, saved-replies:25
+  Problem: Client must special-case every shape. No centralized error normalizer.
+  Fix: Adopt one shape: `{ error: string; code?: string; message?: string }` where `error` is Persian user-facing, `code` is a stable machine code (e.g. 'NOT_FOUND', 'INVALID_TRANSITION'), `message` is optional detail. Add a `normalizeError(err)` helper.
+
+P3-3  `validateUserId()` in route-helpers returns empty string if session missing.
+  File: src/modules/publications/route-helpers.ts:71-74
+  Problem: `return session?.user?.id ?? ''`. The publish route then uses `userId: ''` in the AuthContext. If the guard somehow passed but session is stale (clock skew), the publication gets created with empty `userId`/`authorId`.
+  Fix: Throw or return null + 401 instead of silently returning ''. Defensive programming.
+
+P3-4  `constantTimeEqual` (worker index.ts:1008 + realtime index.ts:406) returns false early on length mismatch — technically not constant-time.
+  Problem: `if (a.length !== b.length) return false` leaks length info via timing. The comments acknowledge this (ASVS L2 V2.4.1 accepts the length leak for password comparison).
+  Fix: For defense-in-depth, use HMAC-based comparison: `timingSafeEqual(HMAC(a, key), HMAC(b, key))` — though for BOARD_PASSWORD this is overkill. Acceptable as-is.
+
+P3-5  Worker scanner `setTimeout` for initial scan NOT cleared on shutdown.
+  Files: lib/comment-dm-scanner.ts:70, lib/token-expiry-scanner.ts:32, lib/reconciliation-scanner.ts:46, lib/media-cleanup.ts:31, lib/invitation-cleanup.ts (similar pattern).
+  Problem: Each scanner schedules a 10-15s initial scan via `setTimeout` whose handle is never stored. On SIGTERM during the initial 15s window, the timer keeps the process alive (or fires after shutdown started).
+  Fix: Store the initial setTimeout handle alongside the interval handle and clear both in stop*().
+
+P3-6  `comment-dm-scanner` doesn't await in-flight scan on shutdown.
+  File: mini-services/publish-worker/lib/comment-dm-scanner.ts:83-89 (stopCommentDmScanner only clears the interval)
+  Problem: If a scan is mid-way through sending a DM when SIGTERM arrives, the scan continues running. Worker's `await worker.close()` waits for the BullMQ processor but NOT for the scanner. Process can exit mid-DM-send.
+  Fix: Track `scanInProgress` and await it in `stopCommentDmScanner()` (with a bounded timeout).
+
+P3-7  `SavedReply.createdById` is a plain string, no FK relation or index.
+  File: prisma/schema.prisma:760 (`createdById String?`)
+  Problem: Denormalized — no referential integrity to User or WorkspaceMember. If a member is deleted, their saved replies keep the orphaned ID.
+  Fix: Add `@@index([createdById])` and either a relation to User (with onDelete: SetNull) or document as intentionally denormalized.
+
+P3-8  POST `/api/ai/caption-multi` doesn't bound `topic` length.
+  File: src/app/api/ai/caption-multi/route.ts:36-38 (`topic.trim().length < 3` checked but no upper bound)
+  Problem: Attacker can submit a 1MB topic → Gemini API call with huge input → wasted tokens + latency.
+  Fix: Add `topic.length > 2000` check (mirror aiCaptionSchema's max 1000).
+
+P3-9  PATCH `/api/onboarding` `timezone` field has no validation.
+  File: src/app/api/onboarding/route.ts:33 (`timezone: z.string().optional()`)
+  Problem: No max length, no timezone format validation. Could store `timezone: 'A'.repeat(10000)`.
+  Fix: `z.string().max(50).optional()` or use `z.string().refine(v => isValidTimeZone(v))`.
+
+P3-10  POST `/api/publications/[id]/resolve` `reason` field has min(10) but no max.
+  File: src/app/api/publications/[id]/resolve/route.ts:26 (`z.string().min(10, ...).max(?)`)
+  Problem: Stored in `publication.errorMessage` and audit log metadata. Unbounded → DoS / log bloat.
+  Fix: Add `.max(1000)`.
+
+P3-11  `compose-draft` POST uses unsafe `as` type assertions.
+  File: src/app/api/compose-draft/route.ts:31 (`as { content: Record<string, unknown>; channelIds: string[]; scheduledAt: string | null; version?: number }`)
+  Problem: TypeScript `as` cast bypasses runtime validation. If body has `channelIds: "not-an-array"`, the cast lies and downstream code crashes.
+  Fix: Replace with Zod schema (see P1-6).
+
+P3-12  `inbox/[id]/status` route uses `body?.status as InboxStatus | undefined` — works due to runtime check but uses unsafe cast pattern.
+  File: src/app/api/inbox/[id]/status/route.ts:27
+  Problem: Code smell. The runtime `VALID_STATUSES.includes(next)` check saves it, but the `as` cast is unnecessary.
+  Fix: Use `z.object({ status: z.enum(['new','assigned','in_progress','resolved']) })` + validateBody.
+
+P3-13  `inbox/[id]/reply`, `content/[id]/reject`, `publish-jobs/[id]` PATCH — `id` path param not validated with `validateId()`.
+  Files: src/app/api/inbox/[id]/reply/route.ts:9, src/app/api/content/[id]/reject/route.ts:9, src/app/api/publish-jobs/[id]/route.ts:21
+  Problem: Inconsistent with the [id] routes that DO validate (content/[id]/approve, content/[id]/comments, inbox/[id]/assign, inbox/[id]/read, content/[id]/comments/[commentId], publications/[id]/resolve, media/[id], ai/drafts/[id], platforms/[id]/validate).
+  Attack/failure scenario: Mostly harmless (Prisma rejects non-cuid strings with P2025), but inconsistent error response ("Record not found" vs Persian "شناسه الزامی است").
+  Fix: Apply `validateId(rawId)` pattern uniformly to all `[id]` routes.
+
+P3-14  `publish-jobs/[id]` PATCH only validates `reschedule` action with Zod; retry/discard/cancel bypass schema validation.
+  File: src/app/api/publish-jobs/[id]/route.ts:26-29 (`if (body.action === 'reschedule') { validate }`)
+  Problem: `body` is cast `as PatchBody` (line 25). If body is `{ action: 'retry', extra: 'junk' }`, the cast lies. For retry/discard/cancel no fields are needed so this is mostly OK, but the type narrowing is unsafe.
+  Fix: Use a discriminated-union Zod schema: `z.discriminatedUnion('action', [z.object({action: z.literal('retry')}), z.object({action: z.literal('discard')}), z.object({action: z.literal('cancel')}), rescheduleSchema])`.
+
+P3-15  `errorUrl` in OAuth service includes `providerErrorDescription` (attacker-controllable) in the redirect URL query string.
+  File: src/modules/oauth/service.ts:115-117 (`const desc = providerErrorDescription || providerError; return { redirectUrl: errorUrl(baseUrl, desc), ... }`)
+  Problem: `errorUrl` uses `encodeURIComponent(code)` so no injection, but the error description from the OAuth provider is reflected in the URL the user is redirected to. If a malicious provider (man-in-the-middle) returns a crafted error_description, it ends up in the user's browser URL bar.
+  Attack/failure scenario: Low risk (requires MITM on the OAuth flow, which would already be game-over). Mostly a UX/cleanliness issue.
+  Fix: Map provider errors to a fixed set of safe codes; don't reflect raw providerErrorDescription in the URL.
+
+P3-16  `/api/health` and `/api/readyz` are unauthenticated (intentional — orchestrator probes).
+  Files: src/app/api/health/route.ts, src/app/api/readyz/route.ts
+  Problem: Expose uptime, environment, package version, DB connection status. Low risk but worth noting.
+  Fix: Acceptable as-is (k8s/liveness probes need unauthenticated access). Consider throttling at the edge to prevent abuse.
+
+P3-17  `DISABLE_AUTH=1` dev bypass exists in auth-guards.ts:127 and proxy.ts:87.
+  Problem: If accidentally set in production, all auth is bypassed (admin role, dev-admin user).
+  Fix: Add a runtime check in instrumentation.ts that throws if `NODE_ENV === 'production' && DISABLE_AUTH === '1'`. The config-validator.ts may already check this — verify.
+
+P3-18  `PublishJob.idempotencyKey` has `@default("")` + `@@unique` — pre-publication rows with no key would conflict.
+  File: prisma/schema.prisma:517,540
+  Problem: If a PublishJob is ever created without an idempotencyKey (legacy or bug), the default "" plus @@unique means only ONE such row can exist workspace-wide before P2002. The publish service always sets it (line 186-187 of publications/repository.ts), so this is defensive. But the schema's `@default("")` is a footgun.
+  Fix: Change to `idempotencyKey String?` (nullable) + `@@unique([workspaceId, idempotencyKey])` for partial uniqueness, or remove `@default("")` and require non-null at creation.
+
+# Positive findings (verified working)
+
+- 67 of 75 routes use `requirePermissionApi` or equivalent auth guard. The 8 that don't are intentional (health, readyz, metrics, NextAuth handler, /api root, /api/vitals — public-by-design).
+- 21-permission RBAC matrix in auth-guards.ts is fail-closed (unknown roles denied) and properly tiered (viewer < approver < editor < admin).
+- Permission.denied events are audit-logged (auth-guards.ts:325-334).
+- Argon2id password hashing with OWASP-recommended params + legacy scrypt migration (password.ts).
+- MFA: TOTP with ±30s skew, 10 backup codes (SHA-256 hashed, single-use), rate-limited 5/5min (mfa.ts).
+- Account lockout: 5 failed attempts → 15-min lock (auth.ts:88-106).
+- Per-IP rate limit on credentials login (auth/[...nextauth]/route.ts:36-46).
+- Rate-limiting on auth-adjacent endpoints (mfa/setup, mfa/verify, mfa/disable, invite/accept).
+- CSRF: NextAuth built-in CSRF + SameSite=Lax cookies + CSP nonce (proxy.ts).
+- JWT verification: jose library, 9-claim profile, algorithm pinned to HS256, clock skew tolerance (shared/realtime-jwt.ts).
+- EMIT_SECRET verified with timingSafeEqual (realtime/index.ts:123).
+- Room scoping: workspaceId-based rooms + DB membership check on subscribe (realtime/index.ts:261-283).
+- Transactional outbox: Content + PublishJobs + Publications + OutboxEvents in single transaction (publications/repository.ts:92-281).
+- Idempotency: stable requestFingerprint (sha256(platformId+contentId+revisionId)) + publicationOperationId + BullMQ deterministic jobId + PublicationAttempt ledger with conditional updates (attempt-ledger.ts).
+- Outcome-unknown handling: blocks blind retries, routes to manual resolution (worker index.ts:367-379, retry-directive.ts).
+- Token encryption: AES-256-GCM with key rotation support (crypto.ts).
+- Prisma schema: every model with workspaceId has `@@index([workspaceId])`; cascades set appropriately; @@unique constraints on (workspaceId, email), (workspaceId, platformId), (ruleId, commentId), etc.
+- Cursor pagination on: content, inbox, members, publish-jobs, outbox/dead-letter, notifications, media, campaigns, platforms (8 endpoints).
+- Worker graceful shutdown: stopTimeout=30s + scanner stop functions + outbox dispatcher drain (index.ts:954-969).
+- Outbox dispatcher: atomic claim with SELECT FOR UPDATE SKIP LOCKED + lease/fencing + dead-letter + replay (outbox-dispatcher.ts).
+- Feature flags: server-side evaluation, per-workspace DB override, never exposed raw to client (flags.ts).
+
+# Summary
+
+No P0 issues. 10 P1 issues (most critical: P1-1 worker retry gap affects all outbox-dispatched publish jobs; P1-2 non-atomic resolve flow can permanently strand publications; P1-3/4/5 multiple mutation routes lack Zod validation). 10 P2 issues (metrics unauthenticated, vitals cardinality attack, UTM isDefault non-atomic, error handling inconsistency). 18 P3 issues (HTTP semantics, error shape, minor validation gaps, scanner timer leaks).
+
+The codebase shows strong security foundations (RBAC, MFA, transactional outbox, attempt ledger, JWT hardening) but has systematic gaps in (a) input validation on beta/recent features (comment-DM, UTM presets, saved replies, compose-draft, posting-schedule), (b) error normalization across routes, and (c) the worker's BullMQ retry config (P1-1 is the highest-impact reliability bug found).
+
+---
+Task ID: 5
+Agent: Code Quality Audit (focused)
+Task: Structure, naming, dead code, a11y, maintainability
+
+Work Log:
+  - Read tail of worklog.md (prior entry was Agent 4 bug audit summary)
+  - `find src/components src/app -name '*.tsx' | xargs wc -l | sort -rn | head -20` — top 5 god components identified
+  - Grep `: any|as any` in src/components (8 hits across 5 files) and src/app (0 hits)
+  - Grep `TODO|FIXME|HACK|XXX|@deprecated` in src/ — 2 hits total (in src/modules/automation/comment-dm.ts)
+  - Grep `eslint-disable` in src/ — 52 hits across 26 files; spot-checked contexts (mostly no-console for legit API error logging)
+  - Grep `mutationFn: async \(\) =>` returned 0; broadened to `mutationFn` in src/components — found 3 fake/stub mutations
+  - Grep `به‌زودی|coming soon` — 0 hits (no "coming soon" toasts)
+  - Verified import hygiene: 594 `@/`-alias imports vs 6 relative imports (all cross-package shared/ re-exports, no 4+-deep)
+  - Verified naming: 0 PascalCase .tsx files (all kebab-case); 101 `export function` vs 19 `export default` (all 19 are Next.js pages/layouts — required)
+  - A11y: 45 `aria-label` usages; spot-checked 3 icon-only `<Button size="icon">` missing aria-label via Python AST-style scan; 0 onClick-on-div violations except 1 correctly-implemented role="button"+tabIndex+onKeyDown div in media-view.tsx:401-411
+  - A11y: 7 raw `<img>` tags, 0 `next/image` usages anywhere; 4 imgs with `alt=""` on meaningful thumbnails
+  - Read targeted slices of: shared.tsx (1-80, plus grep exports), settings-view.tsx (1-30), media-view.tsx (75-109, 395-419), content-view.tsx (105-134), campaigns-view.tsx (120-134), sidebar.tsx (170-178)
+
+Stage Summary:
+
+P1-1 (Dead/fake code — UI pretends to work but doesn't persist):
+  Files:
+    - src/components/views/media-view.tsx:84-88 (uploadMutation)
+    - src/components/views/content-view.tsx:115-119 (createContentMutation)
+    - src/components/views/campaigns-view.tsx:127-131 (createCampaignMutation)
+  Problem: Three `useMutation` hooks use `mutationFn: async (newItem) => { await new Promise(r => setTimeout(r, 120)); return newItem }` — they simulate a 120ms network call, optimistically insert the row into the React Query cache, then `onSettled` invalidates the query which refetches from the real API, wiping the fake row. The "create" / "upload" actions look successful but never persist. Inline comments explicitly say "backend not wired yet".
+  Fix: Wire each mutationFn to its real API endpoint (`api.post('/api/media', formData)`, `api.post('/api/content', body)`, `api.post('/api/campaigns', body)`); if backend truly isn't ready, hide the "create" button or surface a "beta — not persisted" banner instead of silently swallowing.
+
+P2-1 (God components — 5 files >400 LOC, all in src/components/):
+  | Lines | File | What it does |
+  | 1252 | src/components/views/settings-view.tsx | Single component renders entire settings page: workspace, appearance, members, billing, notifications, UTM presets, saved replies, API tokens — 10 inline sub-components, 5 useMutation hooks |
+  | 1083 | src/components/views/compose-view.tsx | Composer: editor + platform picker + scheduler + UTM builder + media uploader + approval bar + preview tabs |
+  | 1031 | src/components/dashboard/shared.tsx | "Shared kitchen sink" — 23 unrelated exports: StatusBadge, PlatformBadge, PlatformIcon, SectionTitle, PanelHeader, Card, Sparkline, MiniChart, KpiCard, EmptyState, Skeleton×4, LoadingState, ErrorState, AnimatedTabs, etc. |
+  | 924  | src/components/views/calendar-view.tsx | Month/week/day views + day cell + job chip + queue row + drag-and-drop, all in one file |
+  | 785  | src/components/onboarding/wizard.tsx | 6 wizard step components (StepWelcome, StepWorkspace, StepConnect, StepVerify, StepFirstPost, StepDone) + orchestrator in one file |
+  Fix: Split shared.tsx into `dashboard/badges.tsx`, `dashboard/skeletons.tsx`, `dashboard/empty-states.tsx`, `dashboard/charts.tsx`. Split settings-view into one file per section (settings/workspace, settings/appearance, settings/members, …). Extract wizard steps to onboarding/steps/*.tsx.
+
+P2-2 (No `next/image` anywhere — 7 raw `<img>` tags):
+  Files:
+    - src/components/views/media-view.tsx:415 (item.thumbnail, has alt)
+    - src/components/views/calendar-view.tsx:892 (job.thumbnail, alt="")
+    - src/components/views/channels-view.tsx (any logo <img>) — verify
+    - src/components/editor/ig-grid-preview.tsx:30 (alt="preview")
+    - src/components/editor/platform-preview-tabs.tsx:197, 268, 327 (media[0].thumbnail, alt="")
+    - src/components/dashboard/publishing-pulse.tsx:142 (job.thumbnail, alt="")
+  Problem: Zero `import Image from 'next/image'` across the codebase. All images use raw `<img>`, missing automatic WebP/AVIF conversion, responsive srcset, lazy-loading, blur-up placeholders. Hurts LCP on dashboard and compose.
+  Fix: Migrate thumbnail renders to `next/image` with explicit width/height (or `fill` + sized parent). Keep `alt=""` only for purely decorative thumbnails; for content thumbnails use the item name as alt.
+
+P2-3 (Inline sub-components hinder testability & reuse):
+  Files:
+    - src/components/views/settings-view.tsx — 10 inline `function X()` components
+    - src/components/onboarding/wizard.tsx — 6 step components
+    - src/components/views/campaigns-view.tsx — 5
+    - src/components/views/inbox-view.tsx — 3 (SlaTimer, MessageListItem, TypeBadge)
+    - src/components/views/calendar-view.tsx — 3 (DayCell, JobChip, QueueRow)
+  Problem: Sub-components defined in the same file as the main view can't be imported in isolation for Storybook/tests, and they bloat files beyond readable size.
+  Fix: Co-locate as sibling files (e.g. `views/inbox/sla-timer.tsx`) and import; or accept inline only for one-shot helpers <50 LOC.
+
+P2-4 (`any` in compose-view.tsx — 4 usages):
+  File: src/components/views/compose-view.tsx
+    - :198  `let localDraft: any = null`
+    - :214  `const serverDraft: any = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw`
+    - :449  `onError: (err, _payload, context: any) => {`
+    - :1073 `platform={(selectedPlatforms[0] as any) || 'instagram'}`
+  Problem: Line 214 parses untrusted server/localStorage JSON into `any` — defeats the type system; should be `unknown` + Zod parse. Line 449 casts React Query context to `any` (use proper generic `useMutation<TData, TError, TVars, TContext>`). Line 1073 forces a string to a `Platform` literal type — fix the upstream type of `selectedPlatforms`.
+  Fix: `JSON.parse` → `zodSchema.safeParse(JSON.parse(raw))`; type mutation context via the 4th generic; type `selectedPlatforms` as `Platform[]` at the source.
+
+P3-1 (3 icon-only buttons missing `aria-label`):
+  Files:
+    - src/components/views/media-view.tsx:511  `<Button variant="ghost" size="icon"><MoreHorizontal/></Button>` — overflow menu trigger
+    - src/components/views/channels-view.tsx:332  same — `<MoreHorizontal>` (notably already has min-h-[44px] touch target, just missing label)
+    - src/components/views/content-view.tsx:341  same — `<MoreHorizontal>`
+  Problem: All three are "more actions" overflow triggers with only a 3-dots icon; screen-reader users hear "button" with no name.
+  Fix: Add `aria-label="گزینه‌های بیشتر"` (or specific label like `aria-label="عملیات رسانه"`).
+
+P3-2 (`any` + eslint-disable in sidebar.tsx):
+  File: src/components/shell/sidebar.tsx:172
+  Problem: `// eslint-disable-next-line @typescript-eslint/no-explicit-any` then `(session?.user as any)?.role`. NextAuth's `Session.user` type isn't augmented, so role access needs a cast.
+  Fix: Add a `next-auth.d.ts` declaration file augmenting `Session.user` with `role: Role`; then remove the cast + disable.
+
+P3-3 (4 thumbnails use `alt=""` on meaningful content):
+  Files:
+    - src/components/views/calendar-view.tsx:892 (job.thumbnail)
+    - src/components/editor/platform-preview-tabs.tsx:197, 268, 327 (media[0].thumbnail)
+    - src/components/dashboard/publishing-pulse.tsx:142 (job.thumbnail)
+  Problem: `alt=""` is correct only for purely decorative images adjacent to text labels. These thumbnails appear next to text captions, so `alt=""` is defensible — but if the surrounding text label is ever removed (e.g. compact list mode), the image becomes unlabeled.
+  Fix: Acceptable as-is; for safety, use `alt={item.name ?? ''}` so a label is present when available.
+
+# Positive findings
+
+- **Import hygiene is excellent**: 594 `@/`-alias imports vs only 6 relative imports, and all 6 relative imports are intentional cross-package re-exports from `shared/` (e.g. `src/lib/provider-capabilities.ts:21 export * from '../../shared/provider-capabilities'`). Zero imports go 4+ levels up.
+- **Naming consistency**: 100% of `.tsx` files in `src/components/` and `src/app/` use kebab-case. No PascalCase `.tsx` files exist.
+- **Export style is idiomatic**: 101 named `export function` (dominant) vs 19 `export default`, and every `export default` is in a Next.js page/layout file where it's required by the framework. Components themselves use named exports.
+- **No onClick-on-non-interactive elements**: Zero instances of `<div onClick>` / `<span onClick>` without an accompanying `role`. The single `<div role="button">` in media-view.tsx:401-411 is correctly implemented (role + tabIndex={0} + onKeyDown for Enter/Space).
+- **A11y baseline is solid**: 45 `aria-label` usages across the codebase; calendar navigation, media grid actions, comment-DM rules, editor toolbar all labeled. Only 3 violations found (P3-1 above).
+- **No TODO/FIXME/HACK debt in UI**: 0 occurrences in `src/components/` and `src/app/`. Only 2 in entire `src/` (in `src/modules/automation/comment-dm.ts`).
+- **eslint-disable is restrained**: 52 total across 26 files; spot-checked — almost all are `no-console` on legitimate API-route / error-boundary logging that should remain.
+- **No "coming soon" toast stubs**: 0 occurrences of `به‌زودی` or "coming soon" in UI.
+- **Keyboard a11y on custom interactive div** is correct (media-view.tsx:401-411).
+
+# Summary
+
+No P0 code-quality issues. 1 P1 (fake mutations in 3 views — UI silently doesn't persist). 4 P2 (god components, no next/image, inline sub-components, `any` in compose). 3 P3 (icon buttons missing aria-label, sidebar `any` cast, decorative alt semantics).
+
+The codebase demonstrates strong conventions (kebab-case files, named exports, `@/` alias discipline, low TODO count, restrained eslint-disable, baseline a11y) but has two systemic maintainability smells: (1) "kitchen sink" files — `dashboard/shared.tsx` (23 exports) and the four 700-1250-line view files — that should be split per responsibility, and (2) three "fake backend" mutations that ship a UI that looks functional but doesn't persist, which is both a code-quality smell (dead code) and a UX correctness risk if it ever reaches a demo.
+
+---
+Task ID: 4
+Agent: Bug Hunt (focused)
+Task: Find runtime bugs via lint/typecheck/test + targeted greps
+
+Work Log:
+- `bun run lint` → 25 warnings, 0 errors (warnings: 12 `no-explicit-any`, 6 `no-unused-vars`, 1 `no-non-null-assertion`, others)
+- `bun run typecheck` (`tsc --noEmit`) → clean, no errors
+- `bun run test` → 978/978 passed across 51 files (75s). One stderr warning: `[tiptap warn]: Duplicate extension names found: ['link']` in compose-view tests (cosmetic).
+- `tail -80 /tmp/nashrino-dev.log` → no `⨯ Error:` stack traces. Re-confirmed prior-auditor note: 3 HTTP 500s on `GET /auth/signin?callbackUrl=%2F` (27.9s, 15.6s, 18ms). Breakdown `next.js: 27.8s, application-code: 123ms` shows 99% Next.js dev-compile time, not app code. Also webpack warns `Module not found: Can't resolve '@opentelemetry/shim-opencensus'` from `src/lib/tracing.ts:333` dynamic import (optional transitive dep missing).
+- Grep `window.(confirm|prompt|alert)` → 3 hits, all inside onClick handlers (client-only, no SSR issue).
+- Grep `@ts-ignore|@ts-expect-error` → 0 hits. `as any` → 26 across 10 files (lint already flagged).
+- Grep `process.env` in `src/components/**` → 0 hits. In `src/app/**` → 8 hits, all use `NODE_ENV` checks or read non-secret config (NEXTAUTH_URL, REALTIME_JWT_*); acceptable.
+- Grep `setTimeout` in components → 6 hits. All either in event handlers (no cleanup needed) or have `clearTimeout` cleanup in useEffect return. Verified compose-view.tsx:273-315 autosave useEffect properly returns cleanup.
+- Read first 60 lines of: `src/app/api/publish/route.ts` (auth+validate+try/catch ✓), `src/app/api/auth/[...nextauth]/route.ts` (rate-limit wrapper, param resolution for Next 16 ✓), `src/app/api/media/local-upload/route.ts` (auth+MediaError mapping, rethrows unknown — acceptable).
+- Grep `onDelete` in `prisma/schema.prisma` → 39 hits, ALL have explicit `onDelete` directive (no missing cascades). Pattern: workspaceId=Cascade, optional parent FKs (campaign, publication)=SetNull, Revision→PublishJob=Restrict (intentional), InvitedBy=Restrict (intentional). Schema is solid.
+- Spot-checked 4 useEffects in compose-view.tsx (lines 180, 193, 254, 273) — all have correct dep arrays and cleanup where needed.
+- Deep-dived the 3 view files with stub mutationFn (campaigns/content/media) and `verifyRealtimeJwt`'s unused `now` param + scheduling service.ts weekday comment.
+
+Stage Summary:
+
+P1 — Broken feature (silent data loss)
+P1-1  Three "create" mutations are stubs that silently drop user data.
+  Files: src/components/views/campaigns-view.tsx:127-147 (createCampaignMutation), src/components/views/content-view.tsx:115-135 (createContentMutation), src/components/views/media-view.tsx:84-104 (uploadMutation)
+  Problem: All three use `mutationFn: async (newItem) => { await new Promise(r => setTimeout(r, 120)); return newItem }` — no HTTP call. The optimistic `onMutate` adds the new item to the React Query cache (user sees it appear), then 120ms later `onSettled` calls `queryClient.invalidateQueries(...)` which refetches from the backend. Because nothing was persisted, the refetch overwrites the cache and the new item vanishes ~1-2s after appearing. No toast, no error. User believes the create succeeded but it didn't. Comments in-file confirm: "The backend create endpoint is not wired yet" / "not implemented yet" — but the UI exposes the Create button anyway.
+  Fix: Wire `mutationFn` to the real API (`api.post('/api/campaigns', ...)`, `/api/content`, `/api/media/presign`+upload), or disable the Create/Upload button + show "Coming soon" badge until backend is wired.
+
+P2 — Misleading test coverage / dead option
+P2-1  `verifyRealtimeJwt`'s `now` parameter is silently ignored.
+  File: shared/realtime-jwt.ts:90 (`const now = options.now ?? Date.now()` — `now` is never read; lint already flagged as unused)
+  Problem: The function signature accepts `{ now?: number }` for deterministic time in tests, but the value is never used (jose's `clockTolerance` handles skew internally). Four tests in `tests/unit/worker/realtime-hardening.test.ts:196,203,208,213` pass `now: NOW_MS` / `now: NOW_MS + 1000` thinking it controls verification time. Those tests pass for the wrong reason (jose's own clock check against the real wall-clock, not the injected `now`), giving false confidence that the function is time-injection testable.
+  Fix: Either (a) remove the `now` option from the signature + drop it from the 4 tests, or (b) pass `now` into jose via `jwtVerify(token, key, { algorithms, issuer, audience, clockTolerance: skew, currentDate: new Date(now) })` so the option actually controls verification time.
+
+P3 — Minor
+P3-1  Tiptap duplicate `link` extension warning during compose-view tests.
+  File: src/components/editor/nashrino-editor.tsx:55-66 (StarterKit + Link.configure)
+  Problem: Test stderr shows `[tiptap warn]: Duplicate extension names found: ['link']`. Either StarterKit bundled in this version includes Link, or some other extension registers `link`. Cosmetic — no functional break observed, but it indicates a likely version-mismatch or redundant registration.
+  Fix: Inspect `@tiptap/starter-kit` version; if it bundles Link, omit the explicit `Link.configure(...)` or pass `StarterKit.configure({ link: false })`.
+
+P3-2  Scheduling service interface comment is inconsistent with implementation.
+  File: src/modules/scheduling/service.ts:13 (`day: number // 0=Sat, 1=Sun, ..., 5=Fri`) and line 64 (`Jalali week: Saturday=0 ... Friday=5`)
+  Problem: Comment claims Friday=5, but the actual conversion at line 86 `(checkGregDay + 1) % 7` produces Friday=6 (Fri is Gregorian 5 → 5+1=6). This matches `src/lib/jalali.ts:94` (`Sat=0, Sun=1, ..., Fri=6`) and `calendar-view.tsx:129`. So the implementation is correct across the codebase; only the comment in `scheduling/service.ts` is wrong. Also `jalaliDay` at line 77 is dead code (computed from `fromDate.getDay()` but never read; the loop recomputes `checkJalaliDay` per iteration).
+  Fix: Update comments on lines 13, 64, 75 to say `0=Sat, ..., 6=Fri` (matching jalali.ts), and delete the unused `jalaliDay` at line 77.
+
+P3-3  `window.prompt` and `window.confirm` used in event handlers.
+  Files: src/components/editor/nashrino-editor.tsx:100 (`window.prompt` for link URL), src/components/automation/comment-dm-rules.tsx:116,511 (`window.confirm` for discard/delete)
+  Problem: All three are inside onClick handlers (client-only) so no SSR/hydration issue. However, native `window.prompt` is blocking, unstyled, not RTL-aware, and inaccessible (screen-reader hostile); `window.confirm` is acceptable but inconsistent with the app's custom modal system. Not a runtime bug — UX/a11y debt.
+  Fix: Replace with the app's existing dialog/modal components (e.g., a LinkInputDialog and a ConfirmDialog).
+
+P3-4  Uncleaned `setTimeout` callbacks in event handlers / async timer bodies.
+  Files: src/components/onboarding/wizard.tsx:414 (`setTimeout(onPublished, 1200)` inside `handlePublish`), src/components/views/compose-view.tsx:307 (`setTimeout(() => setSaveState('idle'), 3000)` inside the autosave timer body)
+  Problem: If the component unmounts in the 1.2s / 3s window, the callback runs against an unmounted component. React 18 no longer warns but the call is wasted (and `onPublished` may navigate after the user already navigated away). No data corruption.
+  Fix: Track the timer in a ref and clear on unmount, or guard with an `isMounted` ref.
+
+P3-5  Webpack dev-mode warning: missing optional dep `@opentelemetry/shim-opencensus`.
+  File: src/lib/tracing.ts:333 (`import('@opentelemetry/sdk-node')`)
+  Problem: `@opentelemetry/sdk-node@0.219.0` lists `@opentelemetry/shim-opencensus` as an optional transitive dep that isn't installed. Webpack dev-bundling the dynamic import emits `Module not found: Can't resolve '@opentelemetry/shim-opencensus'` and likely contributes to the multi-second dev-compile times that produced 3 HTTP 500s on `/auth/signin` (already noted by prior auditor in worklog line 3264). Production runtime is unaffected because node resolves optional deps lazily.
+  Fix: Add `@opentelemetry/shim-opencensus` to `optionalDependencies` in `package.json`, or mark the dynamic import as `webpackIgnore` / move `initTracing()` to a separate entry that's only loaded in instrumentation.ts.
+
+Positive findings (verified working):
+- 978/978 tests pass; typecheck clean; 0 lint errors.
+- No `@ts-ignore`/`@ts-expect-error` anywhere in src.
+- No `process.env` in client components (no secret leakage).
+- All 39 FK relations in prisma/schema.prisma have explicit `onDelete` — no missing cascades on workspaceId (all Cascade), proper SetNull on optional parents, intentional Restrict on Revision→PublishJob and InvitedBy.
+- Critical API routes (`/api/publish`, `/api/auth/[...nextauth]`, `/api/media/local-upload`) all have auth guards + validation + error mapping. Publish route wraps the whole handler in `withSpan` + try/catch mapping domain errors to HTTP via `mapPublishError`.
+- NextAuth route correctly resolves `nextauth` segments from URL when `ctx.params` is undefined (Next 16 standalone fix at line 28-33) and rate-limits credentials login per IP.
+- Compose-view autosave useEffect (line 273-315) correctly debounces with `clearTimeout` cleanup in the return function.
+- All `.then()` chains in client components have matching `.catch()` (verified in compose-view.tsx:211-251).
+
+Highest-impact action: fix P1-1 — three stub mutations are silently losing user-created campaigns/content/media. Either wire them to their APIs or disable the Create/Upload buttons in the UI.
