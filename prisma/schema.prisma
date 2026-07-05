@@ -141,6 +141,7 @@ model Workspace {
   commentDmLogs  CommentDmLog[]
   postingSchedules PostingSchedule[]
   engagementHeatmaps EngagementHeatmap[]
+  postMetricSnapshots PostMetricSnapshot[]
 }
 
 model FeatureFlag {
@@ -446,6 +447,7 @@ model Publication {
   revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
   attempts    PublicationAttempt[]
   commentDmRules CommentDmRule[]
+  metricSnapshots PostMetricSnapshot[]
 
   @@unique([revisionId, platformId])
   @@index([workspaceId])
@@ -664,6 +666,29 @@ model AnalyticsSnapshot {
   @@unique([workspaceId, date, platform, metricType])
   @@index([workspaceId, date])
   @@index([workspaceId, metricType])
+}
+
+/* ─── Per-post metric snapshots (Issue #215) ─── */
+
+// Daily metric values for one Publication, collected from the provider where
+// its API exposes per-post insights (see POST_METRICS_SUPPORT). Providers that
+// don't expose per-post metrics simply have no rows — the UI shows an honest
+// "not available" state.
+model PostMetricSnapshot {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  publicationId String
+  date          String   // YYYY-MM-DD
+  metricType    String   // reach, impressions, likes, comments, saved, views
+  value         Int
+  createdAt     DateTime @default(now())
+
+  workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  publication Publication @relation(fields: [publicationId], references: [id], onDelete: Cascade)
+
+  @@unique([publicationId, date, metricType])
+  @@index([workspaceId, date])
+  @@index([publicationId])
 }
 
 /* ─── Notifications ─── */

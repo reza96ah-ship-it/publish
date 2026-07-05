@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
+import { getLatestPostMetrics, getPostMetricsSupport } from '@/modules/analytics/post-metrics'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,28 +50,49 @@ export async function GET(req: NextRequest) {
   const contentMap = new Map(contents.map(c => [c.id, c]))
   const campaignMap = new Map(campaigns.map(c => [c.id, c]))
 
-  const posts = publications.map((p) => ({
-    id: p.id,
-    title: contentMap.get(p.contentId)?.title ?? 'بدون عنوان',
-    platform: platformMap.get(p.platformId)?.type ?? 'unknown',
-    platformName: platformMap.get(p.platformId)?.name ?? 'نامشخص',
-    providerPostId: p.providerPostId,
-    publishedAt: p.completedAt,
-    scheduledAt: p.scheduledAt,
-    campaign: p.campaignId ? (campaignMap.get(p.campaignId)?.name ?? null) : null,
-  }))
+  // Issue #215: latest collected metric values per publication
+  const metricsMap = await getLatestPostMetrics(guard.workspaceId, publications.map(p => p.id))
 
-  // Group by campaign for ROI rollup
-  const byCampaign: Record<string, { name: string; count: number }> = {}
+  const posts = publications.map((p) => {
+    const platformType = platformMap.get(p.platformId)?.type ?? 'unknown'
+    return {
+      id: p.id,
+      title: contentMap.get(p.contentId)?.title ?? 'بدون عنوان',
+      platform: platformType,
+      platformName: platformMap.get(p.platformId)?.name ?? 'نامشخص',
+      providerPostId: p.providerPostId,
+      publishedAt: p.completedAt,
+      scheduledAt: p.scheduledAt,
+      campaign: p.campaignId ? (campaignMap.get(p.campaignId)?.name ?? null) : null,
+      metrics: metricsMap.get(p.id) ?? {},
+      metricsSupported: getPostMetricsSupport(platformType).metrics.length > 0,
+    }
+  })
+
+  // Campaign ROI rollup: post count + summed metrics + top posts by reach
+  const byCampaign: Record<
+    string,
+    { name: string; count: number; reach: number; engagement: number; topPosts: { id: string; title: string; reach: number }[] }
+  > = {}
   for (const p of posts) {
     const cName = p.campaign ?? 'بدون کمپین'
-    if (!byCampaign[cName]) byCampaign[cName] = { name: cName, count: 0 }
-    byCampaign[cName].count++
+    if (!byCampaign[cName]) {
+      byCampaign[cName] = { name: cName, count: 0, reach: 0, engagement: 0, topPosts: [] }
+    }
+    const c = byCampaign[cName]
+    c.count++
+    const reach = p.metrics.reach ?? 0
+    c.reach += reach
+    c.engagement += (p.metrics.likes ?? 0) + (p.metrics.comments ?? 0) + (p.metrics.saved ?? 0)
+    c.topPosts.push({ id: p.id, title: p.title, reach })
+  }
+  for (const c of Object.values(byCampaign)) {
+    c.topPosts = c.topPosts.sort((a, b) => b.reach - a.reach).slice(0, 3)
   }
 
   return NextResponse.json({
     posts,
-    campaigns: Object.values(byCampaign),
+    campaigns: Object.values(byCampaign).sort((a, b) => b.reach - a.reach),
     total: posts.length,
   })
 }
