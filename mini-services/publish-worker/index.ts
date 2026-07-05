@@ -30,6 +30,12 @@ import { writeAuditLog } from './lib/audit'
 import { publishQueue, connection } from './lib/queue'
 import { deriveContentStatus, type JobStatus } from './lib/state-reducer'
 import { startOutboxDispatcher, stopOutboxDispatcher, getDispatcherHealth } from './lib/outbox-dispatcher'
+import {
+  startWebhookDispatcher,
+  stopWebhookDispatcher,
+  getWebhookDispatcherHealth,
+} from './lib/webhook-dispatcher'
+import { triggerWebhooks } from './lib/webhook-trigger'
 import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-expiry-scanner'
 import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
@@ -485,6 +491,23 @@ const worker = new Worker(
 
         console.log(`[worker] job ${job.id} → success (${directive.providerPostId})`)
         publishJobsCompleted.inc({ platform: job.platform.type, outcome: 'success' })
+
+        // Issue #255: fan out publish.success webhook deliveries for any
+        // active webhook subscribed to this event. Fire-and-forget — a
+        // failure to enqueue deliveries must not block the publish success
+        // path. The webhook dispatcher polls WebhookDelivery and POSTs them.
+        try {
+          await triggerWebhooks(job.workspaceId, 'publish.success', {
+            jobId: job.id,
+            publicationId: publication?.id ?? null,
+            contentId: job.contentId,
+            platform: job.platform.type,
+            externalId: directive.providerPostId ?? null,
+          })
+        } catch (whErr) {
+          console.error('[worker] triggerWebhooks(publish.success) failed:', whErr)
+        }
+
         return { status: 'success', externalId: directive.providerPostId }
       }
 
@@ -690,6 +713,27 @@ worker.on('failed', async (job: Job | undefined, err: Error) => {
       // without ever hitting the explicit permanent_failure/action_required
       // branches in the processor could stay stuck at "publishing" forever.
       await checkContentPublished(dbJob.contentId)
+
+      // Issue #255: fan out publish.failed webhook deliveries for any active
+      // webhook subscribed to this event. Fire-and-forget — failure to enqueue
+      // deliveries must not block the publish failure path. We do a separate
+      // Publication lookup here (the inner block above already does one) so
+      // the webhook payload carries publicationId when available.
+      try {
+        const pub = await (db as any).publication.findFirst({
+          where: { publishJobId: jobId },
+          select: { id: true },
+        })
+        await triggerWebhooks(workspaceId, 'publish.failed', {
+          jobId,
+          publicationId: pub?.id ?? null,
+          contentId: dbJob.contentId,
+          platform: dbJob.platform.type,
+          error: err.message,
+        })
+      } catch (whErr) {
+        console.error('[worker] triggerWebhooks(publish.failed) failed:', whErr)
+      }
     }
   } catch (dbErr) {
     console.error('[worker] failed to update DB on job failure:', dbErr)
@@ -855,6 +899,8 @@ function startHealthServer() {
           failedCount,
           // Issue #148: outbox dispatcher health (separate from worker processing)
           outbox: getDispatcherHealth(),
+          // Issue #255: webhook dispatcher health
+          webhooks: getWebhookDispatcherHealth(),
           timestamp: new Date().toISOString(),
         })
       )
@@ -961,6 +1007,7 @@ async function shutdown(signal: string) {
   // #112: log clearly so ops can confirm graceful drain in logs
   console.log(`\n[worker] ${signal} — graceful shutdown started (stopTimeout=30s)`)
   await stopOutboxDispatcher()
+  await stopWebhookDispatcher()
   stopTokenExpiryScanner()
   stopInvitationCleanup()
   stopMediaCleanup()
@@ -982,6 +1029,9 @@ console.log(`[worker] BullMQ worker started (concurrency: ${CONCURRENCY}, health
 startHealthServer()
 // MISS-01: start outbox dispatcher — polls OutboxEvent → enqueues to BullMQ
 startOutboxDispatcher()
+// Issue #255: start webhook dispatcher — polls WebhookDelivery → POSTs to
+// registered webhook URLs with HMAC-SHA256 signing, retry, and dead-letter.
+startWebhookDispatcher()
 // Issue #116: start token expiry scanner — daily check for Instagram/LinkedIn
 // OAuth tokens expiring within 7 days; creates in-app notifications.
 startTokenExpiryScanner()

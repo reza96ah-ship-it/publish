@@ -27,11 +27,15 @@ import {
   Zap,
   FlaskConical,
   Receipt,
+  Key,
+  Webhook,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
 import { FeatureFlagsPanel } from '@/components/settings/feature-flags-panel'
+import { ApiTokensPanel } from '@/components/settings/api-tokens-panel'
+import { WebhooksPanel } from '@/components/settings/webhooks-panel'
 import { toPersianDigits, formatJalali } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
@@ -206,9 +210,18 @@ const NOTIFICATION_TOGGLES = [
 ]
 
 export function SettingsView() {
-  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm' | 'automation' | 'labs'>(
-    'overview'
-  )
+  const [tab, setTab] = useState<
+    | 'overview'
+    | 'brand'
+    | 'team'
+    | 'billing'
+    | 'notifications'
+    | 'utm'
+    | 'automation'
+    | 'labs'
+    | 'api'
+    | 'webhooks'
+  >('overview')
 
   const { data: platforms = [] } = useQuery<{ id: string; name: string; type: string }[]>({
     queryKey: ['platforms'],
@@ -238,6 +251,8 @@ export function SettingsView() {
             { value: 'utm', label: 'ردیابی UTM', icon: Link2 },
             { value: 'automation', label: 'اتوماسیون', icon: Zap },
             { value: 'labs', label: 'قابلیت‌های بتا', icon: FlaskConical },
+            { value: 'api', label: 'API', icon: Key },
+            { value: 'webhooks', label: 'وب‌هوک', icon: Webhook },
           ]}
         />
       </div>
@@ -266,6 +281,12 @@ export function SettingsView() {
         </TabsContent>
         <TabsContent value="labs" className="mt-4">
           <FeatureFlagsPanel />
+        </TabsContent>
+        <TabsContent value="api" className="mt-4">
+          <ApiTokensPanel />
+        </TabsContent>
+        <TabsContent value="webhooks" className="mt-4">
+          <WebhooksPanel />
         </TabsContent>
       </Tabs>
     </motion.div>

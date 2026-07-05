@@ -142,6 +142,8 @@ model Workspace {
   postingSchedules PostingSchedule[]
   engagementHeatmaps EngagementHeatmap[]
   smartPages       SmartPage[]
+  apiTokens        ApiToken[]
+  webhooks         Webhook[]
 }
 
 model FeatureFlag {
@@ -913,4 +915,73 @@ model SmartPageClick {
 
   @@index([smartPageId, clickedAt])
   @@index([smartPageId, blockId])
+}
+
+/* ─── #255: Public API tokens + signed webhooks ─── */
+
+model ApiToken {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  name         String                    // human label (e.g. "Zapier integration")
+  tokenHash    String    @unique         // SHA-256 hash of plaintext (never store plaintext)
+  prefix       String                    // first 8 chars of plaintext for UI display "nsh_abc1…"
+  scopes       String[]  @default([])    // content:read, content:write, publications:read, inbox:read, reports:read
+  lastUsedAt   DateTime?
+  expiresAt    DateTime?                 // null = no expiry
+  revokedAt    DateTime?
+  createdById  String                    // user who created it
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model Webhook {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  url             String                    // HTTPS endpoint
+  events          String[]                  // publish.success, publish.failed, inbox.new, etc.
+  secretEncrypted String                    // HMAC signing secret, encrypted via src/lib/crypto.ts
+  isActive        Boolean  @default(true)
+  lastTriggeredAt DateTime?
+  lastResponseStatus Int?
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace  Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliveries WebhookDelivery[]
+
+  @@index([workspaceId])
+  @@index([isActive])
+}
+
+model WebhookDelivery {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  webhookId       String
+  eventId         String                    // idempotency: stable per (webhookId, eventType, aggregateId)
+  eventType       String                    // publish.success, publish.failed, inbox.new, ...
+  payload         Json
+  status          String   @default("pending")  // pending, claimed, delivered, retry_wait, dead_letter, cancelled
+  attemptCount    Int      @default(0)
+  availableAt     DateTime @default(now())
+  lockedAt        DateTime?
+  lockedBy        String?
+  lockExpiresAt   DateTime?
+  deliveredAt     DateTime?
+  responseStatus  Int?
+  lastError       String?
+  lastErrorCategory String?
+  deadLetteredAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([webhookId, eventType])
+  @@index([status, lockExpiresAt])
 }
