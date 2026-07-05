@@ -2,21 +2,37 @@
 
 /**
  * Issue #219: Instagram grid preview — shows how the post will look
- * in the profile grid (square crop, 3-column layout).
+ * in the profile grid (square crop, 3-column layout). When a platformId
+ * is provided, the surrounding cells are filled with the channel's real
+ * scheduled + published posts in grid order instead of empty placeholders.
  */
-import { Image as ImageIcon } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Clock3, Image as ImageIcon } from 'lucide-react'
+import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import type { IgGridItem } from '@/components/editor/ig-grid-board'
 
 interface IgGridPreviewProps {
   caption: string
   mediaUrl?: string
   mediaCount?: number
+  platformId?: string
   className?: string
 }
 
-export function IgGridPreview({ caption, mediaUrl, mediaCount = 1, className }: IgGridPreviewProps) {
-  // Simulate a 3x3 grid with the current post in the first cell
-  const firstLetter = caption?.[0] ?? '؟'
+export function IgGridPreview({
+  caption,
+  mediaUrl,
+  mediaCount = 1,
+  platformId,
+  className,
+}: IgGridPreviewProps) {
+  const { data } = useQuery<{ items: IgGridItem[] }>({
+    queryKey: ['ig-grid', platformId],
+    queryFn: () => api.get<{ items: IgGridItem[] }>(`/api/ig-grid?platformId=${platformId}`),
+    enabled: !!platformId,
+  })
+  const neighbors = (data?.items ?? []).slice(0, 8)
 
   return (
     <div className={cn('rounded-xl border border-border overflow-hidden bg-surface', className)}>
@@ -25,7 +41,7 @@ export function IgGridPreview({ caption, mediaUrl, mediaCount = 1, className }: 
       </div>
       <div className="grid grid-cols-3 gap-0.5 p-0.5">
         {/* Current post — first cell */}
-        <div className="aspect-square bg-surface-subtle flex items-center justify-center relative group">
+        <div className="aspect-square bg-surface-subtle flex items-center justify-center relative ring-1 ring-accent/60">
           {mediaUrl ? (
             <img src={mediaUrl} alt="preview" className="w-full h-full object-cover" />
           ) : (
@@ -35,15 +51,34 @@ export function IgGridPreview({ caption, mediaUrl, mediaCount = 1, className }: 
             </div>
           )}
           {mediaCount > 1 && (
-            <span className="absolute top-1 right-1 text-2xs bg-black/60 text-white rounded px-1">
+            <span className="absolute top-1 end-1 text-2xs bg-black/60 text-white rounded px-1">
               ▦
             </span>
           )}
         </div>
-        {/* Placeholder cells */}
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="aspect-square bg-surface-subtle/50" />
-        ))}
+        {/* Neighbor cells: real scheduled/published posts, padded with placeholders */}
+        {Array.from({ length: 8 }).map((_, i) => {
+          const item = neighbors[i]
+          if (!item) {
+            return <div key={i} className="aspect-square bg-surface-subtle/50" />
+          }
+          return (
+            <div key={item.jobId} className="aspect-square bg-surface-subtle relative overflow-hidden">
+              {item.thumbnail ? (
+                <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-ink-tertiary">
+                  <ImageIcon className="size-4" />
+                </div>
+              )}
+              {item.kind === 'scheduled' && (
+                <span className="absolute top-1 start-1 text-white/90 drop-shadow">
+                  <Clock3 className="size-3" />
+                </span>
+              )}
+            </div>
+          )
+        })}
       </div>
       <div className="p-2 border-t border-border">
         <p className="text-2xs text-ink-tertiary truncate" dir="rtl">
