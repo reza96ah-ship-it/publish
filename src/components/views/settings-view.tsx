@@ -539,14 +539,14 @@ function OverviewForm({ ws }: { ws: Workspace }) {
             className="resize-none"
           />
         </div>
-        <Button
-          onClick={() => {
-            toast.success('تغییرات پروفایل ذخیره شد.')
-            announce('تنظیمات ذخیره شد')
-          }}
-        >
-          ذخیره تغییرات
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button disabled>
+            ذخیره تغییرات
+          </Button>
+          <Badge variant="outline" className="text-ink-tertiary">
+            به‌زودی
+          </Badge>
+        </div>
       </div>
     </div>
   )
@@ -707,14 +707,14 @@ function BrandForm({ ws }: { ws: Workspace }) {
               onCheckedChange={(v) => set('persianDigits', v)}
             />
           </div>
-          <Button
-            onClick={() => {
-              toast.success('کیت برند با موفقیت ذخیره شد.')
-              announce('تنظیمات ذخیره شد')
-            }}
-          >
-            ذخیره کیت برند
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button disabled>
+              ذخیره کیت برند
+            </Button>
+            <Badge variant="outline" className="text-ink-tertiary">
+              به‌زودی
+            </Badge>
+          </div>
         </div>
       </div>
 
@@ -762,6 +762,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
 
 /* ── Team ── */
 function TeamTab() {
+  const qc = useQueryClient()
   const { data: members, isLoading, isError, refetch } = useQuery<Member[]>({
     queryKey: ['members'],
     queryFn: () => api.getPaginated<Member>('/api/members'),
@@ -769,6 +770,32 @@ function TeamTab() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('editor')
+
+  // Wire to real backend POST /api/members/invite (Zod-validated, rate-limited, service-backed).
+  const inviteMutation = useMutation({
+    mutationFn: (body: { email: string; role: string }) =>
+      api.post('/api/members/invite', body),
+    onSuccess: () => {
+      toast.success('دعوت‌نامه با موفقیت ارسال شد.')
+      announce('دعوت‌نامه ارسال شد')
+      qc.invalidateQueries({ queryKey: ['members'] })
+      setEmail('')
+      setInviteOpen(false)
+    },
+    onError: (err: unknown) => {
+      // API returns `{ error: "فارسی" }` JSON; fetcher wraps body text in Error.message.
+      let msg = 'خطا در ارسال دعوت‌نامه'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (typeof parsed?.error === 'string') msg = parsed.error
+        } catch {
+          msg = err.message
+        }
+      }
+      toast.error(msg)
+    },
+  })
 
   const ROLE_COLOR: Record<string, string> = {
     admin: 'text-violet-700 bg-violet-50 border-violet-200',
@@ -917,12 +944,11 @@ function TeamTab() {
                   toast.error('ایمیل را وارد کنید.')
                   return
                 }
-                toast.success('دعوت‌نامه با موفقیت ارسال شد.')
-                setEmail('')
-                setInviteOpen(false)
+                inviteMutation.mutate({ email, role })
               }}
+              disabled={inviteMutation.isPending}
             >
-              ارسال دعوت‌نامه
+              {inviteMutation.isPending ? 'در حال ارسال…' : 'ارسال دعوت‌نامه'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1212,15 +1238,14 @@ function UtmSection() {
 
 /* ── Notifications ── */
 function NotificationsTab() {
-  const [toggles, setToggles] = useState<Record<string, boolean>>(
-    Object.fromEntries(NOTIFICATION_TOGGLES.map((t) => [t.id, t.defaultOn]))
-  )
-
   return (
     <div className="n-card p-5 max-w-2xl">
       <div className="flex items-center gap-2 mb-4">
         <Bell className="size-4 text-accent" />
         <h2 className="text-sm font-semibold text-ink-primary">تنظیمات اعلان‌ها</h2>
+        <Badge variant="outline" className="text-ink-tertiary">
+          به‌زودی
+        </Badge>
       </div>
       <div className="space-y-2">
         {NOTIFICATION_TOGGLES.map((t) => {
@@ -1237,11 +1262,9 @@ function NotificationsTab() {
                 </div>
               </div>
               <Switch
-                checked={toggles[t.id]}
-                onCheckedChange={(v) => {
-                  setToggles((cur) => ({ ...cur, [t.id]: v }))
-                  toast.success(`${t.label} ${v ? 'فعال شد' : 'غیرفعال شد'}.`)
-                }}
+                checked={t.defaultOn}
+                disabled
+                aria-label={t.label}
               />
             </div>
           )

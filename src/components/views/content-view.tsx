@@ -110,11 +110,13 @@ export function ContentView() {
   }, [content, search, statusFilter, campaignFilter])
 
   // Optimistic create: append a draft row to the ["content"] cache in <100ms.
-  // The backend create endpoint is not implemented yet; the mutationFn resolves
-  // immediately so the optimistic update remains visible.
+  // mutationFn hits the real POST /api/content endpoint (which creates a draft
+  // via the publications service). The API returns { id } only, so we keep the
+  // optimistic row in the cache and rely on onSettled's invalidate to refetch
+  // the canonical list (with the persisted row replacing the placeholder).
   const createContentMutation = useMutation<ContentItem, Error, ContentItem>({
     mutationFn: async (newItem) => {
-      await new Promise((r) => setTimeout(r, 120))
+      await api.post<{ id: string }>('/api/content', { title: newItem.title })
       return newItem
     },
     onMutate: async (newItem) => {
@@ -124,10 +126,13 @@ export function ContentView() {
       announce('محتوای جدید اضافه شد')
       return { previous }
     },
-    onError: (_err, _newItem, context: any) => {
+    onError: (err, _newItem, context: any) => {
       if (context?.previous) queryClient.setQueryData(['content'], context.previous)
-      toast.error('ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.')
+      toast.error(err.message || 'ایجاد محتوا ناموفق بود. تغییرات برگردانده شد.')
       announce('خطا در ایجاد محتوا', 'assertive')
+    },
+    onSuccess: () => {
+      toast.success('محتوای جدید ایجاد شد.')
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['content'] })
@@ -150,7 +155,6 @@ export function ContentView() {
       updatedAt: new Date().toISOString(),
     }
     createContentMutation.mutate(newItem)
-    toast.success('محتوای جدید ایجاد شد.')
   }
 
   return (

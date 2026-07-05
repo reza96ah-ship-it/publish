@@ -20,11 +20,15 @@ export const connection = {
 // Issue #149: configure BullMQ job retention — bounded but sufficient for dedupe.
 // Completed jobs kept for 24h (dedupe evidence), failed for 7 days (investigation).
 // Never rely solely on Redis retention — durable identity is in PostgreSQL.
+// P0-1: retries MUST be enabled — without `attempts`, BullMQ defaults to 0 = no retry,
+// meaning every transient network blip / rate-limit / timeout permanently loses the job.
 export const publishQueue = new Queue('publish-jobs', {
   connection,
   defaultJobOptions: {
     removeOnComplete: { count: 1000, age: 24 * 3600 }, // keep 1000 or 24h
     removeOnFail: { count: 5000, age: 7 * 24 * 3600 }, // keep 5000 or 7 days
+    attempts: 5, // retry up to 5 times on transient failures
+    backoff: { type: 'exponential', delay: 1000 }, // 1s, 2s, 4s, 8s, 16s
   },
 })
 
