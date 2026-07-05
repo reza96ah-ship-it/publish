@@ -141,6 +141,7 @@ model Workspace {
   commentDmLogs  CommentDmLog[]
   postingSchedules PostingSchedule[]
   engagementHeatmaps EngagementHeatmap[]
+  smartPages       SmartPage[]
 }
 
 model FeatureFlag {
@@ -863,4 +864,53 @@ model EngagementHeatmap {
 
   @@unique([workspaceId, platform, weekday, hour])
   @@index([workspaceId, platform])
+}
+
+/* ─── #250: Smart Page (link-in-bio) ─── */
+
+model SmartPage {
+  id          String   @id @default(cuid())
+  workspaceId String
+  slug        String   // URL-safe, lowercase — used in /p/[slug]
+  title       String
+  description String?
+  avatarUrl   String?
+  // blocks: Json array of block objects:
+  //   { type: 'link', id, label, url, icon? }
+  //   { type: 'social', id, platform, url, label? }
+  //   { type: 'heading', id, text }
+  //   { type: 'text', id, text }
+  //   { type: 'image', id, url, alt, caption? }
+  //   { type: 'latest-posts', id, limit, label? }
+  blocks      Json     @default("[]")
+  isPublished Boolean  @default(false)
+  views       Int      @default(0)
+  clicks      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clickEvents SmartPageClick[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([slug])
+}
+
+model SmartPageClick {
+  id          String   @id @default(cuid())
+  smartPageId String
+  blockId     String   // which block was clicked (for link/social blocks)
+  blockType   String   // link, social
+  label       String   @default("") // the link label or platform name
+  url         String   @default("") // the destination URL
+  clickedAt   DateTime @default(now())
+  // Optional: referrer + user-agent for analytics (privacy-safe, no PII)
+  referrer    String?
+  userAgent   String?
+
+  smartPage SmartPage @relation(fields: [smartPageId], references: [id], onDelete: Cascade)
+
+  @@index([smartPageId, clickedAt])
+  @@index([smartPageId, blockId])
 }
