@@ -25,11 +25,13 @@ import {
   ExternalLink,
   Link2,
   Zap,
+  FlaskConical,
   Receipt,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
 import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
+import { FeatureFlagsPanel } from '@/components/settings/feature-flags-panel'
 import { toPersianDigits, formatJalali } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
@@ -204,7 +206,7 @@ const NOTIFICATION_TOGGLES = [
 ]
 
 export function SettingsView() {
-  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm' | 'automation'>(
+  const [tab, setTab] = useState<'overview' | 'brand' | 'team' | 'billing' | 'notifications' | 'utm' | 'automation' | 'labs'>(
     'overview'
   )
 
@@ -235,6 +237,7 @@ export function SettingsView() {
             { value: 'notifications', label: 'اعلان‌ها', icon: Bell },
             { value: 'utm', label: 'ردیابی UTM', icon: Link2 },
             { value: 'automation', label: 'اتوماسیون', icon: Zap },
+            { value: 'labs', label: 'قابلیت‌های بتا', icon: FlaskConical },
           ]}
         />
       </div>
@@ -260,6 +263,9 @@ export function SettingsView() {
         </TabsContent>
         <TabsContent value="automation" className="mt-4">
           <CommentDmRulesPanel platforms={platforms} readOnly />
+        </TabsContent>
+        <TabsContent value="labs" className="mt-4">
+          <FeatureFlagsPanel />
         </TabsContent>
       </Tabs>
     </motion.div>

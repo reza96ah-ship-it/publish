@@ -25,7 +25,7 @@ ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=p
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 # OpenSSL is required by Prisma's Rust engine — oven/bun:1.2 (Debian) ships without it
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
-RUN bunx prisma generate
+RUN bun run db:generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Next.js build evaluates auth.ts which requires NEXTAUTH_SECRET in production.
 # Inline the dummy value in the RUN command so it's never declared as an

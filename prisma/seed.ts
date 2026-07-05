@@ -572,6 +572,28 @@ async function main() {
     }),
   ])
 
+  // ─── Feature flags + demo automation (survive re-seeds) ───
+  // The workspace wipe above cascade-deletes FeatureFlag and CommentDmRule
+  // rows; without re-creating them, every re-seed silently disabled the
+  // comment→DM beta and emptied the inbox automation panel.
+  await db.featureFlag.create({
+    data: { workspaceId: ws.id, flag: 'comment_dm_beta', enabled: true },
+  })
+  await db.commentDmRule.create({
+    data: {
+      workspaceId: ws.id,
+      platformId: ig.id,
+      keyword: 'قیمت',
+      keywords: ['قیمت', 'لینک', 'خرید'],
+      dmTemplate: 'سلام {نام} عزیز 🌟 لینک خرید و لیست قیمت خدمت شما: https://nashrino.ir/shop',
+      buttonText: 'مشاهده فروشگاه',
+      buttonUrl: 'https://nashrino.ir/shop',
+      publicReply: 'پاسخ در دایرکت ارسال شد ✅',
+      status: 'active',
+      isActive: true,
+    },
+  })
+
   // ─── Inbox ───
   await db.$transaction([
     db.inboxMessage.create({
