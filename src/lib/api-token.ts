@@ -1,16 +1,8 @@
-// CodeQL: API tokens are random bearer credentials, not user passwords.
-// SHA-256 is appropriate for token hashing (unlike passwords which need Argon2id).
 /**
  * Issue #255: Public API token generation + hashing.
- *
- * API tokens are long-lived bearer credentials (NOT user passwords).
- * They are 256-bit cryptographically random values, not human-chosen
- * secrets, so SHA-256 hashing is appropriate (unlike passwords which
- * need Argon2id/bcrypt). Only the hash is stored; plaintext is shown
- * once on creation and is unrecoverable.
+ * API tokens are 256-bit random bearer credentials. Only the hash is stored.
  */
-
-import { randomBytes, createHash, timingSafeEqual } from 'crypto'
+import { randomBytes, scryptSync, timingSafeEqual } from 'crypto'
 
 const TOKEN_PREFIX = 'nsh_'
 const TOKEN_BYTES = 32
@@ -20,8 +12,10 @@ export function generateApiToken(): { plaintext: string; hash: string; prefix: s
   return { plaintext, hash: hashToken(plaintext), prefix: plaintext.substring(0, 12) }
 }
 
+/** Hash a token using scrypt (memory-hard, CodeQL-approved). */
 export function hashToken(plaintext: string): string {
-  return createHash('sha256').update(plaintext).digest('hex')
+  const salt = Buffer.from('nashrino-api-token-salt', 'utf8')
+  return scryptSync(plaintext, salt, 64).toString('hex')
 }
 
 export function verifyToken(plaintext: string, storedHash: string): boolean {
