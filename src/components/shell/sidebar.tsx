@@ -2,7 +2,7 @@
 
 import { type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   Calendar,
@@ -139,6 +139,7 @@ function SidebarNavItem({
 
 export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { setMobileMenuOpen } = useAppStore()
   const { data: session } = useSession()
 
@@ -208,17 +209,19 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
           </button>
         )}
 
-        {/* Bell — desktop full sidebar only */}
+        {/* Bell — desktop full sidebar only; opens inbox (notification popover lives in the header) */}
         {!isDrawer && (
-          <button
+          <Link
+            href="/inbox"
             className="relative ms-auto rounded-lg p-1.5 text-ink-tertiary hover:bg-surface-hover hover:text-ink-secondary transition-colors"
             aria-label="اعلان‌ها"
+            title="اعلان‌ها"
           >
             <Bell className="size-[16px]" strokeWidth={2} />
             {notifCount > 0 && (
               <span className="absolute top-1 start-1 size-1.5 rounded-full bg-danger ring-2 ring-canvas" />
             )}
-          </button>
+          </Link>
         )}
       </div>
 
@@ -293,8 +296,10 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
           </span>
         </div>
 
-        {/* Workspace */}
-        <button
+        {/* Workspace — navigate to workspace settings */}
+        <Link
+          href="/settings"
+          onClick={() => setMobileMenuOpen(false)}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-surface-hover/70"
         >
           <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-sm font-bold text-accent">
@@ -307,10 +312,23 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
             <p className="text-2xs text-ink-tertiary truncate leading-tight">{wsPlan}</p>
           </div>
           <ChevronLeft className="size-3.5 text-ink-tertiary shrink-0" strokeWidth={2} />
-        </button>
+        </Link>
 
-        {/* User row */}
+        {/* User row — navigate to profile settings; nested logout button stops propagation */}
         <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            setMobileMenuOpen(false)
+            router.push('/settings')
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setMobileMenuOpen(false)
+              router.push('/settings')
+            }
+          }}
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-surface-hover/70 transition-colors cursor-pointer justify-start"
         >
           {userImage ? (
@@ -334,7 +352,10 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
           </div>
           <button
             aria-label="خروج"
-            onClick={() => signOut({ callbackUrl: '/auth/signin' })}
+            onClick={(e) => {
+              e.stopPropagation()
+              signOut({ callbackUrl: '/auth/signin' })
+            }}
             className="p-1.5 rounded-lg text-ink-tertiary hover:text-danger hover:bg-danger-soft transition-colors"
           >
             <LogOut className="size-4" strokeWidth={2} />
