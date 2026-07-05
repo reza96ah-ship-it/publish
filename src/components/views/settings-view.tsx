@@ -628,7 +628,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  value={form.brandAccentColor ?? '#2563EB'}
+                  value={form.brandAccentColor ?? '#7c3aed'}
                   onChange={(e) => set('brandAccentColor', e.target.value)}
                   className="size-9 rounded-md border border-border cursor-pointer bg-transparent"
                 />
@@ -738,7 +738,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
           </div>
           <div
             className="aspect-square w-full rounded-xl mb-3"
-            style={{ background: `${form.brandAccentColor ?? '#2563EB'}22` }}
+            style={{ background: `${form.brandAccentColor ?? '#7c3aed'}22` }}
           />
           <p className="text-sm text-ink-primary leading-relaxed">
             محصول جدید ما عرضه شد! {form.brandVoice ? `با لحن ${form.brandVoice}` : ''}
@@ -751,7 +751,7 @@ function BrandForm({ ws }: { ws: Workspace }) {
             </p>
           )}
           {form.defaultHashtags && (
-            <p className="text-xs mt-2" style={{ color: form.brandAccentColor ?? '#2563EB' }}>
+            <p className="text-xs mt-2" style={{ color: form.brandAccentColor ?? '#7c3aed' }}>
               {form.defaultHashtags}
             </p>
           )}
@@ -800,7 +800,7 @@ function TeamTab() {
 
   const ROLE_COLOR: Record<string, string> = {
     admin: 'text-violet-700 bg-violet-50 border-violet-200',
-    editor: 'text-blue-700 bg-blue-50 border-blue-200',
+    editor: 'text-accent bg-accent-soft border-accent/20',
     approver: 'text-amber-700 bg-amber-50 border-amber-200',
     viewer: 'text-slate-700 bg-slate-50 border-slate-200',
   }

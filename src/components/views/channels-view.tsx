@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   LayoutGrid,
+  Activity,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -158,10 +159,21 @@ export function ChannelsView() {
       <SectionTitle
         icon={Link2}
         badge={
-          <Button size="sm" onClick={() => setConnectOpen(true)}>
-            <Plus className="size-4" />
-            اتصال پلتفرم جدید
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push('/channels/health')}
+              title="سلامت کانال‌ها"
+            >
+              <Activity className="size-4" />
+              <span className="hidden sm:inline">سلامت کانال</span>
+            </Button>
+            <Button size="sm" onClick={() => setConnectOpen(true)}>
+              <Plus className="size-4" />
+              اتصال پلتفرم جدید
+            </Button>
+          </div>
         }
       >
         مدیریت پلتفرم‌ها
