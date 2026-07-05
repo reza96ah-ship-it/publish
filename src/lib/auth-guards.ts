@@ -54,8 +54,12 @@ export async function requireWorkspace() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/auth/signin')
 
+  // Session exists but is stale (workspace/membership gone, e.g. after a DB
+  // reset): redirecting straight to /auth/signin would loop forever, because
+  // the signin page sees the session and bounces back to /. Clear the cookie
+  // first so the signin page actually renders.
   const wsId = session.activeWorkspaceId
-  if (!wsId) redirect('/auth/signin')
+  if (!wsId) redirect('/api/auth/clear-session')
 
   const membership = await db.workspaceMember.findFirst({
     where: {
@@ -65,7 +69,7 @@ export async function requireWorkspace() {
     include: { workspace: true },
   })
 
-  if (!membership) redirect('/auth/signin')
+  if (!membership) redirect('/api/auth/clear-session')
 
   return {
     session,
