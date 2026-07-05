@@ -13,6 +13,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { toPersianDigits } from '@/lib/jalali'
 
@@ -194,7 +195,13 @@ function InstagramPreview({
       {/* Media (square) */}
       {media[0]?.thumbnail ? (
         <div className="relative aspect-square w-full bg-border">
-          <img src={media[0].thumbnail} alt="" className="w-full h-full object-cover" />
+          <Image
+            src={media[0].thumbnail}
+            alt=""
+            fill
+            unoptimized={media[0].thumbnail.startsWith('http')}
+            className="object-cover"
+          />
           {media.length > 1 && (
             <span className="absolute top-2 left-2 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
               <svg viewBox="0 0 24 24" className="size-2.5 fill-current">
@@ -265,7 +272,14 @@ function TelegramPreview({
       <div className="rounded-2xl rounded-tr-sm bg-surface border border-border p-3 shadow-sm">
         {media[0]?.thumbnail && (
           <div className="mb-2 rounded-lg overflow-hidden">
-            <img src={media[0].thumbnail} alt="" className="w-full max-h-[200px] object-cover" />
+            <Image
+              src={media[0].thumbnail}
+              alt=""
+              width={400}
+              height={200}
+              unoptimized={media[0].thumbnail.startsWith('http')}
+              className="w-full max-h-[200px] object-cover"
+            />
           </div>
         )}
         {title && <p className="text-sm font-bold text-ink-primary mb-1">{title}</p>}
@@ -323,8 +337,14 @@ function LinkedInPreview({
 
       {/* Media (16:9) */}
       {media[0]?.thumbnail && (
-        <div className="aspect-video w-full bg-border">
-          <img src={media[0].thumbnail} alt="" className="w-full h-full object-cover" />
+        <div className="relative aspect-video w-full bg-border">
+          <Image
+            src={media[0].thumbnail}
+            alt=""
+            fill
+            unoptimized={media[0].thumbnail.startsWith('http')}
+            className="object-cover"
+          />
         </div>
       )}
 
