@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { NotificationPopover } from './notification-popover'
 import { ThemeToggle } from './theme-toggle'
+import { ease } from '@/lib/motion'
 
 interface Summary {
   unreadInbox: number
@@ -57,7 +58,7 @@ export function CommandBar() {
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
+        transition={{ duration: 0.15, ease: ease.snap }}
         onClick={() => navigateTo('/compose')}
         className="n-focus-ring flex h-10 items-center gap-1.5 rounded-lg bg-accent px-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-accent-hover"
       >

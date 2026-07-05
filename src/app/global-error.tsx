@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { AlertOctagon, RefreshCw } from 'lucide-react'
+import { ease } from '@/lib/motion'
 
 /**
  * global-error.tsx — the LAST line of defense.
@@ -39,7 +40,7 @@ export default function GlobalError({
         <motion.div
           initial={{ opacity: 0, y: 12, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
+          transition={{ duration: 0.3, ease: ease.emphasized }}
           style={{
             maxWidth: '420px',
             width: '100%',

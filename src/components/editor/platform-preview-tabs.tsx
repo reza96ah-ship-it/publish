@@ -13,6 +13,7 @@ import {
   Eye,
 } from 'lucide-react'
 import { PlatformLogo } from '@/components/ui/platform-logo'
+import { ease } from '@/lib/motion'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { toPersianDigits } from '@/lib/jalali'
@@ -128,7 +129,7 @@ export function PlatformPreviewTabs({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.18, ease: [0, 0, 0.2, 1] }}
+            transition={{ duration: 0.18, ease: ease.enter }}
           >
             {active === 'instagram' && (
               <InstagramPreview

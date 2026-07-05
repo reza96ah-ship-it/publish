@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { useShouldAnimate } from '@/lib/motion'
+import { useShouldAnimate, ease } from '@/lib/motion'
 
 /* ============================================================================
    CUSTOM SVG ILLUSTRATIONS — for view-level empty states
@@ -17,7 +17,7 @@ interface IllustrationProps {
 
 const containerMotion = {
   initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0, 0, 0.2, 1] } },
+  animate: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: ease.enter } },
 }
 
 function FloatGroup({ children }: { children: ReactNode }) {
@@ -82,7 +82,7 @@ export function InboxIllustration({ className = '' }: IllustrationProps) {
         fill="var(--n-accent)"
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.3, duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.3, duration: 0.3, ease: ease.announce }}
       />
       <motion.circle
         cx="92"
@@ -232,7 +232,7 @@ export function MediaIllustration({ className = '' }: IllustrationProps) {
         fill="var(--n-accent)"
         initial={{ opacity: 0, scale: 0, rotate: -90 }}
         animate={{ opacity: 1, scale: 1, rotate: 0 }}
-        transition={{ delay: 0.3, duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.3, duration: 0.4, ease: ease.announce }}
         style={{ transformOrigin: '88px 44px' }}
       />
       <circle cx="28" cy="32" r="1.5" fill="var(--n-accent)" opacity="0.3" />
@@ -274,7 +274,7 @@ export function CampaignsIllustration({ className = '' }: IllustrationProps) {
         strokeLinejoin="round"
         initial={{ pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.6, ease: [0, 0, 0.2, 1] }}
+        transition={{ delay: 0.2, duration: 0.6, ease: ease.enter }}
       />
       {/* Base */}
       <line
@@ -329,7 +329,7 @@ export function AnalyticsIllustration({ className = '' }: IllustrationProps) {
           opacity="0.3"
           initial={{ height: 0, y: 86 }}
           animate={{ height: 24, y: 62 }}
-          transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+          transition={{ duration: 0.4, ease: ease.enter }}
         />
         <motion.rect
           x="54"
@@ -341,7 +341,7 @@ export function AnalyticsIllustration({ className = '' }: IllustrationProps) {
           opacity="0.5"
           initial={{ height: 0, y: 86 }}
           animate={{ height: 34, y: 52 }}
-          transition={{ duration: 0.4, ease: [0, 0, 0.2, 1], delay: 0.1 }}
+          transition={{ duration: 0.4, ease: ease.enter, delay: 0.1 }}
         />
         <motion.rect
           x="70"
@@ -352,7 +352,7 @@ export function AnalyticsIllustration({ className = '' }: IllustrationProps) {
           fill="var(--n-accent)"
           initial={{ height: 0, y: 86 }}
           animate={{ height: 42, y: 44 }}
-          transition={{ duration: 0.4, ease: [0, 0, 0.2, 1], delay: 0.2 }}
+          transition={{ duration: 0.4, ease: ease.enter, delay: 0.2 }}
         />
       </motion.g>
       {/* Trend arrow */}
@@ -451,7 +451,7 @@ export function CalendarIllustration({ className = '' }: IllustrationProps) {
           fill="var(--n-accent)"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          transition={{ delay: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+          transition={{ delay: 0.4, ease: ease.announce }}
         />
         <circle cx="76" cy="74" r="2" fill="var(--n-accent)" opacity="0.3" />
       </FloatGroup>
@@ -523,7 +523,7 @@ export function ChannelsIllustration({ className = '' }: IllustrationProps) {
         strokeWidth="1.5"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.1, ease: ease.announce }}
       />
       <motion.circle
         cx="60"
@@ -534,7 +534,7 @@ export function ChannelsIllustration({ className = '' }: IllustrationProps) {
         strokeWidth="1.5"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.3, ease: ease.announce }}
       />
       <motion.circle
         cx="80"
@@ -545,7 +545,7 @@ export function ChannelsIllustration({ className = '' }: IllustrationProps) {
         strokeWidth="1.5"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.5, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.5, ease: ease.announce }}
       />
       <motion.circle
         cx="72"
@@ -556,7 +556,7 @@ export function ChannelsIllustration({ className = '' }: IllustrationProps) {
         strokeWidth="1.5"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ delay: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
+        transition={{ delay: 0.6, ease: ease.announce }}
       />
       <circle cx="30" cy="36" r="1.5" fill="var(--n-accent)" opacity="0.3" />
       <circle cx="92" cy="84" r="1.5" fill="var(--n-accent)" opacity="0.25" />

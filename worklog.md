@@ -4430,3 +4430,56 @@ Stage Summary:
 - Accessibility: All `alt` text preserved from the originals; the 3 previously-empty `alt=""` thumbnails (decorative, accompanied by adjacent text/title) kept `alt=""` to remain properly hidden from screen readers.
 - Verification: `bun run lint` → 0 errors, 25 warnings (all pre-existing, none in the 6 changed files). `bun run typecheck` → clean (`tsc --noEmit` exited 0). Confirmed no `<img` tags remain in any of the 6 files via `rg '<img'`.
 - Work record: /home/z/my-project/agent-ctx/P2-img-code-fixer.md
+
+---
+Task ID: P3-carousel
+Agent: Code fixer
+Task: Fix carousel + remaining shadcn physical properties for RTL
+
+Work Log:
+- carousel.tsx: 4 swaps total.
+  (1) CarouselContent line 138: `-ml-4` → `-ms-4` (margin-inline-start). REQUIRED in addition to the brief, because CarouselContent's negative margin cancels CarouselItem's padding — both must flip together for RTL alignment. Leaving `-ml-4` while converting `pl-4`→`ps-4` would misalign items in RTL.
+  (2) CarouselItem line 155: `pl-4` → `ps-4` (padding-inline-start). `pt-4` (vertical branch) left as-is.
+  (3) CarouselPrevious line 179: `top-1/2 -left-12` → `top-1/2 -start-12` (previous button is anchored to inline-start of carousel in horizontal mode).
+  (4) CarouselNext line 209: `top-1/2 -right-12` → `top-1/2 -end-12` (next button anchored to inline-end).
+  Preserved: `left-1/2` on lines 180/210 (vertical-orientation centering transforms paired with `-translate-x-1/2`) — explicitly out-of-scope per brief. `-top-12`/`-bottom-12` are vertical, untouched. ArrowLeft/ArrowRight keyboard handler untouched (those are key names, not CSS).
+- scroll-area.tsx: Grep for `pl-|pr-|ml-|mr-|left-[0-9]|right-[0-9]` returned no matches — already clean.
+- resizable.tsx: Grep matched only line 37. Inspected: `after:left-1/2` (default horizontal mode) is a centering transform paired with `after:-translate-x-1/2` — left alone. `data-[panel-group-direction=vertical]:after:left-0` is for the vertical-stack mode where the handle bar is `after:w-full` — a full-width bar anchored at left:0 is visually identical in LTR and RTL (it spans 100% width regardless of which edge it starts from), and is not a directional start/end choice. Left alone. No swaps needed.
+- calendar.tsx: Line 73 caption_label (dropdown-mode branch) had `pl-2 pr-1` → converted to `ps-2 pe-1`. This is the chevron+label flex container (`flex items-center gap-1 [&>svg]:size-3.5`); in RTL the chevron needs to sit on the inline-start with smaller inline-end padding, which `ps-2 pe-1` provides automatically.
+- slider.tsx: Grep returned no matches — already clean (P2-shadcn-rtl handled it, or it had no physical properties to begin with).
+- input-otp.tsx: Grep returned no matches — already clean.
+
+Stage Summary:
+- Files changed (2): src/components/ui/carousel.tsx (4 swaps), src/components/ui/calendar.tsx (1 swap: pl-2 pr-1 → ps-2 pe-1).
+- Files inspected but no changes needed (4): scroll-area.tsx (clean), resizable.tsx (only centering transforms + non-directional full-width bar), slider.tsx (clean), input-otp.tsx (clean).
+- Total: 5 logical-property swaps across 2 files (carousel: `-ml-4`→`-ms-4`, `pl-4`→`ps-4`, `-left-12`→`-start-12`, `-right-12`→`-end-12`; calendar: `pl-2 pr-1`→`ps-2 pe-1`).
+- Verification: `bun run lint` → 0 errors, 25 warnings (all pre-existing `no-explicit-any`/`unused-vars` in unrelated modules; none in carousel.tsx or calendar.tsx). `bun run typecheck` → clean (`tsc --noEmit` exited 0). Grep confirms the only remaining `left-`/`right-` in carousel.tsx are `left-1/2` centering transforms (lines 180, 210, both paired with `-translate-x-1/2`) — exactly the exceptions the brief said to leave alone.
+- Work record: /agent-ctx/P3-carousel-code-fixer.md
+
+---
+Task ID: P3-motion
+Agent: Code fixer
+Task: Adopt motion.tsx tokens instead of hardcoded easing arrays
+
+Work Log:
+- Read `src/lib/motion.tsx` first to enumerate exported tokens. Available ease tokens: `ease.enter` ([0,0,0.2,1]), `ease.exit` ([0.4,0,1,1]), `ease.standard` ([0.4,0,0.2,1]), `ease.snap` ([0.12,0,0.08,1]), `ease.announce` ([0.34,1.56,0.64,1]), `ease.emphasized` ([0.2,0,0,1]). Also `duration.*` tokens exist but were out of scope (task only requires replacing ease arrays, not durations).
+- Found 29 hardcoded `ease: [...]` arrays across 12 files via `rg "ease:\s*\[0" src/components/ src/app/`.
+- For each file, applied the exact-match token where one existed; for the two non-canonical curves (`[0.22, 1, 0.36, 1]` — a quintic-out-style ease-out used in jalali-picker month slide, compose-view SectionTitle fade, and channel-health-view header fade), used the closest semantic match `ease.enter` (also an ease-out curve, [0,0,0.2,1]).
+- Added `import { ease } from '@/lib/motion'` to 9 files that had no existing `@/lib/motion` import: jalali-picker.tsx, command-bar.tsx, theme-toggle.tsx, wizard.tsx, platform-preview-tabs.tsx, channel-health-view.tsx, global-error.tsx, error.tsx, signin-form.tsx.
+- Extended the existing `@/lib/motion` import in 3 files that already imported `useShouldAnimate`: shared.tsx (`useShouldAnimate` → `useShouldAnimate, ease`), illustrations.tsx (same), compose-view.tsx (same).
+- Did NOT touch durations, `pageTransition`/`pageTransitionProps` consumers, or any of the other motion.tsx exports (Variants, hooks, etc.) — only swapped the ease array literals.
+- Token mapping actually applied (per motion.tsx exports, NOT the brief's suggested mapping which incorrectly listed `[0,0,0.2,1]` as `ease.standard`):
+  - `[0, 0, 0.2, 1]` → `ease.enter` (12 occurrences: shared.tsx ×5, illustrations.tsx ×5, platform-preview-tabs.tsx ×1, signin-form.tsx ×1)
+  - `[0.4, 0, 0.2, 1]` → `ease.standard` (4 occurrences: theme-toggle ×1, wizard ×2 — wait recount: theme-toggle 1, wizard 2 = 3, plus compose-view's `ease.snap` is different. Actually: theme-toggle 1, wizard 2 = 3 standard)
+  - `[0.12, 0, 0.08, 1]` → `ease.snap` (2 occurrences: command-bar ×1, compose-view ×1)
+  - `[0.34, 1.56, 0.64, 1]` → `ease.announce` (7 occurrences: shared.tsx ×1, illustrations.tsx ×6)
+  - `[0.2, 0, 0, 1]` → `ease.emphasized` (2 occurrences: global-error ×1, error ×1)
+  - `[0.22, 1, 0.36, 1]` → `ease.enter` (3 occurrences: jalali-picker ×1, compose-view ×1, channel-health-view ×1) — closest match, no exact token
+  - Total: 29 replacements across 12 files.
+
+Stage Summary:
+- Files changed (12): src/components/ui/jalali-picker.tsx (1), src/components/shell/command-bar.tsx (1), src/components/shell/theme-toggle.tsx (1), src/components/onboarding/wizard.tsx (2), src/components/dashboard/shared.tsx (6), src/components/dashboard/illustrations.tsx (11), src/components/editor/platform-preview-tabs.tsx (1), src/components/views/compose-view.tsx (2), src/components/views/channel-health-view.tsx (1), src/app/global-error.tsx (1), src/app/error.tsx (1), src/app/auth/signin/signin-form.tsx (1). Total: 29 `ease: [...]` literals replaced with `ease.<token>` references.
+- Import additions: 9 new `import { ease } from '@/lib/motion'` statements added; 3 existing `@/lib/motion` imports extended to also import `ease` (alongside `useShouldAnimate`).
+- No durations, `pageTransition*` consumers, or other motion.tsx exports were touched. The 3 files that used the non-canonical quintic-out curve `[0.22, 1, 0.36, 1]` (jalali-picker, compose-view, channel-health-view) were mapped to `ease.enter` as the closest semantic ease-out token — no exact match exists in motion.tsx.
+- Verification: `bun run lint` → 0 errors, 25 warnings (all pre-existing `any`/unused-var warnings in unrelated files; baseline unchanged from P2-img's report). `bun run typecheck` → clean (`tsc --noEmit` exited 0). Grep `ease:\s*\[` across `src/` returns zero matches — all hardcoded easing arrays in components have been migrated to motion.tsx tokens.
+- Work record: /agent-ctx/P3-motion-code-fixer.md

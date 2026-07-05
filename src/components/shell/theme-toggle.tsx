@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sun, Moon } from 'lucide-react'
+import { ease } from '@/lib/motion'
 
 /**
  * ThemeToggle — Linear/Vercel-style light/dark switcher.
@@ -37,7 +38,7 @@ export function ThemeToggle() {
             initial={{ opacity: 0, rotate: -30, scale: 0.8 }}
             animate={{ opacity: 1, rotate: 0, scale: 1 }}
             exit={{ opacity: 0, rotate: 30, scale: 0.8 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            transition={{ duration: 0.2, ease: ease.standard }}
             className="flex items-center justify-center"
           >
             {isDark ? (

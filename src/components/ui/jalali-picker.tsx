@@ -27,6 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { ease } from '@/lib/motion'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Input } from '@/components/ui/input'
@@ -335,7 +336,7 @@ function CalendarGrid({
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.2, ease: ease.enter }}
               className="text-sm font-bold text-ink-primary"
             >
               {JALALI_MONTHS[cursor.month - 1]} {toPersianDigits(cursor.year)}

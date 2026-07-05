@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Coffee, Mail, Lock, ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
+import { ease } from '@/lib/motion'
 
 interface SignInFormProps {
   callbackUrl: string
@@ -51,7 +52,7 @@ export function SignInForm({ error }: SignInFormProps) {
       <motion.div
         initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0, 0, 0.2, 1] }}
+        transition={{ duration: 0.3, ease: ease.enter }}
         className="w-full max-w-[400px]"
       >
         {/* Logo */}

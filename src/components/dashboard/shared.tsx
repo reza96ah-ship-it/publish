@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useShouldAnimate } from '@/lib/motion'
+import { useShouldAnimate, ease } from '@/lib/motion'
 import { toPersianDigits, formatCompact } from '@/lib/jalali'
 import { cn } from '@/lib/utils'
 import { PlatformLogo } from '@/components/ui/platform-logo'
@@ -261,7 +261,7 @@ export function Sparkline({
         fill={`url(#${gradId})`}
         initial={animate ? { opacity: 0 } : false}
         animate={animate ? { opacity: 1 } : undefined}
-        transition={{ duration: 0.5, ease: [0, 0, 0.2, 1], delay: 0.1 }}
+        transition={{ duration: 0.5, ease: ease.enter, delay: 0.1 }}
       />
       <motion.polyline
         points={pts}
@@ -272,7 +272,7 @@ export function Sparkline({
         strokeLinejoin="round"
         initial={animate ? { pathLength: 0, opacity: 0 } : false}
         animate={animate ? { pathLength: 1, opacity: 1 } : undefined}
-        transition={{ duration: 0.8, ease: [0, 0, 0.2, 1] }}
+        transition={{ duration: 0.8, ease: ease.enter }}
       />
       <motion.circle
         cx={lastX}
@@ -281,7 +281,7 @@ export function Sparkline({
         fill={color}
         initial={animate ? { scale: 0, opacity: 0 } : false}
         animate={animate ? { scale: 1, opacity: 1 } : undefined}
-        transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1], delay: 0.7 }}
+        transition={{ duration: 0.3, ease: ease.announce, delay: 0.7 }}
       />
     </svg>
   )
@@ -498,7 +498,7 @@ export function MiniChart({
           strokeLinejoin="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 1, ease: [0, 0, 0.2, 1] }}
+          transition={{ duration: 1, ease: ease.enter }}
         />
       </svg>
 
@@ -897,7 +897,7 @@ export function LoadingState({
         <motion.div
           key="error"
           initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: [0, 0, 0.2, 1] } }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: ease.enter } }}
           exit={{ opacity: 0, transition: { duration: 0.15 } }}
         >
           <ErrorState label={errorLabel} onRetry={onRetry} />
@@ -914,7 +914,7 @@ export function LoadingState({
         <motion.div
           key="content"
           initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: [0, 0, 0.2, 1] } }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: ease.enter } }}
         >
           {children}
         </motion.div>
