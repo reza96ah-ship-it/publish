@@ -6,6 +6,7 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { validateBody, composeDraftSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +29,9 @@ export async function POST(req: Request) {
 
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
-  const { content, channelIds, scheduledAt, version } = raw as { content: Record<string, unknown>; channelIds: string[]; scheduledAt: string | null; version?: number }
-  if (!content || typeof content !== 'object') return NextResponse.json({ error: 'فیلد content الزامی است' }, { status: 400 })
+  const validation = validateBody(composeDraftSchema, raw)
+  if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
+  const { content, channelIds, scheduledAt, version } = validation.data
 
   const existing = await db.contentDraft.findUnique({ where: { workspaceId_authorId: { workspaceId: guard.workspaceId, authorId } }, select: { version: true } })
   if (existing && typeof version === 'number' && version < existing.version)

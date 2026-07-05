@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     )
     return NextResponse.json(comments)
   } catch (err) {
-    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
     throw err
   }
 }
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     )
     return NextResponse.json(comment)
   } catch (err) {
-    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
     throw err
   }
 }

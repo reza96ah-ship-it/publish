@@ -4276,3 +4276,40 @@ Stage Summary:
 - media-view.tsx:81-151 — WIRED to POST /api/media/presign + PUT storage + POST /api/media/confirm. Removed broken optimistic placeholder; added real file input + drag-free click-to-upload UX.
 - Verification: `bun run lint` → 0 errors, 24 warnings (same count as before edits; no new warnings introduced). `bun run typecheck` → clean.
 - Work record: /home/z/my-project/agent-ctx/P0-2-fix-code-fixer.md
+
+---
+Task ID: P1-10
+Agent: Code fixer
+Task: Move circuit breaker + rate-limiter to Redis
+
+Work Log:
+- Created `mini-services/publish-worker/lib/redis-client.ts` — singleton ioredis client (lazy connect, 5s cooldown after failure, `getRedisClient()` returns `Redis | null`). Connection config: enableOfflineQueue=false, maxRetriesPerRequest=1, connectTimeout=2s, auto-reconnect via retryStrategy. REDIS_URL || REDIS_QUEUE_URL env vars (mirrors lib/queue.ts).
+- Rewrote `mini-services/publish-worker/lib/circuit.ts`: key `circuit:{workspaceId}:{platform}` (Redis hash with state/failures/successes/openedAt/lastFailureAt). 4 atomic Lua scripts (CAN_DISPATCH, RECORD_SUCCESS, RECORD_FAILURE, GET_STATE). EVALSHA + NOSCRIPT→EVAL fallback with SHA caching. 24h EXPIRE on every write. In-memory fallback preserved (original Map logic) when Redis unavailable. All public methods (canDispatch, recordSuccess, recordFailure, getState) now async.
+- Rewrote `mini-services/publish-worker/lib/rate-limiter.ts`: key `token_bucket:{platform}` (Redis hash with tokens/lastRefillAt). Single atomic Lua script (TOKEN_BUCKET_SCRIPT) does refill+check+decrement+writeback. Returns 1 (allowed) or 0 (denied). In-memory fallback preserved. tryAcquire now async.
+- Updated `mini-services/publish-worker/index.ts`: added `await` to all 7 call sites (1 canDispatch at L149, 1 tryAcquire at L160, 1 recordSuccess at L448, 4 recordFailure at L492/L524/L559/L591, 1 getState at L734 inside markFailed). Added import + call to `closeRedisClient()` in shutdown() after publishQueue.close().
+- Added `ioredis: ^5.10.1` to `mini-services/publish-worker/package.json` dependencies (was transitive via bullmq).
+- Updated `tests/unit/worker/rate-limiter.test.ts`: converted 5 tests to async/await on tryAcquire. REDIS_URL not set in test env → tests exercise in-memory fallback. `circuit-breaker.test.ts` uses a local mock — no changes needed.
+
+Stage Summary:
+- Files changed (6): lib/redis-client.ts (new), lib/circuit.ts (rewrite), lib/rate-limiter.ts (rewrite), index.ts (await + shutdown), package.json (+ioredis dep), tests/unit/worker/rate-limiter.test.ts (async).
+- Approach: Redis hash + atomic Lua scripts for both. Circuit breaker uses 4 scripts (canDispatch/recordSuccess/recordFailure/getState). Rate limiter uses 1 atomic token-bucket script. Both use EVALSHA with NOSCRIPT→EVAL fallback. 24h EXPIRE on writes to prevent unbounded key growth.
+- Fallback behavior: (1) REDIS_URL unset → in-memory only. (2) Redis up → shared state across replicas via Lua. (3) Redis down at startup → 5s cooldown then retry; in-memory in the meantime. (4) Redis drops mid-run → ioredis auto-reconnects; failed commands fall back to in-memory for that call, retry Redis on next call once reconnected. (5) Lua NOSCRIPT (script cache flushed) → transparently fall back to EVAL + re-cache SHA.
+- Public API: method names + argument signatures unchanged; only return types changed from T to Promise<T>. Callers must await.
+- Verification: `cd mini-services/publish-worker && bun run typecheck` clean. `bun run test` → 52 files / 990 tests passed. `bun run lint` → 0 errors / 23 pre-existing warnings (none in publish-worker/, which is in eslint ignore list).
+- Work record: /home/z/my-project/agent-ctx/P1-10-code-fixer.md
+
+---
+Task ID: P1-2-9-22
+Agent: Code fixer
+Task: Wire Zod into 3 routes + secure metrics + fix English error strings
+
+Work Log:
+- Task A (P1-2 Zod): Wired `utmPresetCreateSchema` into POST /api/utm-presets, `utmPresetUpdateSchema` into PATCH /api/utm-presets/[id], `savedReplyCreateSchema` into POST /api/inbox/saved-replies, `savedReplyUpdateSchema` into PATCH /api/inbox/saved-replies/[id], and `composeDraftSchema` into POST /api/compose-draft (replacing the manual `raw as {...}` cast). All routes now use the pattern: `req.json().catch(() => null)` → null-check → `validateBody(schema, raw)` → use `validation.data`. Fixed `composeDraftSchema` in src/lib/validations.ts: Zod v4 requires `z.record(keySchema, valueSchema)` so changed `z.record(z.unknown())` → `z.record(z.string(), z.unknown())` to resolve a TS2554 error.
+- Task B (P1-9 metrics auth): Rewrote src/app/api/metrics/route.ts GET to call `authorizeMetrics(req)` before returning metrics. If `METRICS_TOKEN` env is set: require `Authorization: Bearer <token>`, compared with `crypto.timingSafeEqual` (constant-time). If not set: allow only localhost (first hop of `x-forwarded-for` in {127.0.0.1, ::1, ::ffff:127.0.0.1, ''} AND `host` header matches localhost/127./[::1]). Returns 401/403 on failure. Applied the same pattern to the /metrics endpoint in mini-services/realtime/index.ts (reusing the existing `timingSafeEqualStr` helper). Fixed two TS errors in the realtime code (undefined narrowing on `match[1]` and `firstHopRaw`).
+- Task C (P1-22 Persian errors): Replaced `{ error: 'not_found' }` → `{ error: 'مورد یافت نشد' }` in 12 locations across 11 files (content reject/comments/approve/submit-review, inbox read/reply/assign, platforms connect/validate, ai/drafts). Replaced `{ error: 'member not found' }` → `{ error: 'عضو یافت نشد' }` in inbox/assign. Replaced `{ error: 'unauthorized' }` → `{ error: 'دسترسی غیرمجاز' }` in realtime-token and auth/mfa/verify. Used `replace_all` for efficiency.
+
+Stage Summary:
+- Files changed (21): src/lib/validations.ts (z.record fix), 5 route files for Zod wiring (utm-presets ×2, saved-replies ×2, compose-draft), src/app/api/metrics/route.ts (auth gate), mini-services/realtime/index.ts (auth gate), and 13 route files for Persian error string conversion.
+- Approach: Task A followed the existing comment-dm-rules pattern (read raw → null check → validateBody → use validation.data). Task B used the standard Prometheus auth pattern (Bearer token if configured, localhost-only otherwise) with `crypto.timingSafeEqual` for constant-time comparison. Task C used `replace_all` to convert every occurrence in each file in one shot.
+- Verification: `bun run lint` → 0 errors, 23 warnings (all pre-existing, none introduced). `bun run typecheck` → clean. `bun run test` → 52 files / 990 tests passed. `cd mini-services/realtime && bunx tsc --noEmit` → clean.
+- Work record: /home/z/my-project/agent-ctx/P1-2-9-22-code-fixer.md

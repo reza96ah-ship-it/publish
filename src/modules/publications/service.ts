@@ -239,98 +239,105 @@ export class PublicationsService {
     const { action, providerPostId, reason } = input
     const now = new Date()
 
-    switch (action) {
-      case 'mark_published': {
-        if (!providerPostId) throw new ProviderPostIdRequiredError()
-        await db.publication.update({
-          where: { id: publicationId },
-          data: {
-            status: 'success',
-            providerPostId,
-            providerAcknowledgedAt: now,
-            reconciliationStatus: 'confirmed_success',
-            completedAt: now,
-          },
-        })
-        break
-      }
-      case 'confirm_failure': {
-        await db.publication.update({
-          where: { id: publicationId },
-          data: {
-            status: 'failed',
-            reconciliationStatus: 'confirmed_failure',
-            errorCategory: 'unknown',
-            errorMessage: `تأیید شده توسط اپراتور: ${reason}`,
-            completedAt: now,
-          },
-        })
-        break
-      }
-      case 'abandon': {
-        await db.publication.update({
-          where: { id: publicationId },
-          data: {
-            status: 'failed',
-            reconciliationStatus: 'confirmed_failure',
-            errorCategory: 'unknown',
-            errorMessage: `رها شده توسط اپراتور: ${reason}`,
-            completedAt: now,
-          },
-        })
-        break
-      }
-      case 'duplicate_safe_retry': {
-        // Reset to pending so the outbox dispatcher re-enqueues it
-        await db.publication.update({
-          where: { id: publicationId },
-          data: {
-            status: 'pending',
-            reconciliationStatus: null,
-            errorMessage: null,
-            errorCategory: null,
-          },
-        })
-        await db.outboxEvent.create({
-          data: {
-            workspaceId,
-            aggregateType: 'content',
-            aggregateId: publication.contentId,
-            eventType: 'publish_requested',
-            payload: {
-              jobId: publication.publishJobId,
-              contentId: publication.contentId,
-              platformId: publication.platformId,
-              workspaceId,
-              publicationId,
-              revisionId: publication.revisionId,
+    // P1-1: Wrap all writes in a single transaction so the publication update,
+    // outbox event creation (for retry), and audit log are atomic. Previously
+    // if the outboxEvent.create or auditLog.create failed after the publication
+    // was updated, the publication would be in an inconsistent state (e.g.
+    // reset to 'pending' but never re-dispatched).
+    await db.$transaction(async (tx) => {
+      switch (action) {
+        case 'mark_published': {
+          if (!providerPostId) throw new ProviderPostIdRequiredError()
+          await tx.publication.update({
+            where: { id: publicationId },
+            data: {
+              status: 'success',
+              providerPostId,
+              providerAcknowledgedAt: now,
+              reconciliationStatus: 'confirmed_success',
+              completedAt: now,
             },
-            status: 'pending',
-            availableAt: now,
-          },
-        })
-        break
+          })
+          break
+        }
+        case 'confirm_failure': {
+          await tx.publication.update({
+            where: { id: publicationId },
+            data: {
+              status: 'failed',
+              reconciliationStatus: 'confirmed_failure',
+              errorCategory: 'unknown',
+              errorMessage: `تأیید شده توسط اپراتور: ${reason}`,
+              completedAt: now,
+            },
+          })
+          break
+        }
+        case 'abandon': {
+          await tx.publication.update({
+            where: { id: publicationId },
+            data: {
+              status: 'failed',
+              reconciliationStatus: 'confirmed_failure',
+              errorCategory: 'unknown',
+              errorMessage: `رها شده توسط اپراتور: ${reason}`,
+              completedAt: now,
+            },
+          })
+          break
+        }
+        case 'duplicate_safe_retry': {
+          // Reset to pending so the outbox dispatcher re-enqueues it
+          await tx.publication.update({
+            where: { id: publicationId },
+            data: {
+              status: 'pending',
+              reconciliationStatus: null,
+              errorMessage: null,
+              errorCategory: null,
+            },
+          })
+          await tx.outboxEvent.create({
+            data: {
+              workspaceId,
+              aggregateType: 'content',
+              aggregateId: publication.contentId,
+              eventType: 'publish_requested',
+              payload: {
+                jobId: publication.publishJobId,
+                contentId: publication.contentId,
+                platformId: publication.platformId,
+                workspaceId,
+                publicationId,
+                revisionId: publication.revisionId,
+              },
+              status: 'pending',
+              availableAt: now,
+            },
+          })
+          break
+        }
+        default:
+          assertExhaustive(action as never)
       }
-      default:
-        assertExhaustive(action as never)
-    }
 
-    // Preserve the original ambiguous attempt in the audit trail
-    await db.auditLog.create({
-      data: {
-        userId: auth.userId,
-        workspaceId,
-        action: `publication.resolved.${action}`,
-        resource: 'Publication',
-        metadata: {
-          publicationId,
-          action,
-          providerPostId: providerPostId ?? null,
-          reason,
-          previousStatus: publication.status,
-          previousReconciliation: publication.reconciliationStatus,
+      // Preserve the original ambiguous attempt in the audit trail
+      await tx.auditLog.create({
+        data: {
+          userId: auth.userId,
+          workspaceId,
+          action: `publication.resolved.${action}`,
+          resource: 'Publication',
+          metadata: {
+            publicationId,
+            action,
+            providerPostId: providerPostId ?? null,
+            reason,
+            previousStatus: publication.status,
+            previousReconciliation: publication.reconciliationStatus,
+          },
         },
-      },
+      })
     })
 
     return {

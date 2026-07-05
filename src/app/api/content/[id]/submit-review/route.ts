@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     )
     return NextResponse.json(result)
   } catch (err) {
-    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
     if (err instanceof InvalidStateTransitionError) {
       return NextResponse.json({ error: 'invalid_transition', message: err.message }, { status: 400 })
     }

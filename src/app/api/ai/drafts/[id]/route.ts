@@ -21,7 +21,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const draft = await db.content.findFirst({
     where: { id, workspaceId, status: 'draft' },
   })
-  if (!draft) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (!draft) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
 
   await db.content.delete({ where: { id } })
 

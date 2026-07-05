@@ -195,9 +195,39 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
     }
 
     // GET /metrics -- Prometheus scrape endpoint (Issue #126)
-    // Issue #151: this endpoint is NOT in middleware's public paths -- restrict
-    // via network policy or reverse proxy at the edge.
+    // P1-9: Auth — if METRICS_TOKEN env is set, require
+    // `Authorization: Bearer <token>`. Otherwise, allow localhost only
+    // (standard Prometheus pattern).
     if (req.method === 'GET' && req.url?.split('?')[0] === '/metrics') {
+      const expectedToken = process.env.METRICS_TOKEN
+      let authorized = false
+
+      if (expectedToken) {
+        const authHeader = req.headers['authorization']
+        const headerVal = Array.isArray(authHeader) ? authHeader[0] : authHeader
+        const match = typeof headerVal === 'string' && headerVal.length > 7 && headerVal.substring(0, 7).toLowerCase() === 'bearer ' ? headerVal.substring(7).trim() : null
+        if (match && match[1] && timingSafeEqualStr(match[1], expectedToken)) {
+          authorized = true
+        }
+      } else {
+        // No token configured: allow localhost only.
+        const forwardedFor = req.headers['x-forwarded-for']
+        const firstHopRaw = Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor ?? ''
+        const firstHop = (typeof firstHopRaw === 'string' ? firstHopRaw : '').split(',')[0]?.trim() ?? ''
+        const localhostHops = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', ''])
+        const hostHeader = req.headers['host'] ?? ''
+        const isLoopback =
+          localhostHops.has(firstHop) &&
+          (/^localhost(:\d+)?$/i.test(hostHeader) ||
+            /^127\./.test(hostHeader) ||
+            hostHeader.startsWith('[::1]'))
+        authorized = isLoopback
+      }
+
+      if (!authorized) {
+        return sendJson(res, 401, { ok: false, error: 'unauthorized' })
+      }
+
       res.writeHead(200, { 'Content-Type': realtimeRegistry.contentType })
       res.end(await realtimeRegistry.metrics())
       return
