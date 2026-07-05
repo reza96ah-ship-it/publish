@@ -28,7 +28,8 @@ export const JALALI_WEEKDAYS = [
 
 export const JALALI_WEEKDAYS_SHORT = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] as const
 
-// Iranian official holidays (approximate, common observances) — month/day in Jalali
+// Issue #222: Iranian official holidays.
+// Fixed solar holidays fall on the same Jalali date every year.
 export const IRAN_HOLIDAYS: Record<string, string> = {
   '1-1': 'نوروز',
   '1-2': 'نوروز',
@@ -38,9 +39,35 @@ export const IRAN_HOLIDAYS: Record<string, string> = {
   '1-13': 'سیزده‌بدر',
   '3-14': 'رحلت امام خمینی',
   '3-15': 'قیام ۱۵ خرداد',
-  '7-28': 'انقلاب اسلامی',
-  '9-30': 'پیروزی انقلاب',
+  '11-22': 'پیروزی انقلاب اسلامی',
   '12-29': 'ملی شدن صنعت نفت',
+}
+
+// Religious (lunar-calendar) holidays land on different Jalali dates each year,
+// so they need a per-year table. Add the next year's table when the official
+// calendar is published (going by تقویم رسمی کشور).
+export const IRAN_HOLIDAYS_LUNAR: Record<number, Record<string, string>> = {
+  1405: {
+    '1-1': 'عید سعید فطر',
+    '1-2': 'عید سعید فطر',
+    '1-25': 'شهادت امام صادق',
+    '3-6': 'عید سعید قربان',
+    '3-14': 'عید سعید غدیر خم',
+    '4-3': 'تاسوعای حسینی',
+    '4-4': 'عاشورای حسینی',
+    '5-13': 'اربعین حسینی',
+    '5-21': 'رحلت پیامبر اکرم و شهادت امام حسن مجتبی',
+    '5-22': 'شهادت امام رضا',
+    '5-30': 'شهادت امام حسن عسکری',
+    '6-8': 'میلاد پیامبر اکرم و امام جعفر صادق',
+    '8-22': 'شهادت حضرت فاطمه زهرا',
+    '10-2': 'ولادت امام علی',
+    '10-16': 'مبعث پیامبر اکرم',
+    '11-4': 'ولادت حضرت مهدی (نیمه شعبان)',
+    '12-9': 'شهادت امام علی',
+    '12-19': 'عید سعید فطر',
+    '12-20': 'عید سعید فطر',
+  },
 }
 
 function div(a: number, b: number) {
@@ -164,7 +191,34 @@ export function relativeTime(date: Date): string {
 }
 
 export function isHoliday(jalali: JalaliDate): string | null {
-  return IRAN_HOLIDAYS[`${jalali.month}-${jalali.day}`] ?? null
+  const key = `${jalali.month}-${jalali.day}`
+  const fixed = IRAN_HOLIDAYS[key]
+  const lunar = IRAN_HOLIDAYS_LUNAR[jalali.year]?.[key]
+  if (fixed && lunar) return `${fixed} و ${lunar}`
+  return fixed ?? lunar ?? null
+}
+
+export interface UpcomingHoliday {
+  name: string
+  date: Date
+  jalali: JalaliDate
+  daysAway: number
+}
+
+// Issue #222: upcoming holidays within a window — content-occasion hints in
+// the composer and holiday-aware planning surfaces.
+export function getUpcomingHolidays(from: Date = new Date(), windowDays = 14): UpcomingHoliday[] {
+  const base = new Date(from)
+  base.setHours(0, 0, 0, 0)
+  const out: UpcomingHoliday[] = []
+  for (let i = 1; i <= windowDays; i++) {
+    const day = new Date(base)
+    day.setDate(day.getDate() + i)
+    const j = toJalali(day)
+    const name = isHoliday(j)
+    if (name) out.push({ name, date: day, jalali: j, daysAway: i })
+  }
+  return out
 }
 
 // Persian digit conversion

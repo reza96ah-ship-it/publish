@@ -549,6 +549,11 @@ export function CalendarView() {
                   {JALALI_MONTHS[toJalali(dayCursor).month - 1]}
                 </p>
                 <p className="text-2xs text-ink-tertiary">{toPersianDigits(toJalali(dayCursor).year)}</p>
+                {isHoliday(toJalali(dayCursor)) && (
+                  <p className="text-2xs text-danger font-semibold mt-0.5">
+                    {isHoliday(toJalali(dayCursor))}
+                  </p>
+                )}
               </div>
               <Button variant="ghost" size="icon" onClick={goNextDay} aria-label="روز بعد">
                 <ChevronLeft className="size-4" />
