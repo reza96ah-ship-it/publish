@@ -2870,3 +2870,26 @@ Work Log:
 
 Stage Summary:
 All 5 implementation tasks + tests/proof complete. No `db push --accept-data-loss` anywhere. Migration image is dedicated. Deploy gated on CI success. Rollback automated. CODEOWNERS created. SBOM + provenance on all images.
+
+---
+Task ID: dm-auto-ui-edit-freqcap
+Agent: Main (Z.ai Code)
+Task: Complete DM Auto UI — add edit flow for existing rules + frequency cap (freqCapHours) field in the form.
+
+Work Log:
+- Reviewed current state: commit 66cbce3 already fixed the backend (createRule saves all fields, multi-word keywords, normalizePersian for opt-out, updateRule service + PATCH endpoint accept freqCapHours/keywords/excludeKeywords/etc.). Only the UI was missing edit flow + freqCapHours input.
+- Read src/components/automation/comment-dm-rules.tsx (435 lines) — confirmed form sends all fields to POST but: (1) no edit button on rule rows, (2) no freqCapHours in form state/mutation, (3) only create flow exists.
+- Verified backend readiness: PATCH /api/automation/comment-dm-rules/[id] already handles general updates (not just toggle), updateRule() in comment-dm.ts accepts Partial<CreateRuleInput> including freqCapHours.
+- Edited comment-dm-rules.tsx with MultiEdit (7 edits):
+  1. Imported Pencil + X icons from lucide-react.
+  2. Added editingRuleId state + freqCapHours state (default 24).
+  3. Refactored resetForm() to also clear editingRuleId, optOutKeyword, freqCapHours. closeBuilder() now calls resetForm().
+  4. Added startEdit(rule) helper — populates ALL form fields from a CommentDmRule (keywords joined with Persian comma, excludeKeywords joined, buttonText/buttonUrl/publicReply/optOutKeyword/freqCapHours/platformId), opens form + advanced section, scrolls into view.
+  5. Added updateMutation (PATCH to /api/automation/comment-dm-rules/${editingRuleId}) with all fields including freqCapHours. Added isEditing flag, saveMutation alias, handleSave() that branches on isEditing.
+  6. Added freqCapHours number input to advanced settings (paired with opt-out keyword in a 2-col grid, Persian label "حداقل فاصله بین پیام‌ها (ساعت)", helper text "جلوگیری از ارسال مکرر به یک کاربر", min=0 max=168). Refactored exclude keywords to its own full-width row with helper text.
+  7. Added edit (Pencil) button to each rule row between toggle and delete. CTA now swaps label between "فعال‌سازی دایرکت خودکار" (create) and "ذخیره تغییرات" (edit), with a "انصراف" (cancel) ghost button appearing in edit mode. Added id="comment-dm-builder" for scroll-into-view target.
+- Verification: `bun run lint` → 0 errors (25 pre-existing warnings, none in comment-dm-rules.tsx). `bun run typecheck` (tsc --noEmit) → 0 errors. Dev server starts (Ready in ~500ms), / returns 307 redirect to /auth/signin.
+- Browser verification BLOCKED: sandbox has no Postgres running (schema.prisma provider=postgresql, .env DATABASE_URL=file:... but Prisma tries network socket → ECONNREFUSED). Cannot seed demo user / sign in / reach compose or settings pages that render the component. Dev server also killed between bash tool calls (setsid+disown doesn't survive). Static verification (lint + typecheck + compile) all pass clean.
+
+Stage Summary:
+DM Auto UI now complete: edit flow + frequency cap UI implemented in src/components/automation/comment-dm-rules.tsx. Combined with commit 66cbce3 (backend), the DM Auto feature now fully supports: (1) creating rules with all fields, (2) editing existing rules via PATCH, (3) multi-word keywords, (4) frequency cap (freqCapHours) configurable per-rule, (5) exclude keywords, (6) public reply, (7) button text + URL, (8) opt-out keyword with normalizePersian, (9) per-post vs workspace scope, (10) test runner. Lint + typecheck clean. Interactive browser verification deferred — sandbox lacks Postgres DB required for auth.
