@@ -87,6 +87,12 @@ export async function proxy(req: NextRequest) {
     if (process.env.DISABLE_AUTH !== '1') {
       const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
       if (!token) {
+        // API routes get a 401, not a redirect: redirecting fetch/beacon
+        // calls (e.g. /api/vitals) to the signin page is useless to the
+        // caller and used to leak "callbackUrl=/api/..." into the login flow.
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        }
         const signInUrl = new URL('/auth/signin', req.url)
         signInUrl.searchParams.set('callbackUrl', pathname)
         const redirect = NextResponse.redirect(signInUrl)

@@ -22,6 +22,8 @@ function mapAuthError(code?: string): string | null {
       return 'خطای پیکربندی سرور'
     case 'AccessDenied':
       return 'دسترسی رد شد'
+    case 'SessionExpired':
+      return 'نشست شما منقضی شده است — لطفاً دوباره وارد شوید'
     default:
       return 'خطا در ورود'
   }
