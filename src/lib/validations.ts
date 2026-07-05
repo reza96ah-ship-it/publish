@@ -384,6 +384,52 @@ export const smartPageClickSchema = z.object({
   userAgent: z.string().max(500).nullable().optional(),
 })
 
+// ── API Tokens (#255) ───────────────────────────────────────────────────────
+//
+// Scopes are validated against the same enum used in src/lib/auth-guards.ts
+// (API_SCOPES). Keep both lists in sync — the auth guard enforces them at
+// request time, the Zod schema enforces them at creation time. expiresAt is
+// an ISO-8601 datetime string (or null for "no expiry").
+
+export const apiTokenCreateSchema = z.object({
+  name: persianText(1, 100, 'نام توکن الزامی است'),
+  scopes: z
+    .array(
+      z.enum([
+        'content:read',
+        'content:write',
+        'publications:read',
+        'inbox:read',
+        'reports:read',
+      ])
+    )
+    .min(1, 'حداقل یک دسترسی الزامی است'),
+  expiresAt: z.string().datetime().nullable().optional(),
+})
+
+// ── Webhooks (#255) ─────────────────────────────────────────────────────────
+//
+// URLs MUST be HTTPS — no plaintext http:// allowed, because the webhook
+// secret travels in the request body. Events are free-form strings so we can
+// add new event types (publish.success, inbox.new, …) without a migration;
+// the route layer should reject unknown event names with a 400.
+
+export const webhookCreateSchema = z.object({
+  url: z
+    .string()
+    .url('آدرس وب‌هوک نامعتبر است')
+    .max(500)
+    .regex(/^https:\/\//, 'آدرس باید HTTPS باشد'),
+  events: z
+    .array(z.string().min(1).max(50))
+    .min(1, 'حداقل یک رویداد الزامی است')
+    .max(20),
+})
+
+export const webhookUpdateSchema = webhookCreateSchema.partial().extend({
+  isActive: z.boolean().optional(),
+})
+
 // ── Generic helpers ─────────────────────────────────────────────────────────
 
 export const idSchema = z.string().min(1, 'شناسه الزامی است').max(100)
