@@ -35,6 +35,34 @@ const FLAG_DEFAULTS: Record<FlagName, boolean> = {
   comment_dm_beta: false,
 }
 
+/** Persian labels + descriptions for the settings UI (served via /api/flags). */
+export const FLAG_META: Record<FlagName, { label: string; description: string }> = {
+  guided_onboarding: {
+    label: 'راه‌اندازی گام‌به‌گام',
+    description: 'راهنمای تعاملی شروع کار برای اعضای جدید فضای کار',
+  },
+  design_workbench: {
+    label: 'کارگاه طراحی',
+    description: 'گالری کامپوننت‌های سیستم طراحی (مخصوص توسعه‌دهندگان)',
+  },
+  ai_caption_v2: {
+    label: 'کپشن هوشمند نسخه ۲',
+    description: 'مدل بهبودیافتهٔ تولید کپشن با هوش مصنوعی',
+  },
+  utm_presets: {
+    label: 'قالب‌های UTM',
+    description: 'ساخت و مدیریت پارامترهای UTM در صفحه ایجاد محتوا',
+  },
+  jalali_holidays: {
+    label: 'مناسبت‌های شمسی',
+    description: 'نمایش تعطیلات رسمی ایران در تقویم و پیشنهاد مناسبت‌ها',
+  },
+  comment_dm_beta: {
+    label: 'دایرکت خودکار از کامنت (بتا)',
+    description: 'ارسال خودکار پیام دایرکت اینستاگرام در پاسخ به کامنت‌های دارای کلیدواژه',
+  },
+}
+
 // ─── Evaluation ─────────────────────────────────────────────────────────────
 
 function envKey(flag: FlagName) {
@@ -85,4 +113,24 @@ export async function evaluateFlags(
   const names = Object.keys(FLAG_DEFAULTS) as FlagName[]
   const values = await Promise.all(names.map((f) => isEnabled(f, workspaceId)))
   return Object.fromEntries(names.map((f, i) => [f, values[i]])) as Record<FlagName, boolean>
+}
+
+/** True when the name is a registered flag (narrow untrusted input). */
+export function isFlagName(name: string): name is FlagName {
+  return name in FLAG_DEFAULTS
+}
+
+/**
+ * Set a per-workspace DB override for a flag (settings UI / targeted rollout).
+ */
+export async function setFlag(
+  workspaceId: string,
+  flag: FlagName,
+  enabled: boolean,
+): Promise<void> {
+  await db.featureFlag.upsert({
+    where: { workspaceId_flag: { workspaceId, flag } },
+    create: { workspaceId, flag, enabled },
+    update: { enabled },
+  })
 }

@@ -56,6 +56,10 @@ export function NashrinoEditor({
       StarterKit.configure({
         heading: { levels: [2, 3] },
         codeBlock: false,
+        // Tiptap v3 bundles Link in StarterKit — disable it so our configured
+        // Link extension below is the only registration (fixes the
+        // "Duplicate extension names: ['link']" console warning).
+        link: false,
       }),
       Link.configure({
         openOnClick: false,

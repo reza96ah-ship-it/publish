@@ -15,7 +15,7 @@ const size = (className?: string) => className ?? 'size-5'
  *  - instagram.svg  (official 2016 gradient glyph, Wikimedia Commons)
  *  - telegram.svg   (official blue circle paper-plane, Wikimedia Commons)
  *  - linkedin.svg   (official "in" square, Wikimedia Commons)
- *  - rubika.png     (official app icon, 256×256, web-sourced)
+ *  - rubika.svg     (local stylized mark — official PNG was never committed)
  *  - eitaa.jpg      (official app icon, 1024×1024, web-sourced)
  *
  * Each renderer outputs a rounded square container so the logos sit
@@ -26,7 +26,7 @@ const META: Record<PlatformId, { src: string; rounded: string }> = {
   instagram: { src: '/logos/instagram.svg', rounded: 'rounded-[22%]' },
   telegram: { src: '/logos/telegram.svg', rounded: 'rounded-full' },
   linkedin: { src: '/logos/linkedin.svg', rounded: 'rounded-[18%]' },
-  rubika: { src: '/logos/rubika.png', rounded: 'rounded-[22%]' },
+  rubika: { src: '/logos/rubika.svg', rounded: 'rounded-[22%]' },
   eitaa: { src: '/logos/eitaa.jpg', rounded: 'rounded-[22%]' },
 }
 
