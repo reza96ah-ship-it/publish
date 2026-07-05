@@ -47,7 +47,7 @@ function resolveSigningSecret(): string {
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 401 })
   }
 
   // session.user.id is injected by the jwt() callback in authOptions.

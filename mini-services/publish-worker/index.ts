@@ -59,6 +59,7 @@ import {
 } from './lib/attempt-ledger'
 import { normalizePublishResult, assertNeverRetryDirective } from './lib/retry-directive'
 import { platformRateLimiter } from './lib/rate-limiter'
+import { closeRedisClient } from './lib/redis-client'
 import { bootstrapServiceConfig } from '../../shared/config-validator'
 import { initTracing } from './lib/tracing'
 
@@ -144,7 +145,8 @@ const worker = new Worker(
     }
 
     // Circuit breaker check — defer the job (not retry) until circuit recovers
-    if (!circuitBreakers.canDispatch(job.workspaceId, job.platform.type)) {
+    // P1-10: canDispatch is async (Redis-backed under horizontal scaling)
+    if (!(await circuitBreakers.canDispatch(job.workspaceId, job.platform.type))) {
       console.log(`[worker] circuit OPEN for ${job.platform.type}, deferring job ${job.id}`)
       await bullJob.moveToDelayed(Date.now() + 60_000)
       return
@@ -154,7 +156,8 @@ const worker = new Worker(
     // the global BullMQ queue limiter below (which is shared across every
     // provider). Defer (not retry-count) when the platform's bucket is empty
     // — same treatment as the circuit breaker above.
-    if (!platformRateLimiter.tryAcquire(job.platform.type as PlatformType)) {
+    // P1-10: tryAcquire is async (Redis-backed under horizontal scaling)
+    if (!(await platformRateLimiter.tryAcquire(job.platform.type as PlatformType))) {
       console.log(`[worker] rate limit reached for ${job.platform.type}, deferring job ${job.id}`)
       await bullJob.moveToDelayed(Date.now() + 2_000)
       return
@@ -442,7 +445,7 @@ const worker = new Worker(
         // and reconcile without calling the provider again.
         await markProviderSuccess(attemptId, directive.providerPostId)
 
-        circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
+        await circuitBreakers.recordSuccess(job.workspaceId, job.platform.type)
         await updateJobStatus(job, 'success', 100, 'منتشر شد', null, directive.providerPostId || undefined)
 
         // Issue #145: keep the first-class Publication record in sync
@@ -486,7 +489,7 @@ const worker = new Worker(
       }
 
       case 'action_required': {
-        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        await circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
         publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
         await markFailure(attemptId, {
           outcome: 'permanent_failure',
@@ -518,7 +521,7 @@ const worker = new Worker(
       }
 
       case 'permanent_failure': {
-        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        await circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
         publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
         await markFailure(attemptId, {
           outcome: 'permanent_failure',
@@ -553,7 +556,7 @@ const worker = new Worker(
         // success or a normal failure either. Surface it as needing manual
         // reconciliation, same as action_required, with a distinct
         // reconciliationStatus on the Publication record.
-        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        await circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
         publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
         await markFailure(attemptId, {
           outcome: 'outcome_unknown',
@@ -585,7 +588,7 @@ const worker = new Worker(
       }
 
       case 'retry': {
-        circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
+        await circuitBreakers.recordFailure(job.workspaceId, job.platform.type)
         publishJobsFailed.inc({ platform: job.platform.type, category: directive.category })
         await markFailure(attemptId, {
           outcome: 'retryable_failure',
@@ -727,7 +730,8 @@ async function markFailed(
   _retryable: boolean,
   needsAction = false
 ): Promise<void> {
-  const breakerState = circuitBreakers.getState(job.workspaceId, job.platform.type)
+  // P1-10: getState is async (Redis-backed under horizontal scaling)
+  const breakerState = await circuitBreakers.getState(job.workspaceId, job.platform.type)
   const status = needsAction ? 'action' : 'failed'
   const label = needsAction
     ? 'نیازمند اقدام دستی'
@@ -964,6 +968,7 @@ async function shutdown(signal: string) {
   stopCommentDmScanner()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
+  await closeRedisClient() // P1-10: close shared circuit/rate-limit redis client
   console.log('[worker] shutdown complete')
   process.exit(0)
 }

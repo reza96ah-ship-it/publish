@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     )
     return NextResponse.json(result)
   } catch (err) {
-    if (err instanceof PlatformNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof PlatformNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
     if (err instanceof CredentialValidationError) return NextResponse.json({ error: err.message }, { status: 400 })
     throw err
   }

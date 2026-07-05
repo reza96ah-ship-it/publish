@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAnyPermissionApi } from '@/lib/auth-guards'
+import { validateBody, utmPresetUpdateSchema } from '@/lib/validations'
 
 import { UtmPresetService } from '@/modules/utm/service'
 
@@ -10,8 +11,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (guard.error) return guard.error
   try {
     const { id } = await params
-    const body = await req.json()
-    const updated = await svc.update(id, guard.workspaceId, body)
+    const raw = await req.json().catch(() => null)
+    if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر است' }, { status: 400 })
+    const validation = validateBody(utmPresetUpdateSchema, raw)
+    if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
+    const updated = await svc.update(id, guard.workspaceId, validation.data)
     return NextResponse.json(updated)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'

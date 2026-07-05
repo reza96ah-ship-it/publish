@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'دسترسی غیرمجاز' }, { status: 401 })
   }
 
   const { success: rateOk } = await authRateLimit(session.user.id)

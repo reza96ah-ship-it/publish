@@ -3,6 +3,7 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 import { isEnabled } from '@/lib/flags'
 import { listRules, createRule } from '@/modules/automation/comment-dm'
 import { parseKeywordList } from '@/modules/automation/comment-dm-shared'
+import { validateBody, commentDmRuleCreateSchema } from '@/lib/validations'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,28 +31,36 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json()
+    const raw = await req.json().catch(() => null)
+    if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر است' }, { status: 400 })
+
+    // P1-2: Validate input with Zod before passing to service
+    const validation = validateBody(commentDmRuleCreateSchema, raw)
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
+    const body = validation.data
 
     // Parse keyword lists: accept both raw string (comma-separated) and array
-    const keywords = Array.isArray(body.keywords)
+    const keywords = Array.isArray(raw.keywords)
       ? body.keywords
-      : typeof body.keywords === 'string'
-        ? parseKeywordList(body.keywords)
-        : body.keyword
-          ? [body.keyword]
-          : []
+      : typeof raw.keywords === 'string'
+        ? parseKeywordList(raw.keywords)
+        : raw.keyword
+          ? [raw.keyword]
+          : body.keywords
 
-    const excludeKeywords = Array.isArray(body.excludeKeywords)
+    const excludeKeywords = Array.isArray(raw.excludeKeywords)
       ? body.excludeKeywords
-      : typeof body.excludeKeywords === 'string'
-        ? parseKeywordList(body.excludeKeywords)
-        : []
+      : typeof raw.excludeKeywords === 'string'
+        ? parseKeywordList(raw.excludeKeywords)
+        : body.excludeKeywords
 
     const rule = await createRule(guard.workspaceId, {
       platformId: body.platformId,
       keywords,
       excludeKeywords,
-      dmTemplate: body.dmTemplate ?? '',
+      dmTemplate: body.dmTemplate,
       buttonText: body.buttonText ?? null,
       buttonUrl: body.buttonUrl ?? null,
       publicReply: body.publicReply ?? null,

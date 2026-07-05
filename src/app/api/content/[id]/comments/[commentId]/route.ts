@@ -32,7 +32,7 @@ export async function PATCH(
     )
     return new NextResponse(null, { status: 204 })
   } catch (err) {
-    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+    if (err instanceof ContentNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
     throw err
   }
 }
