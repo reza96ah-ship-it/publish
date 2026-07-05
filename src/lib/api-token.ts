@@ -1,3 +1,5 @@
+// CodeQL: API tokens are random bearer credentials, not user passwords.
+// SHA-256 is appropriate for token hashing (unlike passwords which need Argon2id).
 /**
  * Issue #255: Public API token generation + hashing.
  *
