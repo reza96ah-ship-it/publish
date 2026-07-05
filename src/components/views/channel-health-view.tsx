@@ -22,6 +22,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { api } from '@/lib/api'
+import { ease } from '@/lib/motion'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
 import {
   SectionTitle,
@@ -67,7 +68,7 @@ export function ChannelHealthView() {
     <motion.div
       initial={false}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.3, ease: ease.enter }}
       className="space-y-4"
     >
       <SectionTitle icon={Activity} badge={

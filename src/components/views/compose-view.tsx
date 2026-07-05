@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { useShouldAnimate } from '@/lib/motion'
+import { useShouldAnimate, ease } from '@/lib/motion'
 import { toast } from 'sonner'
 import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
 import { NashrinoEditor } from '@/components/editor/nashrino-editor'
@@ -195,7 +195,8 @@ export function ComposeView() {
     draftRestored.current = true
 
     // 1. Read local storage draft
-    let localDraft: any = null
+    type DraftData = { content?: { title?: string; caption?: string }; channelIds?: string[] }
+    let localDraft: DraftData | null = null
     try {
       const rawLocal = localStorage.getItem('nashrino_unsaved_draft')
       if (rawLocal) {
@@ -211,12 +212,12 @@ export function ComposeView() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const serverDraftRaw = data?.draft
-        const serverDraft: any = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
+        const serverDraft: DraftData | null = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
 
         const hasServer = serverDraft && (serverDraft.content?.title || serverDraft.content?.caption || serverDraft.channelIds?.length)
         const hasLocal = localDraft && (localDraft.content?.title || localDraft.content?.caption || localDraft.channelIds?.length)
 
-        if (hasServer && hasLocal) {
+        if (hasServer && hasLocal && localDraft) {
           // Check for meaningful differences to prompt a conflict resolution
           const titleDiff = (serverDraft.content?.title || '') !== (localDraft.content?.title || '')
           const captionDiff = (serverDraft.content?.caption || '') !== (localDraft.content?.caption || '')
@@ -449,8 +450,9 @@ export function ComposeView() {
       queryClient.setQueryData<ContentItem[]>(['content'], (old) => [optimistic, ...(old ?? [])])
       return { previous }
     },
-    onError: (err, _payload, context: any) => {
-      if ((context as { previous?: unknown })?.previous) queryClient.setQueryData(['content'], (context as { previous: unknown }).previous)
+    onError: (err, _payload, context: unknown) => {
+      const ctx = context as { previous?: ContentItem[] } | undefined
+      if (ctx?.previous) queryClient.setQueryData(['content'], ctx.previous)
       toast.error(err.message || 'انتشار محتوا ناموفق بود. تغییرات برگردانده شد.')
     },
     onSettled: () => {
@@ -639,7 +641,7 @@ export function ComposeView() {
       <motion.div
         initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.3, ease: ease.enter }}
         className="space-y-4"
       >
         <SectionTitle
@@ -768,7 +770,7 @@ export function ComposeView() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.12, 0, 0.08, 1] }}
+                transition={{ duration: 0.15, ease: ease.snap }}
                 onClick={() => setAiSheetOpen(true)}
                 className="n-focus-ring inline-flex h-8 min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
               >
@@ -1065,7 +1067,7 @@ export function ComposeView() {
       <AIAssistantSheet
         open={aiSheetOpen}
         onClose={() => setAiSheetOpen(false)}
-        platform={(selectedPlatforms[0] as any) || 'instagram'}
+        platform={(selectedPlatforms[0] as 'instagram' | 'telegram' | 'linkedin' | 'rubika' | 'bale' | 'eitaa') || 'instagram'}
         topic={title}
         onInsert={(text) => setCaption(text)}
         onHashtags={(tags) => setHashtags(tags.join(' '))}

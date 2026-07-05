@@ -170,8 +170,7 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
   // Session-derived user info
   const userName = session?.user?.name ?? ''
   const userImage = session?.user?.image ?? null
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = ROLE_LABELS[(session?.user as any)?.role ?? ''] ?? ''
+  const userRole = ROLE_LABELS[session?.user?.role ?? ''] ?? ''
 
   // Workspace-derived info
   const wsName = workspace?.name ?? ''
