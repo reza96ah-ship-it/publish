@@ -26,6 +26,7 @@ import {
   ListChecks,
   Plus,
   CalendarClock,
+  Instagram,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -63,6 +64,7 @@ import {
 } from '@/components/ui/sheet'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { JalaliDatePicker } from '@/components/ui/jalali-picker'
+import { IgGridDialog } from '@/components/editor/ig-grid-board'
 import { cn } from '@/lib/utils'
 
 interface CalendarJob {
@@ -121,7 +123,18 @@ export function CalendarView() {
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
+  const [igGridOpen, setIgGridOpen] = useState(false)
   const queryClient = useQueryClient()
+
+  // Issue #219: IG grid preview entry point — only shown when an IG channel exists
+  const { data: platformList } = useQuery<{ id: string; name: string; type: string }[]>({
+    queryKey: ['platforms'],
+    queryFn: () => api.getPaginated<{ id: string; name: string; type: string }>('/api/platforms'),
+  })
+  const igPlatforms = useMemo(
+    () => (platformList ?? []).filter((p) => p.type === 'instagram'),
+    [platformList]
+  )
 
   // Week/day cursors — Saturday-anchored (Jalali week start)
   const [weekCursor, setWeekCursor] = useState<Date>(() => {
@@ -385,9 +398,22 @@ export function CalendarView() {
                 <ChevronLeft className="size-4" />
               </Button>
             </div>
-            <Button variant="outline" size="sm" onClick={goToday}>
-              امروز
-            </Button>
+            <div className="flex items-center gap-2">
+              {igPlatforms.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIgGridOpen(true)}
+                  aria-label="گرید اینستاگرام"
+                >
+                  <Instagram className="size-4" />
+                  <span className="hidden sm:inline">گرید اینستاگرام</span>
+                </Button>
+              )}
+              <Button variant="outline" size="sm" onClick={goToday}>
+                امروز
+              </Button>
+            </div>
           </div>
 
           {/* Month grid — horizontal scroll on mobile so 7-col grid never clips */}
@@ -770,6 +796,9 @@ export function CalendarView() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Issue #219: IG grid preview */}
+      <IgGridDialog open={igGridOpen} onOpenChange={setIgGridOpen} platforms={igPlatforms} />
     </motion.div>
   )
 }

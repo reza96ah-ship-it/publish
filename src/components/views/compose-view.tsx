@@ -391,6 +391,9 @@ export function ComposeView() {
 
   const detectedKeyword = useMemo(() => detectCommentKeyword(caption), [caption])
   const hasIgSelected = (platforms ?? []).some((p) => selectedPlatforms.includes(p.id) && p.type === 'instagram')
+  const selectedIgPlatformId = (platforms ?? []).find(
+    (p) => selectedPlatforms.includes(p.id) && p.type === 'instagram'
+  )?.id
 
   // Issue #152: canPublish no longer requires media globally.
   // Text-only publication is allowed when ALL selected channels support text
@@ -967,6 +970,7 @@ export function ComposeView() {
                 caption={caption}
                 mediaUrl={selectedMedia[0]?.thumbnail}
                 mediaCount={selectedMedia.length}
+                platformId={selectedIgPlatformId}
               />
             )}
 

@@ -16,6 +16,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertTriangle,
+  LayoutGrid,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -67,6 +68,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { IgGridDialog } from '@/components/editor/ig-grid-board'
 import { cn } from '@/lib/utils'
 
 interface Platform {
@@ -290,6 +292,7 @@ export function ChannelsView() {
 function PlatformCard({ platform }: { platform: Platform }) {
   const queryClient = useQueryClient()
   const [isValidating, setIsValidating] = useState(false)
+  const [igGridOpen, setIgGridOpen] = useState(false)
   const healthy = platform.state.includes('متصل') || platform.state.includes('پایدار')
 
   const handleValidate = async () => {
@@ -342,6 +345,12 @@ function PlatformCard({ platform }: { platform: Platform }) {
               <PlugZap className="size-3.5" />
               تست اتصال
             </DropdownMenuItem>
+            {platform.type === 'instagram' && (
+              <DropdownMenuItem onClick={() => setIgGridOpen(true)}>
+                <LayoutGrid className="size-3.5" />
+                گرید اینستاگرام
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DisconnectItem platformName={platform.name} />
           </DropdownMenuContent>
@@ -429,6 +438,14 @@ function PlatformCard({ platform }: { platform: Platform }) {
           ویرایش
         </Button>
       </div>
+
+      {platform.type === 'instagram' && (
+        <IgGridDialog
+          open={igGridOpen}
+          onOpenChange={setIgGridOpen}
+          platforms={[{ id: platform.id, name: platform.name }]}
+        />
+      )}
     </div>
   )
 }
