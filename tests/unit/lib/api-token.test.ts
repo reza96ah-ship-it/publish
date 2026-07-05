@@ -17,7 +17,7 @@ describe('api-token helpers', () => {
     it('generates a prefix for UI display', () => {
       const { prefix } = generateApiToken()
       expect(prefix).toMatch(/^nsh_/)
-      expect(prefix.length).toBe(12) // nsh_ + 8 chars
+      expect(prefix.length).toBe(12)
     })
 
     it('generates unique tokens each call', () => {
@@ -30,8 +30,7 @@ describe('api-token helpers', () => {
 
   describe('hashToken', () => {
     it('produces a deterministic SHA-256 hash', () => {
-      const token = 'nsh_test123'
-      expect(hashToken(token)).toBe(hashToken(token))
+      expect(hashToken('test')).toBe(hashToken('test'))
     })
 
     it('produces a 64-char hex string', () => {
