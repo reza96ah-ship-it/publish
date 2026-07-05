@@ -24,6 +24,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CheckCircle2, Clock3, GripVertical, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 import { toast } from 'sonner'
 
 import { api } from '@/lib/api'
@@ -83,7 +84,13 @@ function GridCell({ item }: { item: IgGridItem }) {
       aria-label={item.title}
     >
       {item.thumbnail ? (
-        <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+        <Image
+          src={item.thumbnail}
+          alt={item.title}
+          fill
+          unoptimized={item.thumbnail.startsWith('http')}
+          className="object-cover"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-ink-tertiary">
           <ImageIcon className="size-5" />

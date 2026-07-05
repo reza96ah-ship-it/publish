@@ -24,6 +24,7 @@ import {
 
 import { api } from '@/lib/api'
 import { toPersianDigits, formatNumber, formatCompact, relativeTime } from '@/lib/jalali'
+import Image from 'next/image'
 import { SectionTitle, EmptyState, Skeleton, LoadingState } from '@/components/dashboard/shared'
 import { announce } from '@/lib/aria-live'
 import { Button } from '@/components/ui/button'
@@ -377,11 +378,13 @@ export function MediaView() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="aspect-square rounded-xl overflow-hidden bg-border">
-                  <img
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-border">
+                  <Image
                     src={selected.thumbnail}
                     alt={selected.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    unoptimized={selected.thumbnail.startsWith('http')}
+                    className="object-cover"
                   />
                 </div>
                 <div className="space-y-2 text-sm">
@@ -445,7 +448,13 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
     >
       <div className="relative aspect-square bg-border">
         {item.thumbnail ? (
-          <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover" />
+          <Image
+            src={item.thumbnail}
+            alt={item.name}
+            fill
+            unoptimized={item.thumbnail.startsWith('http')}
+            className="object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ImageIcon className="size-8 text-ink-tertiary opacity-40" />
@@ -523,9 +532,12 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
         className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-start"
       >
         {item.thumbnail ? (
-          <img
+          <Image
             src={item.thumbnail}
             alt={item.name}
+            width={48}
+            height={48}
+            unoptimized={item.thumbnail.startsWith('http')}
             className="size-12 rounded-lg object-cover shrink-0"
           />
         ) : (

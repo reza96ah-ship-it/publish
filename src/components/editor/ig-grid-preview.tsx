@@ -8,6 +8,7 @@
  */
 import { useQuery } from '@tanstack/react-query'
 import { Clock3, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import type { IgGridItem } from '@/components/editor/ig-grid-board'
@@ -43,7 +44,13 @@ export function IgGridPreview({
         {/* Current post — first cell */}
         <div className="aspect-square bg-surface-subtle flex items-center justify-center relative ring-1 ring-accent/60">
           {mediaUrl ? (
-            <img src={mediaUrl} alt="preview" className="w-full h-full object-cover" />
+            <Image
+              src={mediaUrl}
+              alt="preview"
+              fill
+              unoptimized={mediaUrl.startsWith('http')}
+              className="object-cover"
+            />
           ) : (
             <div className="flex flex-col items-center gap-1 text-ink-tertiary">
               <ImageIcon className="size-5" />
@@ -65,7 +72,13 @@ export function IgGridPreview({
           return (
             <div key={item.jobId} className="aspect-square bg-surface-subtle relative overflow-hidden">
               {item.thumbnail ? (
-                <img src={item.thumbnail} alt={item.title} className="w-full h-full object-cover" />
+                <Image
+                  src={item.thumbnail}
+                  alt={item.title}
+                  fill
+                  unoptimized={item.thumbnail.startsWith('http')}
+                  className="object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-ink-tertiary">
                   <ImageIcon className="size-4" />

@@ -45,6 +45,7 @@ import {
 } from '@/lib/jalali'
 import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { announce } from '@/lib/aria-live'
 import {
   SectionTitle,
@@ -751,9 +752,12 @@ export function CalendarView() {
               </SheetHeader>
               <div className="px-4 pb-4 space-y-4 mt-4">
                 {selectedJob.thumbnail && (
-                  <img
+                  <Image
                     src={selectedJob.thumbnail}
                     alt={selectedJob.title}
+                    width={640}
+                    height={360}
+                    unoptimized={selectedJob.thumbnail.startsWith('http')}
                     className="w-full aspect-video rounded-xl object-cover"
                   />
                 )}
@@ -994,7 +998,14 @@ function QueueRow({ job }: { job: PublishJob }) {
     <div className="n-card-compact flex items-center gap-3 p-3">
       <div className="relative shrink-0">
         {job.thumbnail ? (
-          <img src={job.thumbnail} alt="" className="size-11 rounded-xl object-cover" />
+          <Image
+            src={job.thumbnail}
+            alt=""
+            width={44}
+            height={44}
+            unoptimized={job.thumbnail.startsWith('http')}
+            className="size-11 rounded-xl object-cover"
+          />
         ) : (
           <div className="size-11 rounded-xl bg-border flex items-center justify-center">
             <PlatformIcon platform={job.platform} className="size-5" />
