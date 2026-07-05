@@ -30,7 +30,7 @@ import {
 import { api } from '@/lib/api'
 import { CommentDmRulesPanel } from '@/components/automation/comment-dm-rules'
 import { detectCommentKeyword } from '@/modules/automation/comment-dm-shared'
-import { toPersianDigits, formatJalali, formatJalaliTime, IRAN_HOLIDAYS, toJalali } from '@/lib/jalali'
+import { toPersianDigits, formatJalali, formatJalaliTime, getUpcomingHolidays } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
   SectionTitle,
@@ -974,23 +974,14 @@ export function ComposeView() {
               />
             )}
 
-            {/* Issue #222: Upcoming holidays hint */}
+            {/* Issue #222: Upcoming holidays hint (fixed + lunar, real day distance) */}
             {(() => {
-              const today = toJalali(new Date())
-              const upcoming = Object.entries(IRAN_HOLIDAYS)
-                .map(([key, name]) => {
-                  const [month, day] = key.split('-').map(Number)
-                  const remaining = month - today.month || (month === today.month ? day - today.day : 30)
-                  return { name, month, day, remaining }
-                })
-                .filter(h => h.remaining > 0 && h.remaining <= 14)
-                .sort((a, b) => a.remaining - b.remaining)
-                .slice(0, 2)
+              const upcoming = getUpcomingHolidays(new Date(), 14).slice(0, 2)
               if (!upcoming.length) return null
               return (
                 <div className="flex items-center gap-2 text-2xs text-ink-tertiary px-2">
                   <Sparkles className="size-3 text-accent" />
-                  <span>مناسبت‌های پیش‌رو: {upcoming.map(h => `${h.name} (${toPersianDigits(h.remaining)} روز دیگر)`).join('، ')}</span>
+                  <span>مناسبت‌های پیش‌رو: {upcoming.map(h => `${h.name} (${toPersianDigits(h.daysAway)} روز دیگر)`).join('، ')}</span>
                 </div>
               )
             })()}
