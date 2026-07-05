@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const { dbMock } = vi.hoisted(() => ({
   dbMock: {
     commentDmRule: { findMany: vi.fn() },
-    commentDmLog: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn() },
+    commentDmLog: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     publication: { findUnique: vi.fn(), findMany: vi.fn() },
   },
 }))
@@ -60,6 +60,7 @@ async function runScan(opts: {
   commentsPerMedia?: Record<string, IgComment[]>
   existingLogs?: Record<string, { status: string }>
   recentSentCount?: number
+  createImpl?: (args: { data: { status: string } }) => Promise<unknown>
   sendDm?: (token: string, igUserId: string, commentId: string, text: string) => Promise<unknown>
   replyComment?: (token: string, commentId: string, text: string) => Promise<unknown>
 }) {
@@ -74,7 +75,12 @@ async function runScan(opts: {
     return Promise.resolve(opts.existingLogs?.[key] ?? null)
   })
   dbMock.commentDmLog.count.mockResolvedValue(opts.recentSentCount ?? 0)
-  dbMock.commentDmLog.create.mockResolvedValue({ id: 'log_1' })
+  if (opts.createImpl) {
+    dbMock.commentDmLog.create.mockImplementation(opts.createImpl)
+  } else {
+    dbMock.commentDmLog.create.mockResolvedValue({ id: 'log_1' })
+  }
+  dbMock.commentDmLog.update.mockResolvedValue({ id: 'log_1' })
 
   const listComments = vi.fn(async (_token: string, mediaId: string) =>
     Promise.resolve(commentsPerMedia[mediaId] ?? [])
@@ -199,7 +205,12 @@ describe('comment-dm-scanner', () => {
     })
     expect(stats.dmsFailed).toBe(1)
     expect(stats.dmsSent).toBe(0)
+    // Claim-first: create was called with status='sent' BEFORE the send attempt.
     expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'sent' }) })
+    )
+    // After send failure, the row is updated to 'failed'.
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
     )
   })
@@ -261,14 +272,38 @@ describe('comment-dm-scanner', () => {
     })
   })
 
-  it('ignores P2002 unique violation on log create (race condition)', async () => {
+  it('claim-first: P2002 on the claim-create skips the comment WITHOUT calling sendDm', async () => {
+    // P1-2 race condition fix: another worker claimed the comment first.
+    // The claim-create throws P2002 → we skip, and critically do NOT call sendDm
+    // (preventing the duplicate-DM race).
     const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
-    dbMock.commentDmLog.create.mockRejectedValue(p2002)
+    const sendDm = vi.fn(async () => ({ messageId: 'm1', recipientId: 'r1' }))
     const { stats } = await runScan({
       commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      sendDm,
+      createImpl: () => Promise.reject(p2002),
     })
-    // Should not throw — P2002 is swallowed, comment still counts as sent.
-    expect(stats.dmsSent).toBe(1)
+    expect(stats.dmsSkipped).toBe(1)
+    expect(stats.dmsSent).toBe(0)
+    // The critical assertion: sendDm was NOT called (no duplicate DM).
+    expect(sendDm).not.toHaveBeenCalled()
+  })
+
+  it('ignores P2002 unique violation on skipped-comment log create (no-op)', async () => {
+    // For skipped comments (no match / excluded / opt-out / freq-cap), the log
+    // create is best-effort — P2002 just means another worker logged it first.
+    // This is harmless (no external side effect), so the skip is swallowed.
+    const p2002 = Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+    const { stats } = await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'سلام خوبی' })] },
+      createImpl: (args: { data: { status: string } }) => {
+        if (args.data.status === 'skipped') return Promise.reject(p2002)
+        return Promise.resolve({ id: 'log_1' })
+      },
+    })
+    // Skipped comment, P2002 swallowed — no throw.
+    expect(stats.dmsSkipped).toBe(1)
+    expect(stats.dmsSent).toBe(0)
   })
 
   it('skips a rule with no resolvable media IDs', async () => {
@@ -292,5 +327,86 @@ describe('comment-dm-scanner', () => {
     const stats = await scanCommentDms(NOW, { listComments, sendDm: vi.fn(async () => ({ messageId: 'm' })), replyComment: vi.fn(async () => ({ id: 'r' })) })
     expect(stats.mediaScanned).toBe(2)
     expect(stats.dmsSent).toBe(1) // only media_ok's comment was processed
+  })
+
+  // ── P2-2: DM button payload ─────────────────────────────────────────────
+
+  it('passes buttonText + buttonUrl to sendDm when the rule has them configured', async () => {
+    const ruleWithButton = {
+      ...baseRule,
+      buttonText: 'دیدن قیمت',
+      buttonUrl: 'https://shop.example.com/p/1',
+    }
+    const sendDm = vi.fn(async () => ({ messageId: 'm1', recipientId: 'r1' }))
+    const { stats } = await runScan({
+      rules: [ruleWithButton],
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      sendDm,
+    })
+    expect(stats.dmsSent).toBe(1)
+    // sendDm should receive 6 args: token, igUserId, commentId, text, buttonText, buttonUrl
+    const call = (sendDm as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(call?.[4]).toBe('دیدن قیمت')
+    expect(call?.[5]).toBe('https://shop.example.com/p/1')
+  })
+
+  it('passes null buttonText/buttonUrl to sendDm when the rule has no button', async () => {
+    const sendDm = vi.fn(async () => ({ messageId: 'm1', recipientId: 'r1' }))
+    await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      sendDm,
+    })
+    const call = (sendDm as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(call?.[4]).toBeNull()
+    expect(call?.[5]).toBeNull()
+  })
+
+  // ── P2-1: beta flag honored ──────────────────────────────────────────────
+
+  it('skips all rules when FEATURE_COMMENT_DM_BETA env is set to false', async () => {
+    const prev = process.env.FEATURE_COMMENT_DM_BETA
+    process.env.FEATURE_COMMENT_DM_BETA = 'false'
+    try {
+      const { stats, sendDm } = await runScan({
+        commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      })
+      // Env-disabled beta → no rules scanned, no DMs sent.
+      expect(stats.rulesScanned).toBe(0)
+      expect(stats.dmsSent).toBe(0)
+      expect(sendDm).not.toHaveBeenCalled()
+    } finally {
+      if (prev === undefined) delete process.env.FEATURE_COMMENT_DM_BETA
+      else process.env.FEATURE_COMMENT_DM_BETA = prev
+    }
+  })
+
+  // ── P1-2: overlap guard ──────────────────────────────────────────────────
+
+  it('skips the scan cycle when a previous scan is still in progress', async () => {
+    // Start a scan that blocks on a slow listComments call, then kick off a
+    // second scan while the first is still running — the second should skip.
+    let resolveFirst: () => void
+    const firstScanPromise = new Promise<void>((r) => { resolveFirst = r })
+    const listComments = vi.fn(async (_t: string, _mediaId: string) => {
+      await firstScanPromise // block until the test releases us
+      return [makeComment({ text: 'قیمت' })]
+    })
+    const sendDm = vi.fn(async () => ({ messageId: 'm' }))
+    const replyComment = vi.fn(async () => ({ id: 'r' }))
+
+    const first = scanCommentDms(NOW, { listComments, sendDm, replyComment })
+    // Give the event loop a tick so the first scan sets scanInProgress=true.
+    await new Promise((r) => setImmediate(r))
+
+    const second = await scanCommentDms(NOW, { listComments, sendDm, replyComment })
+    // Second scan should be skipped (all zeros).
+    expect(second.rulesScanned).toBe(0)
+    expect(second.dmsSent).toBe(0)
+
+    // Release the first scan and verify it completed normally.
+    resolveFirst!()
+    const firstStats = await first
+    expect(firstStats.rulesScanned).toBe(1)
+    expect(firstStats.dmsSent).toBe(1)
   })
 })

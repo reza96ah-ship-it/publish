@@ -162,7 +162,16 @@ export function getProviderAuthAdapter(provider: string): ProviderAuthAdapter | 
 // ── Required scopes per provider (Issue #144: real scope validation) ─────
 
 export const REQUIRED_SCOPES: Record<string, string[]> = {
-  instagram: ['instagram_basic', 'instagram_content_publish', 'pages_show_list'],
+  // DM Auto (#209) needs pages_read_engagement (list comments),
+  // instagram_manage_comments (reply), instagram_manage_messages (send DM).
+  instagram: [
+    'instagram_basic',
+    'instagram_content_publish',
+    'pages_show_list',
+    'pages_read_engagement',
+    'instagram_manage_comments',
+    'instagram_manage_messages',
+  ],
   linkedin: ['w_member_social', 'r_organization_social', 'w_organization_social'],
   telegram: [],
   bale: [],

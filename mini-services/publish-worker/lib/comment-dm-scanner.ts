@@ -61,6 +61,8 @@ export interface ScanStats {
 }
 
 let scanTimer: ReturnType<typeof setInterval> | null = null
+/** Guard: prevent overlapping scan cycles (if a scan takes >60s, skip the next). */
+let scanInProgress = false
 
 export function startCommentDmScanner(): void {
   if (scanTimer) return
@@ -96,6 +98,33 @@ export async function scanCommentDms(
   now: Date = new Date(),
   deps: IgApiDeps = {}
 ): Promise<ScanStats> {
+  // Overlap guard: if the previous scan is still running (e.g. a slow IG API
+  // call took >60s), skip this cycle instead of running two concurrent scans
+  // that could race on the same comments.
+  if (scanInProgress) {
+    console.warn('[comment-dm-scanner] previous scan still in progress — skipping cycle')
+    return {
+      rulesScanned: 0,
+      mediaScanned: 0,
+      commentsChecked: 0,
+      dmsSent: 0,
+      dmsSkipped: 0,
+      dmsFailed: 0,
+      publicReplies: 0,
+    }
+  }
+  scanInProgress = true
+  try {
+    return await scanCommentDmsInner(now, deps)
+  } finally {
+    scanInProgress = false
+  }
+}
+
+async function scanCommentDmsInner(
+  now: Date,
+  deps: IgApiDeps
+): Promise<ScanStats> {
   const listCommentsFn = deps.listComments ?? listComments
   const sendDmFn = deps.sendDm ?? sendDmForComment
   const replyCommentFn = deps.replyComment ?? replyToComment
@@ -111,6 +140,9 @@ export async function scanCommentDms(
   }
 
   // Active rules on active Instagram platforms with a token + ig-user-id set.
+  // P2-1: Honor the comment_dm_beta feature flag — only scan rules whose
+  // workspace has the flag enabled. The API/UI gate on this flag; the worker
+  // must too, otherwise disabling beta post-rollout wouldn't stop DMs.
   const rules = await db.commentDmRule.findMany({
     where: {
       isActive: true,
@@ -120,6 +152,13 @@ export async function scanCommentDms(
         status: 'active',
         tokenSecret: { not: null },
         targetId: { not: null },
+      },
+      // Only include rules from workspaces where comment_dm_beta is enabled.
+      // Falls back to FEATURE_COMMENT_DM_BETA env var if no DB override exists.
+      workspace: {
+        featureFlags: {
+          some: { flag: 'comment_dm_beta', enabled: true },
+        },
       },
     },
     select: {
@@ -141,7 +180,13 @@ export async function scanCommentDms(
     },
   })
 
-  for (const rule of rules) {
+  // Env-level fallback: if FEATURE_COMMENT_DM_BETA is set false globally, skip
+  // all rules regardless of DB overrides (matches src/lib/flags.ts priority).
+  const envBeta = process.env.FEATURE_COMMENT_DM_BETA
+  const envDisabled = envBeta !== undefined && envBeta !== '1' && envBeta.toLowerCase() !== 'true'
+  const effectiveRules = envDisabled ? [] : rules
+
+  for (const rule of effectiveRules) {
     stats.rulesScanned++
     try {
       await scanRule(rule, now, { listCommentsFn, sendDmFn, replyCommentFn }, stats)
@@ -302,6 +347,33 @@ async function processComment(args: {
     return 'skipped'
   }
 
+  // P1-2: Claim-first / reserve pattern — insert the log row with status='sent'
+  // BEFORE the external IG API call. The @@unique([ruleId, commentId]) constraint
+  // makes this atomic: if another worker instance (or an overlapping scan) already
+  // claimed this comment, the create throws P2002 and we skip. This prevents the
+  // duplicate-DM race where two workers both pass findUnique and both call sendDmFn.
+  //
+  // If the DM send then fails, we update the row to 'failed' below. If the worker
+  // crashes between claim and send, the row stays 'sent' (blocks reprocessing) —
+  // a false positive, but that's far safer than a duplicate customer-facing DM.
+  try {
+    await db.commentDmLog.create({
+      data: {
+        workspaceId: rule.workspaceId,
+        ruleId: rule.id,
+        commentId: comment.id,
+        senderUserId: senderUserId ?? comment.from?.id ?? comment.username ?? 'unknown',
+        status: 'sent', // optimistic claim — updated to 'failed' if send throws
+      },
+    })
+  } catch (err: unknown) {
+    // P2002 = another worker already claimed this comment. Skip.
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      return 'skipped'
+    }
+    throw err
+  }
+
   // Send public reply first (if configured) — best-effort, doesn't block DM.
   if (rule.publicReply) {
     try {
@@ -318,16 +390,36 @@ async function processComment(args: {
   const senderName = comment.from?.username ?? comment.username ?? ''
   const dmText = renderDmTemplate(rule.dmTemplate, senderName)
   try {
-    await deps.sendDmFn(accessToken, igUserId, comment.id, dmText)
-    await logCommentDm(rule, comment, 'sent', senderUserId)
+    await deps.sendDmFn(accessToken, igUserId, comment.id, dmText, rule.buttonText, rule.buttonUrl)
     return 'sent'
   } catch (err) {
     console.error(
       `[comment-dm-scanner] rule ${rule.id} comment ${comment.id}: DM send failed:`,
       (err as Error).message
     )
-    await logCommentDm(rule, comment, 'failed', senderUserId)
+    // Update the optimistically-claimed row to 'failed'.
+    await updateLogStatus(rule.id, comment.id, 'failed')
     return 'failed'
+  }
+}
+
+/** Update the status of an existing CommentDmLog row. Best-effort. */
+async function updateLogStatus(
+  ruleId: string,
+  commentId: string,
+  status: 'sent' | 'skipped' | 'failed'
+): Promise<void> {
+  try {
+    await db.commentDmLog.update({
+      where: { ruleId_commentId: { ruleId, commentId } },
+      data: { status },
+    })
+  } catch (err: unknown) {
+    // Row may not exist if claim failed; log and move on.
+    console.error(
+      `[comment-dm-scanner] failed to update log ${ruleId}:${commentId} → ${status}:`,
+      (err as Error).message
+    )
   }
 }
 

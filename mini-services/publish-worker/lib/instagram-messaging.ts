@@ -69,23 +69,56 @@ export async function listComments(
  * Uses the comment_id recipient form — this is the only way to DM someone who
  * commented on your post without them first messaging you (7-day window).
  *
+ * When `buttonText` + `buttonUrl` are both provided, the message is sent as a
+ * button template (a CTA web_url button under the text) instead of plain text.
+ * This uses the IG Messaging API `attachment.type="template"` / `template_type="button"`
+ * payload shape documented at:
+ *   https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging
+ *
  * @param accessToken  Long-lived IG access token with instagram_manage_messages
  * @param igUserId     The IG Business/Creator account ID (Platform.targetId)
  * @param commentId    The ID of the comment to reply to (IgComment.id)
  * @param messageText  The DM body (already template-rendered)
+ * @param buttonText   Optional CTA button label (requires buttonUrl)
+ * @param buttonUrl    Optional CTA button URL (requires buttonText)
  */
 export async function sendDmForComment(
   accessToken: string,
   igUserId: string,
   commentId: string,
-  messageText: string
+  messageText: string,
+  buttonText?: string | null,
+  buttonUrl?: string | null
 ): Promise<{ messageId: string | null; recipientId: string | null }> {
+  // Build the message payload: button template when both label + url are set,
+  // otherwise plain text. Button templates are the IG-supported way to attach a
+  // tappable CTA link inside a private reply DM.
+  const hasButton = buttonText && buttonUrl
+  const message = hasButton
+    ? {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text: messageText,
+            buttons: [
+              {
+                type: 'web_url',
+                url: buttonUrl,
+                title: buttonText,
+              },
+            ],
+          },
+        },
+      }
+    : { text: messageText }
+
   const res = await fetchWithTimeout(`${GRAPH_API}/${igUserId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       recipient: { comment_id: commentId },
-      message: { text: messageText },
+      message,
       // messaging_type=RESPONSE is required when replying within 7-day window
       messaging_type: 'RESPONSE',
       access_token: accessToken,
