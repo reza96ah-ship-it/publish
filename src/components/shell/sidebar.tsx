@@ -12,6 +12,7 @@ import {
   Mail,
   BarChart3,
   Link2,
+  LayoutGrid,
   Settings,
   LogOut,
   Bell,
@@ -52,6 +53,7 @@ const NAV_MAIN: NavItem[] = [
   { view: 'campaigns', href: '/campaigns', icon: Flag, label: 'کمپین‌ها' },
   { view: 'content', href: '/content', icon: Folder, label: 'کتابخانه محتوا' },
   { view: 'media', href: '/media', icon: ImageIcon, label: 'رسانه' },
+  { view: 'smart-pages', href: '/smart-pages', icon: LayoutGrid, label: 'صفحه هوشمند' },
   { view: 'inbox', href: '/inbox', icon: Mail, label: 'صندوق ورودی', badgeKey: 'unreadInbox' },
 ]
 

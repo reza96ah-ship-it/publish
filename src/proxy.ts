@@ -76,7 +76,10 @@ export async function proxy(req: NextRequest) {
     // Issue #151: /api/metrics removed from public paths -- Prometheus endpoints
     // should be restricted by network policy or reverse-proxy, not exposed publicly.
     // If metrics must be scraped without auth, configure network-level protection.
+    pathname.startsWith('/api/smart-pages/public/') ||
+    pathname.startsWith('/api/smart-pages/track') ||
     pathname.startsWith('/auth/') ||
+    pathname.startsWith('/p/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
@@ -130,10 +133,13 @@ export const config = {
     //                     requires auth. The matcher still skips running
     //                     middleware on it for performance; network policy
     //                     or reverse-proxy must restrict access at the edge.)
+    //   api/smart-pages/public -- Issue #250: public link-in-bio reads
+    //   api/smart-pages/track  -- Issue #250: public click-tracking beacon
     //   auth           -- The signin page itself
+    //   p              -- Issue #250: public Smart Page route (/p/[slug])
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
   ],
 }
