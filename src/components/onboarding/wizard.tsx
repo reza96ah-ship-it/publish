@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   CheckCircle2,
@@ -412,8 +414,12 @@ function StepFirstPost({
       })
       setPublished(true)
       setTimeout(onPublished, 1200)
-    } catch {
-      // Non-blocking: user can still proceed
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'انتشار پست ناموفق بود. لطفاً دوباره تلاش کنید.'
+      toast.error(message)
     } finally {
       setPublishing(false)
     }
@@ -594,7 +600,25 @@ export function OnboardingWizard({ initialStep, workspace }: WizardProps) {
   const [wsName, setWsName] = useState(workspace?.name ?? '')
   const [timezone, setTimezone] = useState(workspace?.timezone ?? 'Asia/Tehran')
   const [workWeek, setWorkWeek] = useState(workspace?.workWeek ?? 'sat-wed')
-  const [platforms] = useState<Platform[]>(workspace?.platforms ?? [])
+
+  // Issue: platforms were frozen at mount via useState, so when the user
+  // returned from OAuth the list hadn't updated and canAdvance() stayed false.
+  // Now we fetch reactively via react-query (same key used by channels-view)
+  // and refetch whenever the user lands on the connect/verify step (2/3).
+  const { data: fetchedPlatforms } = useQuery<Platform[]>({
+    queryKey: ['platforms'],
+    queryFn: () => api.getPaginated<Platform>('/api/platforms'),
+    // Seed with the SSR snapshot so the first paint isn't empty.
+    initialData: workspace?.platforms ?? undefined,
+    // Re-fetch when entering the connect or verify step (after OAuth return).
+    enabled: step === 2 || step === 3,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  })
+  const platforms: Platform[] = useMemo(() => {
+    const list = fetchedPlatforms ?? workspace?.platforms ?? []
+    return list.map((p) => ({ id: p.id, type: p.type, status: p.status }))
+  }, [fetchedPlatforms, workspace])
 
   const canAdvance = useCallback(() => {
     if (step === 0) return role !== '' && objective !== ''

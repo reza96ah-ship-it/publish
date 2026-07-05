@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -95,6 +95,7 @@ const AVAILABLE_PLATFORMS = [
 
 
 export function ChannelsView() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
 
@@ -290,6 +291,7 @@ export function ChannelsView() {
 }
 
 function PlatformCard({ platform }: { platform: Platform }) {
+  const router = useRouter()
   const queryClient = useQueryClient()
   const [isValidating, setIsValidating] = useState(false)
   const [igGridOpen, setIgGridOpen] = useState(false)
@@ -337,7 +339,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => toast.info('ویرایش پلتفرم به‌زودی فعال خواهد شد.')}>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Pencil className="size-3.5" />
               ویرایش
             </DropdownMenuItem>
@@ -432,7 +434,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
           variant="ghost"
           size="sm"
           className="flex-1 min-h-[44px]"
-          onClick={() => toast.info('ویرایش پلتفرم به‌زودی فعال خواهد شد.')}
+          onClick={() => router.push('/settings')}
         >
           <Pencil className="size-3.5" />
           ویرایش

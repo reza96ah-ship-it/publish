@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -85,6 +86,7 @@ const STATUS_VARIANT_LABEL: Record<string, string> = {
 }
 
 export function ContentView() {
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [campaignFilter, setCampaignFilter] = useState<string>('all')
@@ -401,7 +403,7 @@ export function ContentView() {
                               </>
                             )}
                             <DropdownMenuItem
-                              onClick={() => toast.info('ویرایش محتوا به‌زودی فعال خواهد شد.')}
+                              onClick={() => router.push('/compose')}
                             >
                               <Pencil className="size-3.5" />
                               ویرایش

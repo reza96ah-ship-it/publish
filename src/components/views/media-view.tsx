@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -66,6 +67,7 @@ function fileKind(ft: string): 'image' | 'video' | 'file' {
 }
 
 export function MediaView() {
+  const router = useRouter()
   const [folder, setFolder] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [layout, setLayout] = useState<'grid' | 'list'>('grid')
@@ -513,6 +515,7 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
 }
 
 function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void }) {
+  const router = useRouter()
   return (
     <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-surface-subtle transition-colors">
       <button
@@ -550,7 +553,7 @@ function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void 
           <DropdownMenuItem onClick={() => toast.info('استفاده در محتوا به‌زودی فعال خواهد شد.')}>
             <Send className="size-3.5" /> استفاده در محتوا
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast.info('ویرایش به‌زودی فعال خواهد شد.')}>
+          <DropdownMenuItem onClick={() => router.push('/compose')}>
             <Pencil className="size-3.5" /> ویرایش
           </DropdownMenuItem>
           <DropdownMenuSeparator />

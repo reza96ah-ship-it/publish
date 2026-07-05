@@ -83,11 +83,18 @@ export function NotificationPopover() {
   const grouped = filtered ? groupByDate(filtered) : []
 
   const markAllRead = async () => {
-    // Optimistic update
+    if (unreadCount === 0) return
+    // Optimistic update — instantly flip every unread notification to read.
     queryClient.setQueryData<Notification[]>(['notifications'], (old) =>
       old?.map((n) => ({ ...n, isRead: true }))
     )
-    // Fire and forget — API doesn't have a bulk endpoint yet, that's OK
+    // Persist server-side so the next refetch (30s) doesn't revert it (P1-21).
+    try {
+      await api.post('/api/notifications/mark-all-read')
+    } catch {
+      // On failure, invalidate so the true server state is refetched.
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    }
   }
 
   const handleItemClick = (notif: Notification) => {

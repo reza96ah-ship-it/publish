@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import { toast } from 'sonner'
@@ -47,6 +48,7 @@ import {
 import { cn } from '@/lib/utils'
 import { interpolate } from '@/modules/inbox/snippet-shared'
 import type { SavedReply } from '@/modules/inbox/snippet-shared'
+import type { CommentDmRule } from '@/modules/automation/comment-dm-shared'
 
 interface InboxMessage {
   id: string
@@ -108,38 +110,27 @@ const MESSAGE_TYPE_ICON: Record<string, React.ElementType> = {
   mention: AtSign,
 }
 
-const AUTOMATIONS = [
-  {
-    trigger: 'کلمه کلیدی «کد»',
-    action: 'ارسال کاتالوگ محصول',
-    platform: 'instagram',
-    active: true,
-  },
-  {
-    trigger: 'کلمه کلیدی «قیمت»',
-    action: 'ارسال لیست قیمت PDF',
-    platform: 'instagram',
-    active: true,
-  },
-  {
-    trigger: 'کامنت حاوی «سفارش»',
-    action: 'ارسال لینک فرم سفارش',
-    platform: 'telegram',
-    active: true,
-  },
-  {
-    trigger: 'پیام مستقیم جدید',
-    action: 'پاسخ خودکار خوش‌آمدگویی',
-    platform: 'rubika',
-    active: false,
-  },
-  {
-    trigger: 'منشن برند',
-    action: 'اطلاع‌رسانی به تیم پشتیبانی',
-    platform: 'instagram',
-    active: true,
-  },
-]
+/** Display shape for the automation panel — derived from real CommentDmRule rows. */
+interface AutomationDisplay {
+  trigger: string
+  action: string
+  platform: string
+  active: boolean
+}
+
+/** Map a real CommentDmRule to the compact shape the automation panel renders. */
+function ruleToAutomation(rule: CommentDmRule): AutomationDisplay {
+  const kws = rule.keywords && rule.keywords.length > 0 ? rule.keywords : [rule.keyword]
+  const trigger = kws.filter(Boolean).join('، ') || '—'
+  const action =
+    rule.dmTemplate.length > 50 ? `${rule.dmTemplate.slice(0, 50)}…` : rule.dmTemplate
+  return {
+    trigger,
+    action,
+    platform: rule.platformName,
+    active: rule.isActive,
+  }
+}
 
 export function InboxView() {
   const [filter, setFilter] = useState<'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'overdue' | 'resolved'>('all')
@@ -148,6 +139,17 @@ export function InboxView() {
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [showSnippets, setShowSnippets] = useState(false)
   const queryClient = useQueryClient()
+  const router = useRouter()
+
+  // Real comment→DM automation rules (P1-17: replaces hardcoded mock data).
+  const { data: commentDmRules } = useQuery<CommentDmRule[]>({
+    queryKey: ['comment-dm-rules'],
+    queryFn: () => api.get<CommentDmRule[]>('/api/automation/comment-dm-rules'),
+  })
+  const automations = useMemo(
+    () => (commentDmRules ?? []).map(ruleToAutomation),
+    [commentDmRules]
+  )
 
   const { data: savedReplies } = useQuery<SavedReply[]>({
     queryKey: ['inbox-saved-replies'],
@@ -591,40 +593,59 @@ export function InboxView() {
           </p>
           <Separator className="mb-3" />
           <div className="space-y-2 max-h-96 overflow-y-auto thin-scrollbar">
-            {AUTOMATIONS.map((a, i) => (
-              <div
-                key={i}
-                className={cn(
-                  'rounded-xl border p-3 transition-colors',
-                  a.active
-                    ? 'border-border bg-surface-subtle'
-                    : 'border-border bg-surface-subtle opacity-60'
-                )}
-              >
-                <div className="flex items-start gap-2">
-                  <PlatformIcon platform={a.platform} className="size-6 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-ink-primary truncate">{a.trigger}</p>
-                    <div className="flex items-center gap-1 mt-1 text-xs text-ink-tertiary">
-                      <ChevronLeft className="size-3" />
-                      <span className="truncate">{a.action}</span>
+            {automations.length > 0 ? (
+              automations.map((a, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'rounded-xl border p-3 transition-colors',
+                    a.active
+                      ? 'border-border bg-surface-subtle'
+                      : 'border-border bg-surface-subtle opacity-60'
+                  )}
+                >
+                  <div className="flex items-start gap-2">
+                    <PlatformIcon platform={a.platform} className="size-6 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-ink-primary truncate">{a.trigger}</p>
+                      <div className="flex items-center gap-1 mt-1 text-xs text-ink-tertiary">
+                        <ChevronLeft className="size-3" />
+                        <span className="truncate">{a.action}</span>
+                      </div>
                     </div>
+                    <span
+                      className={cn(
+                        'size-2 rounded-full shrink-0 mt-1.5',
+                        a.active ? 'bg-success' : 'bg-ink-tertiary'
+                      )}
+                    />
                   </div>
-                  <span
-                    className={cn(
-                      'size-2 rounded-full shrink-0 mt-1.5',
-                      a.active ? 'bg-success' : 'bg-ink-tertiary'
-                    )}
-                  />
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState
+                icon={Bot}
+                title="اتوماسیونی فعال نیست"
+                message="با ساخت قانون کامنت→DM، پاسخ خودکار به مخاطبان را فعال کنید."
+                size="compact"
+                action={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push('/settings')}
+                  >
+                    <Plus className="size-3.5" />
+                    ساخت اتوماسیون
+                  </Button>
+                }
+              />
+            )}
           </div>
           <Button
             variant="outline"
             size="sm"
             className="w-full mt-3"
-            onClick={() => toast.info('ساخت اتوماسیون جدید به‌زودی فعال خواهد شد.')}
+            onClick={() => router.push('/settings')}
           >
             <Plus className="size-3.5" />
             اتوماسیون جدید

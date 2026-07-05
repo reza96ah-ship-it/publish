@@ -62,6 +62,16 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { JalaliDatePicker } from '@/components/ui/jalali-picker'
 import { IgGridDialog } from '@/components/editor/ig-grid-board'
@@ -124,6 +134,7 @@ export function CalendarView() {
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
   const [igGridOpen, setIgGridOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
   const queryClient = useQueryClient()
 
   // Issue #219: IG grid preview entry point — only shown when an IG channel exists
@@ -174,6 +185,27 @@ export function CalendarView() {
     },
     onError: (err: Error) => {
       toast.error(err.message || 'خطا در به‌روزرسانی زمان‌بندی')
+    },
+  })
+
+  // Cancel publication mutation — PATCH /api/publish-jobs/[id] { action: 'cancel' }.
+  // Only valid while the job is still scheduled/pending (guarded in the UI by
+  // the cancel button's render condition). On success we toast, invalidate the
+  // calendar + queue queries, close the sheet and the confirm dialog.
+  const cancelMutation = useMutation({
+    mutationFn: async (jobId: string) => {
+      return api.patch(`/api/publish-jobs/${jobId}`, { action: 'cancel' })
+    },
+    onSuccess: () => {
+      toast.success('انتشار لغو شد')
+      queryClient.invalidateQueries({ queryKey: ['calendar'] })
+      queryClient.invalidateQueries({ queryKey: ['publish-jobs'] })
+      setCancelOpen(false)
+      setSelectedJob(null)
+      announce('انتشار لغو شد')
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'لغو انتشار ناموفق بود')
     },
   })
 
@@ -797,10 +829,49 @@ export function CalendarView() {
                   </div>
                 )}
               </div>
+
+              {/* Cancel publication — destructive action, only available while
+                  the job hasn't been published yet (scheduled/pending). Wrapped
+                  in an AlertDialog for confirmation. */}
+              {(selectedJob.status === 'scheduled' || selectedJob.status === 'pending') && (
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={cancelMutation.isPending}
+                  onClick={() => setCancelOpen(true)}
+                >
+                  {cancelMutation.isPending ? 'در حال لغو...' : 'لغو انتشار'}
+                </Button>
+              )}
             </>
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Cancel confirmation — AlertDialog around the destructive cancel action */}
+      <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>لغو انتشار</AlertDialogTitle>
+            <AlertDialogDescription>
+              آیا از لغو این انتشار مطمئن هستید؟ این عمل قابل بازگشت نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cancelMutation.isPending}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-danger text-white hover:bg-danger/90"
+              disabled={cancelMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                if (selectedJob) cancelMutation.mutate(selectedJob.id)
+              }}
+            >
+              {cancelMutation.isPending ? 'در حال لغو...' : 'لغو انتشار'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Issue #219: IG grid preview */}
       <IgGridDialog open={igGridOpen} onOpenChange={setIgGridOpen} platforms={igPlatforms} />

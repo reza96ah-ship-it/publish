@@ -6,7 +6,7 @@ import { SignInForm } from './signin-form'
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string }>
+  searchParams: Promise<{ callbackUrl?: string; error?: string }>
 }) {
   // If already logged in, redirect to dashboard
   const session = await getServerSession(authOptions)
@@ -14,5 +14,10 @@ export default async function SignInPage({
 
   const params = await searchParams
 
-  return <SignInForm callbackUrl={params.callbackUrl || '/'} />
+  return (
+    <SignInForm
+      callbackUrl={params.callbackUrl || '/'}
+      error={params.error}
+    />
+  )
 }

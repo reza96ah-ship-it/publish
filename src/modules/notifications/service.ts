@@ -11,6 +11,15 @@ export class NotificationsService {
     const nextCursor = hasMore ? page[page.length - 1]?.id ?? null : null
     return { data: page, nextCursor }
   }
+
+  /**
+   * Mark every unread notification in the workspace as read (P1-21).
+   * Returns the count of newly-marked notifications.
+   */
+  async markAllRead(auth: AuthContext): Promise<{ updated: number }> {
+    const updated = await this.repo.markAllRead(auth.workspaceId)
+    return { updated }
+  }
 }
 
 export const notificationsService = new NotificationsService()
