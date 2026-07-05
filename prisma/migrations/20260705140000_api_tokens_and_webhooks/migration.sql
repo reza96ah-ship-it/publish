@@ -21,7 +21,7 @@ CREATE TABLE "Webhook" (
     "id" TEXT NOT NULL,
     "workspaceId" TEXT NOT NULL,
     "url" TEXT NOT NULL,
-    "events" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "events" TEXT[],
     "secretEncrypted" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "lastTriggeredAt" TIMESTAMP(3),
@@ -60,14 +60,31 @@ CREATE TABLE "WebhookDelivery" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ApiToken_tokenHash_key" ON "ApiToken"("tokenHash");
+
+-- CreateIndex
 CREATE INDEX "ApiToken_workspaceId_idx" ON "ApiToken"("workspaceId");
+
+-- CreateIndex
 CREATE INDEX "Webhook_workspaceId_idx" ON "Webhook"("workspaceId");
+
+-- CreateIndex
 CREATE INDEX "Webhook_isActive_idx" ON "Webhook"("isActive");
+
+-- CreateIndex
 CREATE INDEX "WebhookDelivery_status_availableAt_idx" ON "WebhookDelivery"("status", "availableAt");
+
+-- CreateIndex
 CREATE INDEX "WebhookDelivery_webhookId_eventType_idx" ON "WebhookDelivery"("webhookId", "eventType");
+
+-- CreateIndex
 CREATE INDEX "WebhookDelivery_status_lockExpiresAt_idx" ON "WebhookDelivery"("status", "lockExpiresAt");
 
 -- AddForeignKey
 ALTER TABLE "ApiToken" ADD CONSTRAINT "ApiToken_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Webhook" ADD CONSTRAINT "Webhook_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "WebhookDelivery" ADD CONSTRAINT "WebhookDelivery_webhookId_fkey" FOREIGN KEY ("webhookId") REFERENCES "Webhook"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
