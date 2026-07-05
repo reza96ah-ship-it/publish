@@ -2870,3 +2870,47 @@ Work Log:
 
 Stage Summary:
 All 5 implementation tasks + tests/proof complete. No `db push --accept-data-loss` anywhere. Migration image is dedicated. Deploy gated on CI success. Rollback automated. CODEOWNERS created. SBOM + provenance on all images.
+
+---
+Task ID: dm-auto-ui-edit-freqcap
+Agent: Main (Z.ai Code)
+Task: Complete DM Auto UI — add edit flow for existing rules + frequency cap (freqCapHours) field in the form.
+
+Work Log:
+- Reviewed current state: commit 66cbce3 already fixed the backend (createRule saves all fields, multi-word keywords, normalizePersian for opt-out, updateRule service + PATCH endpoint accept freqCapHours/keywords/excludeKeywords/etc.). Only the UI was missing edit flow + freqCapHours input.
+- Read src/components/automation/comment-dm-rules.tsx (435 lines) — confirmed form sends all fields to POST but: (1) no edit button on rule rows, (2) no freqCapHours in form state/mutation, (3) only create flow exists.
+- Verified backend readiness: PATCH /api/automation/comment-dm-rules/[id] already handles general updates (not just toggle), updateRule() in comment-dm.ts accepts Partial<CreateRuleInput> including freqCapHours.
+- Edited comment-dm-rules.tsx with MultiEdit (7 edits):
+  1. Imported Pencil + X icons from lucide-react.
+  2. Added editingRuleId state + freqCapHours state (default 24).
+  3. Refactored resetForm() to also clear editingRuleId, optOutKeyword, freqCapHours. closeBuilder() now calls resetForm().
+  4. Added startEdit(rule) helper — populates ALL form fields from a CommentDmRule (keywords joined with Persian comma, excludeKeywords joined, buttonText/buttonUrl/publicReply/optOutKeyword/freqCapHours/platformId), opens form + advanced section, scrolls into view.
+  5. Added updateMutation (PATCH to /api/automation/comment-dm-rules/${editingRuleId}) with all fields including freqCapHours. Added isEditing flag, saveMutation alias, handleSave() that branches on isEditing.
+  6. Added freqCapHours number input to advanced settings (paired with opt-out keyword in a 2-col grid, Persian label "حداقل فاصله بین پیام‌ها (ساعت)", helper text "جلوگیری از ارسال مکرر به یک کاربر", min=0 max=168). Refactored exclude keywords to its own full-width row with helper text.
+  7. Added edit (Pencil) button to each rule row between toggle and delete. CTA now swaps label between "فعال‌سازی دایرکت خودکار" (create) and "ذخیره تغییرات" (edit), with a "انصراف" (cancel) ghost button appearing in edit mode. Added id="comment-dm-builder" for scroll-into-view target.
+- Verification: `bun run lint` → 0 errors (25 pre-existing warnings, none in comment-dm-rules.tsx). `bun run typecheck` (tsc --noEmit) → 0 errors. Dev server starts (Ready in ~500ms), / returns 307 redirect to /auth/signin.
+- Browser verification BLOCKED: sandbox has no Postgres running (schema.prisma provider=postgresql, .env DATABASE_URL=file:... but Prisma tries network socket → ECONNREFUSED). Cannot seed demo user / sign in / reach compose or settings pages that render the component. Dev server also killed between bash tool calls (setsid+disown doesn't survive). Static verification (lint + typecheck + compile) all pass clean.
+
+Stage Summary:
+DM Auto UI now complete: edit flow + frequency cap UI implemented in src/components/automation/comment-dm-rules.tsx. Combined with commit 66cbce3 (backend), the DM Auto feature now fully supports: (1) creating rules with all fields, (2) editing existing rules via PATCH, (3) multi-word keywords, (4) frequency cap (freqCapHours) configurable per-rule, (5) exclude keywords, (6) public reply, (7) button text + URL, (8) opt-out keyword with normalizePersian, (9) per-post vs workspace scope, (10) test runner. Lint + typecheck clean. Interactive browser verification deferred — sandbox lacks Postgres DB required for auth.
+
+---
+Task ID: dm-auto-worker
+Agent: Main (Z.ai Code)
+Task: Implement the DM Auto worker (the explicit `TODO (worker)` in comment-dm.ts) — the piece that actually listens for IG comments, matches rules, and sends DMs.
+
+Work Log:
+- Confirmed the gap: backend (createRule/updateRule/shouldSendDm) + UI (create/edit/toggle/delete + freqCap) all done in prior commits. The only missing piece was the worker that calls shouldSendDm + sends via IG Graph API — marked `TODO (worker)` at comment-dm.ts:169.
+- Reviewed existing scanner patterns (token-expiry-scanner.ts, reconciliation-scanner.ts) to match conventions exactly: setInterval-based, start/stop exports, initial scan after 10-15s boot delay, per-item error isolation, console.log cycle summary.
+- Reviewed schema: CommentDmLog has @@unique([ruleId, commentId]) — perfect for idempotency. Publication.providerPostId holds the IG media ID after publish. Platform.tokenSecret (encrypted) + targetId (ig-user-id) provide auth.
+- Created mini-services/publish-worker/lib/persian-match.ts (160 lines): self-contained normalizePersian + parseKeywordList + matchComment + renderDmTemplate. The worker is an independent Bun package that cannot import from src/, so these are a focused copy of comment-dm-shared.ts (kept in sync). Pure functions, no DB/crypto deps.
+- Created mini-services/publish-worker/lib/instagram-messaging.ts (120 lines): IG Graph API helpers — listComments (GET /{media-id}/comments), sendDmForComment (POST /{ig-user-id}/messages with recipient.comment_id + messaging_type=RESPONSE), replyToComment (POST /{comment-id}/replies). Uses fetchWithTimeout. Documents required OAuth scopes (pages_read_engagement, instagram_manage_comments, instagram_manage_messages).
+- Created mini-services/publish-worker/lib/comment-dm-scanner.ts (290 lines): the scanner. 60s interval. For each active rule on an active IG platform with token+targetId: decrypts token, resolves media IDs (rule.igPostId → rule.publicationId's providerPostId → recent successful publications), fetches comments, and per comment: (1) idempotency check via CommentDmLog.findUnique, (2) matchComment, (3) opt-out keyword check (normalizePersian both sides), (4) freq cap via CommentDmLog.count of recent 'sent' to same sender, (5) optional public reply (best-effort, doesn't block DM), (6) send DM, (7) log to CommentDmLog (sent|skipped|failed). P2002 unique violations are swallowed (race condition). IG API functions are injectable via deps param for testability.
+- Wired into mini-services/publish-worker/index.ts: added import, startCommentDmScanner() in boot block (after startReconciliationScanner), stopCommentDmScanner() in shutdown handler (after stopReconciliationScanner).
+- Created tests/unit/automation/comment-dm-worker-persian-match.test.ts (15 tests): verifies worker's persian-match copy matches canonical behavior (Arabic/Persian variant unification, digit normalization, multi-word phrase support, exclude keywords, template interpolation).
+- Created tests/unit/automation/comment-dm-scanner.test.ts (16 tests): full scanner logic with mocked db (vi.hoisted) + injectable IG API mocks. Covers: successful DM send, no-match skip, exclude-keyword skip, opt-out skip, idempotency skip (existing log), freq-cap skip, public reply before DM (with invocation-order verification), public-reply-failure-doesn't-block-DM, DM-send-failure logs 'failed', workspace-wide rule scans all publications, publication-scoped rule scans one media, no-providerPostId skip, empty-rules zero stats, P2002 race swallowed, no-media skip, per-media listComments failure isolation.
+- Fixed 3 test issues during dev: (1) wrong relative import path (4 ../ instead of 3), (2) vi.mock hoisting — dbMock referenced before init, fixed with vi.hoisted(), (3) toHaveBeenCalledBefore not a vitest matcher, replaced with mock.invocationCallOrder comparison.
+- Verification: root typecheck clean (tsc --noEmit, 0 errors). Worker typecheck clean (0 errors). Root lint: 0 errors, 25 pre-existing warnings, ZERO from new files. Full test suite: 973/973 pass (40 new tests added: 16 scanner + 15 persian-match + 9 from prior auto-commit).
+
+Stage Summary:
+DM Auto is now functionally complete end-to-end. The worker (comment-dm-scanner) polls IG for new comments every 60s, matches them against active rules, and sends DMs via the IG Messaging API with full idempotency (CommentDmLog @@unique), frequency capping, opt-out handling, and optional public replies. 3 new worker files + 2 test files, 31 new tests, all passing. Combined with prior commits (backend CRUD #267 + UI edit/freqcap b320233), the full DM Auto pipeline now exists: create rule → publish post → worker detects comment → sends DM → logs result. Live browser verification deferred (sandbox has no Postgres + no IG API credentials); static verification (typecheck + lint + 973 tests) all green.

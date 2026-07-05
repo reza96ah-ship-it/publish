@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   Zap, Plus, Trash2, ToggleLeft, ToggleRight, Globe, FileText, ChevronUp,
-  Sparkles, FlaskConical, CheckCircle2, XCircle, MinusCircle,
+  Sparkles, FlaskConical, CheckCircle2, XCircle, MinusCircle, Pencil, X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,6 +63,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
 
   const [showForm, setShowForm] = useState(!readOnly && !!suggestedKeyword)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [platformId, setPlatformId] = useState(igPlatforms[0]?.id ?? '')
   const [keywordsRaw, setKeywordsRaw] = useState(suggestedKeyword ?? '')
   const [dmTemplate, setDmTemplate] = useState('')
@@ -71,6 +72,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const [buttonText, setButtonText] = useState('')
   const [buttonUrl, setButtonUrl] = useState('')
   const [optOutKeyword, setOptOutKeyword] = useState('نه')
+  const [freqCapHours, setFreqCapHours] = useState<number>(24)
   const [previewName, setPreviewName] = useState('آرش')
   const [testComment, setTestComment] = useState('')
 
@@ -97,12 +99,15 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   )
 
   const resetForm = () => {
+    setEditingRuleId(null)
     setKeywordsRaw(suggestedKeyword ?? '')
     setDmTemplate('')
     setExcludeRaw('')
     setPublicReply('')
     setButtonText('')
     setButtonUrl('')
+    setOptOutKeyword('نه')
+    setFreqCapHours(24)
     setTestComment('')
     setShowAdvanced(false)
   }
@@ -110,6 +115,28 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const closeBuilder = () => {
     if (hasDirtyForm && !window.confirm('تغییرات ذخیره‌نشده حذف شود؟')) return
     setShowForm(false)
+    resetForm()
+  }
+
+  /** Enter edit mode: populate the form from an existing rule. */
+  const startEdit = (rule: CommentDmRule) => {
+    setEditingRuleId(rule.id)
+    setPlatformId(rule.platformId)
+    setKeywordsRaw(rule.keywords?.length ? rule.keywords.join('، ') : rule.keyword)
+    setDmTemplate(rule.dmTemplate)
+    setExcludeRaw(rule.excludeKeywords?.length ? rule.excludeKeywords.join('، ') : '')
+    setPublicReply(rule.publicReply ?? '')
+    setButtonText(rule.buttonText ?? '')
+    setButtonUrl(rule.buttonUrl ?? '')
+    setOptOutKeyword(rule.optOutKeyword || 'نه')
+    setFreqCapHours(rule.freqCapHours ?? 24)
+    setTestComment('')
+    setShowForm(true)
+    setShowAdvanced(true)
+    // Scroll the form into view
+    requestAnimationFrame(() => {
+      document.getElementById('comment-dm-builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
   }
 
   const applyPreset = (preset: DmPreset) => {
@@ -129,6 +156,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
       buttonUrl: buttonUrl || null,
       publicReply: publicReply || null,
       optOutKeyword,
+      freqCapHours,
       publicationId: publicationId ?? null,
     }),
     onSuccess: () => {
@@ -139,6 +167,35 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
     },
     onError: (err: unknown) => toast.error((err as Error).message || 'مشکلی پیش آمد'),
   })
+
+  const updateMutation = useMutation({
+    mutationFn: () => api.patch(`/api/automation/comment-dm-rules/${editingRuleId}`, {
+      platformId,
+      keywords,
+      excludeKeywords,
+      dmTemplate,
+      buttonText: buttonText || null,
+      buttonUrl: buttonUrl || null,
+      publicReply: publicReply || null,
+      optOutKeyword,
+      freqCapHours,
+    }),
+    onSuccess: () => {
+      toast.success('تغییرات ذخیره شد')
+      queryClient.invalidateQueries({ queryKey })
+      setShowForm(false)
+      resetForm()
+    },
+    onError: (err: unknown) => toast.error((err as Error).message || 'مشکلی پیش آمد'),
+  })
+
+  const isEditing = editingRuleId != null
+  const saveMutation = isEditing ? updateMutation : createMutation
+
+  const handleSave = () => {
+    if (isEditing) updateMutation.mutate()
+    else createMutation.mutate()
+  }
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
@@ -213,9 +270,9 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
         )}
       </div>
 
-      {/* Create form — two fields by default, everything else under Advanced */}
+      {/* Create/Edit form — two fields by default, everything else under Advanced */}
       {!readOnly && showForm && (
-        <div className="n-card p-4 space-y-4">
+        <div id="comment-dm-builder" className="n-card p-4 space-y-4">
           {/* Presets */}
           <div className="space-y-2">
             <p className="text-xs text-ink-tertiary">برای چه چیزی دایرکت می‌فرستید؟</p>
@@ -293,12 +350,18 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
           )}
 
           {/* Primary CTA */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            {isEditing && (
+              <Button variant="ghost" onClick={resetForm} disabled={saveMutation.isPending}>
+                <X className="size-4" />
+                انصراف
+              </Button>
+            )}
             <Button
-              onClick={() => createMutation.mutate()}
-              disabled={keywords.length === 0 || !dmTemplate || createMutation.isPending}
+              onClick={handleSave}
+              disabled={keywords.length === 0 || !dmTemplate || saveMutation.isPending}
             >
-              فعال‌سازی دایرکت خودکار
+              {isEditing ? 'ذخیره تغییرات' : 'فعال‌سازی دایرکت خودکار'}
             </Button>
           </div>
 
@@ -331,14 +394,33 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                 </div>
               </div>
 
+              <div className="space-y-1.5">
+                <Label>اگر این کلمه‌ها بود، پیام نده</Label>
+                <Input dir="rtl" placeholder="مثال: گران، شکایت" value={excludeRaw} onChange={(e) => setExcludeRaw(e.target.value)} />
+                <p className="text-xs text-ink-tertiary">با ویرگول یا خط فاصله جدا کنید</p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>اگر این کلمه‌ها بود، پیام نده</Label>
-                  <Input dir="rtl" placeholder="مثال: گران، شکایت" value={excludeRaw} onChange={(e) => setExcludeRaw(e.target.value)} />
-                </div>
                 <div className="space-y-1.5">
                   <Label>کلمه انصراف</Label>
                   <Input dir="rtl" value={optOutKeyword} onChange={(e) => setOptOutKeyword(e.target.value)} />
+                  <p className="text-xs text-ink-tertiary">اگر مخاطب این کلمه را بنویسد، پیامی نمی‌رود</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>حداقل فاصله بین پیام‌ها (ساعت)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={168}
+                    dir="ltr"
+                    className="text-right"
+                    value={freqCapHours}
+                    onChange={(e) => {
+                      const v = Number(e.target.value)
+                      setFreqCapHours(Number.isFinite(v) && v >= 0 ? v : 24)
+                    }}
+                  />
+                  <p className="text-xs text-ink-tertiary">جلوگیری از ارسال مکرر به یک کاربر</p>
                 </div>
               </div>
 
@@ -417,6 +499,13 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                 aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
               >
                 {rule.isActive ? <ToggleRight className="size-5 text-success" /> : <ToggleLeft className="size-5" />}
+              </button>
+              <button
+                onClick={() => startEdit(rule)}
+                className="n-focus-ring shrink-0 text-ink-tertiary hover:text-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="ویرایش"
+              >
+                <Pencil className="size-4" />
               </button>
               <button
                 onClick={() => { if (window.confirm('این دایرکت خودکار حذف شود؟')) deleteMutation.mutate(rule.id) }}

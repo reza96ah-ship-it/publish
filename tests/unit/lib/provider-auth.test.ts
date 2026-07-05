@@ -163,9 +163,13 @@ describe('Issue #144 — Provider auth adapters', () => {
   })
 
   describe('REQUIRED_SCOPES', () => {
-    it('Instagram requires 3 scopes', () => {
-      expect(REQUIRED_SCOPES.instagram).toHaveLength(3)
+    it('Instagram requires 6 scopes (publish + DM-auto messaging)', () => {
+      expect(REQUIRED_SCOPES.instagram).toHaveLength(6)
       expect(REQUIRED_SCOPES.instagram).toContain('instagram_content_publish')
+      // DM Auto (#209) needs the 3 messaging/comment scopes
+      expect(REQUIRED_SCOPES.instagram).toContain('pages_read_engagement')
+      expect(REQUIRED_SCOPES.instagram).toContain('instagram_manage_comments')
+      expect(REQUIRED_SCOPES.instagram).toContain('instagram_manage_messages')
     })
 
     it('LinkedIn requires w_member_social for posting', () => {

@@ -34,6 +34,7 @@ import { startTokenExpiryScanner, stopTokenExpiryScanner } from './lib/token-exp
 import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-cleanup'
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
+import { startCommentDmScanner, stopCommentDmScanner } from './lib/comment-dm-scanner'
 import {
   unknownOutcomesCounter,
   scheduleDelayHistogram,
@@ -960,6 +961,7 @@ async function shutdown(signal: string) {
   stopInvitationCleanup()
   stopMediaCleanup()
   stopReconciliationScanner()
+  stopCommentDmScanner()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   console.log('[worker] shutdown complete')
@@ -988,6 +990,9 @@ startMediaCleanup()
 // outcomes get resolved automatically instead of sitting stuck forever
 // waiting for a human to use POST /api/publications/[id]/resolve.
 startReconciliationScanner()
+// Comment→DM scanner: polls IG for new comments on published posts,
+// matches active rules, sends DMs via the IG Messaging API, logs to CommentDmLog.
+startCommentDmScanner()
 
 // ── Helpers ───────────────────────────────────────────────────
 
