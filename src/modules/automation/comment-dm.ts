@@ -9,15 +9,15 @@
 
 import { db } from '@/lib/db'
 import type { CommentDmRule } from './comment-dm-shared'
+import { normalizePersian } from './comment-dm-shared'
 
-export { previewTemplate } from './comment-dm-shared'
+export { previewTemplate, normalizePersian } from './comment-dm-shared'
 export type { CommentDmRule }
 
 export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
-  const where: Record<string, unknown> = { workspaceId }
-  if (publicationId) where.publicationId = publicationId
+  const where = { workspaceId, ...(publicationId ? { publicationId } : {}) }
   const rows = await db.commentDmRule.findMany({
-    where: where as any,
+    where,
     include: { platform: { select: { name: true } } },
     orderBy: { createdAt: 'desc' },
   })
@@ -42,11 +42,30 @@ export async function listRules(workspaceId: string, publicationId?: string): Pr
   }))
 }
 
-export async function createRule(
-  workspaceId: string,
-  data: { platformId: string; keyword: string; dmTemplate: string; optOutKeyword?: string; freqCapHours?: number }
-): Promise<CommentDmRule> {
-  if (!data.keyword.trim()) throw new Error('کلیدواژه الزامی است')
+/** Input type for creating a rule — includes all fields the UI sends. */
+export interface CreateRuleInput {
+  platformId: string
+  keyword?: string
+  keywords?: string[]
+  excludeKeywords?: string[]
+  dmTemplate: string
+  buttonText?: string | null
+  buttonUrl?: string | null
+  publicReply?: string | null
+  optOutKeyword?: string
+  freqCapHours?: number
+  publicationId?: string | null
+}
+
+export async function createRule(workspaceId: string, data: CreateRuleInput): Promise<CommentDmRule> {
+  // Normalize keywords: accept both keyword (singular) and keywords (array)
+  const keywords = data.keywords?.length
+    ? data.keywords
+    : data.keyword
+      ? [data.keyword]
+      : []
+
+  if (keywords.length === 0) throw new Error('کلمه الزامی است')
   if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
 
   // Verify platform belongs to workspace and is Instagram
@@ -55,14 +74,28 @@ export async function createRule(
   })
   if (!platform) throw new Error('پلتفرم اینستاگرام یافت نشد')
 
+  // If publicationId is set, verify it belongs to this workspace
+  if (data.publicationId) {
+    const pub = await db.publication.findFirst({
+      where: { id: data.publicationId, workspaceId },
+    })
+    if (!pub) throw new Error('انتشار یافت نشد')
+  }
+
   const row = await db.commentDmRule.create({
     data: {
       workspaceId,
       platformId: data.platformId,
-      keyword: data.keyword.trim().toLowerCase(),
+      keyword: keywords[0].toLowerCase(),
+      keywords: keywords.length > 1 ? keywords as any : undefined,
+      excludeKeywords: data.excludeKeywords?.length ? data.excludeKeywords as any : undefined,
       dmTemplate: data.dmTemplate.trim(),
+      buttonText: data.buttonText || null,
+      buttonUrl: data.buttonUrl || null,
+      publicReply: data.publicReply || null,
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
+      publicationId: data.publicationId ?? null,
     },
     include: { platform: { select: { name: true } } },
   })
@@ -87,6 +120,36 @@ export async function createRule(
   }
 }
 
+/** Update an existing rule (edit flow). */
+export async function updateRule(
+  id: string,
+  workspaceId: string,
+  data: Partial<CreateRuleInput>
+): Promise<void> {
+  const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
+  if (!existing) throw new Error('قانون یافت نشد')
+
+  const updateData: Record<string, unknown> = {}
+  if (data.keywords !== undefined) {
+    updateData.keywords = data.keywords.length > 0 ? data.keywords as any : undefined
+    updateData.keyword = data.keywords[0]?.toLowerCase() ?? existing.keyword
+  } else if (data.keyword !== undefined) {
+    updateData.keyword = data.keyword.toLowerCase()
+    updateData.keywords = undefined
+  }
+  if (data.excludeKeywords !== undefined) {
+    updateData.excludeKeywords = data.excludeKeywords.length > 0 ? data.excludeKeywords as any : undefined
+  }
+  if (data.dmTemplate !== undefined) updateData.dmTemplate = data.dmTemplate.trim()
+  if (data.buttonText !== undefined) updateData.buttonText = data.buttonText || null
+  if (data.buttonUrl !== undefined) updateData.buttonUrl = data.buttonUrl || null
+  if (data.publicReply !== undefined) updateData.publicReply = data.publicReply || null
+  if (data.optOutKeyword !== undefined) updateData.optOutKeyword = data.optOutKeyword.trim().toLowerCase()
+  if (data.freqCapHours !== undefined) updateData.freqCapHours = data.freqCapHours
+
+  await db.commentDmRule.update({ where: { id }, data: updateData })
+}
+
 export async function toggleRule(id: string, workspaceId: string, isActive: boolean): Promise<void> {
   const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('قانون یافت نشد')
@@ -102,6 +165,7 @@ export async function deleteRule(id: string, workspaceId: string): Promise<void>
 /**
  * Check if a rule should fire for a comment.
  * Returns false if: frequency cap active, opt-out keyword present, rule inactive.
+ * Uses normalizePersian for robust Arabic/Persian variant matching.
  * TODO (worker): call this before sending via Instagram Graph API.
  */
 export async function shouldSendDm(
@@ -111,8 +175,9 @@ export async function shouldSendDm(
   optOutKeyword: string,
   freqCapHours: number
 ): Promise<boolean> {
-  const lowerComment = commentText.toLowerCase()
-  if (lowerComment.includes(optOutKeyword.toLowerCase())) return false
+  const normalizedComment = normalizePersian(commentText)
+  const normalizedOptOut = normalizePersian(optOutKeyword)
+  if (normalizedComment.includes(normalizedOptOut)) return false
 
   const since = new Date(Date.now() - freqCapHours * 60 * 60 * 1000)
   const recent = await db.commentDmLog.count({

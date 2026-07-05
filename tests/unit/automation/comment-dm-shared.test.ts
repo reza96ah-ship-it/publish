@@ -104,3 +104,57 @@ describe('previewTemplate', () => {
     expect(previewTemplate('سلام {نام}', '')).toBe('سلام کاربر')
   })
 })
+
+describe('multi-word keywords', () => {
+  it('matches a multi-word phrase as a single keyword', () => {
+    const r = matchComment('سلام قیمت چنده؟', ['قیمت چنده'])
+    expect(r.matched).toBe(true)
+    expect(r.hit).toBe('قیمت چنده')
+  })
+
+  it('matches multi-word phrases separated by commas', () => {
+    const keywords = parseKeywordList('قیمت چنده, لینک بده')
+    expect(keywords).toEqual(['قیمت چنده', 'لینک بده'])
+    expect(matchComment('قیمت چنده؟', keywords).matched).toBe(true)
+    expect(matchComment('لینک بده لطفا', keywords).matched).toBe(true)
+  })
+
+  it('matches multi-word phrases separated by Persian comma', () => {
+    const keywords = parseKeywordList('قیمت چنده، لینک بده')
+    expect(keywords).toEqual(['قیمت چنده', 'لینک بده'])
+  })
+
+  it('matches multi-word phrases separated by pipe', () => {
+    const keywords = parseKeywordList('قیمت چنده | لینک بده')
+    expect(keywords).toEqual(['قیمت چنده', 'لینک بده'])
+  })
+
+  it('does not split multi-word phrases on spaces', () => {
+    const keywords = parseKeywordList('قیمت چنده')
+    expect(keywords).toEqual(['قیمت چنده']) // one keyword, not ['قیمت', 'چنده']
+  })
+
+  it('normalizes multi-word phrases with ZWNJ', () => {
+    const r = matchComment('ثبت‌نام کنم', ['ثبت نام'])
+    expect(r.matched).toBe(true)
+  })
+
+  it('matches multi-word exclude phrases', () => {
+    const r = matchComment('قیمت چنده واقعا', ['قیمت'], ['قیمت چنده'])
+    expect(r.matched).toBe(false)
+    expect(r.reason).toBe('excluded')
+  })
+})
+
+describe('normalizePersian edge cases', () => {
+  it('handles RLM/LRM marks', () => {
+    expect(normalizePersian('قیمت\u200E')).toBe('قیمت')
+    expect(normalizePersian('قیمت\u200F')).toBe('قیمت')
+  })
+
+  it('handles Persian Presentation Forms ( contextual letter shapes)', () => {
+    // Presentation Form Yeh Final \uFEF1 should normalize to ی
+    const r = normalizePersian('قا\uFEF1\uFEF2') // presentation form ی
+    expect(r).toContain('ی')
+  })
+})
