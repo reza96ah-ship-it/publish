@@ -636,6 +636,140 @@ export function validateBody<T>(
   return { success: false, error: firstError?.message ?? 'ورودی نامعتبر' }
 }
 
+// ── Customers + Cases (#248) ─────────────────────────────────────────────────
+//
+// Customer profiles unify a contact across platforms. socialHandles is a
+// free-form JSON record (e.g. { instagram: '@user', telegram: 'user' }).
+// consentStatus is an enum: unknown | granted | denied. Cases bundle related
+// customer interactions and link to inbox messages via linkedMessageIds.
+
+export const customerCreateSchema = z.object({
+  name: persianText(1, 200, 'نام مشتری الزامی است'),
+  email: z.string().email('ایمیل معتبر نیست').max(200).nullable().optional(),
+  phone: z.string().trim().max(50).nullable().optional(),
+  socialHandles: z.record(z.string(), z.string()).optional(),
+  avatarUrl: z.string().url().max(500).nullable().optional(),
+  tags: z.array(persianText(1, 50)).max(30).optional().default([]),
+  notes: z.string().max(5000).nullable().optional(),
+  consentStatus: z.enum(['unknown', 'granted', 'denied']).optional().default('unknown'),
+})
+
+export const customerUpdateSchema = customerCreateSchema.partial().extend({
+  optOutAt: z.string().datetime().nullable().optional(),
+})
+
+export const customerInteractionCreateSchema = z.object({
+  type: z.enum(['comment', 'dm', 'mention', 'reply']),
+  platform: z.string().min(1).max(50),
+  content: z.string().trim().min(1, 'محتوای تعامل الزامی است').max(5000),
+  direction: z.enum(['inbound', 'outbound']).optional().default('inbound'),
+  inboxMessageId: z.string().max(100).nullable().optional(),
+  handledBy: z.string().max(100).nullable().optional(),
+})
+
+export const customerMergeSchema = z.object({
+  targetId: z.string().min(1, 'شناسه مشتری هدف الزامی است').max(100),
+})
+
+export const caseCreateSchema = z.object({
+  title: persianText(1, 200, 'عنوان پرونده الزامی است'),
+  description: persianText(0, 2000).optional(),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).optional().default('normal'),
+  assigneeId: z.string().max(100).nullable().optional(),
+  linkedMessageIds: z.array(z.string().max(100)).max(100).optional().default([]),
+})
+
+export const caseUpdateSchema = caseCreateSchema.partial().extend({
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed']).optional(),
+  resolution: z.string().max(5000).nullable().optional(),
+})
+
+export const caseParticipantSchema = z.object({
+  customerId: z.string().min(1, 'شناسه مشتری الزامی است').max(100),
+  role: z.enum(['primary', 'cc', 'mentioned']).optional().default('primary'),
+})
+
+// ── AI Evaluation (#252) ─────────────────────────────────────────────────────
+//
+// An evaluation set bundles Persian prompts sharing a tone. Used by the
+// developer harness to regression-test caption quality before shipping
+// prompt changes. Scores are 1–5; feedback is free-form Persian text.
+
+export const evaluationSetCreateSchema = z.object({
+  name: persianText(1, 100, 'نام مجموعه الزامی است'),
+  tone: z.enum(['formal', 'friendly', 'promotional', 'support', 'professional']),
+  prompts: z
+    .array(
+      z.object({
+        prompt: persianText(1, 500, 'متن پرامپت الزامی است'),
+        platform: z.enum(['instagram', 'telegram']),
+        tone: z.enum(['formal', 'friendly', 'promotional', 'support', 'professional']),
+      })
+    )
+    .min(1, 'حداقل یک پرامپت الزامی است')
+    .max(50, 'حداکثر ۵۰ پرامپت مجاز است'),
+})
+
+export const evaluationRunSchema = z.object({
+  indices: z.array(z.number().int().min(0).max(49)).max(50).optional(),
+})
+
+export const evaluationFeedbackSchema = z.object({
+  score: z.number().int().min(1, 'حداقل امتیاز ۱ است').max(5, 'حداکثر امتیاز ۵ است'),
+  feedback: persianText(0, 2000).optional(),
+})
+
+// ── Competitors (#253) ───────────────────────────────────────────────────────
+//
+// Competitor profiles track a rival brand's handle on one platform. The
+// benchmark + share-of-voice endpoints return aggregated stats per
+// competitor (computed by the service from existing analytics snapshots).
+
+export const competitorCreateSchema = z.object({
+  name: persianText(1, 100, 'نام رقیب الزامی است'),
+  handle: z.string().trim().min(1, 'شناسه رقیب الزامی است').max(100),
+  platform: z.string().min(1).max(50),
+  trackedMetrics: z.array(z.string().min(1).max(50)).max(20).optional().default([]),
+})
+
+export const competitorUpdateSchema = competitorCreateSchema.partial()
+
+// ── Enterprise SSO + Custom Roles (#256) ─────────────────────────────────────
+//
+// SSO configs store provider metadata (SAML entity ID / OIDC metadata URL).
+// Custom roles are named permission bundles — `permissions` is a string
+// array so we can add new permission keys without a migration.
+
+export const ssoConfigCreateSchema = z.object({
+  provider: z.enum(['saml', 'oidc'], 'نوع ارائه‌دهنده نامعتبر است'),
+  entityId: z.string().trim().max(500).nullable().optional(),
+  certificate: z.string().trim().max(10000).nullable().optional(),
+  metadataUrl: z.string().url('آدرس متادیتا نامعتبر است').max(500).nullable().optional(),
+  isActive: z.boolean().optional().default(false),
+})
+
+export const ssoConfigUpdateSchema = ssoConfigCreateSchema.partial()
+
+export const customRoleCreateSchema = z.object({
+  name: persianText(1, 100, 'نام نقش الزامی است'),
+  permissions: z
+    .array(z.string().min(1).max(100))
+    .min(1, 'حداقل یک دسترسی الزامی است')
+    .max(50),
+  description: persianText(0, 500).optional(),
+})
+
+export const customRoleUpdateSchema = customRoleCreateSchema.partial()
+
+export const auditExportSchema = z.object({
+  format: z.enum(['json', 'csv']).optional().default('json'),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  action: z.string().max(100).optional(),
+  userId: z.string().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(10000).optional().default(1000),
+})
+
 // Helper: validate search params (GET query strings)
 export function validateParams<T>(
   schema: z.ZodSchema<T>,

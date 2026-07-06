@@ -155,6 +155,39 @@ model Workspace {
   agencyProfile   AgencyProfile?
   workspaceTemplates WorkspaceTemplate[]
   portalAccess    ClientPortalAccess[]
+  ssoConfigs      SSOConfig[]
+  customRoles     CustomRole[]
+}
+
+/* ─── #256: Enterprise SSO + custom roles + audit export ─── */
+
+model SSOConfig {
+  id          String   @id @default(cuid())
+  workspaceId String
+  provider    String   // saml, oidc
+  entityId    String?
+  certificate String?
+  metadataUrl String?
+  isActive    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model CustomRole {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  permissions String[]
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@unique([workspaceId, name])
 }
 
 model FeatureFlag {
