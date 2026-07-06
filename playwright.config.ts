@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 
 const AUTH_FILE = path.resolve(__dirname, 'tests/e2e/.auth/user.json')
-const VISUAL_TEST = /visual.*\.spec\.ts/
+const VISUAL_TEST = /visual.*\.spec\.ts|visual-states\.spec\.ts/
 const AUTH_SETUP = /auth\.setup\.ts/
 const scriptName = process.env.npm_lifecycle_event ?? ''
 const isVisualRun =
