@@ -1,3 +1,6 @@
+-- AlterTable
+ALTER TABLE "Workspace" ADD COLUMN     "planId" TEXT;
+
 -- CreateTable
 CREATE TABLE "Plan" (
     "id" TEXT NOT NULL,
@@ -44,9 +47,6 @@ CREATE TABLE "Subscription" (
     CONSTRAINT "Subscription_pkey" PRIMARY KEY ("id")
 );
 
--- AlterTable: Workspace gets nullable planId column (existing rows unaffected)
-ALTER TABLE "Workspace" ADD COLUMN "planId" TEXT;
-
 -- CreateIndex
 CREATE UNIQUE INDEX "Plan_code_key" ON "Plan"("code");
 
@@ -82,3 +82,4 @@ ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_workspaceId_fkey" FOREIG
 
 -- AddForeignKey
 ALTER TABLE "Subscription" ADD CONSTRAINT "Subscription_planId_fkey" FOREIGN KEY ("planId") REFERENCES "Plan"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
