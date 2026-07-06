@@ -258,7 +258,7 @@ function ChannelHealthCard({ channel: ch, index }: { channel: ChannelHealth; ind
       )}
 
       {/* Reconnect action */}
-      <div className="flex justify-end pt-1">
+      <div className="flex justify-start pt-1">
         <Button
           size="sm"
           variant={ch.tokenExpired || ch.missingScopes.length > 0 ? 'default' : 'outline'}

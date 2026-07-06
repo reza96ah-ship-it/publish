@@ -228,7 +228,9 @@ export function MediaUploader({
                 {isDragging ? 'فایل را اینجا رها کنید' : 'تصویر یا ویدیو را اینجا بکشید یا کلیک کنید'}
               </p>
               <p className="text-2xs text-ink-tertiary mt-0.5">
-                JPEG, PNG, WebP, GIF (حداکثر ۱۰ مگابایت) — MP4, MOV, WebM (حداکثر ۲۰۰ مگابایت)
+                JPEG, PNG, WebP, GIF (حداکثر ۱۰ مگابایت)
+                <br />
+                MP4, MOV, WebM (حداکثر ۲۰۰ مگابایت)
               </p>
             </div>
           </div>

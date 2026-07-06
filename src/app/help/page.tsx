@@ -226,7 +226,7 @@ export default function HelpPage() {
                 </div>
                 <div className="p-5 space-y-3">
                   {article.content.map((para, i) => (
-                    <p key={i} className="text-sm text-ink-secondary leading-relaxed">
+                    <p key={i} className="text-sm text-ink-secondary leading-relaxed" dir="auto">
                       {para}
                     </p>
                   ))}

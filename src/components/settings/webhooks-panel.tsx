@@ -97,7 +97,7 @@ export function WebhooksPanel() {
       </Dialog>
 
       <Sheet open={!!historyId} onOpenChange={(o) => !o && setHistoryId(null)}>
-        <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader><SheetTitle>تاریخچه تحویل</SheetTitle></SheetHeader>
           <div className="space-y-2 mt-4">
             {deliveries?.map((d) => (

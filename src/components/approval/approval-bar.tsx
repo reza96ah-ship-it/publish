@@ -189,7 +189,7 @@ export function ApprovalBar({
                 className="n-control w-full p-3 text-sm resize-none mb-3"
                 autoFocus
               />
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex items-center gap-2 justify-start">
                 <button
                   onClick={() => setShowRejectModal(false)}
                   className="n-focus-ring min-h-[44px] rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-secondary hover:bg-surface-hover"

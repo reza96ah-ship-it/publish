@@ -27,6 +27,8 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
+  LabelList,
 } from 'recharts'
 
 import { api } from '@/lib/api'
@@ -310,8 +312,7 @@ export function AnalyticsView() {
           data-visual-mask="analytics-reach-chart"
         >
           <ResponsiveContainer width="100%" height="100%">
-            {/* P0-6: reverse data for RTL — newest on left, oldest on right (Persian reading direction) */}
-            <AreaChart data={[...periodSlice].reverse()} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+            <AreaChart data={periodSlice} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
               <defs>
                 <linearGradient id="reachGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--color-accent)" stopOpacity={0.4} />
@@ -321,18 +322,18 @@ export function AnalyticsView() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
+                tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)', fontFamily: 'inherit' }}
                 tickFormatter={(v) => toPersianDigits(v)}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                orientation="right"
-                tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
+                tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)', fontFamily: 'inherit' }}
                 tickFormatter={(v) => formatCompact(Number(v))}
                 axisLine={false}
                 tickLine={false}
                 width={35}
+                tickCount={4}
               />
               <Tooltip content={<ChartTooltip />} />
               <Area
@@ -359,44 +360,72 @@ export function AnalyticsView() {
           loading={platformQueries.some((q) => q.isLoading)}
         >
           <div data-visual-mask="analytics-platform-breakdown">
-            <div className="h-[160px] sm:h-[200px] md:h-56">
+            <div className="h-[180px] sm:h-[220px] md:h-60">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={PLATFORMS.map((p, i) => {
                     const pd = platformQueries[i]?.data
                     const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
-                    return { name: p.label, value: total, fill: p.color }
+                    return { name: p.label, value: total, platformId: p.id }
                   })}
-                  margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  margin={{ top: 22, right: 8, left: 0, bottom: 0 }}
+                  barCategoryGap="35%"
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <defs>
+                    {PLATFORMS.map((p) => (
+                      <linearGradient key={p.id} id={`barGrad-${p.id}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={p.color} stopOpacity={0.9} />
+                        <stop offset="100%" stopColor={p.color} stopOpacity={0.45} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
+                    tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)', fontFamily: 'inherit' }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
+                    tick={{ fontSize: 11, fill: 'var(--color-ink-tertiary)', fontFamily: 'inherit' }}
                     tickFormatter={(v) => formatCompact(Number(v))}
                     axisLine={false}
                     tickLine={false}
-                    width={35}
+                    width={32}
+                    tickCount={4}
                   />
-                  <Tooltip content={<BarChartTooltip />} />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]} />
+                  <Tooltip
+                    content={<BarChartTooltip />}
+                    cursor={{ fill: 'var(--color-surface-hover)', radius: 6 }}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={52}>
+                    <LabelList
+                      dataKey="value"
+                      position="top"
+                      formatter={(v: number) => v > 0 ? toPersianDigits(formatCompact(v)) : ''}
+                      style={{ fontSize: 10, fill: 'var(--color-ink-secondary)', fontFamily: 'inherit' }}
+                    />
+                    {PLATFORMS.map((p) => (
+                      <Cell key={p.id} fill={`url(#barGrad-${p.id})`} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-wrap gap-2 mt-3">
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-4 pt-3 border-t border-border/60">
               {PLATFORMS.map((p, i) => {
                 const pd = platformQueries[i]?.data
                 const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
                 return (
-                  <div key={p.id} className="flex items-center gap-2 text-xs min-w-0">
-                    <PlatformIcon platform={p.id} className="size-5 shrink-0" />
-                    <span className="text-ink-secondary truncate">{p.label}</span>
-                    <span className="ms-auto font-bold text-ink-primary num-tabular shrink-0">
+                  <div key={p.id} className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ background: p.color }}
+                    />
+                    <PlatformIcon platform={p.id} className="size-4 shrink-0" />
+                    <span className="text-xs text-ink-secondary truncate flex-1">{p.label}</span>
+                    <span className="text-xs font-bold text-ink-primary num-tabular shrink-0">
                       {toPersianDigits(formatCompact(total))}
                     </span>
                   </div>

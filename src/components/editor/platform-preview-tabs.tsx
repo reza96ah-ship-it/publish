@@ -204,7 +204,7 @@ function InstagramPreview({
             className="object-cover"
           />
           {media.length > 1 && (
-            <span className="absolute top-2 left-2 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
+            <span className="absolute top-2 start-2 bg-black/60 text-white text-2xs px-1.5 py-0.5 rounded-full num-tabular flex items-center gap-1">
               <svg viewBox="0 0 24 24" className="size-2.5 fill-current">
                 <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zM8.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm8.5 6l-4-5-2 2-3-4-3 7h12z" />
               </svg>
@@ -288,7 +288,7 @@ function TelegramPreview({
           {caption || 'متن پیام…'}
         </p>
         {/* Time + views */}
-        <div className="flex items-center justify-end gap-1 mt-1.5">
+        <div className="flex items-center justify-start gap-1 mt-1.5">
           <Eye className="size-3 text-ink-tertiary" />
           <span className="text-2xs text-ink-tertiary num-tabular">{toPersianDigits(1234)}</span>
           <span className="text-2xs text-ink-tertiary ms-1">۱۲:۳۰</span>

@@ -752,7 +752,7 @@ export function CalendarView() {
 
       {/* Job detail sheet */}
       <Sheet open={!!selectedJob} onOpenChange={(o) => !o && setSelectedJob(null)}>
-        <SheetContent side="left" className="w-full sm:max-w-md">
+        <SheetContent side="right" className="w-full sm:max-w-md">
           {selectedJob && (
             <>
               <SheetHeader>
@@ -924,7 +924,7 @@ function DayCell({
         cell.isToday
           ? 'border-accent ring-1 ring-accent/30 bg-accent-soft'
           : cell.holiday
-            ? 'border-danger-soft bg-danger-tint/40'
+            ? 'border-danger-soft bg-danger-tint/40 dark:border-danger/20 dark:bg-danger/8'
             : cell.isWeekend && cell.inMonth
               ? 'border-border bg-surface-hover'
               : 'border-border',
@@ -962,7 +962,7 @@ function DayCell({
           />
         ))}
         {jobs.length > (tall ? 5 : 3) && (
-          <p className="text-2xs text-ink-tertiary px-1.5">
+          <p className="text-2xs text-ink-tertiary px-1.5 whitespace-nowrap">
             +{toPersianDigits(jobs.length - (tall ? 5 : 3))} مورد دیگر
           </p>
         )}

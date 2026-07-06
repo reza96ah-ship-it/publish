@@ -350,7 +350,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
           )}
 
           {/* Primary CTA */}
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-start gap-2">
             {isEditing && (
               <Button variant="ghost" onClick={resetForm} disabled={saveMutation.isPending}>
                 <X className="size-4" />

@@ -116,11 +116,11 @@ export function SectionTitle({
   badge?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-2.5 mb-5">
-      <div className="flex size-8 items-center justify-center rounded-md bg-accent-soft">
+    <div className="flex flex-wrap items-center gap-2.5 mb-5">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent-soft">
         <Icon className="size-[16px] text-accent" strokeWidth={2} />
       </div>
-      <h1 className="text-xl font-bold text-ink-primary tracking-tight leading-tight">
+      <h1 className="text-xl font-bold text-ink-primary tracking-tight leading-tight whitespace-nowrap">
         {children}
       </h1>
       {badge}
@@ -647,7 +647,7 @@ export function KpiCard({
         {loading ? (
           <Skeleton className="h-7 w-24 rounded" />
         ) : (
-          <p className="text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight">
+          <p className="text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight whitespace-nowrap">
             {fmt(value)}
           </p>
         )}
