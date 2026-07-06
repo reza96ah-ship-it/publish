@@ -1,26 +1,16 @@
 /**
- * Issue #235 — Visual regression suite.
+ * Issue #284 — Visual regression suite (expanded).
  *
- * 6 core views × 3 viewports × 2 color schemes = 36 baselines.
- * Runs on Chromium only (linux runner) to keep baselines platform-consistent.
- *
- * Baselines are committed to git under tests/e2e/visual.spec.ts-snapshots/.
- * To regenerate: bunx playwright test --project=visual --update-snapshots
- *
- * Dynamic regions are masked so data fluctuations don't cause false failures:
- *   - Persian/Gregorian date strings
- *   - Avatar images
- *   - Recharts SVG paths (chart bars, lines — data-driven)
- *   - KPI counter numbers inside .num-tabular spans
+ * P0 routes × 5 viewports × 2 color schemes + reduced-motion.
  */
 
 import { test, expect, type Page } from '@playwright/test'
 
-// ── Constants ─────────────────────────────────────────────────────────────
-
 const VIEWPORTS = [
+  { name: 'sm-mobile', width: 360, height: 740 },
   { name: 'mobile', width: 375, height: 812 },
   { name: 'tablet', width: 768, height: 1024 },
+  { name: 'laptop', width: 1024, height: 768 },
   { name: 'desktop', width: 1280, height: 800 },
 ] as const
 
@@ -28,102 +18,86 @@ const VIEWS = [
   { name: 'signin', url: '/auth/signin', auth: false },
   { name: 'dashboard', url: '/', auth: true },
   { name: 'compose', url: '/compose', auth: true },
-  { name: 'campaigns', url: '/campaigns', auth: true },
+  { name: 'calendar', url: '/calendar', auth: true },
+  { name: 'inbox', url: '/inbox', auth: true },
   { name: 'analytics', url: '/analytics', auth: true },
   { name: 'settings', url: '/settings', auth: true },
+  { name: 'channels', url: '/channels', auth: true },
+  { name: 'campaigns', url: '/campaigns', auth: true },
+  { name: 'media', url: '/media', auth: true },
+  { name: 'content', url: '/content', auth: true },
+  { name: 'smart-pages', url: '/smart-pages', auth: true },
 ] as const
 
-// Selectors for dynamic content that should be masked in screenshots
+const ANIMATED_ROUTES = new Set(['dashboard', 'compose', 'analytics'])
+
 const DYNAMIC_MASKS = [
-  // KPI numbers and counters
-  '.num-tabular',
-  // Recharts SVG data paths (bars, lines, areas — vary with real data)
-  '.recharts-wrapper',
+  'img[src*="avatar"]',
+  'img[alt*="avatar"]',
+  '[data-slot="skeleton"]',
+  '.animate-ping',
+  '[data-visual-mask]',
   '.recharts-bar-rectangle',
   '.recharts-line-dot',
   '.recharts-area-area',
   '.recharts-curve',
-  // App-native mini charts and sparkline SVGs
-  '.touch-none',
-  '.touch-none [aria-hidden]',
-  '.touch-none .absolute',
-  'svg.overflow-visible',
-  // Avatar images (user photos — may change)
-  'img[src*="avatar"]',
-  'img[alt*="avatar"]',
-  // Skeleton loading placeholders (timing-sensitive)
-  '[data-slot="skeleton"]',
-  // App-provided opt-in mask for dynamic metric cards/charts.
-  '[data-visual-mask]',
-  // Live connection indicator (animated ping dot)
-  '.animate-ping',
-  // Timestamp text nodes — broad selector for Persian date strings
-  'time',
-  '[data-testid="timestamp"]',
 ] as const
-
-// ── Helpers ───────────────────────────────────────────────────────────────
 
 async function waitForStable(page: Page) {
   await page.waitForLoadState('load')
-  // Let React hydrate and initial queries settle
-  await page.waitForTimeout(800)
+  await page.waitForTimeout(1200)
 }
 
 async function getMasks(page: Page) {
-  const handles = await page
-    .locator(DYNAMIC_MASKS.join(', '))
-    .all()
-  return handles
+  return page.locator(DYNAMIC_MASKS.join(', ')).all()
 }
 
-async function screenshot(
-  page: Page,
-  name: string,
-  scheme: 'light' | 'dark',
-) {
+async function screenshot(page: Page, name: string, scheme: 'light' | 'dark') {
   await page.emulateMedia({ colorScheme: scheme })
-  // Brief pause to let CSS transitions complete after theme switch
-  await page.waitForTimeout(200)
-
+  await page.waitForTimeout(300)
   const masks = await getMasks(page)
-
   await expect(page).toHaveScreenshot(`${name}-${scheme}.png`, {
-    maxDiffPixels: 50000, // Allow up to 5% diff for anti-aliasing/font rendering differences across CI runners
+    maxDiffPixels: 10000,
     mask: masks,
     animations: 'disabled',
   })
 }
 
-// ── Test matrix ───────────────────────────────────────────────────────────
-
 for (const vp of VIEWPORTS) {
   test.describe(`viewport:${vp.name} (${vp.width}×${vp.height})`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } })
-
     for (const view of VIEWS) {
       for (const scheme of ['light', 'dark'] as const) {
-        test(`${view.name} — ${scheme}`, async ({ page }) => {
+        test(`${view.name} — ${vp.name} — ${scheme}`, async ({ page }) => {
           if (!view.auth) {
             await page.context().clearCookies()
-            await page.addInitScript(() => {
-              window.localStorage.clear()
-              window.sessionStorage.clear()
-            })
+            await page.addInitScript(() => { window.localStorage.clear(); window.sessionStorage.clear() })
           }
-
           await page.goto(view.url)
           await waitForStable(page)
-
-          // If auth is required but we land on sign-in, skip gracefully
           if (view.auth && page.url().includes('/auth')) {
-            test.skip(true, `${view.name} requires auth — sign-in redirect; re-run after seed:auth`)
+            test.skip(true, `${view.name} requires auth`)
             return
           }
-
           await screenshot(page, `${view.name}-${vp.name}`, scheme)
         })
       }
     }
   })
 }
+
+test.describe('reduced-motion', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  for (const view of VIEWS) {
+    if (!ANIMATED_ROUTES.has(view.name)) continue
+    test(`${view.name} — reduced-motion — light`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'light' })
+      if (!view.auth) { await page.context().clearCookies(); await page.addInitScript(() => { window.localStorage.clear(); window.sessionStorage.clear() }) }
+      await page.goto(view.url)
+      await waitForStable(page)
+      if (view.auth && page.url().includes('/auth')) { test.skip(true, `${view.name} requires auth`); return }
+      const masks = await getMasks(page)
+      await expect(page).toHaveScreenshot(`${view.name}-reduced-motion-light.png`, { maxDiffPixels: 10000, mask: masks, animations: 'disabled' })
+    })
+  }
+})
