@@ -148,6 +148,8 @@ model Workspace {
   customers        Customer[]
   customerInteractions CustomerInteraction[]
   cases            Case[]
+  automations      Automation[]
+  automationRuns   AutomationRun[]
 }
 
 model FeatureFlag {
@@ -1108,4 +1110,73 @@ model CaseParticipant {
   @@unique([caseId, customerId])
   @@index([caseId])
   @@index([customerId])
+}
+
+/* ─── #249: Versioned workflow builder + run history ─── */
+
+model Automation {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  description String?
+  // Current version number (increments on each save)
+  version     Int      @default(1)
+  // The full automation definition as JSON:
+  // { triggers: [...], conditions: [...], actions: [...] }
+  // Each trigger: { type: 'schedule'|'keyword'|'status_change'|'provider_event'|'date_holiday', config: {...} }
+  // Each condition: { type: 'channel'|'tag'|'campaign'|'time_window'|'approval_state', config: {...} }
+  // Each action: { type: 'create_draft'|'add_to_queue'|'send_notification'|'assign_inbox'|'add_reply'|'add_tag'|'call_webhook', config: {...} }
+  definition Json
+  // Previous version's definition (for rollback)
+  previousDefinition Json?
+  isActive    Boolean  @default(false)
+  isPaused    Boolean  @default(false)
+  // Dry run mode: log what would happen but don't execute actions
+  dryRunMode  Boolean  @default(false)
+  // Kill switch: when true, all runs are immediately cancelled
+  killSwitch  Boolean  @default(false)
+  // Rate limiting: max runs per hour
+  maxRunsPerHour Int   @default(10)
+  // Require human approval for AI-generated actions
+  requireApproval Boolean @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  runs      AutomationRun[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, isActive])
+  @@index([killSwitch])
+}
+
+model AutomationRun {
+  id            String   @id @default(cuid())
+  automationId  String
+  workspaceId   String
+  // The version of the automation definition that was used
+  version       Int
+  // Trigger that fired: { type, config, matchedData }
+  trigger       Json
+  // Conditions evaluated: [{ type, passed, details }]
+  conditions    Json
+  // Actions executed: [{ type, status, result, error, timestamp }]
+  actions       Json
+  status        String   @default("pending") // pending, running, completed, failed, cancelled, approval_required
+  // If approval_required, who needs to approve
+  approverId    String?
+  approvedAt    DateTime?
+  // Error details if failed
+  error         String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([automationId, createdAt])
+  @@index([workspaceId])
+  @@index([status])
 }

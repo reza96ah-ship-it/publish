@@ -19,6 +19,7 @@ import {
   ImageIcon,
   ChevronLeft,
   X,
+  Workflow,
 } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import { useAppStore } from '@/lib/store'
@@ -54,6 +55,7 @@ const NAV_MAIN: NavItem[] = [
   { view: 'content', href: '/content', icon: Folder, label: 'کتابخانه محتوا' },
   { view: 'media', href: '/media', icon: ImageIcon, label: 'رسانه' },
   { view: 'smart-pages', href: '/smart-pages', icon: LayoutGrid, label: 'صفحه هوشمند' },
+  { view: 'automations', href: '/automations', icon: Workflow, label: 'اتوماسیون' },
   { view: 'inbox', href: '/inbox', icon: Mail, label: 'صندوق ورودی', badgeKey: 'unreadInbox' },
 ]
 

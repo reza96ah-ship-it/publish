@@ -430,6 +430,78 @@ export const webhookUpdateSchema = webhookCreateSchema.partial().extend({
   isActive: z.boolean().optional(),
 })
 
+// ── Automations (#249) ──────────────────────────────────────────────────────
+//
+// An automation definition is a JSON blob with three arrays: triggers,
+// conditions, actions. Each piece is `{ type, config }` where config is a
+// free-form record (per-type validation happens in the service layer).
+//
+// The schema enforces structural shape only (so we can add new trigger/
+// condition/action types without a Zod migration); the service's
+// `validateDefinition` enforces presence of at least one trigger + one action.
+
+const automationTriggerSchema = z.object({
+  type: z.enum([
+    'schedule',
+    'keyword',
+    'status_change',
+    'provider_event',
+    'date_holiday',
+  ]),
+  config: z.record(z.string(), z.unknown()),
+})
+
+const automationConditionSchema = z.object({
+  type: z.enum([
+    'channel',
+    'tag',
+    'campaign',
+    'time_window',
+    'approval_state',
+  ]),
+  config: z.record(z.string(), z.unknown()),
+})
+
+const automationActionSchema = z.object({
+  type: z.enum([
+    'create_draft',
+    'add_to_queue',
+    'send_notification',
+    'assign_inbox',
+    'add_reply',
+    'add_tag',
+    'call_webhook',
+  ]),
+  config: z.record(z.string(), z.unknown()),
+})
+
+const automationDefinitionSchema = z.object({
+  triggers: z.array(automationTriggerSchema).max(20, 'حداکثر ۲۰ راه‌انداز مجاز است'),
+  conditions: z.array(automationConditionSchema).max(50, 'حداکثر ۵۰ شرط مجاز است'),
+  actions: z.array(automationActionSchema).max(50, 'حداکثر ۵۰ اقدام مجاز است'),
+})
+
+export const automationCreateSchema = z.object({
+  name: persianText(1, 100, 'نام اتوماسیون الزامی است'),
+  description: persianText(0, 500).optional(),
+  definition: automationDefinitionSchema,
+  dryRunMode: z.boolean().optional().default(false),
+  maxRunsPerHour: z.coerce
+    .number()
+    .int('حداکثر اجرا در ساعت باید عدد صحیح باشد')
+    .min(1, 'حداقل ۱ اجرا در ساعت مجاز است')
+    .max(1000, 'حداکثر ۱۰۰۰ اجرا در ساعت مجاز است')
+    .optional()
+    .default(10),
+  requireApproval: z.boolean().optional().default(false),
+})
+
+export const automationUpdateSchema = automationCreateSchema.partial().extend({
+  isActive: z.boolean().optional(),
+  isPaused: z.boolean().optional(),
+  killSwitch: z.boolean().optional(),
+})
+
 // ── Generic helpers ─────────────────────────────────────────────────────────
 
 export const idSchema = z.string().min(1, 'شناسه الزامی است').max(100)
