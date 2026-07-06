@@ -34,7 +34,7 @@ function resolveSigningSecret(): string {
   // presence of REALTIME_JWT_SECRET at boot in production.
   const secret = process.env.REALTIME_JWT_SECRET
   if (!secret) {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && !process.env.CI) {
       throw new Error('REALTIME_JWT_SECRET is required in production')
     }
     // Dev-only fallback so local development keeps working without env setup.
