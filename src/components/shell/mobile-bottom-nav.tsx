@@ -14,6 +14,7 @@ import {
   ImageIcon,
   Link2,
   Settings,
+  Radar,
   MoreHorizontal,
   type LucideIcon,
 } from 'lucide-react'
@@ -49,6 +50,7 @@ const MORE_ITEMS: BottomNavItem[] = [
   { href: '/campaigns', icon: Flag, label: 'کمپین‌ها' },
   { href: '/content', icon: Folder, label: 'کتابخانه محتوا' },
   { href: '/media', icon: ImageIcon, label: 'رسانه' },
+  { href: '/listening', icon: Radar, label: 'گوش دادن' },
   { href: '/channels', icon: Link2, label: 'پلتفرم‌ها' },
   { href: '/settings', icon: Settings, label: 'تنظیمات' },
 ]

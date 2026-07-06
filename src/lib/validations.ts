@@ -517,6 +517,56 @@ export const cursorPaginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 })
 
+// ── Listening (#251) ────────────────────────────────────────────────────────
+//
+// Social listening saved searches. Each query tracks keywords across one or
+// more providers (instagram, telegram), with a spike-alert config (rolling
+// mean + stddev threshold) and honest coverage-notes disclosure.
+//
+// Languages are optional ('fa', 'en', 'ar' or empty for all). Providers MUST
+// be a non-empty array — the service layer rejects zero-provider queries with
+// a Persian ValidationError. coverageNotes is free-form Persian text so the
+// workspace admin can describe what is NOT accessible via the provider API.
+
+export const listeningQueryCreateSchema = z.object({
+  name: persianText(1, 100, 'نام جستجو الزامی است'),
+  keywords: z
+    .array(persianText(1, 200, 'کلمه کلیدی نامعتبر است'))
+    .min(1, 'حداقل یک کلمه کلیدی الزامی است')
+    .max(50, 'حداکثر ۵۰ کلمه کلیدی مجاز است'),
+  languages: z
+    .array(z.enum(['fa', 'en', 'ar']))
+    .max(10)
+    .optional()
+    .default([]),
+  providers: z
+    .array(z.string().min(1).max(50))
+    .min(1, 'حداقل یک پلتفرم الزامی است')
+    .max(10),
+  spikeAlertEnabled: z.boolean().optional().default(true),
+  spikeThreshold: z.coerce
+    .number()
+    .min(0.5, 'حداکثر آستانه حداقل ۰.۵ باشد')
+    .max(10, 'حداکثر آستانه نباید بیشتر از ۱۰ باشد')
+    .optional()
+    .default(3.0),
+  coverageNotes: persianText(0, 1000).optional(),
+})
+
+export const listeningQueryUpdateSchema = listeningQueryCreateSchema.partial().extend({
+  isActive: z.boolean().optional(),
+})
+
+// Mentions list query: cursor + filter (spike / sentiment / language).
+export const listeningMentionsQuerySchema = cursorPaginationSchema.extend({
+  spike: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((v) => (v === 'true' ? true : v === 'false' ? false : undefined)),
+  sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
+  language: z.string().min(2).max(10).optional(),
+})
+
 // Helper: validate a single [id] path param — returns Persian error on failure.
 export function validateId(
   id: unknown

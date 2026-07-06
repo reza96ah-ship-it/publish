@@ -150,6 +150,8 @@ model Workspace {
   cases            Case[]
   automations      Automation[]
   automationRuns   AutomationRun[]
+  listeningQueries ListeningQuery[]
+  listeningMentions ListeningMention[]
 }
 
 model FeatureFlag {
@@ -1179,4 +1181,79 @@ model AutomationRun {
   @@index([automationId, createdAt])
   @@index([workspaceId])
   @@index([status])
+}
+
+/* ─── #251: Social listening + spike alerts ─── */
+
+model ListeningQuery {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  // The search terms to track (brand names, competitor names, hashtags, etc.)
+  keywords    String[]
+  // Language filter: 'fa', 'en', 'ar', or empty for all
+  languages   String[] @default([])
+  // Noise filters
+  minEngagement Int    @default(0)  // minimum engagement to show
+  excludeSpam  Boolean @default(true)
+  // Spike alert config
+  spikeAlertEnabled Boolean @default(true)
+  spikeThreshold Float @default(3.0) // standard deviations above mean
+  spikeWindowHours Int  @default(24) // rolling window for baseline
+  // Which providers to monitor
+  providers   String[] @default(["instagram"]) // instagram, telegram, etc.
+  // Coverage disclosure (what is NOT covered)
+  coverageNotes String? // e.g. "Instagram comments only — DMs not accessible via API"
+  // Saved search share token
+  shareToken  String?  @unique
+  isActive    Boolean  @default(true)
+  lastCheckedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  mentions  ListeningMention[]
+
+  @@index([workspaceId])
+  @@index([isActive])
+}
+
+model ListeningMention {
+  id          String   @id @default(cuid())
+  queryId     String
+  workspaceId String
+  // Source
+  provider    String   // instagram, telegram, etc.
+  // The mention content
+  content     String
+  authorName  String
+  authorAvatar String?
+  // URL to the original post/comment (if available)
+  sourceUrl   String?
+  // Engagement metrics at time of capture
+  likes       Int      @default(0)
+  comments    Int      @default(0)
+  shares      Int      @default(0)
+  // Language detection result
+  detectedLanguage String? // fa, en, ar
+  // Spam signal (0-1, higher = more likely spam)
+  spamScore   Float    @default(0)
+  // Human-verified sentiment (null = not yet verified)
+  verifiedSentiment String? // positive, neutral, negative
+  // Auto-detected sentiment (NEVER shown without human verification — #251 requirement)
+  autoSentiment String?
+  // Is this mention part of a spike?
+  isSpike     Boolean  @default(false)
+  spikeScore  Float?   // how many std devs above mean
+  // Coverage disclosure
+  coverageSource String? // e.g. "Instagram Graph API — comments only"
+  mentionedAt DateTime // when the mention was posted (provider timestamp)
+  createdAt   DateTime @default(now()) // when we captured it
+
+  query     ListeningQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([queryId, mentionedAt])
+  @@index([workspaceId])
+  @@index([isSpike])
 }
