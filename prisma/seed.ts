@@ -15,6 +15,7 @@ async function main() {
   await db.inboxMessage.deleteMany()
   await db.media.deleteMany()
   await db.publishJob.deleteMany()
+  await db.postMetricSnapshot.deleteMany()
   await db.publication.deleteMany()
   await db.contentRevision.deleteMany()
   await db.contentPlatform.deleteMany()
@@ -571,6 +572,89 @@ async function main() {
       idempotencyKey: 'j9',
     }),
   ])
+
+  // ─── Publications + per-post metrics (Issue #215) ───
+  // First-class delivery records for the successful destinations, plus a
+  // week of per-post metric history for the Instagram publication so the
+  // analytics drill-down has demo data.
+  const rev1 = await db.contentRevision.create({
+    data: { contentId: c1.id, workspaceId: ws.id, title: c1.title, body: c1.body },
+  })
+  const rev4 = await db.contentRevision.create({
+    data: { contentId: c4.id, workspaceId: ws.id, title: c4.title, body: c4.body },
+  })
+
+  const mkPublication = (data: Parameters<typeof db.publication.create>[0]['data']) =>
+    db.publication.create({ data })
+
+  const [pubIg] = await Promise.all([
+    mkPublication({
+      workspaceId: ws.id,
+      contentId: c1.id,
+      revisionId: rev1.id,
+      platformId: ig.id,
+      campaignId: summerSale.id,
+      status: 'success',
+      processLabel: 'منتشر شد',
+      progress: 100,
+      providerPostId: '17900000000000001',
+      completedAt: daysAgo(6),
+    }),
+    mkPublication({
+      workspaceId: ws.id,
+      contentId: c1.id,
+      revisionId: rev1.id,
+      platformId: tg.id,
+      campaignId: summerSale.id,
+      status: 'success',
+      processLabel: 'منتشر شد',
+      progress: 100,
+      providerPostId: '4821',
+      completedAt: hoursAgo(0.4),
+    }),
+    mkPublication({
+      workspaceId: ws.id,
+      contentId: c4.id,
+      revisionId: rev4.id,
+      platformId: tg.id,
+      campaignId: academy.id,
+      status: 'success',
+      processLabel: 'منتشر شد',
+      progress: 100,
+      providerPostId: '4790',
+      completedAt: hoursAgo(28),
+    }),
+    mkPublication({
+      workspaceId: ws.id,
+      contentId: c4.id,
+      revisionId: rev4.id,
+      platformId: li.id,
+      campaignId: academy.id,
+      status: 'success',
+      processLabel: 'منتشر شد',
+      progress: 100,
+      providerPostId: 'urn:li:share:7200000000000000001',
+      completedAt: hoursAgo(28),
+    }),
+  ])
+
+  // 7 days of growing IG metrics for the drill-down timeline
+  const igMetricRows = Array.from({ length: 7 }).flatMap((_, i) => {
+    const date = daysAgo(6 - i).toISOString().split('T')[0]
+    const growth = i + 1
+    return [
+      { metricType: 'reach', value: 1800 * growth + 240 },
+      { metricType: 'likes', value: 130 * growth + 25 },
+      { metricType: 'comments', value: 12 * growth + 3 },
+      { metricType: 'saved', value: 9 * growth + 2 },
+    ].map((m) => ({
+      workspaceId: ws.id,
+      publicationId: pubIg.id,
+      date,
+      ...m,
+    }))
+  })
+  await db.postMetricSnapshot.createMany({ data: igMetricRows })
 
   // ─── Feature flags + demo automation (survive re-seeds) ───
   // The workspace wipe above cascade-deletes FeatureFlag and CommentDmRule

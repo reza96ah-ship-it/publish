@@ -44,6 +44,7 @@ import {
   KpiCard,
 } from '@/components/dashboard/shared'
 import { ChartTooltip, BarChartTooltip } from '@/components/dashboard/chart-tooltip'
+import { PostPerformanceSection } from '@/components/analytics/post-performance'
 import { announce } from '@/lib/aria-live'
 import { Button } from '@/components/ui/button'
 import {
@@ -457,6 +458,9 @@ export function AnalyticsView() {
           </div>
         </div>
       </div>
+
+      {/* Issue #215: per-post performance + campaign rollup */}
+      <PostPerformanceSection />
 
       {/* Logs section */}
       <div className="n-card p-0 overflow-hidden">
