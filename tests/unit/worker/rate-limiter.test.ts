@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { PlatformRateLimiter } from '../../../mini-services/publish-worker/lib/rate-limiter'
 
 // P1-10: tryAcquire is now async (Redis-backed under horizontal scaling,
-// with an in-memory fallback). The test env has no REDIS_URL set, so the
-// limiter falls back to the in-memory bucket — these tests exercise that
-// fallback path. The Redis Lua path is exercised by integration tests.
+// with an in-memory fallback). Force in-memory mode by unsetting REDIS_URL
+// so these unit tests are deterministic regardless of CI environment.
+beforeAll(() => {
+  delete process.env.REDIS_URL
+  delete process.env.REDIS_QUEUE_URL
+})
+
 describe('Issue #147 E — PlatformRateLimiter (per-platform token bucket)', () => {
   let limiter: PlatformRateLimiter
 
