@@ -21,6 +21,7 @@ import {
   X,
   Workflow,
   Radar,
+  Building2,
 } from 'lucide-react'
 import { useSession, signOut } from 'next-auth/react'
 import { useAppStore } from '@/lib/store'
@@ -58,6 +59,7 @@ const NAV_MAIN: NavItem[] = [
   { view: 'smart-pages', href: '/smart-pages', icon: LayoutGrid, label: 'صفحه هوشمند' },
   { view: 'automations', href: '/automations', icon: Workflow, label: 'اتوماسیون' },
   { view: 'listening', href: '/listening', icon: Radar, label: 'گوش دادن' },
+  { view: 'agency', href: '/agency', icon: Building2, label: 'آژانس' },
   { view: 'inbox', href: '/inbox', icon: Mail, label: 'صندوق ورودی', badgeKey: 'unreadInbox' },
 ]
 

@@ -78,6 +78,8 @@ export async function proxy(req: NextRequest) {
     // If metrics must be scraped without auth, configure network-level protection.
     pathname.startsWith('/api/smart-pages/public/') ||
     pathname.startsWith('/api/smart-pages/track') ||
+    // Issue #254: Client portal access via token — public, no session.
+    pathname.startsWith('/api/agency/portal/') ||
     // Issue #255: Public API v1 uses Bearer-token auth, not session cookies.
     // Excluding it here keeps the middleware from 401-redirecting API clients
     // (and from injecting nonce/CSP that a non-browser caller doesn't need).
@@ -145,12 +147,13 @@ export const config = {
     //                     or reverse-proxy must restrict access at the edge.)
     //   api/smart-pages/public -- Issue #250: public link-in-bio reads
     //   api/smart-pages/track  -- Issue #250: public click-tracking beacon
+    //   api/agency/portal      -- Issue #254: public client-portal token read
     //   api/v1         -- Issue #255: Public API v1 (Bearer-token auth, not session)
     //   auth           -- The signin page itself
     //   p              -- Issue #250: public Smart Page route (/p/[slug])
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
   ],
 }
