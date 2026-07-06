@@ -152,6 +152,9 @@ model Workspace {
   automationRuns   AutomationRun[]
   listeningQueries ListeningQuery[]
   listeningMentions ListeningMention[]
+  agencyProfile   AgencyProfile?
+  workspaceTemplates WorkspaceTemplate[]
+  portalAccess    ClientPortalAccess[]
 }
 
 model FeatureFlag {
@@ -1256,4 +1259,58 @@ model ListeningMention {
   @@index([queryId, mentionedAt])
   @@index([workspaceId])
   @@index([isSpike])
+}
+
+/* ─── #254: Agency multi-client overview ─── */
+
+model AgencyProfile {
+  id              String   @id @default(cuid())
+  workspaceId     String   @unique  // The agency's own workspace
+  isAgency        Boolean  @default(true)
+  // Client workspaces managed by this agency
+  clientWorkspaceIds String[] @default([])  // array of workspace IDs
+  // White-label settings
+  brandName       String?  // Override "نشرینو" with agency's brand name
+  brandLogoUrl    String?
+  hideNashrinoBranding Boolean @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([isAgency])
+}
+
+model WorkspaceTemplate {
+  id              String   @id @default(cuid())
+  workspaceId     String   // Agency's workspace that owns this template
+  name            String
+  description     String?
+  // Pre-configured settings: brand kit, approval workflow, channel types, etc.
+  template        Json     // { brandColors, approvalWorkflow, channelTypes, defaultTags, ... }
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+}
+
+model ClientPortalAccess {
+  id              String   @id @default(cuid())
+  workspaceId     String   // Client's workspace
+  // Guest access token for client portal (view/approve only)
+  accessToken     String   @unique
+  // What the client can do
+  permissions     String[] @default(["content:view", "content:approve"]) // view, approve, comment
+  // Expiry
+  expiresAt       DateTime?
+  lastAccessedAt  DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([accessToken])
 }

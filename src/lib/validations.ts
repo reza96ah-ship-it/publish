@@ -502,6 +502,53 @@ export const automationUpdateSchema = automationCreateSchema.partial().extend({
   killSwitch: z.boolean().optional(),
 })
 
+// ── Agency (#254) ────────────────────────────────────────────────────────────
+//
+// Agency multi-client overview: white-label profile, workspace templates,
+// client portal access tokens. The portal token route is PUBLIC (validated by
+// the access token itself, no session) — see src/app/api/agency/portal/[token].
+//
+// Permissions are an explicit enum so a stray string like "admin:all" can't
+// sneak through the body parser. The service re-validates against the same set
+// at runtime (defense in depth).
+
+export const AGENCY_PORTAL_PERMISSIONS = [
+  'content:view',
+  'content:approve',
+  'content:comment',
+] as const
+
+export const agencyProfileSchema = z.object({
+  brandName: z.string().trim().max(100, 'نام برند خیلی طولانی است').nullable().optional(),
+  brandLogoUrl: z
+    .string()
+    .trim()
+    .max(500, 'آدرس لوگوی برند خیلی طولانی است')
+    .url('آدرس لوگوی برند نامعتبر است')
+    .nullable()
+    .optional(),
+  hideNashrinoBranding: z.boolean().optional(),
+  clientWorkspaceIds: z.array(z.string().min(1).max(100)).max(500).optional(),
+})
+
+export const templateCreateSchema = z.object({
+  name: persianText(1, 100, 'نام قالب الزامی است'),
+  description: persianText(0, 500).optional(),
+  template: z
+    .record(z.string(), z.unknown())
+    .refine((v) => v && typeof v === 'object', 'پیکربندی قالب نامعتبر است'),
+})
+
+export const templateUpdateSchema = templateCreateSchema.partial()
+
+export const portalAccessCreateSchema = z.object({
+  workspaceId: z.string().min(1, 'شناسه فضای کار الزامی است').max(100),
+  permissions: z
+    .array(z.enum(AGENCY_PORTAL_PERMISSIONS))
+    .min(1, 'حداقل یک دسترسی الزامی است'),
+  expiresAt: z.string().datetime().nullable().optional(),
+})
+
 // ── Generic helpers ─────────────────────────────────────────────────────────
 
 export const idSchema = z.string().min(1, 'شناسه الزامی است').max(100)
