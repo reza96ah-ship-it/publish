@@ -14,6 +14,7 @@ import { api } from '@/lib/api'
 import { announce } from '@/lib/aria-live'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface FlagRow {
   name: string
@@ -78,14 +79,29 @@ export function FeatureFlagsPanel() {
           خطا در بارگذاری قابلیت‌ها — دسترسی مدیر لازم است
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {(data?.flags ?? []).map((f) => (
             <div
               key={f.name}
-              className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
+              className={cn(
+                'flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors',
+                f.enabled
+                  ? 'border-success/30 bg-success-soft/40'
+                  : 'border-border bg-surface-subtle'
+              )}
             >
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink-primary">{f.label}</p>
+                <div className="flex items-center gap-2">
+                  <p className={cn('text-sm font-semibold', f.enabled ? 'text-success' : 'text-ink-tertiary')}>{f.label}</p>
+                  <span
+                    className={cn(
+                      'text-2xs font-bold px-1.5 py-0.5 rounded-full',
+                      f.enabled ? 'bg-success text-white' : 'bg-surface-hover text-ink-tertiary'
+                    )}
+                  >
+                    {f.enabled ? 'فعال' : 'غیرفعال'}
+                  </span>
+                </div>
                 <p className="text-xs text-ink-tertiary mt-0.5">{f.description}</p>
               </div>
               <Switch

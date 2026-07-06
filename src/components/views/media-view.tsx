@@ -378,15 +378,7 @@ export function MediaView() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative aspect-square rounded-xl overflow-hidden bg-border">
-                  <Image
-                    src={selected.thumbnail}
-                    alt={selected.name}
-                    fill
-                    unoptimized={selected.thumbnail.startsWith('http')}
-                    className="object-cover"
-                  />
-                </div>
+                <SafeImage src={selected.thumbnail} alt={selected.name} className="relative aspect-square rounded-xl overflow-hidden bg-surface-subtle" />
                 <div className="space-y-2 text-sm">
                   <MetaRow label="نوع فایل" value={selected.fileType} />
                   <MetaRow
@@ -433,6 +425,10 @@ export function MediaView() {
 
 function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void }) {
   const kind = fileKind(item.fileType)
+  // Issue #298: broken-image fallback — if the thumbnail URL 404s or fails to
+  // load, swap to a placeholder icon over a surface-subtle background so the
+  // grid stays visually consistent regardless of upstream image state.
+  const [imgError, setImgError] = useState(false)
   return (
     <div
       role="button"
@@ -446,13 +442,14 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
       }}
       className="group n-card-interactive n-focus-ring p-0 overflow-hidden text-start hover:scale-[1.02] transition-transform cursor-pointer"
     >
-      <div className="relative aspect-square bg-border">
-        {item.thumbnail ? (
+      <div className="relative aspect-square bg-surface-subtle">
+        {item.thumbnail && !imgError ? (
           <Image
             src={item.thumbnail}
             alt={item.name}
             fill
             unoptimized={item.thumbnail.startsWith('http')}
+            onError={() => setImgError(true)}
             className="object-cover"
           />
         ) : (
@@ -525,23 +522,27 @@ function MediaGridCard({ item, onClick }: { item: MediaItem; onClick: () => void
 
 function MediaListRow({ item, onClick }: { item: MediaItem; onClick: () => void }) {
   const router = useRouter()
+  const [imgError, setImgError] = useState(false)
   return (
     <div className="flex items-center gap-3 rounded-xl p-2 hover:bg-surface-subtle transition-colors">
       <button
         onClick={onClick}
         className="n-focus-ring flex items-center gap-3 flex-1 min-w-0 text-start"
       >
-        {item.thumbnail ? (
-          <Image
-            src={item.thumbnail}
-            alt={item.name}
-            width={48}
-            height={48}
-            unoptimized={item.thumbnail.startsWith('http')}
-            className="size-12 rounded-lg object-cover shrink-0"
-          />
+        {item.thumbnail && !imgError ? (
+          <div className="size-12 rounded-lg bg-surface-subtle shrink-0 overflow-hidden">
+            <Image
+              src={item.thumbnail}
+              alt={item.name}
+              width={48}
+              height={48}
+              unoptimized={item.thumbnail.startsWith('http')}
+              onError={() => setImgError(true)}
+              className="size-12 object-cover"
+            />
+          </div>
         ) : (
-          <div className="size-12 rounded-lg bg-border flex items-center justify-center shrink-0">
+          <div className="size-12 rounded-lg bg-surface-subtle flex items-center justify-center shrink-0">
             <ImageIcon className="size-4 text-ink-tertiary opacity-40" />
           </div>
         )}
@@ -586,6 +587,21 @@ function MetaRow({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3">
       <span className="text-ink-tertiary">{label}</span>
       <span className="text-ink-primary font-semibold text-left truncate max-w-48">{value}</span>
+    </div>
+  )}
+
+/** Issue #298: broken-image fallback for the detail dialog. */
+function SafeImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [err, setErr] = useState(false)
+  return (
+    <div className={className}>
+      {!err ? (
+        <Image src={src} alt={alt} fill unoptimized={src.startsWith('http')} onError={() => setErr(true)} className="object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <ImageIcon className="size-10 text-ink-tertiary opacity-40" />
+        </div>
+      )}
     </div>
   )
 }

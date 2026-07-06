@@ -869,15 +869,15 @@ export function ComposeView() {
             </div>
           </div>
 
-          {/* Comment→DM automation (shown for IG posts, or after publish) */}
+          {/* Comment→DM automation (shown for IG posts, or after publish) — optional, visually de-emphasized */}
           {(hasIgSelected || publishedPublicationId) && (
-            <div className="n-card p-4 space-y-3">
+            <div className="rounded-xl border border-dashed border-border bg-surface-subtle/50 p-4 space-y-3">
               <button
                 onClick={() => setShowDmSection((v) => !v)}
-                className="n-focus-ring w-full flex items-center justify-between gap-2 text-sm font-semibold text-ink-primary"
+                className="n-focus-ring w-full flex items-center justify-between gap-2 text-sm font-semibold text-ink-secondary"
               >
                 <span className="flex items-center gap-2">
-                  <Zap className="size-4 text-accent" />
+                  <Zap className="size-4 text-ink-tertiary" />
                   دایرکت خودکار از کامنت
                   {detectedKeyword && !showDmSection && (
                     <span className="text-2xs font-normal text-accent border border-accent/30 rounded-full px-2 py-0.5">
@@ -1051,8 +1051,8 @@ export function ComposeView() {
               ارسال برای تأیید
             </Button>
             <Button
-              size="sm"
-              className="n-focus-ring bg-accent text-white hover:bg-accent-hover"
+              size="default"
+              className="n-focus-ring bg-accent text-white hover:bg-accent-hover shadow-lg shadow-accent/20 px-5 font-bold"
               onClick={() => submit('publish')}
               disabled={publishMutation.isPending || !canPublish}
             >

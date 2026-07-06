@@ -332,7 +332,7 @@ function PlatformCard({ platform }: { platform: Platform }) {
   }
 
   return (
-    <div className="n-card p-5 flex flex-col">
+    <div className={cn('n-card p-5 flex flex-col', !healthy && 'opacity-60')}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-3 min-w-0">
           <PlatformIcon platform={platform.type} className="size-11 shrink-0" />
@@ -432,16 +432,29 @@ function PlatformCard({ platform }: { platform: Platform }) {
       )}
 
       <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex-1 min-h-[44px]"
-          onClick={handleValidate}
-          disabled={isValidating}
-        >
-          <PlugZap className="size-3.5" />
-          {isValidating ? 'در حال تست...' : 'تست اتصال'}
-        </Button>
+        {healthy ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 min-h-[44px]"
+            onClick={handleValidate}
+            disabled={isValidating}
+          >
+            <PlugZap className="size-3.5" />
+            {isValidating ? 'در حال تست...' : 'تست اتصال'}
+          </Button>
+        ) : (
+          <Button
+            variant="default"
+            size="sm"
+            className="flex-1 min-h-[44px] bg-accent text-white hover:bg-accent-hover"
+            onClick={handleValidate}
+            disabled={isValidating}
+          >
+            <PlugZap className="size-3.5" />
+            {isValidating ? 'در حال اتصال...' : 'اتصال مجدد'}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
