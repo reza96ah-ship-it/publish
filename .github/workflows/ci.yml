@@ -454,6 +454,9 @@ jobs:
       NEXTAUTH_SECRET: 'test-secret-not-for-production'
       NEXTAUTH_URL: 'http://localhost:3000'
       REDIS_URL: 'redis://localhost:6379'
+      REALTIME_JWT_SECRET: 'test-realtime-secret-not-for-production'
+      EMIT_SECRET: 'test-emit-secret-not-for-production'
+      AUTH_SECRET: 'test-auth-secret-not-for-production'
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
@@ -473,11 +476,14 @@ jobs:
       - run: bunx playwright install --with-deps chromium
       - name: Run visual regression tests (update baselines if missing)
         run: |
-          if [ -z "$(ls -A tests/e2e/visual.spec.ts-snapshots/ 2>/dev/null)" ]; then
-            echo "No baseline snapshots found — generating initial baselines"
+          # Check both visual.spec.ts and visual-charts.spec.ts snapshots
+          VISUAL_EMPTY=$(ls -A tests/e2e/visual.spec.ts-snapshots/ 2>/dev/null || echo "")
+          CHARTS_EMPTY=$(ls -A tests/e2e/visual-charts.spec.ts-snapshots/ 2>/dev/null || echo "")
+          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ]; then
+            echo "Some baselines missing — generating initial baselines"
             bun run test:visual:update || true
           else
-            echo "Baselines exist — running strict visual regression"
+            echo "All baselines exist — running strict visual regression"
             bun run test:visual
           fi
       - name: Commit generated snapshots (if any new)
@@ -485,7 +491,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: 'test(visual): auto-generate baseline snapshots [skip ci]'
-          file_pattern: 'tests/e2e/visual.spec.ts-snapshots/*.png'
+          file_pattern: 'tests/e2e/visual*.spec.ts-snapshots/*.png'
       - name: Upload visual diff report (on failure)
         if: failure()
         uses: actions/upload-artifact@v7
