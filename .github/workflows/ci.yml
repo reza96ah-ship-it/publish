@@ -421,6 +421,8 @@ jobs:
   visual:
     name: Visual Regression (Playwright)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed for git-auto-commit-action to push baseline snapshots
     timeout-minutes: 30
     # Baselines committed — visual failures now block merge.
     services:
