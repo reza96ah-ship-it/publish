@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { useShouldAnimate, ease } from '@/lib/motion'
+import { useShouldAnimate, ease, duration } from '@/lib/motion'
 import { toast } from 'sonner'
 import { AIAssistantSheet } from '@/components/ai/ai-assistant-sheet'
 import { NashrinoEditor } from '@/components/editor/nashrino-editor'
@@ -641,7 +641,7 @@ export function ComposeView() {
       <motion.div
         initial={false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: ease.enter }}
+        transition={{ duration: duration.slow, ease: ease.enter }}
         className="space-y-4"
       >
         <SectionTitle
@@ -770,13 +770,13 @@ export function ComposeView() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.15, ease: ease.snap }}
+                transition={{ duration: duration.quick, ease: ease.snap }}
                 onClick={() => setAiSheetOpen(true)}
                 className="n-focus-ring inline-flex h-8 min-h-[44px] sm:min-h-0 items-center gap-1.5 rounded-lg bg-accent-soft border border-accent/20 px-3 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
               >
                 <motion.span
                   animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: shouldAnimate ? Infinity : 0, repeatDelay: 3, ease: 'easeInOut' }}
+                  transition={{ duration: duration.deliberate, repeat: shouldAnimate ? Infinity : 0, repeatDelay: 3, ease: ease.standard }}
                 >
                   <Sparkles className="size-3.5" strokeWidth={2.5} />
                 </motion.span>

@@ -277,14 +277,11 @@ export function Sidebar({ isDrawer = false }: { isDrawer?: boolean }) {
 
       {/* Bottom section */}
       <div className="border-t border-border/40 px-2 py-3 space-y-1">
-        {/* Live indicator */}
+        {/* Live indicator — calm dot, no decorative ping (#291) */}
         <div
           className="flex items-center gap-2.5 px-3 py-1.5 justify-start"
         >
           <span className="relative flex size-2 shrink-0">
-            {isConnected && (
-              <span className="absolute inline-flex h-full w-full rounded-full bg-success opacity-60 animate-ping" />
-            )}
             <span
               className={cn(
                 'relative inline-flex size-2 rounded-full',
