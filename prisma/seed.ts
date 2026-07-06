@@ -867,6 +867,63 @@ async function main() {
   ])
 
   console.log('✅ Seed complete — workspace:', ws.slug)
+
+  // ─── Issue #221: IRR billing plans ───
+  // Three plans seeded: free (0 IRR), pro (290,000 IRR), agency (890,000 IRR).
+  // maxPostsPerMonth: -1 = unlimited (agency plan).
+  await db.plan.upsert({
+    where: { code: 'free' },
+    update: {},
+    create: {
+      code: 'free',
+      name: 'رایگان',
+      priceIRR: 0,
+      maxChannels: 2,
+      maxSeats: 2,
+      maxPostsPerMonth: 30,
+      features: ['تقویم شمسی', 'اپلیکیشن موبایل', '۲ پلتفرم', '۲ کاربر'],
+    },
+  })
+  await db.plan.upsert({
+    where: { code: 'pro' },
+    update: {},
+    create: {
+      code: 'pro',
+      name: 'حرفه‌ای',
+      priceIRR: 290000,
+      maxChannels: 10,
+      maxSeats: 5,
+      maxPostsPerMonth: 500,
+      features: [
+        'تحلیل‌های پیشرفته',
+        'اتوماسیون کامنت به DM',
+        'پشتیبانی اولویت‌دار',
+        '۱۰ پلتفرم',
+        '۵ کاربر',
+      ],
+    },
+  })
+  await db.plan.upsert({
+    where: { code: 'agency' },
+    update: {},
+    create: {
+      code: 'agency',
+      name: 'آژانس',
+      priceIRR: 890000,
+      maxChannels: 50,
+      maxSeats: 20,
+      maxPostsPerMonth: -1,
+      features: [
+        'پلتفرم‌های نامحدود',
+        '۲۰ کاربر',
+        'نقش‌های سفارشی',
+        'برند چندگانه',
+        'گزارش‌های سفارشی',
+        'API دسترسی',
+      ],
+    },
+  })
+  console.log('✅ Plans seeded — free, pro, agency')
 }
 
 main()

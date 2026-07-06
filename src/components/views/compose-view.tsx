@@ -328,6 +328,15 @@ export function ComposeView() {
     queryFn: () => api.getPaginated<Platform>('/api/platforms'),
   })
 
+  // Issue #213: workspace brand kit — we only need bannedWords here for the
+  // pre-publish check. The full workspace object is fetched once and cached
+  // under the ['workspace'] query key used by the settings view too.
+  const { data: workspace } = useQuery<{ bannedWords?: string | null }>({
+    queryKey: ['workspace'],
+    queryFn: () => api.get<{ bannedWords?: string | null }>('/api/workspace'),
+    staleTime: 60_000,
+  })
+
   const toggleMedia = (m: MediaItem) => {
     setSelectedMedia((cur) =>
       cur.some((x) => x.id === m.id) ? cur.filter((x) => x.id !== m.id) : [...cur, m]
@@ -395,6 +404,31 @@ export function ComposeView() {
   const selectedIgPlatformId = (platforms ?? []).find(
     (p) => selectedPlatforms.includes(p.id) && p.type === 'instagram'
   )?.id
+
+  // Issue #213: banned-words detection — split the workspace's comma-separated
+  // list (Persian or ASCII comma), trim, drop empties, then find any that
+  // appear in the current caption. The result drives (1) a live inline warning
+  // under the editor and (2) a confirmation dialog before publish.
+  const bannedWordsList = useMemo(() => {
+    const raw = (workspace?.bannedWords ?? '').trim()
+    if (!raw) return [] as string[]
+    return raw
+      .split(/[,،]/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0)
+  }, [workspace?.bannedWords])
+
+  const detectedBannedWords = useMemo(() => {
+    if (bannedWordsList.length === 0 || !caption) return [] as string[]
+    const lower = caption.toLowerCase()
+    return bannedWordsList.filter((w) => lower.includes(w.toLowerCase()))
+  }, [bannedWordsList, caption])
+
+  // Confirmation dialog state — set when the user clicks "انتشار" with banned
+  // words present. The pending payload is stashed so we can resume publish
+  // without recomputing.
+  const [showBannedWordsDialog, setShowBannedWordsDialog] = useState(false)
+  const [pendingPublishPayload, setPendingPublishPayload] = useState<PublishPayload | null>(null)
 
   // Issue #152: canPublish no longer requires media globally.
   // Text-only publication is allowed when ALL selected channels support text
@@ -576,7 +610,21 @@ export function ComposeView() {
       mode: 'publish',
     }
 
-    const toastId = toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…')
+    // Issue #213: if the caption contains any workspace-banned word, surface
+    // a confirmation dialog before the optimistic publish fires. This is a
+    // soft warning — the user can override and publish anyway.
+    if (detectedBannedWords.length > 0) {
+      setPendingPublishPayload(payload)
+      setShowBannedWordsDialog(true)
+      return
+    }
+
+    firePublish(payload, toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…'))
+  }
+
+  // Issue #213: split the publish side-effect out of submit() so the banned-
+  // words confirmation dialog can resume it after the user acknowledges.
+  const firePublish = (payload: PublishPayload, toastId: string | number) => {
     announce('در حال ارسال به صف انتشار...')
     publishMutation.mutate(payload, {
       onSuccess: (res) => {
@@ -632,6 +680,72 @@ export function ComposeView() {
                 onClick={() => handleSelectDraft('local')}
               >
                 بازیابی تغییرات محلی
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Issue #213: banned-words confirmation dialog — soft warning shown when
+          the user clicks "انتشار" and the caption contains a workspace-banned
+          phrase. The user can edit (default) or override and publish anyway. */}
+      {showBannedWordsDialog && pendingPublishPayload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="bg-surface rounded-2xl max-w-md w-full p-6 border border-border shadow-2xl space-y-4 text-start"
+            dir="rtl"
+            role="alertdialog"
+            aria-labelledby="banned-words-title"
+            aria-describedby="banned-words-desc"
+          >
+            <div className="flex items-center gap-3 text-warning">
+              <AlertTriangle className="size-6" />
+              <h3 id="banned-words-title" className="text-lg font-bold text-ink-primary">
+                کلمات ممنوعه در کپشن
+              </h3>
+            </div>
+            <p id="banned-words-desc" className="text-sm text-ink-secondary leading-relaxed">
+              کپشن شما شامل کلماتی است که در «کیت برند» به‌عنوان ممنوعه مشخص کرده‌اید. آیا
+              می‌خواهید کپشن را ویرایش کنید یا با وجود این کلمات منتشر کنید؟
+            </p>
+            <div className="bg-warning-tint border border-warning-soft rounded-lg p-3">
+              <p className="text-2xs font-semibold text-warning mb-1">کلمات یافت‌شده:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {detectedBannedWords.map((w) => (
+                  <span
+                    key={w}
+                    className="text-xs bg-surface border border-warning-soft text-warning rounded-full px-2 py-0.5"
+                  >
+                    {w}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowBannedWordsDialog(false)
+                  setPendingPublishPayload(null)
+                }}
+              >
+                ویرایش کپشن
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-warning text-white hover:bg-warning/90"
+                onClick={() => {
+                  const payload = pendingPublishPayload
+                  setShowBannedWordsDialog(false)
+                  setPendingPublishPayload(null)
+                  if (payload) {
+                    firePublish(payload, toast.loading('در حال ایجاد محتوا و ارسال به صف انتشار…'))
+                  }
+                }}
+              >
+                انتشار با وجود هشدار
               </Button>
             </div>
           </div>
@@ -797,6 +911,35 @@ export function ComposeView() {
                 maxLength={IG_LIMIT}
               />
             </div>
+
+            {/* Issue #213: live banned-words warning under the editor. Soft hint
+                that surfaces the workspace's content policy violation before the
+                user even clicks publish. */}
+            {detectedBannedWords.length > 0 && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-lg border border-warning-soft bg-warning-tint p-2.5 text-xs text-warning"
+              >
+                <div className="flex items-center gap-1.5 mb-1 font-semibold">
+                  <AlertTriangle className="size-3.5" />
+                  <span>کلمات ممنوعه برند در کپشن</span>
+                </div>
+                <p className="text-2xs mb-1.5 text-warning/80">
+                  این کلمات در «کیت برند» ممنوع شده‌اند. پیش از انتشار هشداری دریافت خواهید کرد.
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {detectedBannedWords.map((w) => (
+                    <span
+                      key={w}
+                      className="text-2xs bg-surface border border-warning-soft rounded-full px-1.5 py-0.5"
+                    >
+                      {w}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Hashtags */}
             <div>

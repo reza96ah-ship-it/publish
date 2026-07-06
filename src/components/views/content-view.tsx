@@ -17,10 +17,12 @@ import {
   Send,
   Check,
   X,
+  History,
+  RotateCcw,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
-import { relativeTime, toPersianDigits } from '@/lib/jalali'
+import { relativeTime, toPersianDigits, formatJalali, formatJalaliTime } from '@/lib/jalali'
 import {
   SectionTitle,
   StatusBadge,
@@ -32,6 +34,13 @@ import {
 import { announce } from '@/lib/aria-live'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
 import {
   Table,
   TableHeader,
@@ -54,6 +63,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
+import { cn } from '@/lib/utils'
 
 interface ContentItem {
   id: string
@@ -90,6 +100,7 @@ export function ContentView() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [campaignFilter, setCampaignFilter] = useState<string>('all')
+  const [revisionsOpenFor, setRevisionsOpenFor] = useState<ContentItem | null>(null)
   const queryClient = useQueryClient()
 
   const { data: content, isLoading, isError, refetch } = useQuery<ContentItem[]>({
@@ -408,6 +419,14 @@ export function ContentView() {
                               <Pencil className="size-3.5" />
                               ویرایش
                             </DropdownMenuItem>
+                            {/* Issue #212: revision history — opens a Sheet with the
+                                full revision list for this content row. */}
+                            <DropdownMenuItem
+                              onClick={() => setRevisionsOpenFor(c)}
+                            >
+                              <History className="size-3.5" />
+                              تاریخچه نسخه‌ها
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => toast.success('محتوا با موفقیت کپی شد.')}
                             >
@@ -439,6 +458,179 @@ export function ContentView() {
           نمایش {toPersianDigits(filtered.length)} مورد از {toPersianDigits(content?.length ?? 0)}
         </div>
       )}
+
+      {/* Issue #212: revision history sheet */}
+      <RevisionsSheet
+        content={revisionsOpenFor}
+        onClose={() => setRevisionsOpenFor(null)}
+      />
     </motion.div>
+  )
+}
+
+/* ── Issue #212: revision history sheet ── */
+
+interface RevisionItem {
+  id: string
+  contentId: string
+  title: string
+  body: string | null
+  hashtags: string | null
+  internalNote: string | null
+  authorName: string | null
+  version: number
+  createdAt: string
+}
+
+function RevisionsSheet({
+  content,
+  onClose,
+}: {
+  content: ContentItem | null
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const open = content !== null
+  const contentId = content?.id ?? ''
+
+  const { data: revisions, isLoading } = useQuery<RevisionItem[]>({
+    queryKey: ['content-revisions', contentId],
+    queryFn: () => api.getPaginated<RevisionItem>(`/api/content/${contentId}/revisions`),
+    enabled: !!content,
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: async (revisionId: string) =>
+      api.post<{ revision: RevisionItem; newRevision: RevisionItem }>(
+        `/api/content/${contentId}/revisions/${revisionId}/restore`
+      ),
+    onSuccess: () => {
+      toast.success('نسخه بازیابی شد ✓')
+      announce('نسخه بازیابی شد')
+      queryClient.invalidateQueries({ queryKey: ['content'] })
+      queryClient.invalidateQueries({ queryKey: ['content-revisions', content?.id] })
+      onClose()
+    },
+    onError: () => {
+      toast.error('خطا در بازیابی نسخه')
+      announce('خطا در بازیابی نسخه', 'assertive')
+    },
+  })
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto thin-scrollbar">
+        <SheetHeader>
+          <SheetTitle className="text-start">تاریخچه نسخه‌ها</SheetTitle>
+          <SheetDescription className="text-start">
+            {content?.title ?? '—'}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="px-4 pb-6 space-y-2 mt-2">
+          {isLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-20 rounded-xl" />
+              ))}
+            </div>
+          ) : (revisions ?? []).length === 0 ? (
+            <EmptyState
+              icon={History}
+              title="نسخه‌ای ثبت نشده"
+              message="هر بار ارسال برای بررسی، تأیید یا رد، یک نسخه از محتوا ذخیره می‌کند."
+              illustration="content"
+              size="compact"
+            />
+          ) : (
+            (revisions ?? []).map((r, i) => {
+              const isLatest = i === 0
+              const prev = (revisions ?? [])[i + 1]
+              return (
+                <div
+                  key={r.id}
+                  className={cn(
+                    'n-card-compact p-3 space-y-2',
+                    isLatest && 'ring-2 ring-accent/30'
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="inline-flex items-center justify-center size-7 rounded-full bg-accent-soft text-accent text-xs font-bold shrink-0 num-tabular">
+                        {toPersianDigits(r.version)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink-primary truncate">
+                          {r.title || 'بدون عنوان'}
+                        </p>
+                        <p className="text-2xs text-ink-tertiary">
+                          {r.authorName ?? '—'} • {formatJalali(new Date(r.createdAt))} {formatJalaliTime(new Date(r.createdAt))}
+                        </p>
+                      </div>
+                    </div>
+                    {isLatest && (
+                      <span className="text-2xs font-bold px-1.5 py-0.5 rounded-full bg-accent-soft text-accent shrink-0">
+                        آخرین
+                      </span>
+                    )}
+                  </div>
+                  {/* Diff summary vs previous revision */}
+                  {prev ? (
+                    <RevisionDiffSummary current={r} previous={prev} />
+                  ) : (
+                    <p className="text-2xs text-ink-tertiary ps-9">نسخه اولیه</p>
+                  )}
+                  {!isLatest && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full n-focus-ring"
+                      disabled={restoreMutation.isPending}
+                      onClick={() => {
+                        if (confirm(`نسخه ${toPersianDigits(r.version)} بازیابی شود؟ محتوای فعلی با این نسخه جایگزین می‌شود.`)) {
+                          restoreMutation.mutate(r.id)
+                        }
+                      }}
+                    >
+                      <RotateCcw className="size-3.5" />
+                      بازیابی این نسخه
+                    </Button>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/** Compact diff summary between two revisions — counts changed fields. */
+function RevisionDiffSummary({
+  current,
+  previous,
+}: {
+  current: RevisionItem
+  previous: RevisionItem
+}) {
+  const fields: Array<{ label: string; from: string; to: string }> = [
+    { label: 'عنوان', from: previous.title ?? '', to: current.title ?? '' },
+    { label: 'متن', from: previous.body ?? '', to: current.body ?? '' },
+    { label: 'هشتگ‌ها', from: previous.hashtags ?? '', to: current.hashtags ?? '' },
+    { label: 'یادداشت', from: previous.internalNote ?? '', to: current.internalNote ?? '' },
+  ]
+  const changed = fields.filter((f) => f.from !== f.to)
+  if (changed.length === 0) {
+    return <p className="text-2xs text-ink-tertiary ps-9">بدون تغییر نسبت به نسخه قبل</p>
+  }
+  return (
+    <div className="ps-9 space-y-0.5">
+      {changed.map((f) => (
+        <div key={f.label} className="text-2xs flex items-center gap-1.5">
+          <span className="text-ink-tertiary shrink-0">{f.label}:</span>
+          <span className="text-success font-bold shrink-0">تغییر یافت</span>
+        </div>
+      ))}
+    </div>
   )
 }

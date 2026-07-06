@@ -38,14 +38,13 @@ export async function GET(req: NextRequest) {
       fileSize: m.fileSize,
       url: m.url,
       thumbnail: m.thumbnail,
-      folder: 'default',
-      tags: [],
+      // Issue #210: surface folder + tags + createdAt from the service payload
+      // (previously stubbed as 'default' / [] / null — now real).
+      folder: m.folder ?? 'عمومی',
+      tags: m.tags ?? [],
       width: m.width,
       height: m.height,
-      // createdAt is not in the service's MediaPayload (kept lean); the
-      // library UI doesn't depend on it today. If it ever does, add it to
-      // MediaPayload + the repository's listValidated select.
-      createdAt: null,
+      createdAt: m.createdAt ?? null,
     })),
     nextCursor: result.nextCursor,
   })

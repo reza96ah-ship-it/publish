@@ -1,0 +1,39 @@
+{
+  "name": "نشرینو — مدیریت انتشار شبکه‌های اجتماعی",
+  "short_name": "نشرینو",
+  "description": "سامانه مدیریت انتشار و عملیات شبکه‌های اجتماعی — برنامه‌ریزی، تولید، انتشار و تحلیل محتوا",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#0F766E",
+  "categories": ["business", "productivity", "social"],
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "داشبورد",
+      "short_name": "داشبورد",
+      "url": "/?shortcut=dashboard"
+    },
+    {
+      "name": "تولید محتوا",
+      "short_name": "تولید",
+      "url": "/compose?shortcut=compose"
+    },
+    {
+      "name": "تقویم",
+      "short_name": "تقویم",
+      "url": "/calendar?shortcut=calendar"
+    }
+  ]
+}

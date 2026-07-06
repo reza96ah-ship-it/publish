@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Vazirmatn } from 'next/font/google'
 import { headers } from 'next/headers'
 import './globals.css'
@@ -9,6 +9,9 @@ import { MotionProvider } from '@/lib/motion'
 import { NextAuthSessionProvider } from '@/components/providers/session-provider'
 import { WebVitals } from '@/components/providers/web-vitals'
 import { LiveRegionProvider } from '@/lib/aria-live'
+import { ServiceWorkerRegistrar } from '@/components/shell/service-worker-registrar'
+import { InstallPrompt } from '@/components/shell/install-prompt'
+import { OfflineIndicator } from '@/components/shell/offline-indicator'
 
 const vazir = Vazirmatn({
   subsets: ['arabic', 'latin'],
@@ -38,6 +41,23 @@ export const metadata: Metadata = {
   icons: {
     icon: [{ url: '/logo.svg', type: 'image/svg+xml' }],
   },
+  // Issue #220: PWA manifest link — points the browser at /manifest.json so
+  // the install prompt + standalone display mode work.
+  manifest: '/manifest.json',
+  applicationName: 'نشرینو',
+  appleWebApp: {
+    capable: true,
+    title: 'نشرینو',
+    statusBarStyle: 'default',
+  },
+}
+
+// Issue #220: PWA theme color (matches manifest.json + brand primary).
+export const viewport: Viewport = {
+  themeColor: 'var(--n-accent)',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 }
 
 export default async function RootLayout({
@@ -73,6 +93,14 @@ export default async function RootLayout({
           <LiveRegionProvider />
           {/* Issue #127: collect Core Web Vitals (LCP/INP/CLS) → /api/vitals → Prometheus */}
           <WebVitals />
+          {/* Issue #220: PWA — SW registration + install prompt + offline badge */}
+          <ServiceWorkerRegistrar />
+          <InstallPrompt />
+          <div aria-hidden="true" className="fixed bottom-4 start-4 z-40 pointer-events-none">
+            <div className="pointer-events-auto">
+              <OfflineIndicator />
+            </div>
+          </div>
         </ThemeProvider>
         <div id="portal-root" />
       </body>

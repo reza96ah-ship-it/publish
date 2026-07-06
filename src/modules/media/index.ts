@@ -21,6 +21,9 @@ export type {
   MediaRow,
   MediaStatus,
   RejectedReason,
+  SearchQuery,
+  SearchResult,
+  FolderSummary,
 } from './types'
 export {
   MediaError,

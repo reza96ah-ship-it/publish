@@ -770,6 +770,96 @@ export const auditExportSchema = z.object({
   limit: z.coerce.number().int().min(1).max(10000).optional().default(1000),
 })
 
+// ── Settings: workspace profile + brand kit (#213 / settings-brandkit) ───────
+//
+// PATCH /api/workspace accepts any subset of these fields. Profile fields
+// (name/description/phone/timezone/workWeek/persianDigits) are validated
+// strictly. Brand-kit fields (colors, voice, CTA, hashtags, footer, banned
+// words, content guidelines) are free-form strings with sensible caps — they
+// are advisory copy that the AI caption prompt consumes verbatim.
+
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/
+
+export const workspaceUpdateSchema = z
+  .object({
+    // Profile fields
+    name: persianText(1, 200, 'نام فضای کار الزامی است').optional(),
+    description: z.string().trim().max(2000, 'توضیحات خیلی طولانی است').optional(),
+    phone: z
+      .string()
+      .trim()
+      .max(50, 'شماره تلفن نامعتبر است')
+      .optional(),
+    timezone: z
+      .string()
+      .trim()
+      .min(1, 'منطقه زمانی الزامی است')
+      .max(100)
+      .optional(),
+    workWeek: z
+      .string()
+      .trim()
+      .max(50)
+      .optional(),
+    persianDigits: z.boolean().optional(),
+    category: z.string().trim().max(100).optional(),
+
+    // Brand-kit fields
+    brandPrimaryColor: z
+      .string()
+      .trim()
+      .regex(HEX_COLOR_RE, 'رنگ باید با # شروع و ۶ رقم هگز باشد')
+      .optional(),
+    brandAccentColor: z
+      .string()
+      .trim()
+      .regex(HEX_COLOR_RE, 'رنگ باید با # شروع و ۶ رقم هکس باشد')
+      .optional(),
+    brandVoice: z.string().trim().max(500).optional(),
+    defaultCta: z.string().trim().max(300).optional(),
+    contentGuidelines: z.string().trim().max(5000).optional(),
+    defaultHashtags: z.string().trim().max(500).optional(),
+    captionFooter: z.string().trim().max(500).optional(),
+    // Issue #213: comma-separated Persian phrases. Empty string = no ban list.
+    bannedWords: z.string().trim().max(2000).optional(),
+  })
+  .strict()
+
+// ── Notification preferences (#213 / settings-brandkit) ──────────────────────
+//
+// Stored as a JSON record on User.notificationPreferences, keyed by category
+// id. Each value is a 3-channel on/off record. The PATCH route merges into the
+// existing record so the client can update one channel at a time.
+
+export const NOTIFICATION_CATEGORY_IDS = [
+  'publish_success',
+  'publish_failed',
+  'approval_requested',
+  'inbox_new',
+  'token_expiring',
+  'channel_disconnected',
+] as const
+
+export type NotificationCategoryId = (typeof NOTIFICATION_CATEGORY_IDS)[number]
+
+export const notificationChannelSchema = z.object({
+  email: z.boolean(),
+  push: z.boolean(),
+  inApp: z.boolean(),
+})
+
+export type NotificationChannel = z.infer<typeof notificationChannelSchema>
+
+export const notificationPreferencesSchema = z
+  .record(z.string(), notificationChannelSchema)
+  .refine(
+    (rec) =>
+      Object.keys(rec).every((k) =>
+        (NOTIFICATION_CATEGORY_IDS as readonly string[]).includes(k),
+      ),
+    { message: 'دسته اعلان ناشناخته است' },
+  )
+
 // Helper: validate search params (GET query strings)
 export function validateParams<T>(
   schema: z.ZodSchema<T>,

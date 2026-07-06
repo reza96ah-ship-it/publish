@@ -372,6 +372,63 @@ export class MediaService {
   }
 
   /**
+   * Issue #210: search the media library by free-text query, folder, and/or tag.
+   * Returns a flat list (no cursor) — the search UI is meant for fast filtering,
+   * not infinite scroll. Caps at 100 results.
+   */
+  async searchMedia(
+    auth: AuthContext,
+    query: { search?: string; folder?: string; tag?: string }
+  ): Promise<{ data: MediaPayload[]; folders: { folder: string; count: number }[] }> {
+    const { workspaceId } = auth
+    const [items, folders] = await Promise.all([
+      this.repo.search(workspaceId, { ...query, limit: 100 }),
+      this.repo.listFolders(workspaceId),
+    ])
+    return {
+      data: items.map(toMediaPayload),
+      folders,
+    }
+  }
+
+  /**
+   * Issue #210: reuse-tracking — count Content rows in the workspace that
+   * reference the given media id (by id appearing in body or internalNote).
+   */
+  async getReuseCount(auth: AuthContext, mediaId: string): Promise<number> {
+    return this.repo.countContentReferences(auth.workspaceId, mediaId)
+  }
+
+  /** Issue #210: rename a folder across all media in the workspace. */
+  async renameFolder(
+    auth: AuthContext,
+    oldName: string,
+    newName: string
+  ): Promise<{ moved: number }> {
+    if (!newName.trim()) {
+      throw new ValidationError('نام پوشه نمی‌تواند خالی باشد')
+    }
+    const moved = await this.repo.renameFolder(auth.workspaceId, oldName, newName.trim())
+    return { moved }
+  }
+
+  /** Issue #210: delete a folder — moves all its media to the default folder. */
+  async deleteFolder(auth: AuthContext, folderName: string): Promise<{ moved: number }> {
+    const moved = await this.repo.deleteFolder(auth.workspaceId, folderName)
+    return { moved }
+  }
+
+  /** Issue #210: patch a single media's folder + tags. */
+  async patchMedia(
+    auth: AuthContext,
+    mediaId: string,
+    patch: { folder?: string; tags?: string }
+  ): Promise<MediaPayload | null> {
+    const updated = await this.repo.patchMedia(mediaId, auth.workspaceId, patch)
+    return updated ? toMediaPayload(updated) : null
+  }
+
+  /**
    * PUT /api/media/local-upload?key=... — dev-only upload transport. (Issue #146)
    *
    * Mirrors what an S3 presigned PUT would do: streams the body to disk while
@@ -495,6 +552,12 @@ export class MediaService {
 }
 
 function toMediaPayload(m: MediaRow): MediaPayload {
+  // Issue #210: surface folder + tags. Tags are stored as a comma-separated
+  // string; split on Persian/ASCII comma + trim + drop empties.
+  const tagsList = (m.tags ?? '')
+    .split(/[,،]/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0)
   return {
     id: m.id,
     name: m.name,
@@ -506,5 +569,8 @@ function toMediaPayload(m: MediaRow): MediaPayload {
     height: m.height,
     durationMs: m.durationMs ?? null,
     codec: m.codec ?? null,
+    folder: m.folder,
+    tags: tagsList,
+    createdAt: m.createdAt ? m.createdAt.toISOString() : null,
   }
 }

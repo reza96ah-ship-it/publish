@@ -111,6 +111,13 @@ export interface WorkspaceContext {
   defaultHashtags?: string
   captionFooter?: string
   persianDigits?: boolean
+  // Issue #213: comma-separated Persian phrases that must never appear in
+  // generated captions. The prompt builder injects these as a hard "do not use"
+  // list, and the composer runs a client-side check before publish too.
+  // Null-tolerant because the underlying Prisma column is `String?`.
+  bannedWords?: string | null
+  // Issue #213: default CTA injected when the user has not supplied one.
+  defaultCta?: string
 }
 
 const GAPGPT_BASE_URL = 'https://api.gapgpt.app/v1'
@@ -898,9 +905,23 @@ function buildCaptionSystem(
     // that isn't in the topic. Only pass it when the user explicitly mentioned it.
   }
   if (ws?.brandVoice) wsParts.push(`لحن برند: ${ws.brandVoice}`)
+  if (ws?.defaultCta) wsParts.push(`CTA پیش‌فرض برند (اگر کاربر CTA نداد، از این استفاده کن): ${ws.defaultCta}`)
   if (ws?.contentGuidelines) wsParts.push(`راهنمای محتوایی: ${ws.contentGuidelines}`)
   if (ws?.defaultHashtags) wsParts.push(`هشتگ‌های پیش‌فرض (در انتها): ${ws.defaultHashtags}`)
   if (ws?.captionFooter) wsParts.push(`امضای ثابت: ${ws.captionFooter}`)
+  // Issue #213: banned words — injected as a hard "do not use" list so the
+  // model never produces copy that violates the workspace's content policy.
+  if (ws?.bannedWords && ws.bannedWords.trim().length > 0) {
+    const words = ws.bannedWords
+      .split(/[,،]/)
+      .map((w) => w.trim())
+      .filter(Boolean)
+    if (words.length > 0) {
+      wsParts.push(
+        `═══ کلمات ممنوعه (مطلقاً در کپشن استفاده نشود) ═══\nاین واژگان و عبارت‌ها بر اساس سیاست محتوایی برند ممنوع هستند. هرگز آن‌ها را — حتی به‌صورت تلویحی یا مترادف — به کار نبر:\n${words.map((w) => `• ${w}`).join('\n')}`
+      )
+    }
+  }
   if (wsParts.length > 0)
     sections.push(
       `═══ بافت ناشر (نام ناشر فقط برای امضاست، نه نام محصول) ═══\n${wsParts.join('\n')}`

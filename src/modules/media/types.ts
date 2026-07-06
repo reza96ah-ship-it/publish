@@ -56,6 +56,26 @@ export interface MediaPayload {
   height: number | null
   durationMs: number | null
   codec: string | null
+  // Issue #210: folder + tags surfaced so the library UI can group/filter.
+  folder?: string
+  tags?: string[]
+  createdAt?: string | null
+}
+
+export interface SearchQuery {
+  search?: string
+  folder?: string
+  tag?: string
+}
+
+export interface FolderSummary {
+  folder: string
+  count: number
+}
+
+export interface SearchResult {
+  data: MediaPayload[]
+  folders: FolderSummary[]
 }
 
 export interface ConfirmResult {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery, useQueries } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
 import {
@@ -13,6 +13,8 @@ import {
   Heart,
   Activity,
   FileText,
+  Download,
+  FileType2,
 } from 'lucide-react'
 import { ChartPanel } from '@/components/dashboard/chart-panel'
 import {
@@ -46,7 +48,18 @@ import {
 import { ChartTooltip, BarChartTooltip } from '@/components/dashboard/chart-tooltip'
 import { PostPerformanceSection } from '@/components/analytics/post-performance'
 import { announce } from '@/lib/aria-live'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import {
   Table,
   TableHeader,
@@ -100,6 +113,7 @@ const PLATFORMS = [
 export function AnalyticsView() {
   const [period, setPeriod] = useState<'7' | '30'>('7')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [reportOpen, setReportOpen] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
     queryKey: ['analytics', 'all'],
@@ -230,17 +244,28 @@ export function AnalyticsView() {
       <SectionTitle
         icon={BarChart3}
         badge={
-          <AnimatedTabs
-            value={period}
-            onValueChange={(v) => {
-              setPeriod(v as '7' | '30')
-              announce(`${v === '7' ? '۷' : '۳۰'} روز انتخاب شد`)
-            }}
-            tabs={[
-              { value: '7', label: '۷ روز' },
-              { value: '30', label: '۳۰ روز' },
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="n-focus-ring"
+              onClick={() => setReportOpen(true)}
+            >
+              <Download className="size-4" />
+              گزارش‌گیری
+            </Button>
+            <AnimatedTabs
+              value={period}
+              onValueChange={(v) => {
+                setPeriod(v as '7' | '30')
+                announce(`${v === '7' ? '۷' : '۳۰'} روز انتخاب شد`)
+              }}
+              tabs={[
+                { value: '7', label: '۷ روز' },
+                { value: '30', label: '۳۰ روز' },
+              ]}
+            />
+          </div>
         }
       >
         تحلیل و گزارش‌ها
@@ -609,6 +634,239 @@ export function AnalyticsView() {
           </Table>
         </div>
       </div>
+
+      {/* Issue #214: exportable reports dialog */}
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </motion.div>
+  )
+}
+
+/* ── Issue #214: report export dialog ── */
+
+type ReportFormat = 'csv' | 'pdf'
+type ReportMetricKey = 'reach' | 'engagement' | 'followers' | 'clicks'
+
+const REPORT_CHANNELS = [
+  { id: 'all', label: 'همه پلتفرم‌ها' },
+  { id: 'instagram', label: 'اینستاگرام' },
+  { id: 'telegram', label: 'تلگرام' },
+  { id: 'linkedin', label: 'لینکدین' },
+  { id: 'rubika', label: 'روبیکا' },
+  { id: 'bale', label: 'بله' },
+  { id: 'eitaa', label: 'ایتا' },
+]
+
+const REPORT_METRICS: Array<{ id: ReportMetricKey; label: string }> = [
+  { id: 'reach', label: 'دسترسی' },
+  { id: 'engagement', label: 'تعامل' },
+  { id: 'followers', label: 'رشد مخاطبان' },
+  { id: 'clicks', label: 'کلیک' },
+]
+
+function isoToday(offsetDays = 0): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offsetDays)
+  return d.toISOString().slice(0, 10)
+}
+
+function ReportDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (o: boolean) => void
+}) {
+  // Default range: last 30 days.
+  const [startDate, setStartDate] = useState(isoToday(-30))
+  const [endDate, setEndDate] = useState(isoToday(0))
+  const [channels, setChannels] = useState<string[]>(['all'])
+  const [metrics, setMetrics] = useState<ReportMetricKey[]>(['reach', 'engagement'])
+  const [format, setFormat] = useState<ReportFormat>('csv')
+
+  const toggleChannel = (id: string) => {
+    setChannels((cur) => {
+      // 'all' is mutually exclusive with the others.
+      if (id === 'all') return ['all']
+      const withoutAll = cur.filter((c) => c !== 'all')
+      return withoutAll.includes(id)
+        ? withoutAll.filter((c) => c !== id)
+        : [...withoutAll, id]
+    })
+  }
+
+  const toggleMetric = (id: ReportMetricKey) => {
+    setMetrics((cur) =>
+      cur.includes(id) ? cur.filter((m) => m !== id) : [...cur, id]
+    )
+  }
+
+  const exportMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/reports/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ format, config: { startDate, endDate, channels, metrics } }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'خطا در تولید گزارش' }))
+        throw new Error(err.error || 'خطا در تولید گزارش')
+      }
+      const blob = await res.blob()
+      const disposition = res.headers.get('Content-Disposition') ?? ''
+      const match = /filename="([^"]+)"/.exec(disposition)
+      const filename = match?.[1] ?? `nashrino-report.${format === 'csv' ? 'csv' : 'html'}`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    onSuccess: () => {
+      toast.success('گزارش با موفقیت دانلود شد ✓')
+      announce('گزارش دانلود شد')
+      onOpenChange(false)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'خطا در تولید گزارش')
+    },
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-start">گزارش‌گیری تحلیل‌ها</DialogTitle>
+          <DialogDescription className="text-start">
+            خروجی CSV برای اکسل/گوگل‌شیت یا خروجی PDF (HTML قابل چاپ) با تاریخ شمسی.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Date range */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">بازه تاریخ (میلادی YYYY-MM-DD)</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                dir="ltr"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-sm"
+              />
+              <span className="text-ink-tertiary text-xs">تا</span>
+              <Input
+                type="date"
+                dir="ltr"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="text-sm"
+              />
+            </div>
+          </div>
+          {/* Channels */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">پلتفرم‌ها</Label>
+            <div className="flex flex-wrap gap-2">
+              {REPORT_CHANNELS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => toggleChannel(c.id)}
+                  className={cn(
+                    'n-focus-ring text-xs px-2.5 py-1 rounded-full transition-colors',
+                    channels.includes(c.id)
+                      ? 'bg-accent text-white'
+                      : 'bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
+                  )}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Metrics */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">معیارها</Label>
+            <div className="flex flex-wrap gap-2">
+              {REPORT_METRICS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => toggleMetric(m.id)}
+                  className={cn(
+                    'n-focus-ring text-xs px-2.5 py-1 rounded-full transition-colors',
+                    metrics.includes(m.id)
+                      ? 'bg-accent text-white'
+                      : 'bg-surface-subtle text-ink-secondary hover:bg-surface-hover'
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {/* Format */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">فرمت خروجی</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormat('csv')}
+                className={cn(
+                  'n-focus-ring flex items-center gap-2 p-3 rounded-xl border transition-colors text-start',
+                  format === 'csv'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-border hover:bg-surface-subtle'
+                )}
+              >
+                <FileType2 className="size-4 text-success" />
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">CSV</p>
+                  <p className="text-2xs text-ink-tertiary">اکسل / گوگل‌شیت</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormat('pdf')}
+                className={cn(
+                  'n-focus-ring flex items-center gap-2 p-3 rounded-xl border transition-colors text-start',
+                  format === 'pdf'
+                    ? 'border-accent bg-accent-soft'
+                    : 'border-border hover:bg-surface-subtle'
+                )}
+              >
+                <FileText className="size-4 text-danger" />
+                <div>
+                  <p className="text-sm font-semibold text-ink-primary">PDF</p>
+                  <p className="text-2xs text-ink-tertiary">قابل چاپ (RTL)</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" className="n-focus-ring" onClick={() => onOpenChange(false)}>
+            انصراف
+          </Button>
+          <Button
+            className="n-focus-ring"
+            disabled={
+              exportMutation.isPending ||
+              channels.length === 0 ||
+              metrics.length === 0 ||
+              !startDate ||
+              !endDate ||
+              startDate > endDate
+            }
+            onClick={() => exportMutation.mutate()}
+          >
+            {exportMutation.isPending ? 'در حال تولید…' : 'دانلود گزارش'}
+            <Download className="size-4" />
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

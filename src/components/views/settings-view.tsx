@@ -53,7 +53,6 @@ import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import { Switch } from '@/components/ui/switch'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectTrigger,
@@ -95,6 +94,9 @@ interface Workspace {
   contentGuidelines: string
   defaultHashtags: string
   captionFooter: string
+  // Issue #213: comma-separated Persian phrases that must never appear in
+  // AI-generated captions or published content.
+  bannedWords: string
   persianDigits: boolean
 }
 
@@ -107,62 +109,8 @@ interface Member {
   avatar: string | null
 }
 
-const PLAN_TIERS = [
-  {
-    id: 'free',
-    name: 'رایگان',
-    price: 0,
-    priceLabel: 'رایگان',
-    features: ['۱ پلتفرم', '۱۰ پست در ماه', '۱ کاربر', 'تقویم شمسی', 'اپلیکیشن موبایل'],
-    current: false,
-  },
-  {
-    id: 'pro',
-    name: 'حرفه‌ای',
-    price: 290000,
-    priceLabel: '۲۹۰,۰۰۰ تومان/ماه',
-    features: [
-      '۵ پلتفرم',
-      'نامحدود پست',
-      '۵ کاربر',
-      'تحلیل‌های پیشرفته',
-      'اتوماسیون کامنت به DM',
-      'پشتیبانی اولویت‌دار',
-    ],
-    current: false,
-    popular: true,
-  },
-  {
-    id: 'agency',
-    name: 'آژانس',
-    price: 890000,
-    priceLabel: '۸۹۰,۰۰۰ تومان/ماه',
-    features: [
-      'پلتفرم‌های نامحدود',
-      '۱۰ کاربر',
-      'نقش‌های سفارشی',
-      'برند چندگانه',
-      'گزارش‌های سفارشی',
-      'API دسترسی',
-    ],
-    current: false,
-  },
-  {
-    id: 'enterprise',
-    name: 'سازمانی',
-    price: null,
-    priceLabel: 'تماس بگیرید',
-    features: [
-      'بدون محدودیت',
-      'کاربران نامحدود',
-      'SSO و SAML',
-      'SLA 99.9٪',
-      'پشتیبانی اختصاصی',
-      'آموزش تیمی',
-    ],
-    current: false,
-  },
-]
+/** Per-user notification preferences — shape returned by /api/notifications/preferences. */
+type NotificationPrefs = Record<string, { email: boolean; push: boolean; inApp: boolean }>
 
 const NOTIFICATION_TOGGLES = [
   {
@@ -207,6 +155,14 @@ const NOTIFICATION_TOGGLES = [
     icon: Bell,
     defaultOn: true,
   },
+] as const
+
+/** Channels surfaced per category in the Notifications tab. Each row has an
+ *  in-app toggle (always shown) plus optional email + push toggles. */
+const NOTIFICATION_CHANNELS: { key: 'inApp' | 'email' | 'push'; label: string }[] = [
+  { key: 'inApp', label: 'داخل برنامه' },
+  { key: 'email', label: 'ایمیل' },
+  { key: 'push', label: 'اعلان سیستمی' },
 ]
 
 export function SettingsView() {
@@ -504,8 +460,32 @@ function SupportCard() {
 }
 
 function OverviewForm({ ws }: { ws: Workspace }) {
+  const qc = useQueryClient()
   const [form, setForm] = useState<Partial<Workspace>>(ws)
   const set = (key: keyof Workspace, value: string) => setForm((cur) => ({ ...cur, [key]: value }))
+
+  // Issue #213 / settings-brandkit: real PATCH /api/workspace mutation.
+  // Replaces the previous disabled button + "به‌زودی" badge.
+  const saveMutation = useMutation({
+    mutationFn: (body: Partial<Workspace>) => api.patch<Workspace>('/api/workspace', body),
+    onSuccess: (updated) => {
+      qc.setQueryData(['workspace'], updated)
+      toast.success('تنظیمات پروفایل ذخیره شد.')
+      announce('تنظیمات ذخیره شد')
+    },
+    onError: (err: unknown) => {
+      let msg = 'ذخیره تنظیمات ناموفق بود'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (typeof parsed?.error === 'string') msg = parsed.error
+        } catch {
+          msg = err.message
+        }
+      }
+      toast.error(msg)
+    },
+  })
 
   return (
     <div className="n-card n-gradient-border p-5">
@@ -568,12 +548,12 @@ function OverviewForm({ ws }: { ws: Workspace }) {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button disabled>
-            ذخیره تغییرات
+          <Button
+            onClick={() => saveMutation.mutate(form)}
+            disabled={saveMutation.isPending}
+          >
+            {saveMutation.isPending ? 'در حال ذخیره…' : 'ذخیره تغییرات'}
           </Button>
-          <Badge variant="outline" className="text-ink-tertiary">
-            به‌زودی
-          </Badge>
         </div>
       </div>
     </div>
@@ -608,9 +588,33 @@ function BrandTab() {
 }
 
 function BrandForm({ ws }: { ws: Workspace }) {
+  const qc = useQueryClient()
   const [form, setForm] = useState<Partial<Workspace>>(ws)
   const set = (key: keyof Workspace, value: string | boolean) =>
     setForm((cur) => ({ ...cur, [key]: value }))
+
+  // Issue #213 / settings-brandkit: real PATCH /api/workspace mutation.
+  // Replaces the previous disabled button + "به‌زودی" badge.
+  const saveMutation = useMutation({
+    mutationFn: (body: Partial<Workspace>) => api.patch<Workspace>('/api/workspace', body),
+    onSuccess: (updated) => {
+      qc.setQueryData(['workspace'], updated)
+      toast.success('کیت برند ذخیره شد.')
+      announce('کیت برند ذخیره شد')
+    },
+    onError: (err: unknown) => {
+      let msg = 'ذخیره کیت برند ناموفق بود'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (typeof parsed?.error === 'string') msg = parsed.error
+        } catch {
+          msg = err.message
+        }
+      }
+      toast.error(msg)
+    },
+  })
 
   // Apply brand colors to CSS variables live — per AUDIT-1B QW6.
   // brandAccentColor → --n-accent (the app's primary accent token).
@@ -701,6 +705,26 @@ function BrandForm({ ws }: { ws: Workspace }) {
               className="resize-none"
             />
           </div>
+          {/* Issue #213: banned words list — injected into the AI caption prompt
+              as a hard "do not use" list AND checked client-side before publish. */}
+          <div>
+            <Label className="text-sm text-ink-secondary mb-1.5 block">
+              <span className="inline-flex items-center gap-1">
+                <Hash className="size-3.5" /> کلمات ممنوعه
+              </span>
+            </Label>
+            <Textarea
+              dir="rtl"
+              rows={2}
+              placeholder="کلمات یا عبارت‌های ممنوعه، با کاما جدا کنید — مثال: تخفیف ویژه, ارزان‌ترین"
+              value={form.bannedWords ?? ''}
+              onChange={(e) => set('bannedWords', e.target.value)}
+              className="resize-none"
+            />
+            <p className="text-2xs text-ink-tertiary mt-1">
+              این کلمات به پرامپت هوش مصنوعی تزریق می‌شوند و پیش از انتشار، در کپشن بررسی می‌شوند.
+            </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm text-ink-secondary mb-1.5 block">
@@ -736,12 +760,12 @@ function BrandForm({ ws }: { ws: Workspace }) {
             />
           </div>
           <div className="flex items-center gap-2">
-            <Button disabled>
-              ذخیره کیت برند
+            <Button
+              onClick={() => saveMutation.mutate(form)}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? 'در حال ذخیره…' : 'ذخیره کیت برند'}
             </Button>
-            <Badge variant="outline" className="text-ink-tertiary">
-              به‌زودی
-            </Badge>
           </div>
         </div>
       </div>
@@ -986,60 +1010,163 @@ function TeamTab() {
 }
 
 /* ── Billing ── */
+//
+// Issue #221: IRR billing with Zarinpal gateway integration.
+// Shows current plan + real usage meters (channels / seats / posts), plan
+// comparison cards with IRR prices, subscribe button (initiates Zarinpal
+// payment), and invoice history pulled from /api/billing/invoices.
 function BillingTab() {
-  const { data: ws } = useQuery<Workspace>({
-    queryKey: ['workspace'],
-    queryFn: () => api.get<Workspace>('/api/workspace'),
+  // Composite "current plan + usage" — single round-trip via /api/billing/current.
+  const { data: current, isLoading: currentLoading } = useQuery<{
+    subscription: {
+      planCode: string
+      planName: string
+      status: string
+      currentPeriodEnd: string | null
+    } | null
+    plan: BillingPlan
+    usage: {
+      channelsUsed: number
+      channelsLimit: number
+      seatsUsed: number
+      seatsLimit: number
+      postsThisMonth: number
+      postsLimit: number
+    }
+  }>({
+    queryKey: ['billing-current'],
+    queryFn: () => api.get('/api/billing/current'),
   })
 
-  const planLabel: Record<string, string> = {
-    free: 'رایگان',
-    pro: 'حرفه‌ای',
-    agency: 'آژانس',
-    enterprise: 'سازمانی',
-  }
+  const { data: plans } = useQuery<BillingPlan[]>({
+    queryKey: ['billing-plans'],
+    queryFn: () => api.get<{ data: BillingPlan[] }>('/api/billing/plans').then((r) => r.data),
+  })
+  const { data: invoices } = useQuery<{ data: BillingInvoice[] }>({
+    queryKey: ['billing-invoices'],
+    queryFn: () => api.get<{ data: BillingInvoice[] }>('/api/billing/invoices'),
+  })
 
-  const currentPlan = ws?.plan ?? 'free'
+  const currentPlan = current?.plan ?? null
+  const currentPlanCode = currentPlan?.code ?? 'free'
+
+  // Subscribe mutation — initiates Zarinpal payment + redirects.
+  const subscribeMutation = useMutation({
+    mutationFn: async (planCode: string) => {
+      const res = await fetch('/api/billing/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planCode }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'خطا در ارتباط با درگاه' }))
+        throw new Error(err.error || 'خطا در ارتباط با درگاه')
+      }
+      return (await res.json()) as { paymentUrl: string }
+    },
+    onSuccess: (data) => {
+      // Redirect the user to Zarinpal's checkout page.
+      window.location.href = data.paymentUrl
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'خطا در شروع پرداخت')
+    },
+  })
 
   return (
     <div className="space-y-4">
+      {/* Current plan + usage meters */}
       <div className="n-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <p className="text-xs text-ink-tertiary mb-1">طرح فعلی</p>
             <p className="text-lg font-bold text-ink-primary">
-              {planLabel[currentPlan] ?? currentPlan}
+              {currentPlan?.name ?? 'رایگان'}
             </p>
             <p className="text-sm text-ink-secondary mt-1">
-              {PLAN_TIERS.find((t) => t.id === currentPlan)?.priceLabel ?? '—'}
+              {currentPlan ? formatIRR(currentPlan.priceIRR) : '—'}
+              {current?.subscription?.currentPeriodEnd && (
+                <span className="text-ink-tertiary ms-2">
+                  • تمدید: {formatJalali(new Date(current.subscription.currentPeriodEnd))}
+                </span>
+              )}
             </p>
           </div>
-          <Button onClick={() => toast.info('ارتقا طرح به‌زودی فعال خواهد شد.')}>
-            <CreditCard className="size-4" />
-            ارتقا طرح
-          </Button>
+          {currentPlanCode !== 'free' && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="n-focus-ring"
+              onClick={() => toast.info('برای تغییر طرح با پشتیبانی تماس بگیرید.')}
+            >
+              تغییر طرح
+            </Button>
+          )}
         </div>
+        {/* Usage meters — only show if we have plan limits */}
+        {currentPlan && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <UsageMeter
+              label="پلتفرم‌ها"
+              used={currentLoading ? 0 : (current?.usage.channelsUsed ?? 0)}
+              limit={currentPlan.maxChannels}
+            />
+            <UsageMeter
+              label="کاربران"
+              used={currentLoading ? 0 : (current?.usage.seatsUsed ?? 0)}
+              limit={currentPlan.maxSeats}
+            />
+            <UsageMeter
+              label="پست‌های این ماه"
+              used={currentLoading ? 0 : (current?.usage.postsThisMonth ?? 0)}
+              limit={currentPlan.maxPostsPerMonth}
+            />
+          </div>
+        )}
       </div>
 
+      {/* Plan comparison cards */}
       <div>
         <p className="text-sm font-bold text-ink-primary mb-3">طرح‌های موجود</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          {PLAN_TIERS.map((tier) => {
-            const isCurrent = tier.id === currentPlan
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {(plans ?? []).map((plan) => {
+            const isCurrent = plan.code === currentPlanCode
+            const isFree = plan.code === 'free'
             return (
               <div
-                key={tier.id}
-                className={cn('n-card p-5 flex flex-col', tier.popular && 'ring-2 ring-accent/30')}
+                key={plan.id}
+                className={cn(
+                  'n-card p-5 flex flex-col',
+                  plan.code === 'pro' && 'ring-2 ring-accent/30'
+                )}
               >
-                {tier.popular && (
+                {plan.code === 'pro' && (
                   <span className="self-start text-2xs font-bold px-2 py-0.5 rounded-full bg-accent-soft text-accent mb-2">
                     محبوب‌ترین
                   </span>
                 )}
-                <p className="text-base font-bold text-ink-primary">{tier.name}</p>
-                <p className="text-xl font-bold text-ink-primary mt-1">{tier.priceLabel}</p>
+                <p className="text-base font-bold text-ink-primary">{plan.name}</p>
+                <p className="text-xl font-bold text-ink-primary mt-1">
+                  {formatIRR(plan.priceIRR)}
+                </p>
                 <ul className="mt-3 space-y-1.5 flex-1">
-                  {tier.features.map((f) => (
+                  <li className="flex items-start gap-1.5 text-xs text-ink-secondary">
+                    <Check className="size-3 text-success shrink-0 mt-0.5" />
+                    <span>{toPersianDigits(plan.maxChannels)} پلتفرم</span>
+                  </li>
+                  <li className="flex items-start gap-1.5 text-xs text-ink-secondary">
+                    <Check className="size-3 text-success shrink-0 mt-0.5" />
+                    <span>{toPersianDigits(plan.maxSeats)} کاربر</span>
+                  </li>
+                  <li className="flex items-start gap-1.5 text-xs text-ink-secondary">
+                    <Check className="size-3 text-success shrink-0 mt-0.5" />
+                    <span>
+                      {plan.maxPostsPerMonth === -1
+                        ? 'پست نامحدود'
+                        : `${toPersianDigits(plan.maxPostsPerMonth)} پست در ماه`}
+                    </span>
+                  </li>
+                  {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-1.5 text-xs text-ink-secondary">
                       <Check className="size-3 text-success shrink-0 mt-0.5" />
                       <span>{f}</span>
@@ -1049,11 +1176,23 @@ function BillingTab() {
                 <Button
                   variant={isCurrent ? 'outline' : 'default'}
                   size="sm"
-                  className="w-full mt-3"
-                  disabled={isCurrent}
-                  onClick={() => toast.info(`ارتقا به طرح ${tier.name} به‌زودی فعال خواهد شد.`)}
+                  className="w-full mt-3 n-focus-ring"
+                  disabled={isCurrent || subscribeMutation.isPending}
+                  onClick={() => {
+                    if (isFree) {
+                      toast.info('طرح رایگان فعال است')
+                      return
+                    }
+                    subscribeMutation.mutate(plan.code)
+                  }}
                 >
-                  {isCurrent ? 'طرح فعلی' : 'انتخاب این طرح'}
+                  {isCurrent
+                    ? 'طرح فعلی'
+                    : subscribeMutation.isPending
+                      ? 'در حال اتصال به درگاه…'
+                      : isFree
+                        ? 'فعال‌سازی رایگان'
+                        : 'ارتقا به این طرح'}
                 </Button>
               </div>
             )
@@ -1061,23 +1200,133 @@ function BillingTab() {
         </div>
       </div>
 
+      {/* Invoice history */}
       <div className="n-card p-0 overflow-hidden">
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold text-ink-primary">تاریخچه فاکتورها</h2>
         </div>
-        {/* P1-13: No billing backend exists — show honest empty state instead of 3 fake mock rows. */}
-        <div className="p-8 text-center space-y-3">
-          <div className="flex justify-center">
-            <Receipt className="size-8 text-ink-tertiary" />
+        {(invoices?.data ?? []).length === 0 ? (
+          <div className="p-8 text-center space-y-3">
+            <div className="flex justify-center">
+              <Receipt className="size-8 text-ink-tertiary" />
+            </div>
+            <p className="text-sm text-ink-secondary">هنوز فاکتوری صادر نشده</p>
+            <p className="text-xs text-ink-tertiary">
+              پس از اولین پرداخت موفق، فاکتورهای شما اینجا نمایش داده می‌شود.
+            </p>
           </div>
-          <p className="text-sm text-ink-secondary">هنوز فاکتوری صادر نشده</p>
-          <p className="text-xs text-ink-tertiary">
-            پس از اولین پرداخت، تاریخچه فاکتورهای شما اینجا نمایش داده می‌شود.
-          </p>
-          <Badge variant="outline" className="text-2xs bg-surface-subtle text-ink-tertiary border-border">
-            به‌زودی
-          </Badge>
-        </div>
+        ) : (
+          <div className="overflow-x-auto thin-scrollbar">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold">طرح</TableHead>
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold">مبلغ</TableHead>
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold">وضعیت</TableHead>
+                  <TableHead className="text-start text-xs text-ink-tertiary font-bold hidden sm:table-cell">تاریخ</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(invoices?.data ?? []).map((inv) => (
+                  <TableRow key={inv.id} className="border-border">
+                    <TableCell className="text-sm text-ink-primary">{inv.planName}</TableCell>
+                    <TableCell className="text-sm text-ink-primary num-tabular">{formatIRR(inv.amountIRR)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={cn(
+                          'text-2xs font-bold px-2 py-0.5 rounded-full',
+                          inv.status === 'paid'
+                            ? 'bg-success-soft text-success'
+                            : inv.status === 'failed'
+                              ? 'bg-danger-soft text-danger'
+                              : 'bg-warning-soft text-warning'
+                        )}
+                      >
+                        {inv.status === 'paid' ? 'پرداخت‌شده' : inv.status === 'failed' ? 'ناموفق' : 'در انتظار'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs text-ink-secondary">
+                      {inv.paidAt ? formatJalali(new Date(inv.paidAt)) : formatJalali(new Date(inv.createdAt))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+interface BillingPlan {
+  id: string
+  code: string
+  name: string
+  priceIRR: string
+  maxChannels: number
+  maxSeats: number
+  maxPostsPerMonth: number
+  features: string[]
+  isActive: boolean
+}
+
+interface BillingInvoice {
+  id: string
+  workspaceId: string
+  planId: string
+  planName: string
+  amountIRR: string
+  status: string
+  paidAt: string | null
+  zarinpalAuthority: string | null
+  zarinpalRefId: string | null
+  createdAt: string
+}
+
+/** Format an IRR amount string as "۲۹۰,۰۰۰ تومان". */
+function formatIRR(amountStr: string): string {
+  const n = Number(amountStr ?? 0)
+  if (n === 0) return 'رایگان'
+  // IRR → Tomans (÷10) for display, per Iranian convention.
+  const toman = Math.round(n / 10)
+  return `${toPersianDigits(toman.toLocaleString('en-US'))} تومان`
+}
+
+/** Usage meter — a label, a "used / limit" count, and a progress bar. */
+function UsageMeter({
+  label,
+  used,
+  limit,
+}: {
+  label: string
+  used: number
+  limit: number
+}) {
+  const isUnlimited = limit === -1
+  const pct = isUnlimited ? 0 : limit > 0 ? Math.min(100, (used / limit) * 100) : 0
+  const isOver = !isUnlimited && used >= limit
+  return (
+    <div className="n-card-compact p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-ink-secondary">{label}</span>
+        <span
+          className={cn(
+            'text-xs font-bold num-tabular',
+            isOver ? 'text-danger' : 'text-ink-primary'
+          )}
+        >
+          {toPersianDigits(used)} / {isUnlimited ? '∞' : toPersianDigits(limit)}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-surface-subtle overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            isOver ? 'bg-danger' : pct > 80 ? 'bg-warning' : 'bg-accent'
+          )}
+          style={{ width: `${isUnlimited ? 0 : pct}%` }}
+        />
       </div>
     </div>
   )
@@ -1199,23 +1448,86 @@ function UtmSection() {
 }
 
 /* ── Notifications ── */
+//
+// Issue #213 / settings-brandkit: previously the whole tab was disabled with
+// a "به‌زودی" badge. Now wired to GET/PATCH /api/notifications/preferences —
+// per-user, per-category, per-channel (in-app / email / push) toggles. The
+// switches update optimistically and roll back on error.
 function NotificationsTab() {
+  const qc = useQueryClient()
+  const { data, isLoading, isError, refetch } = useQuery<NotificationPrefs>({
+    queryKey: ['notification-preferences'],
+    queryFn: () => api.get<NotificationPrefs>('/api/notifications/preferences'),
+    // Don't retry on 401/403 — the user is logged in, those are real denials.
+    retry: false,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (body: Partial<NotificationPrefs>) =>
+      api.patch<NotificationPrefs>('/api/notifications/preferences', body),
+    onSuccess: (updated) => {
+      qc.setQueryData(['notification-preferences'], updated)
+    },
+    onError: (err: unknown) => {
+      let msg = 'ذخیره تنظیمات اعلان ناموفق بود'
+      if (err instanceof Error) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (typeof parsed?.error === 'string') msg = parsed.error
+        } catch {
+          msg = err.message
+        }
+      }
+      toast.error(msg)
+      // Roll back to the last known good value.
+      qc.invalidateQueries({ queryKey: ['notification-preferences'] })
+    },
+  })
+
+  const toggle = (
+    categoryId: string,
+    channel: 'inApp' | 'email' | 'push',
+    next: boolean,
+  ) => {
+    const current = data ?? {}
+    const prev = current[categoryId] ?? { email: false, push: false, inApp: false }
+    const updated: NotificationPrefs = {
+      ...current,
+      [categoryId]: { ...prev, [channel]: next },
+    }
+    // Optimistic update.
+    qc.setQueryData<NotificationPrefs>(['notification-preferences'], updated)
+    updateMutation.mutate({
+      [categoryId]: { ...prev, [channel]: next },
+    })
+  }
+
+  if (isError) {
+    return <ErrorState label="خطا در بارگذاری تنظیمات اعلان" onRetry={refetch} />
+  }
+
   return (
-    <div className="n-card p-5 max-w-2xl">
+    <div className="n-card p-5 max-w-3xl">
       <div className="flex items-center gap-2 mb-4">
         <Bell className="size-4 text-accent" />
         <h2 className="text-sm font-semibold text-ink-primary">تنظیمات اعلان‌ها</h2>
-        <Badge variant="outline" className="text-ink-tertiary">
-          به‌زودی
-        </Badge>
       </div>
+
       <div className="space-y-2">
         {NOTIFICATION_TOGGLES.map((t) => {
           const Icon = t.icon
+          const prefs = data?.[t.id] ?? {
+            inApp: t.defaultOn,
+            email: t.defaultOn,
+            push: t.defaultOn,
+          }
           return (
-            <div key={t.id} className="n-card-compact flex items-center justify-between p-3">
+            <div
+              key={t.id}
+              className="n-card-compact p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            >
               <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-accent-soft flex items-center justify-center">
+                <div className="size-9 rounded-xl bg-accent-soft flex items-center justify-center shrink-0">
                   <Icon className="size-4 text-accent" />
                 </div>
                 <div>
@@ -1223,15 +1535,34 @@ function NotificationsTab() {
                   <p className="text-xs text-ink-tertiary">{t.desc}</p>
                 </div>
               </div>
-              <Switch
-                checked={t.defaultOn}
-                disabled
-                aria-label={t.label}
-              />
+              <div className="flex items-center gap-4 ms-12 sm:ms-0">
+                {NOTIFICATION_CHANNELS.map((c) => (
+                  <div key={c.key} className="flex items-center gap-2">
+                    <Label
+                      htmlFor={`notif-${t.id}-${c.key}`}
+                      className="text-2xs text-ink-tertiary cursor-pointer select-none"
+                    >
+                      {c.label}
+                    </Label>
+                    <Switch
+                      id={`notif-${t.id}-${c.key}`}
+                      checked={prefs[c.key]}
+                      disabled={isLoading || updateMutation.isPending}
+                      onCheckedChange={(v) => toggle(t.id, c.key, v)}
+                      aria-label={`${t.label} — ${c.label}`}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )
         })}
       </div>
+
+      <p className="text-2xs text-ink-tertiary mt-4 leading-relaxed">
+        این تنظیمات برای حساب کاربری شما اعمال می‌شود و در همه دستگاه‌ها یکسان است.
+        اعلان‌های حیاتی (مثل شکست انتشار) حتی در صورت غیرفعال بودن، در صفحه اعلان‌ها نمایش داده می‌شوند.
+      </p>
     </div>
   )
 }

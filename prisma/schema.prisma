@@ -32,6 +32,12 @@ model User {
   mfaBackupCodes   String?
   mfaEnabledAt     DateTime?
 
+  // Issue #213 / settings-brandkit: per-user notification preferences.
+  // JSON record keyed by category id (e.g. publish_success, inbox_new).
+  // Each value: { email: boolean, push: boolean, inApp: boolean }.
+  // Null = use workspace defaults (everything on except inbox_new).
+  notificationPreferences Json?
+
   memberships   WorkspaceMember[]
   auditLogs     AuditLog[]
   accounts      Account[]
@@ -113,6 +119,13 @@ model Workspace {
   contentGuidelines String @default("")
   defaultHashtags   String @default("")
   captionFooter     String @default("")
+  // Issue #221: billing — the workspace's currently subscribed plan.
+  // planId is nullable so existing rows are unaffected; null = "free" plan.
+  planId            String?
+  // Issue #213: comma-separated Persian words that must never appear in
+  // AI-generated captions or published content (e.g. "تخفیف ویژه, ارزان‌ترین").
+  // Enforced as a soft warning in the composer before publish.
+  bannedWords       String? @default("")
   persianDigits     Boolean @default(true)
   workWeek          String  @default("sat-wed")
   onboardingStep    Int     @default(0)
@@ -157,6 +170,9 @@ model Workspace {
   portalAccess    ClientPortalAccess[]
   ssoConfigs      SSOConfig[]
   customRoles     CustomRole[]
+  // Issue #221: billing — the workspace's currently active subscription.
+  subscription    Subscription?
+  invoices        Invoice[]
 }
 
 /* ─── #256: Enterprise SSO + custom roles + audit export ─── */
@@ -1346,4 +1362,72 @@ model ClientPortalAccess {
 
   @@index([workspaceId])
   @@index([accessToken])
+}
+
+/* ─── #221: IRR billing — plans, invoices, subscriptions ─── */
+
+// Available subscription plans. Seeded by prisma/seed.ts:
+//   free     — 0 IRR,         2 channels,  2 seats,  30 posts/month
+//   pro      — 290,000 IRR,  10 channels,  5 seats,  500 posts/month
+//   agency   — 890,000 IRR,  50 channels, 20 seats, unlimited posts
+// `features` is a JSON array of feature keys (e.g. ["api_access", "custom_roles"]).
+model Plan {
+  id                String   @id @default(cuid())
+  code              String   @unique // free | pro | agency | enterprise
+  name              String
+  priceIRR          BigInt   @default(0)
+  maxChannels       Int      @default(1)
+  maxSeats          Int      @default(1)
+  maxPostsPerMonth  Int      @default(30) // -1 = unlimited
+  features          Json     @default("[]")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions     Subscription[]
+  invoices          Invoice[]
+
+  @@index([code])
+}
+
+// One row per workspace payment attempt. Status moves:
+//   pending → paid (after Zarinpal verify) | failed | cancelled
+model Invoice {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  planId            String
+  amountIRR         BigInt
+  status            String   @default("pending") // pending, paid, failed, cancelled
+  paidAt            DateTime?
+  // Zarinpal returns an Authority code on payment initiation, and a RefId
+  // on successful verification. We persist both for reconciliation.
+  zarinpalAuthority String?
+  zarinpalRefId     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  plan        Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([workspaceId, createdAt])
+  @@index([status])
+  @@index([zarinpalAuthority])
+}
+
+// The workspace's currently active subscription. One row per workspace.
+// `currentPeriodEnd` is the next renewal date; null for the free plan.
+model Subscription {
+  id                String    @id @default(cuid())
+  workspaceId       String    @unique
+  planId            String
+  status            String    @default("active") // active, past_due, cancelled, expired
+  currentPeriodEnd  DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  plan        Plan      @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([planId])
+  @@index([status])
 }

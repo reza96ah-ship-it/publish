@@ -1,5 +1,6 @@
 import { ContentRepository } from './repository'
 import { ContentNotFoundError, InvalidStateTransitionError } from './errors'
+import { revisionsService } from '@/modules/revisions'
 import type {
   AuthContext,
   ContentListQuery,
@@ -44,6 +45,18 @@ export class ContentService {
       throw new InvalidStateTransitionError(content.status, 'approved')
     }
     await this.repo.approveTransition(contentId, auth.workspaceId, content.title)
+    // Issue #212: snapshot the content state at approval time as an immutable
+    // revision so the worker can publish from a frozen point and the audit
+    // trail captures exactly what was approved.
+    await revisionsService.createRevision({
+      contentId,
+      workspaceId: auth.workspaceId,
+      title: content.title,
+      body: content.body,
+      hashtags: content.hashtags,
+      internalNote: content.internalNote,
+      authorName: content.authorName,
+    }).catch(() => { /* revision snapshot failure is non-fatal */ })
     return { ok: true, status: 'approved' }
   }
 
@@ -54,6 +67,17 @@ export class ContentService {
       throw new InvalidStateTransitionError(content.status, 'rejected')
     }
     await this.repo.rejectTransition(contentId, auth.workspaceId, content.title, reason)
+    // Issue #212: snapshot the rejected state so reviewers can later see what
+    // was rejected and diff against the next submission.
+    await revisionsService.createRevision({
+      contentId,
+      workspaceId: auth.workspaceId,
+      title: content.title,
+      body: content.body,
+      hashtags: content.hashtags,
+      internalNote: content.internalNote,
+      authorName: content.authorName,
+    }).catch(() => { /* revision snapshot failure is non-fatal */ })
     return { ok: true, status: 'rejected' }
   }
 
@@ -71,6 +95,17 @@ export class ContentService {
       content.title,
       approverIds.length
     )
+    // Issue #212: snapshot the submitted-for-review state so reviewers see
+    // exactly what the submitter sent, even if the submitter keeps editing.
+    await revisionsService.createRevision({
+      contentId,
+      workspaceId: auth.workspaceId,
+      title: content.title,
+      body: content.body,
+      hashtags: content.hashtags,
+      internalNote: content.internalNote,
+      authorName: content.authorName,
+    }).catch(() => { /* revision snapshot failure is non-fatal */ })
     return { ok: true, status: 'review' }
   }
 

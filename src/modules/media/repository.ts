@@ -209,4 +209,113 @@ export class MediaRepository {
     })
     return rows.map(toMediaRow)
   }
+
+  /**
+   * Issue #210: Search validated media by free-text query, folder, and/or tag.
+   * All filters are optional and combine with AND. The query matches
+   * case-insensitively against the media name; folder is an exact match;
+   * tag is a substring match on the comma-separated `tags` field.
+   */
+  async search(
+    workspaceId: string,
+    query: { search?: string; folder?: string; tag?: string; limit?: number; cursor?: string }
+  ): Promise<MediaRow[]> {
+    const where: Record<string, unknown> = {
+      workspaceId,
+      status: 'validated',
+    }
+    if (query.search && query.search.trim()) {
+      where.name = { contains: query.search.trim(), mode: 'insensitive' }
+    }
+    if (query.folder && query.folder !== 'all') {
+      where.folder = query.folder
+    }
+    if (query.tag && query.tag.trim()) {
+      // tags is a comma-separated string — substring match is the simplest
+      // portable approach across SQLite + Postgres.
+      where.tags = { contains: query.tag.trim() }
+    }
+    if (query.cursor) {
+      where.id = { lt: query.cursor }
+    }
+    const rows = await db.media.findMany({
+      where,
+      orderBy: { id: 'desc' },
+      take: (query.limit ?? 50) + 1,
+    })
+    return rows.map(toMediaRow)
+  }
+
+  /** Issue #210: distinct folders used in the workspace (for the sidebar). */
+  async listFolders(workspaceId: string): Promise<{ folder: string; count: number }[]> {
+    const rows = await db.media.groupBy({
+      by: ['folder'],
+      where: { workspaceId, status: 'validated' },
+      _count: { _all: true },
+    })
+    return rows.map((r) => ({ folder: r.folder, count: r._count._all }))
+  }
+
+  /** Issue #210: rename a folder across all media in the workspace. */
+  async renameFolder(
+    workspaceId: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    const result = await db.media.updateMany({
+      where: { workspaceId, folder: oldName, status: 'validated' },
+      data: { folder: newName },
+    })
+    return result.count
+  }
+
+  /** Issue #210: delete a folder — moves all its media to the default folder. */
+  async deleteFolder(workspaceId: string, folderName: string): Promise<number> {
+    const result = await db.media.updateMany({
+      where: { workspaceId, folder: folderName, status: 'validated' },
+      data: { folder: 'عمومی' },
+    })
+    return result.count
+  }
+
+  /** Issue #210: patch a single media's folder + tags. */
+  async patchMedia(
+    mediaId: string,
+    workspaceId: string,
+    patch: { folder?: string; tags?: string }
+  ): Promise<MediaRow | null> {
+    const m = await db.media.updateMany({
+      where: { id: mediaId, workspaceId },
+      data: patch,
+    })
+    if (m.count === 0) return null
+    const updated = await db.media.findFirst({ where: { id: mediaId, workspaceId } })
+    return updated ? toMediaRow(updated) : null
+  }
+
+  /**
+   * Issue #210: reuse-tracking — count Content rows in the workspace whose
+   * body or internalNote mentions the media id. We can't join RevisionMedia
+   * here (cross-workspace safety + we want the editor-visible count), so we
+   * do a contains match on Content.body / Content.internalNote.
+   *
+   * This is an approximate count — it catches the common case where the
+   * composer embedded the media id (e.g. as a JSON fragment or markdown
+   * reference). It's surfaced as a hint, not a guarantee.
+   */
+  async countContentReferences(
+    workspaceId: string,
+    mediaId: string
+  ): Promise<number> {
+    const rows = await db.content.count({
+      where: {
+        workspaceId,
+        OR: [
+          { body: { contains: mediaId } },
+          { internalNote: { contains: mediaId } },
+        ],
+      },
+    })
+    return rows
+  }
 }
