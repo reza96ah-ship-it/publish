@@ -662,8 +662,10 @@ function SlaTimer({ slaStartedAt }: { slaStartedAt: string }) {
   const h = Math.floor(elapsedMin / 60)
   const m = elapsedMin % 60
   const label = h > 0 ? `${h}h ${m}m` : `${m}m`
+  // Subtle SLA indicator — warning color text only, no full background, so the
+  // message text remains the primary visual element in the row.
   return (
-    <span className={cn('text-2xs font-mono px-2 py-0.5 rounded-md border', overdue ? 'text-danger bg-danger-soft border-danger/20' : 'text-ink-tertiary bg-surface border-border')}>
+    <span className={cn('text-2xs font-mono px-1.5 py-0.5 rounded-md border', overdue ? 'text-warning border-warning/30 bg-transparent' : 'text-ink-tertiary bg-surface border-border')}>
       ⏱ {label}{overdue ? ' — تأخیر' : ''}
     </span>
   )
@@ -715,23 +717,26 @@ function MessageListItem({
             {relativeTime(new Date(message.createdAt))}
           </span>
         </div>
-        <p className="text-sm text-ink-tertiary line-clamp-2 leading-relaxed">
+        <p className="text-sm text-ink-secondary line-clamp-2 leading-relaxed">
           {message.message}
         </p>
-        <div className="flex items-center gap-1.5 mt-1">
-          <TypeIcon className="size-3 text-ink-tertiary" />
-          <span className="text-2xs text-ink-tertiary">
+        <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+          <TypeIcon className="size-3 text-ink-tertiary shrink-0" />
+          <span className="text-2xs text-ink-tertiary shrink-0">
             {MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}
           </span>
-          {message.status !== 'new' && (
-            <span className={cn('text-2xs font-semibold px-1.5 py-0.5 rounded border', STATUS_COLOR[message.status])}>
-              {STATUS_LABEL[message.status]}
-            </span>
-          )}
-          {message.isReplied && (
-            <span className="text-2xs text-success font-semibold ms-auto">پاسخ داده شد</span>
-          )}
-          {!message.isRead && <span className="size-2 rounded-full bg-accent ms-auto" />}
+          {/* Status chip row — limit visible chips to at most 2 via overflow-hidden so the message text stays primary. */}
+          <span className="inline-flex items-center gap-1 ms-auto overflow-hidden">
+            {message.status !== 'new' && (
+              <span className={cn('text-2xs font-semibold px-1.5 py-0.5 rounded border shrink-0', STATUS_COLOR[message.status])}>
+                {STATUS_LABEL[message.status]}
+              </span>
+            )}
+            {message.isReplied && (
+              <span className="text-2xs text-success font-semibold shrink-0">پاسخ داده شد</span>
+            )}
+            {!message.isRead && <span className="size-2 rounded-full bg-accent shrink-0" />}
+          </span>
         </div>
       </div>
     </button>

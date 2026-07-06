@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -131,6 +131,17 @@ export function CalendarView() {
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
   const [view, setView] = useState<'month' | 'week' | 'day' | 'agenda'>('month')
+  // Issue #295: on small screens, default to agenda view (list of jobs per day)
+  // instead of the cramped month grid. Runs once on mount — if the user later
+  // picks another view, their choice sticks for the rest of the session.
+  // The setState-in-effect rule is silenced here because this is a one-shot
+  // client-only initial view detection (no external system to synchronize).
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setView('agenda')
+    }
+  }, [])
   const [selectedJob, setSelectedJob] = useState<CalendarJob | null>(null)
   const [editingSchedule, setEditingSchedule] = useState<Date | null>(null)
   const [activeDrag, setActiveDrag] = useState<{ id: string; title: string } | null>(null)
@@ -642,7 +653,7 @@ export function CalendarView() {
                     key={job.id}
                     onClick={() => setSelectedJob(job)}
                     className={cn(
-                      'n-focus-ring w-full flex items-center gap-3 rounded-xl border px-4 min-h-[56px] text-start',
+                      'n-focus-ring w-full flex items-center gap-3 rounded-xl border px-4 min-h-[56px] text-start min-w-0',
                       PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border'
                     )}
                   >
@@ -650,7 +661,7 @@ export function CalendarView() {
                       {formatJalaliTime(new Date(job.scheduledAt))}
                     </span>
                     <PlatformIcon platform={job.platform} className="size-5 shrink-0" />
-                    <span className="text-sm font-semibold flex-1 truncate">{job.title}</span>
+                    <span className="text-sm font-semibold flex-1 truncate min-w-0">{job.title}</span>
                     <StatusBadge label={STATUS_LABEL[job.status] ?? job.status} variant={job.status} />
                   </button>
                 ))}
@@ -907,7 +918,7 @@ function DayCell({
       ref={setNodeRef}
       aria-label={`انتقال به ${day} ${JALALI_MONTHS[cell.jalali.month - 1]}`}
       className={cn(
-        'rounded-xl border p-1.5 transition-colors relative',
+        'rounded-xl border p-1.5 transition-colors relative min-w-0',
         tall ? 'min-h-32' : 'min-h-20 sm:min-h-24',
         isOver && 'ring-2 ring-accent ring-offset-1',
         cell.isToday
@@ -982,13 +993,13 @@ function JobChip({
       aria-label="کشیدن برای جابجایی"
       title={job.title}
       className={cn(
-        'n-focus-ring w-full text-start text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
+        'n-focus-ring w-full min-w-0 text-start text-2xs font-semibold px-1.5 py-1 rounded-md border truncate flex items-center gap-1 hover:scale-[1.02] transition-transform cursor-grab active:cursor-grabbing',
         PLATFORM_CHIP[job.platform] ?? 'bg-surface-subtle text-ink-secondary border-border',
         (isDragging || isDimmed) && 'opacity-30'
       )}
     >
       <Clock3 className="size-2.5 shrink-0" />
-      <span className="truncate">{job.title}</span>
+      <span className="truncate min-w-0">{job.title}</span>
     </button>
   )
 }
@@ -1017,10 +1028,10 @@ function QueueRow({ job }: { job: PublishJob }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-ink-primary truncate">{job.title}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-2xs text-ink-tertiary truncate">{job.platformName}</span>
-          <span className="text-ink-tertiary">•</span>
-          <span className="text-2xs text-ink-tertiary truncate">{job.campaign}</span>
+        <div className="flex items-center gap-2 mt-0.5 min-w-0">
+          <span className="text-2xs text-ink-tertiary truncate shrink-0">{job.platformName}</span>
+          <span className="text-ink-tertiary shrink-0">•</span>
+          <span className="text-2xs text-ink-tertiary truncate min-w-0">{job.campaign}</span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <StatusBadge label={job.statusLabel} variant={job.status} />

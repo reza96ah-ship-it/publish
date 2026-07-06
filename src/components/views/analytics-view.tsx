@@ -296,14 +296,14 @@ export function AnalyticsView() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis
                 dataKey="date"
-                tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
                 tickFormatter={(v) => toPersianDigits(v)}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 orientation="right"
-                tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
                 tickFormatter={(v) => formatCompact(Number(v))}
                 axisLine={false}
                 tickLine={false}
@@ -321,6 +321,7 @@ export function AnalyticsView() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        <p className="text-2xs text-ink-tertiary mt-2">منبع: داده‌های آنالتیکس</p>
       </ChartPanel>
 
       {/* Platform breakdown */}
@@ -346,12 +347,12 @@ export function AnalyticsView() {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                    tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 'var(--text-xs)', fill: 'var(--color-ink-tertiary)' }}
+                    tick={{ fontSize: 'var(--text-2xs)', fill: 'var(--color-ink-tertiary)' }}
                     tickFormatter={(v) => formatCompact(Number(v))}
                     axisLine={false}
                     tickLine={false}
@@ -362,21 +363,22 @@ export function AnalyticsView() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3">
               {PLATFORMS.map((p, i) => {
                 const pd = platformQueries[i]?.data
                 const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
                 return (
-                  <div key={p.id} className="flex items-center gap-2 text-xs">
-                    <PlatformIcon platform={p.id} className="size-5" />
-                    <span className="text-ink-secondary">{p.label}</span>
-                    <span className="ms-auto font-bold text-ink-primary num-tabular">
+                  <div key={p.id} className="flex items-center gap-2 text-xs min-w-0">
+                    <PlatformIcon platform={p.id} className="size-5 shrink-0" />
+                    <span className="text-ink-secondary truncate">{p.label}</span>
+                    <span className="ms-auto font-bold text-ink-primary num-tabular shrink-0">
                       {toPersianDigits(formatCompact(total))}
                     </span>
                   </div>
                 )
               })}
             </div>
+            <p className="text-2xs text-ink-tertiary mt-2">منبع: داده‌های آنالتیکس</p>
           </div>
         </ChartPanel>
 
