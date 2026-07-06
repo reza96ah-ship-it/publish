@@ -18,7 +18,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { redirect } from 'next/navigation'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { hashToken } from '@/lib/api-token'
 
 export type Role = 'admin' | 'editor' | 'approver' | 'viewer'
 
@@ -54,8 +55,12 @@ export async function requireWorkspace() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/auth/signin')
 
+  // Session exists but is stale (workspace/membership gone, e.g. after a DB
+  // reset): redirecting straight to /auth/signin would loop forever, because
+  // the signin page sees the session and bounces back to /. Clear the cookie
+  // first so the signin page actually renders.
   const wsId = session.activeWorkspaceId
-  if (!wsId) redirect('/auth/signin')
+  if (!wsId) redirect('/api/auth/clear-session')
 
   const membership = await db.workspaceMember.findFirst({
     where: {
@@ -65,7 +70,7 @@ export async function requireWorkspace() {
     include: { workspace: true },
   })
 
-  if (!membership) redirect('/auth/signin')
+  if (!membership) redirect('/api/auth/clear-session')
 
   return {
     session,
@@ -405,4 +410,160 @@ export async function requirePermission(permission: Permission) {
   const { session, role } = await requireWorkspace()
   if (!can(role, permission)) redirect('/403')
   return { session, role }
+}
+
+// ── Issue #255: Public API token auth ──────────────────────────────────────
+//
+// API tokens are bearer credentials issued by workspace admins for external
+// integrations (Zapier, n8n, custom scripts). They grant a subset of the
+// workspace's permissions via scopes — independent of the issuing user's
+// session. Route handlers serving `/api/public/*` use `requireApiToken`
+// instead of `requireWorkspaceApi`/`requirePermissionApi`.
+//
+// Usage:
+//   const guard = await requireApiToken(req, ['content:read'])
+//   if ('error' in guard) return guard.error
+//   // guard.workspace, guard.token, guard.workspaceId are available
+//
+// The return type is a discriminated union on `error` so that after the
+// `if ('error' in guard) return guard.error` check, TypeScript narrows the
+// success branch — no `!` assertions needed at call sites.
+
+/**
+ * Scopes that an API token may carry. Tokens are scoped (not role-based)
+ * so an integration that only reads content can't accidentally publish or
+ * delete. The set is intentionally small and read-mostly.
+ */
+export const API_SCOPES = [
+  'content:read',
+  'content:write',
+  'publications:read',
+  'inbox:read',
+  'reports:read',
+] as const
+export type ApiScope = (typeof API_SCOPES)[number]
+
+export type ApiTokenGuardSuccess = {
+  error: null
+  workspace: Awaited<ReturnType<typeof db.workspace.findFirst>> & object
+  token: NonNullable<Awaited<ReturnType<typeof db.apiToken.findUnique>>>
+  workspaceId: string
+}
+
+export type ApiTokenGuardError = {
+  error: NextResponse
+}
+
+export type ApiTokenGuardResult = ApiTokenGuardSuccess | ApiTokenGuardError
+
+/**
+ * Issue #255: Require a valid API token with the listed scopes.
+ * Returns 401 (missing/invalid/expired/revoked token) or 403 (insufficient
+ * scope). Fire-and-forget updates `lastUsedAt` — never blocks the request
+ * on a failed timestamp write.
+ *
+ * Dev bypass: when `DISABLE_AUTH=1`, returns a synthetic admin token for
+ * the first workspace so the Z.ai preview iframe works without an API
+ * token (same convention as `requireWorkspaceApi`).
+ */
+export async function requireApiToken(
+  req: NextRequest,
+  requiredScopes: string[]
+): Promise<ApiTokenGuardResult> {
+  // Dev bypass — same convention as requireWorkspaceApi.
+  if (process.env.DISABLE_AUTH === '1') {
+    const ws = await db.workspace.findFirst({ orderBy: { createdAt: 'asc' } })
+    if (ws) {
+      return {
+        error: null,
+        workspace: ws,
+        token: {
+          id: 'dev-token',
+          workspaceId: ws.id,
+          name: 'dev',
+          tokenHash: 'dev',
+          prefix: 'nsh_dev',
+          scopes: [...API_SCOPES],
+          lastUsedAt: null,
+          expiresAt: null,
+          revokedAt: null,
+          createdById: 'dev-admin',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as ApiTokenGuardSuccess['token'],
+        workspaceId: ws.id,
+      }
+    }
+  }
+
+  // Extract bearer token from `Authorization: Bearer <token>`.
+  const authHeader = req.headers.get('authorization') ?? ''
+  const bearerMatch = /^Bearer\s+(.+)$/i.exec(authHeader)
+  if (!bearerMatch) {
+    return {
+      error: NextResponse.json(
+        { error: 'unauthorized', message: 'توکن API الزامی است' },
+        { status: 401 }
+      ),
+    }
+  }
+  const plaintext = bearerMatch[1].trim()
+  const tokenHash = hashToken(plaintext)
+
+  const token = await db.apiToken.findUnique({
+    where: { tokenHash },
+    include: { workspace: true },
+  })
+
+  if (!token) {
+    return {
+      error: NextResponse.json(
+        { error: 'unauthorized', message: 'توکن نامعتبر است' },
+        { status: 401 }
+      ),
+    }
+  }
+
+  if (token.revokedAt) {
+    return {
+      error: NextResponse.json(
+        { error: 'unauthorized', message: 'توکن باطل شده است' },
+        { status: 401 }
+      ),
+    }
+  }
+
+  if (token.expiresAt && token.expiresAt.getTime() < Date.now()) {
+    return {
+      error: NextResponse.json(
+        { error: 'unauthorized', message: 'توکن منقضی شده است' },
+        { status: 401 }
+      ),
+    }
+  }
+
+  // Scope check — all required scopes must be present on the token.
+  const hasAllScopes = requiredScopes.every((s) => token.scopes.includes(s))
+  if (!hasAllScopes) {
+    return {
+      error: NextResponse.json(
+        { error: 'forbidden', message: 'این توکن دسترسی لازم را ندارد' },
+        { status: 403 }
+      ),
+    }
+  }
+
+  // Fire-and-forget lastUsedAt update — never blocks, never fails the request.
+  db.apiToken
+    .update({ where: { id: token.id }, data: { lastUsedAt: new Date() } })
+    .catch(() => {
+      /* timestamp write failure is non-fatal */
+    })
+
+  return {
+    error: null,
+    workspace: token.workspace,
+    token,
+    workspaceId: token.workspaceId,
+  }
 }

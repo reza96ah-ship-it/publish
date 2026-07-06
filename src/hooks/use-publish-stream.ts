@@ -17,7 +17,13 @@ function getSocket(authToken: string | null): Socket {
   if (socket) return socket
 
   socketToken = authToken
-  socket = io('/?XTransformPort=3003', {
+  // Realtime service runs on its own port (3003), not behind the app server.
+  // The old '/?XTransformPort=3003' form only worked behind the Z.ai preview
+  // proxy — in normal deployments it hit :3000 and the socket always failed.
+  const realtimeUrl =
+    process.env.NEXT_PUBLIC_REALTIME_URL ??
+    `${window.location.protocol}//${window.location.hostname}:3003`
+  socket = io(realtimeUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionDelay: 1000,

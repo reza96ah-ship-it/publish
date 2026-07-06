@@ -33,6 +33,11 @@ export const metadata: Metadata = {
     'تلگرام',
   ],
   authors: [{ name: 'Nashrino' }],
+  // Explicit icon link — without it browsers request /favicon.ico, which
+  // doesn't exist (we only ship the SVG logo) and 404s on every page load.
+  icons: {
+    icon: [{ url: '/logo.svg', type: 'image/svg+xml' }],
+  },
 }
 
 export default async function RootLayout({

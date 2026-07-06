@@ -21,6 +21,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ease } from '@/lib/motion'
 import { api } from '@/lib/api'
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -682,7 +683,7 @@ export function OnboardingWizard({ initialStep, workspace }: WizardProps) {
         <motion.div
           className="h-full bg-accent"
           animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.4, ease: ease.standard }}
         />
       </div>
 
@@ -725,7 +726,7 @@ export function OnboardingWizard({ initialStep, workspace }: WizardProps) {
               initial={{ opacity: 0, x: direction * 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: direction * -30 }}
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.2, ease: ease.standard }}
             >
               {step === 0 && (
                 <StepWelcome

@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
@@ -139,7 +140,14 @@ function PulseItem({
       {/* thumbnail */}
       <div className="relative shrink-0">
         {job.thumbnail ? (
-          <img src={job.thumbnail} alt="" className="size-10 rounded-md object-cover" />
+          <Image
+            src={job.thumbnail}
+            alt=""
+            width={40}
+            height={40}
+            unoptimized={job.thumbnail.startsWith('http')}
+            className="size-10 rounded-md object-cover"
+          />
         ) : (
           <div className="flex size-10 items-center justify-center rounded-md bg-surface-hover">
             <PlatformIcon platform={job.platform} className="size-5" />
@@ -230,10 +238,13 @@ function PulseItem({
 
       {/* assignee */}
       {job.assigneeAvatar && (
-        <img
+        <Image
           src={job.assigneeAvatar}
           alt={job.assignee}
           title={job.assignee}
+          width={24}
+          height={24}
+          unoptimized={job.assigneeAvatar.startsWith('http')}
           className="size-6 rounded-full ring-2 ring-white shrink-0"
         />
       )}

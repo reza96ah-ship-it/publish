@@ -70,3 +70,10 @@ export const platformRateLimit = (workspaceId: string, platformId: string) =>
 // 60 general API requests per minute per workspace
 export const apiRateLimit = (identifier: string) =>
   checkLimit('api', identifier, 60, 60)
+
+// Issue #255: 120 public-API requests per minute per API token.
+// Keyed by token id (not by hash) so a revoked+rotated token gets a fresh
+// budget. Generous enough for typical Zapier/n8n polling integrations but
+// still caps runaway loops. Fail-open — Redis outage must not block traffic.
+export const publicApiRateLimit = (tokenId: string) =>
+  checkLimit('public-api', tokenId, 120, 60)

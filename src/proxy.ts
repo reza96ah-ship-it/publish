@@ -76,7 +76,14 @@ export async function proxy(req: NextRequest) {
     // Issue #151: /api/metrics removed from public paths -- Prometheus endpoints
     // should be restricted by network policy or reverse-proxy, not exposed publicly.
     // If metrics must be scraped without auth, configure network-level protection.
+    pathname.startsWith('/api/smart-pages/public/') ||
+    pathname.startsWith('/api/smart-pages/track') ||
+    // Issue #255: Public API v1 uses Bearer-token auth, not session cookies.
+    // Excluding it here keeps the middleware from 401-redirecting API clients
+    // (and from injecting nonce/CSP that a non-browser caller doesn't need).
+    pathname.startsWith('/api/v1') ||
     pathname.startsWith('/auth/') ||
+    pathname.startsWith('/p/') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
@@ -87,6 +94,12 @@ export async function proxy(req: NextRequest) {
     if (process.env.DISABLE_AUTH !== '1') {
       const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
       if (!token) {
+        // API routes get a 401, not a redirect: redirecting fetch/beacon
+        // calls (e.g. /api/vitals) to the signin page is useless to the
+        // caller and used to leak "callbackUrl=/api/..." into the login flow.
+        if (pathname.startsWith('/api/')) {
+          return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+        }
         const signInUrl = new URL('/auth/signin', req.url)
         signInUrl.searchParams.set('callbackUrl', pathname)
         const redirect = NextResponse.redirect(signInUrl)
@@ -130,10 +143,14 @@ export const config = {
     //                     requires auth. The matcher still skips running
     //                     middleware on it for performance; network policy
     //                     or reverse-proxy must restrict access at the edge.)
+    //   api/smart-pages/public -- Issue #250: public link-in-bio reads
+    //   api/smart-pages/track  -- Issue #250: public click-tracking beacon
+    //   api/v1         -- Issue #255: Public API v1 (Bearer-token auth, not session)
     //   auth           -- The signin page itself
+    //   p              -- Issue #250: public Smart Page route (/p/[slug])
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|auth|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos).*)',
   ],
 }

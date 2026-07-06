@@ -304,6 +304,132 @@ export const mediaUploadQuerySchema = z.object({
   fileName: z.string().max(200, 'نام فایل خیلی طولانی است').optional(),
 })
 
+// ── Smart Pages (#250) ──────────────────────────────────────────────────────
+
+export const smartPageBlockSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('link'),
+    id: z.string().max(100),
+    label: persianText(1, 200, 'برچسب لینک الزامی است'),
+    url: z.string().url('لینک نامعتبر است').max(500),
+    icon: z.string().max(50).optional(),
+  }),
+  z.object({
+    type: z.literal('social'),
+    id: z.string().max(100),
+    platform: z.string().max(50),
+    url: z.string().url().max(500),
+    label: z.string().max(100).optional(),
+  }),
+  z.object({
+    type: z.literal('heading'),
+    id: z.string().max(100),
+    text: persianText(1, 200, 'متن عنوان الزامی است'),
+  }),
+  z.object({
+    type: z.literal('text'),
+    id: z.string().max(100),
+    text: persianText(1, 1000, 'متن الزامی است'),
+  }),
+  z.object({
+    type: z.literal('image'),
+    id: z.string().max(100),
+    url: z.string().url().max(500),
+    alt: persianText(1, 200, 'متن جایگزین الزامی است'),
+    caption: persianText(0, 200).optional(),
+  }),
+  z.object({
+    type: z.literal('latest-posts'),
+    id: z.string().max(100),
+    limit: z.number().int().min(1).max(20),
+    label: persianText(0, 100).optional(),
+  }),
+])
+
+export const smartPageCreateSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'نامک الزامی است')
+    .max(100, 'نامک خیلی طولانی است')
+    .regex(
+      /^[a-z0-9-]+$/,
+      'نامک فقط می‌تواند شامل حروف انگلیسی کوچک، عدد و خط تیره باشد'
+    ),
+  title: persianText(1, 200, 'عنوان الزامی است'),
+  description: persianText(0, 500).optional(),
+  avatarUrl: z.string().url().max(500).nullable().optional(),
+  blocks: z
+    .array(smartPageBlockSchema)
+    .max(50, 'حداکثر ۵۰ بلوک مجاز است')
+    .optional()
+    .default([]),
+  isPublished: z.boolean().optional().default(false),
+})
+
+export const smartPageUpdateSchema = smartPageCreateSchema.partial()
+
+export const smartPageClickSchema = z.object({
+  slug: z
+    .string()
+    .trim()
+    .min(1, 'نامک الزامی است')
+    .max(100, 'نامک خیلی طولانی است')
+    .regex(/^[a-z0-9-]+$/, 'نامک نامعتبر است'),
+  blockId: z.string().min(1).max(100),
+  blockType: z.string().min(1).max(50),
+  label: z.string().max(200).optional().default(''),
+  url: z.string().max(500).optional().default(''),
+  referrer: z.string().max(500).nullable().optional(),
+  userAgent: z.string().max(500).nullable().optional(),
+})
+
+// ── API Tokens (#255) ───────────────────────────────────────────────────────
+//
+// Scopes are validated against the same enum used in src/lib/auth-guards.ts
+// (API_SCOPES). Keep both lists in sync — the auth guard enforces them at
+// request time, the Zod schema enforces them at creation time. expiresAt is
+// an ISO-8601 datetime string (or null for "no expiry").
+
+export const apiTokenCreateSchema = z.object({
+  name: persianText(1, 100, 'نام توکن الزامی است'),
+  scopes: z
+    .array(
+      z.enum([
+        'content:read',
+        'content:write',
+        'publications:read',
+        'inbox:read',
+        'reports:read',
+      ])
+    )
+    .min(1, 'حداقل یک دسترسی الزامی است'),
+  expiresAt: z.string().datetime().nullable().optional(),
+})
+
+// ── Webhooks (#255) ─────────────────────────────────────────────────────────
+//
+// URLs MUST be HTTPS — no plaintext http:// allowed, because the webhook
+// secret travels in the request body. Events are free-form strings so we can
+// add new event types (publish.success, inbox.new, …) without a migration;
+// the route layer should reject unknown event names with a 400.
+
+export const webhookCreateSchema = z.object({
+  url: z
+    .string()
+    .url('آدرس وب‌هوک نامعتبر است')
+    .max(500)
+    .regex(/^https:\/\//, 'آدرس باید HTTPS باشد'),
+  events: z
+    .array(z.string().min(1).max(50))
+    .min(1, 'حداقل یک رویداد الزامی است')
+    .max(20),
+})
+
+export const webhookUpdateSchema = webhookCreateSchema.partial().extend({
+  isActive: z.boolean().optional(),
+})
+
 // ── Generic helpers ─────────────────────────────────────────────────────────
 
 export const idSchema = z.string().min(1, 'شناسه الزامی است').max(100)
