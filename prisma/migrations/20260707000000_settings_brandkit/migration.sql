@@ -5,7 +5,7 @@
 -- treats NULL/empty as "no restriction" / "use defaults".
 
 -- AlterTable: add bannedWords to Workspace
-ALTER TABLE "Workspace" ADD COLUMN "bannedWords" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "Workspace" ADD COLUMN "bannedWords" TEXT;
 
 -- AlterTable: add notificationPreferences to User
 ALTER TABLE "User" ADD COLUMN "notificationPreferences" JSONB;
