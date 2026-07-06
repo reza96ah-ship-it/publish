@@ -996,8 +996,8 @@ function CreateTemplateDialog({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [plan, setPlan] = useState('free')
-  const [brandPrimary, setBrandPrimary] = useState('#0F766E')
-  const [brandAccent, setBrandAccent] = useState('#2563EB')
+  const [brandPrimary, setBrandPrimary] = useState('var(--n-accent)')
+  const [brandAccent, setBrandAccent] = useState('var(--n-accent)')
   const [approvalWorkflow, setApprovalWorkflow] = useState(true)
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1012,8 +1012,8 @@ function CreateTemplateDialog({
     setName('')
     setDescription('')
     setPlan('free')
-    setBrandPrimary('#0F766E')
-    setBrandAccent('#2563EB')
+    setBrandPrimary('var(--n-accent)')
+    setBrandAccent('var(--n-accent)')
     setApprovalWorkflow(true)
   }
 
