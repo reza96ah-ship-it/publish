@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useShouldAnimate, ease } from '@/lib/motion'
+import { useShouldAnimate, ease, duration } from '@/lib/motion'
 import { toPersianDigits, formatCompact } from '@/lib/jalali'
 import { cn } from '@/lib/utils'
 import { PlatformLogo } from '@/components/ui/platform-logo'
@@ -261,7 +261,7 @@ export function Sparkline({
         fill={`url(#${gradId})`}
         initial={animate ? { opacity: 0 } : false}
         animate={animate ? { opacity: 1 } : undefined}
-        transition={{ duration: 0.5, ease: ease.enter, delay: 0.1 }}
+        transition={{ duration: duration.slow, ease: ease.enter, delay: 0.1 }}
       />
       <motion.polyline
         points={pts}
@@ -272,7 +272,7 @@ export function Sparkline({
         strokeLinejoin="round"
         initial={animate ? { pathLength: 0, opacity: 0 } : false}
         animate={animate ? { pathLength: 1, opacity: 1 } : undefined}
-        transition={{ duration: 0.8, ease: ease.enter }}
+        transition={{ duration: duration.deliberate, ease: ease.enter }}
       />
       <motion.circle
         cx={lastX}
@@ -281,7 +281,7 @@ export function Sparkline({
         fill={color}
         initial={animate ? { scale: 0, opacity: 0 } : false}
         animate={animate ? { scale: 1, opacity: 1 } : undefined}
-        transition={{ duration: 0.3, ease: ease.announce, delay: 0.7 }}
+        transition={{ duration: duration.slow, ease: ease.announce, delay: 0.7 }}
       />
     </svg>
   )
@@ -473,7 +473,7 @@ export function MiniChart({
           fill={`url(#${gradId})`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
+          transition={{ duration: duration.slow, delay: 0.15 }}
         />
         {/* Average baseline — dashed reference in the chart's own color */}
         {showBaseline && (
@@ -498,7 +498,7 @@ export function MiniChart({
           strokeLinejoin="round"
           initial={{ pathLength: 0 }}
           animate={{ pathLength: 1 }}
-          transition={{ duration: 1, ease: ease.enter }}
+          transition={{ duration: duration.deliberate, ease: ease.enter }}
         />
       </svg>
 
@@ -525,7 +525,7 @@ export function MiniChart({
           style={{ borderColor: color, borderWidth: 1.5, borderStyle: 'solid' }}
           initial={{ scale: 1, opacity: 0.5 }}
           animate={{ scale: 3.5, opacity: 0 }}
-          transition={{ duration: 1.8, repeat: shouldAnimate ? Infinity : 0, ease: 'easeOut' }}
+          transition={{ duration: duration.deliberate, repeat: shouldAnimate ? Infinity : 0, ease: ease.enter }}
         />
       </div>
 
@@ -897,8 +897,8 @@ export function LoadingState({
         <motion.div
           key="error"
           initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: ease.enter } }}
-          exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          animate={{ opacity: 1, y: 0, transition: { duration: duration.standard, ease: ease.enter } }}
+          exit={{ opacity: 0, transition: { duration: duration.quick } }}
         >
           <ErrorState label={errorLabel} onRetry={onRetry} />
         </motion.div>
@@ -906,7 +906,7 @@ export function LoadingState({
         <motion.div
           key="skeleton"
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.15 } }}
+          exit={{ opacity: 0, transition: { duration: duration.quick } }}
         >
           {skeleton}
         </motion.div>
@@ -914,7 +914,7 @@ export function LoadingState({
         <motion.div
           key="content"
           initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: ease.enter } }}
+          animate={{ opacity: 1, y: 0, transition: { duration: duration.standard, ease: ease.enter } }}
         >
           {children}
         </motion.div>
