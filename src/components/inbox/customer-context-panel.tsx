@@ -70,10 +70,10 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  open: 'bg-amber-100 text-amber-900',
-  in_progress: 'bg-blue-100 text-blue-900',
-  resolved: 'bg-emerald-100 text-emerald-900',
-  closed: 'bg-zinc-100 text-zinc-700',
+  open: 'bg-warning-soft text-warning',
+  in_progress: 'bg-info-soft text-info',
+  resolved: 'bg-success-soft text-success',
+  closed: 'bg-surface-subtle text-ink-tertiary',
 }
 
 function formatDate(iso: string): string {
@@ -93,14 +93,14 @@ function formatDate(iso: string): string {
 function ConsentBadge({ status }: { status: string }) {
   if (status === 'granted') {
     return (
-      <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
+      <Badge variant="outline" className="gap-1 border-success/30 text-success">
         <CheckCircle2 className="size-3" /> رضایت داده
       </Badge>
     )
   }
   if (status === 'denied') {
     return (
-      <Badge variant="outline" className="gap-1 border-rose-300 text-rose-700">
+      <Badge variant="outline" className="gap-1 border-danger/30 text-danger">
         <AlertTriangle className="size-3" /> عدم رضایت
       </Badge>
     )
