@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { validateBody, inboxReplySchema } from '@/lib/validations'
-import { inboxService, InboxMessageNotFoundError } from '@/modules/inbox'
+import { inboxService, InboxMessageNotFoundError, ProviderReplyError } from '@/modules/inbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof InboxMessageNotFoundError) return NextResponse.json({ error: 'مورد یافت نشد' }, { status: 404 })
+    if (err instanceof ProviderReplyError) return NextResponse.json({ error: err.message }, { status: 502 })
     throw err
   }
 }

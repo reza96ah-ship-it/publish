@@ -1,4 +1,5 @@
 export { InboxService, inboxService } from './service'
 export { InboxRepository } from './repository'
+export { ProviderReplyError } from './instagram-reply'
 export * from './types'
 export * from './errors'

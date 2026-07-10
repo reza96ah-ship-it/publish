@@ -705,6 +705,9 @@ model InboxMessage {
   platform  Platform  @relation(fields: [platformId], references: [id])
   assignee  WorkspaceMember? @relation(fields: [assigneeId], references: [id])
 
+  // Dedup key for the worker's inbox ingest scanner — one row per provider
+  // comment/message. Postgres allows multiple NULL externalIds (seed/demo rows).
+  @@unique([platformId, externalId])
   @@index([workspaceId])
   @@index([workspaceId, isRead])
   @@index([workspaceId, status])
