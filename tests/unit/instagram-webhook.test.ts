@@ -59,6 +59,6 @@ describe('Instagram webhook verification', () => {
         object: 'instagram',
         entry: [{ id: '1' }, { id: '2' }],
       })
-    ).toEqual({ object: 'instagram', entryCount: 2 })
+    ).toEqual({ object: 'instagram', entryCount: 2, providerAccountId: '1' })
   })
 })

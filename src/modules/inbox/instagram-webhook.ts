@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, timingSafeEqual } from 'crypto'
 
 export const INSTAGRAM_WEBHOOK_VERIFY_TOKEN_ENV = 'INSTAGRAM_WEBHOOK_VERIFY_TOKEN'
 export const INSTAGRAM_APP_SECRET_ENV = 'INSTAGRAM_APP_SECRET'
@@ -45,6 +45,10 @@ export function signInstagramWebhookBody(rawBody: string, appSecret: string): st
   return `sha256=${digest}`
 }
 
+export function buildProviderWebhookEventKey(provider: string, rawBody: string): string {
+  return createHash('sha256').update(`${provider}:${rawBody}`, 'utf8').digest('hex')
+}
+
 export function verifyInstagramWebhookSignature(
   rawBody: string,
   signatureHeader: string | null,
@@ -68,8 +72,14 @@ export function verifyInstagramWebhookSignature(
 
 export function summarizeInstagramWebhookPayload(payload: unknown) {
   const parsed = payload as { object?: unknown; entry?: unknown }
+  const firstEntry = Array.isArray(parsed.entry) ? parsed.entry[0] : null
+  const firstEntryId =
+    firstEntry && typeof firstEntry === 'object' && 'id' in firstEntry
+      ? (firstEntry as { id?: unknown }).id
+      : null
   return {
     object: typeof parsed.object === 'string' ? parsed.object : null,
     entryCount: Array.isArray(parsed.entry) ? parsed.entry.length : 0,
+    providerAccountId: typeof firstEntryId === 'string' ? firstEntryId : null,
   }
 }

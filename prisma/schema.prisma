@@ -715,6 +715,30 @@ model InboxMessage {
   @@index([assigneeId])
 }
 
+model ProviderWebhookEvent {
+  id                String   @id @default(cuid())
+  provider          String
+  eventKey          String   @unique
+  providerObject    String?
+  providerAccountId String?
+  payload           Json
+  rawBody           String
+  signature         String?
+  entryCount        Int      @default(0)
+  status            String   @default("received") // received, processing, processed, failed
+  duplicateCount    Int      @default(0)
+  receivedAt        DateTime @default(now())
+  lastReceivedAt    DateTime @default(now())
+  processedAt       DateTime?
+  lastError         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([provider, receivedAt])
+  @@index([provider, status])
+  @@index([providerAccountId, receivedAt])
+}
+
 /* ─── Analytics Snapshots ─── */
 
 model AnalyticsSnapshot {
