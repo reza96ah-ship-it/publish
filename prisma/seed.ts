@@ -62,58 +62,20 @@ async function main() {
     db.user.create({ data: { id: 'u5', email: 'hossein@nashrino.ir', name: 'حسین کریمی' } }),
   ])
 
-  const members = await db.$transaction([
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u1',
-        name: 'علی احمدی',
-        email: 'ali@nashrino.ir',
-        role: 'admin',
-        avatarUrl: 'https://i.pravatar.cc/150?u=1',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u2',
-        name: 'سارا مرادی',
-        email: 'sara@nashrino.ir',
-        role: 'editor',
-        avatarUrl: 'https://i.pravatar.cc/150?u=2',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u3',
-        name: 'محمد رضایی',
-        email: 'mohammad@nashrino.ir',
-        role: 'approver',
-        avatarUrl: 'https://i.pravatar.cc/150?u=3',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u4',
-        name: 'فرناز اسدی',
-        email: 'farnaz@nashrino.ir',
-        role: 'editor',
-        avatarUrl: 'https://i.pravatar.cc/150?u=4',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u5',
-        name: 'حسین کریمی',
-        email: 'hossein@nashrino.ir',
-        role: 'viewer',
-        avatarUrl: 'https://i.pravatar.cc/150?u=5',
-      },
-    }),
-  ])
+  // createMany with explicit ids — individual create() calls inside a
+  // $transaction intermittently hit the Prisma 7.8.0 query-compiler panic
+  // (parser.rs:855 Option::unwrap on None), same as the analytics snapshots.
+  const memberRows = [
+    { id: 'm1', userId: 'u1', name: 'علی احمدی', email: 'ali@nashrino.ir', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=1' },
+    { id: 'm2', userId: 'u2', name: 'سارا مرادی', email: 'sara@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=2' },
+    { id: 'm3', userId: 'u3', name: 'محمد رضایی', email: 'mohammad@nashrino.ir', role: 'approver', avatarUrl: 'https://i.pravatar.cc/150?u=3' },
+    { id: 'm4', userId: 'u4', name: 'فرناز اسدی', email: 'farnaz@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=4' },
+    { id: 'm5', userId: 'u5', name: 'حسین کریمی', email: 'hossein@nashrino.ir', role: 'viewer', avatarUrl: 'https://i.pravatar.cc/150?u=5' },
+  ]
+  await db.workspaceMember.createMany({
+    data: memberRows.map((m) => ({ ...m, workspaceId: ws.id })),
+  })
+  const members = memberRows
 
   // ─── Platforms ───
   const platforms = await db.$transaction([

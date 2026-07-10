@@ -24,6 +24,13 @@ vi.mock('@/lib/auth-guards', () => ({
   requirePermissionApi: vi.fn(),
 }))
 
+// This test verifies token encryption, not platform policy — bypass the
+// ENABLED_PLATFORMS gate so the telegram bot-token flow stays testable.
+vi.mock('@/lib/provider-capabilities', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/provider-capabilities')>()
+  return { ...actual, isPlatformEnabled: () => true }
+})
+
 const mockedDb = vi.mocked(db)
 const mockedRequirePermissionApi = vi.mocked(requirePermissionApi)
 
