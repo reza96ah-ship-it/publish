@@ -1,5 +1,7 @@
+import { decrypt } from '@/lib/crypto'
 import { InboxRepository } from './repository'
 import { InboxMessageNotFoundError, AssigneeMemberNotFoundError } from './errors'
+import { sendCommentReply, sendPrivateReply, ProviderReplyError } from './instagram-reply'
 import type {
   AuthContext,
   InboxListQuery,
@@ -41,8 +43,28 @@ export class InboxService {
   }
 
   async replyToMessage(auth: AuthContext, messageId: string, input: ReplyInput): Promise<ReplyResult> {
-    const message = await this.repo.findInWorkspace(messageId, auth.workspaceId)
+    const message = await this.repo.findWithPlatform(messageId, auth.workspaceId)
     if (!message) throw new InboxMessageNotFoundError()
+
+    // Send to the real commenter first — only persist the reply locally once
+    // the provider accepted it. Demo/seed rows (no externalId) and platforms
+    // without a token stay local-only, so the demo workspace keeps working.
+    const { platform } = message
+    if (
+      message.externalId &&
+      platform?.type === 'instagram' &&
+      platform.tokenSecret
+    ) {
+      const accessToken = decrypt(platform.tokenSecret)
+      if (message.messageType === 'dm') {
+        if (!platform.targetId) {
+          throw new ProviderReplyError('شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید')
+        }
+        await sendPrivateReply(accessToken, platform.targetId, message.externalId, input.reply)
+      } else {
+        await sendCommentReply(accessToken, message.externalId, input.reply)
+      }
+    }
 
     const updated = await this.repo.reply(messageId, input.reply)
     return { ok: true, reply: updated.reply, isReplied: updated.isReplied }

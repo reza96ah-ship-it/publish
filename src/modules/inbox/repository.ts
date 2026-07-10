@@ -57,6 +57,16 @@ export class InboxRepository {
     return db.inboxMessage.findFirst({ where: { id, workspaceId } })
   }
 
+  /** Message + the platform credential fields needed to send a real reply. */
+  async findWithPlatform(id: string, workspaceId: string) {
+    return db.inboxMessage.findFirst({
+      where: { id, workspaceId },
+      include: {
+        platform: { select: { type: true, tokenSecret: true, targetId: true } },
+      },
+    })
+  }
+
   async findMemberInWorkspace(memberId: string, workspaceId: string) {
     return db.workspaceMember.findFirst({ where: { id: memberId, workspaceId } })
   }

@@ -41,6 +41,7 @@ import { startInvitationCleanup, stopInvitationCleanup } from './lib/invitation-
 import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
 import { startCommentDmScanner, stopCommentDmScanner } from './lib/comment-dm-scanner'
+import { startInboxIngestScanner, stopInboxIngestScanner } from './lib/inbox-ingest-scanner'
 import {
   unknownOutcomesCounter,
   scheduleDelayHistogram,
@@ -1013,6 +1014,7 @@ async function shutdown(signal: string) {
   stopMediaCleanup()
   stopReconciliationScanner()
   stopCommentDmScanner()
+  stopInboxIngestScanner()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   await closeRedisClient() // P1-10: close shared circuit/rate-limit redis client
@@ -1048,6 +1050,9 @@ startReconciliationScanner()
 // Comment→DM scanner: polls IG for new comments on published posts,
 // matches active rules, sends DMs via the IG Messaging API, logs to CommentDmLog.
 startCommentDmScanner()
+// Inbox ingest scanner: pulls real IG comments on published posts into the
+// unified inbox (InboxMessage rows) so the inbox reflects actual customers.
+startInboxIngestScanner()
 
 // ── Helpers ───────────────────────────────────────────────────
 
