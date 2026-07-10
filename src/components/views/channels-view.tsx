@@ -23,7 +23,7 @@ import {
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
 import { useAnnounceValue, announce } from '@/lib/aria-live'
-import { getCapabilities } from '@/lib/provider-capabilities'
+import { getCapabilities, isPlatformEnabled } from '@/lib/provider-capabilities'
 import {
   SectionTitle,
   PlatformIcon,
@@ -86,13 +86,15 @@ interface Platform {
   username: string
 }
 
-const AVAILABLE_PLATFORMS = [
+const ALL_PLATFORMS = [
   { id: 'instagram', label: 'اینستاگرام', method: 'oauth' },
   { id: 'telegram', label: 'تلگرام', method: 'bot' },
   { id: 'linkedin', label: 'لینکدین', method: 'oauth' },
   { id: 'rubika', label: 'روبیکا', method: 'bot' },
   { id: 'eitaa', label: 'ایتا', method: 'bot' },
 ] as const
+
+const AVAILABLE_PLATFORMS = ALL_PLATFORMS.filter((p) => isPlatformEnabled(p.id))
 
 
 export function ChannelsView() {

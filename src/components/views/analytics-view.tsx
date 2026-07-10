@@ -50,6 +50,7 @@ import {
 import { ChartTooltip, BarChartTooltip } from '@/components/dashboard/chart-tooltip'
 import { PostPerformanceSection } from '@/components/analytics/post-performance'
 import { announce } from '@/lib/aria-live'
+import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -110,7 +111,7 @@ const PLATFORMS = [
   { id: 'telegram', label: 'تلگرام', color: 'var(--color-platform-telegram)' },
   { id: 'linkedin', label: 'لینکدین', color: 'var(--color-platform-linkedin)' },
   { id: 'rubika', label: 'روبیکا', color: 'var(--color-platform-rubika)' },
-]
+].filter((p) => isPlatformEnabled(p.id))
 
 export function AnalyticsView() {
   const [period, setPeriod] = useState<'7' | '30'>('7')
@@ -683,7 +684,7 @@ const REPORT_CHANNELS = [
   { id: 'rubika', label: 'روبیکا' },
   { id: 'bale', label: 'بله' },
   { id: 'eitaa', label: 'ایتا' },
-]
+].filter((c) => c.id === 'all' || isPlatformEnabled(c.id))
 
 const REPORT_METRICS: Array<{ id: ReportMetricKey; label: string }> = [
   { id: 'reach', label: 'دسترسی' },

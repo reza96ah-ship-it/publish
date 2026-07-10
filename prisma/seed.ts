@@ -62,58 +62,20 @@ async function main() {
     db.user.create({ data: { id: 'u5', email: 'hossein@nashrino.ir', name: 'حسین کریمی' } }),
   ])
 
-  const members = await db.$transaction([
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u1',
-        name: 'علی احمدی',
-        email: 'ali@nashrino.ir',
-        role: 'admin',
-        avatarUrl: 'https://i.pravatar.cc/150?u=1',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u2',
-        name: 'سارا مرادی',
-        email: 'sara@nashrino.ir',
-        role: 'editor',
-        avatarUrl: 'https://i.pravatar.cc/150?u=2',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u3',
-        name: 'محمد رضایی',
-        email: 'mohammad@nashrino.ir',
-        role: 'approver',
-        avatarUrl: 'https://i.pravatar.cc/150?u=3',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u4',
-        name: 'فرناز اسدی',
-        email: 'farnaz@nashrino.ir',
-        role: 'editor',
-        avatarUrl: 'https://i.pravatar.cc/150?u=4',
-      },
-    }),
-    db.workspaceMember.create({
-      data: {
-        workspaceId: ws.id,
-        userId: 'u5',
-        name: 'حسین کریمی',
-        email: 'hossein@nashrino.ir',
-        role: 'viewer',
-        avatarUrl: 'https://i.pravatar.cc/150?u=5',
-      },
-    }),
-  ])
+  // createMany with explicit ids — individual create() calls inside a
+  // $transaction intermittently hit the Prisma 7.8.0 query-compiler panic
+  // (parser.rs:855 Option::unwrap on None), same as the analytics snapshots.
+  const memberRows = [
+    { id: 'm1', userId: 'u1', name: 'علی احمدی', email: 'ali@nashrino.ir', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=1' },
+    { id: 'm2', userId: 'u2', name: 'سارا مرادی', email: 'sara@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=2' },
+    { id: 'm3', userId: 'u3', name: 'محمد رضایی', email: 'mohammad@nashrino.ir', role: 'approver', avatarUrl: 'https://i.pravatar.cc/150?u=3' },
+    { id: 'm4', userId: 'u4', name: 'فرناز اسدی', email: 'farnaz@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=4' },
+    { id: 'm5', userId: 'u5', name: 'حسین کریمی', email: 'hossein@nashrino.ir', role: 'viewer', avatarUrl: 'https://i.pravatar.cc/150?u=5' },
+  ]
+  await db.workspaceMember.createMany({
+    data: memberRows.map((m) => ({ ...m, workspaceId: ws.id })),
+  })
+  const members = memberRows
 
   // ─── Platforms ───
   const platforms = await db.$transaction([
@@ -141,13 +103,16 @@ async function main() {
         primaryIssue: 'انقضای توکن حساب اصلی',
       },
     }),
+    // Only Instagram is enabled for now (ENABLED_PLATFORMS in
+    // shared/provider-capabilities.ts) — the extra demo channels below are
+    // additional Instagram accounts so downstream seed references still work.
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'telegram',
-        name: 'تلگرام',
+        type: 'instagram',
+        name: 'اینستاگرام کانال',
         username: 'nashrino_channel',
-        accountKind: 'channel',
+        accountKind: 'professional',
         status: 'active',
         lastSuccessAt: hoursAgo(0),
       },
@@ -155,9 +120,9 @@ async function main() {
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'linkedin',
-        name: 'لینکدین',
-        username: 'Nashrino Co.',
+        type: 'instagram',
+        name: 'اینستاگرام شرکت',
+        username: 'nashrino_co',
         accountKind: 'professional',
         status: 'active',
         lastSuccessAt: hoursAgo(0.1),
@@ -166,10 +131,10 @@ async function main() {
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'rubika',
-        name: 'روبیکا',
+        type: 'instagram',
+        name: 'اینستاگرام فروشگاه',
         username: 'nashrino_shop',
-        accountKind: 'channel',
+        accountKind: 'professional',
         status: 'error',
         lastSuccessAt: hoursAgo(24),
         lastError: 'خطای سرور ۵۰۰',
@@ -714,7 +679,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m3',
         message: 'لینک ثبت‌نام وبینار کجاست؟',
         isRead: false,
-        platformType: 'telegram',
+        platformType: 'instagram',
         messageType: 'comment',
         createdAt: hoursAgo(3),
       },
@@ -742,7 +707,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m5',
         message: 'Interested in your services. Can we schedule a call?',
         isRead: false,
-        platformType: 'linkedin',
+        platformType: 'instagram',
         messageType: 'dm',
         createdAt: hoursAgo(12),
       },
@@ -768,7 +733,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m7',
         message: 'سفارش من کی ارسال میشه؟',
         isRead: false,
-        platformType: 'rubika',
+        platformType: 'instagram',
         messageType: 'dm',
         createdAt: hoursAgo(2),
       },
@@ -779,7 +744,8 @@ async function main() {
   // Use createMany to avoid Prisma 7.8.0 query compiler panic on individual
   // create calls with nullable fields (Rust panic at parser.rs:855).
   const metricTypes = ['reach', 'engagement', 'followers', 'clicks']
-  const platformsForAn = ['instagram', 'telegram', 'linkedin', 'rubika', null]
+  // Instagram-only (see ENABLED_PLATFORMS); null = workspace-level aggregate.
+  const platformsForAn = ['instagram', null]
   const analyticsData: Array<{
     workspaceId: string
     date: string

@@ -46,6 +46,7 @@ import {
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import { toPersianDigits, formatJalali, relativeTime } from '@/lib/jalali'
 import { announce } from '@/lib/aria-live'
 import {
@@ -102,7 +103,9 @@ const PROVIDER_LABELS: Record<string, string> = {
   eitaa: 'ایتا',
 }
 
-const PROVIDER_OPTIONS = ['instagram', 'telegram', 'linkedin', 'rubika', 'bale', 'eitaa']
+const PROVIDER_OPTIONS = ['instagram', 'telegram', 'linkedin', 'rubika', 'bale', 'eitaa'].filter(
+  isPlatformEnabled,
+)
 
 const LANGUAGE_LABELS: Record<string, string> = {
   fa: 'فارسی',
@@ -125,7 +128,7 @@ const SENTIMENT_VARIANT: Record<string, string> = {
 }
 
 const DEFAULT_COVERAGE_BANNER =
-  'پوشش محدود است: فقط کامنت‌های اینستاگرام و پیام‌های کانال‌های عمومی تلگرام — دایرکت‌ها، استوری‌ها و پیام‌های خصوصی از طریق API قابل دسترسی نیستند.'
+  'پوشش محدود است: فقط کامنت‌های اینستاگرام — دایرکت‌ها، استوری‌ها و پیام‌های خصوصی از طریق API قابل دسترسی نیستند.'
 
 // ── View ─────────────────────────────────────────────────────────────────────
 
@@ -332,7 +335,7 @@ export function ListeningView() {
             <EmptyState
               icon={Radar}
               title="هنوز جستجوی گوش‌دادنی نساخته‌اید"
-              message="با ساخت جستجو می‌توانید نام برند، رقبا یا هشتگ‌ها را در اینستاگرام و تلگرام دنبال کنید و هشدار اسپایک دریافت کنید."
+              message="با ساخت جستجو می‌توانید نام برند، رقبا یا هشتگ‌ها را در اینستاگرام دنبال کنید و هشدار اسپایک دریافت کنید."
               action={
                 <Button
                   size="sm"
