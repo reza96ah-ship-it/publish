@@ -459,6 +459,11 @@ jobs:
       AUTH_SECRET: 'test-auth-secret-not-for-production'
     steps:
       - uses: actions/checkout@v5
+        with:
+          # git-auto-commit-action requires the PR head branch checked out (not
+          # the merge ref) to commit regenerated snapshots. Empty on push
+          # events → default checkout behavior.
+          ref: ${{ github.head_ref }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2
