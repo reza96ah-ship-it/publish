@@ -24,9 +24,9 @@
  */
 
 import { fetchWithTimeout } from './fetch-with-timeout'
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 
-const IG_GRAPH_VERSION = process.env.INSTAGRAM_GRAPH_API_VERSION || 'v23.0'
-const GRAPH_API = `https://graph.facebook.com/${IG_GRAPH_VERSION}`
+const GRAPH_API = getInstagramGraphApiBaseUrl()
 
 /** A comment returned by the Instagram Comments API. */
 export interface IgComment {

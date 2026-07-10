@@ -7,6 +7,7 @@
 import { decrypt } from '@/lib/crypto'
 import { AnalyticsRepository } from './repository'
 import type { AuthContext, RealStat, RealStatsResult, SnapshotSeriesResult } from './types'
+import { buildInstagramGraphApiUrl } from '../../../shared/instagram-graph'
 
 export class AnalyticsService {
   constructor(
@@ -62,9 +63,12 @@ export class AnalyticsService {
           }
         } else if (platform.type === 'instagram' && platform.targetId) {
           const igUserId = platform.targetId
-          const res = await fetch(
-            `https://graph.facebook.com/v21.0/${igUserId}/insights?metric=follower_count,reach,impressions&period=day&access_token=${token}`
-          )
+          const params = new URLSearchParams({
+            metric: 'follower_count,reach,impressions',
+            period: 'day',
+            access_token: token,
+          })
+          const res = await fetch(buildInstagramGraphApiUrl(`${igUserId}/insights?${params}`))
           const data = await res.json() as { error?: unknown; data?: { name: string; values: { value: number }[] }[] }
           if (!data.error) {
             const metrics: Record<string, number> = {}

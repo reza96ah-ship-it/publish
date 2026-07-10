@@ -139,6 +139,7 @@ model Workspace {
   contents      Content[]
   media         Media[]
   publishJobs   PublishJob[]
+  inboxThreads  InboxThread[]
   inboxMessages InboxMessage[]
   analytics     AnalyticsSnapshot[]
   notifications Notification[]
@@ -317,6 +318,7 @@ model Platform {
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentLinks   ContentPlatform[]
   publishJobs    PublishJob[]
+  inboxThreads    InboxThread[]
   inboxMessages  InboxMessage[]
   commentDmRules CommentDmRule[]
   postingSchedules PostingSchedule[]
@@ -713,6 +715,76 @@ model InboxMessage {
   @@index([workspaceId, status])
   @@index([platformId])
   @@index([assigneeId])
+}
+
+model InboxThread {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  platformId       String
+  providerThreadId String
+  providerUserId   String?
+  title            String   @default("")
+  messageType      String   @default("dm") // comment, dm, mention
+  status           String   @default("new") // new, assigned, in_progress, resolved
+  unreadCount      Int      @default(0)
+  lastMessageAt    DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  messages  InboxThreadMessage[]
+
+  @@unique([platformId, providerThreadId])
+  @@index([workspaceId, lastMessageAt])
+  @@index([workspaceId, status])
+  @@index([platformId, lastMessageAt])
+}
+
+model InboxThreadMessage {
+  id                String   @id @default(cuid())
+  threadId          String
+  workspaceId       String
+  platformId        String
+  providerMessageId String
+  direction         String   @default("inbound") // inbound, outbound, internal
+  messageType       String   @default("dm") // comment, dm, mention
+  senderExternalId  String?
+  senderName        String   @default("")
+  body              String
+  payload           Json
+  createdAt         DateTime @default(now())
+
+  thread InboxThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@unique([platformId, providerMessageId])
+  @@index([threadId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([platformId, createdAt])
+}
+
+model ProviderWebhookEvent {
+  id                String   @id @default(cuid())
+  provider          String
+  eventKey          String   @unique
+  providerObject    String?
+  providerAccountId String?
+  payload           Json
+  rawBody           String
+  signature         String?
+  entryCount        Int      @default(0)
+  status            String   @default("received") // received, processing, processed, failed
+  duplicateCount    Int      @default(0)
+  receivedAt        DateTime @default(now())
+  lastReceivedAt    DateTime @default(now())
+  processedAt       DateTime?
+  lastError         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([provider, receivedAt])
+  @@index([provider, status])
+  @@index([providerAccountId, receivedAt])
 }
 
 /* ─── Analytics Snapshots ─── */

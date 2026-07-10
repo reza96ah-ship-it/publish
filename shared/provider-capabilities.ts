@@ -32,6 +32,8 @@
  *   - Eitaa: Rubika-compatible (reuses Rubika adapter)
  */
 
+import { DEFAULT_INSTAGRAM_GRAPH_API_VERSION } from './instagram-graph'
+
 export type PlatformKey =
   | 'telegram'
   | 'instagram'
@@ -101,7 +103,7 @@ export const PROVIDER_CAPABILITIES: Record<PlatformKey, ProviderCapability> = {
     maxHashtags: 30,
     label: 'اینستاگرام',
     supportLevel: 'beta',
-    apiVersion: 'Graph API v23.0',
+    apiVersion: `Graph API ${DEFAULT_INSTAGRAM_GRAPH_API_VERSION}`,
     duplicateGuarantee: 'reconcilable',
   },
   linkedin: {

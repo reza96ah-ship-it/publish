@@ -7,7 +7,7 @@
 import { db } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/crypto'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
-import { isPlatformEnabled } from '@/lib/provider-capabilities'
+import { getCapabilities, isPlatformEnabled } from '@/lib/provider-capabilities'
 import {
   computeCredentialStatus,
   REQUIRED_SCOPES,
@@ -332,21 +332,11 @@ export class ChannelsService {
         lastValidatedAt: p.lastValidatedAt?.toISOString() ?? null,
         failureRate7d: Math.round(failureRate * 10) / 10,
         attemptCount7d: stats.total,
-        apiVersion: API_VERSIONS[p.type] ?? 'نامشخص',
+        apiVersion: getCapabilities(p.type).apiVersion,
         reconnectUrl: `/channels?reconnect=${p.id}`,
       }
     })
   }
-}
-
-// API version per platform (Issue #131: "API version in use")
-const API_VERSIONS: Record<string, string> = {
-  instagram: 'Graph API v21.0',
-  linkedin: 'REST Posts API 202505',
-  telegram: 'Bot API 8.x',
-  bale: 'Bot API (Bale)',
-  rubika: 'Bot API v3',
-  eitaa: 'Bot API v3 (Rubika-compatible)',
 }
 
 function healthStatusLabel(status: string, circuitState: string): string {

@@ -15,6 +15,7 @@ import {
   getPostMetricsSupport,
   type PostMetricType,
 } from './post-metrics-shared'
+import { buildInstagramGraphApiUrl } from '../../../shared/instagram-graph'
 
 export { getPostMetricsSupport }
 export type { PostMetricType }
@@ -64,8 +65,12 @@ export async function collectPostMetrics(workspaceId: string): Promise<CollectRe
     try {
       if (platform.type === 'instagram') {
         const token = decrypt(platform.tokenSecret)
+        const params = new URLSearchParams({
+          metric: 'reach,likes,comments,saved',
+          access_token: token,
+        })
         const res = await fetch(
-          `https://graph.facebook.com/v21.0/${pub.providerPostId}/insights?metric=reach,likes,comments,saved&access_token=${token}`
+          buildInstagramGraphApiUrl(`${pub.providerPostId}/insights?${params}`)
         )
         const data = (await res.json()) as {
           error?: unknown
