@@ -5,6 +5,7 @@ import {
   verifyInstagramWebhookSignature,
 } from '@/modules/inbox/instagram-webhook'
 import { storeInstagramWebhookEvent } from '@/modules/inbox/instagram-webhook-events'
+import { ingestInstagramWebhookPayload } from '@/modules/inbox/instagram-webhook-ingest'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
     signature: req.headers.get('x-hub-signature-256'),
     payload,
   })
+  const ingest = await ingestInstagramWebhookPayload(payload)
 
   return NextResponse.json(
     {
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
       eventId: stored.id,
       duplicate: stored.duplicate,
       duplicateCount: stored.duplicateCount,
+      ingest,
       receivedAt: new Date().toISOString(),
       ...summarizeInstagramWebhookPayload(payload),
     },
