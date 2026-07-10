@@ -254,6 +254,8 @@ model WorkspaceMember {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   assigneeJobs  PublishJob[]
   assignedMessages InboxMessage[]
+  assignedThreads InboxThread[] @relation("InboxThreadAssignee")
+  lockedInboxThreads InboxThread[] @relation("InboxThreadLock")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -726,6 +728,13 @@ model InboxThread {
   title            String   @default("")
   messageType      String   @default("dm") // comment, dm, mention
   status           String   @default("new") // new, assigned, in_progress, resolved
+  assigneeId       String?
+  assignedAt       DateTime?
+  priority         String   @default("normal") // low, normal, high, urgent
+  tags             String[] @default([])
+  lockedAt         DateTime?
+  lockedById       String?
+  lockExpiresAt    DateTime?
   unreadCount      Int      @default(0)
   lastMessageAt    DateTime @default(now())
   createdAt        DateTime @default(now())
@@ -733,11 +742,16 @@ model InboxThread {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   platform  Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  assignee  WorkspaceMember? @relation("InboxThreadAssignee", fields: [assigneeId], references: [id])
+  lockedBy  WorkspaceMember? @relation("InboxThreadLock", fields: [lockedById], references: [id])
   messages  InboxThreadMessage[]
 
   @@unique([platformId, providerThreadId])
   @@index([workspaceId, lastMessageAt])
   @@index([workspaceId, status])
+  @@index([workspaceId, assigneeId])
+  @@index([workspaceId, priority])
+  @@index([workspaceId, lockExpiresAt])
   @@index([platformId, lastMessageAt])
 }
 

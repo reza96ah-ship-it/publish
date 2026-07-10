@@ -67,6 +67,11 @@ interface InboxMessage {
   createdAt: string
   status: 'new' | 'assigned' | 'in_progress' | 'resolved'
   slaStartedAt: string | null
+  priority?: string
+  tags?: string[]
+  lockedById?: string | null
+  lockedByName?: string | null
+  lockExpiresAt?: string | null
 }
 
 interface InboxThreadTimelineMessage {
@@ -89,6 +94,14 @@ interface InboxThreadSummary {
   platformName: string
   messageType: string
   status: string
+  assigneeId: string | null
+  assigneeName: string | null
+  assigneeAvatar: string | null
+  priority: string
+  tags: string[]
+  lockedById: string | null
+  lockedByName: string | null
+  lockExpiresAt: string | null
   unreadCount: number
   lastMessageAt: string
   createdAt: string
@@ -130,12 +143,17 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
     platform: thread.platform,
     platformName: thread.platformName,
     messageType: thread.messageType,
-    assigneeId: null,
-    assigneeName: null,
-    assigneeAvatar: null,
+    assigneeId: thread.assigneeId,
+    assigneeName: thread.assigneeName,
+    assigneeAvatar: thread.assigneeAvatar,
     createdAt: thread.lastMessageAt,
     status: asInboxStatus(thread.status),
     slaStartedAt: null,
+    priority: thread.priority,
+    tags: thread.tags,
+    lockedById: thread.lockedById,
+    lockedByName: thread.lockedByName,
+    lockExpiresAt: thread.lockExpiresAt,
   }
 }
 
@@ -151,6 +169,20 @@ const STATUS_COLOR: Record<string, string> = {
   assigned: 'text-warning bg-warning-soft border-warning/20',
   in_progress: 'text-accent bg-accent/10 border-accent/20',
   resolved: 'text-success bg-success-soft border-success/20',
+}
+
+const PRIORITY_LABEL: Record<string, string> = {
+  low: 'Low',
+  normal: 'Normal',
+  high: 'High',
+  urgent: 'Urgent',
+}
+
+const PRIORITY_COLOR: Record<string, string> = {
+  low: 'text-ink-tertiary bg-surface border-border',
+  normal: 'text-ink-secondary bg-surface border-border',
+  high: 'text-warning bg-warning-soft border-warning/20',
+  urgent: 'text-danger bg-danger-soft border-danger/20',
 }
 
 const SLA_TARGET_MINUTES = 120 // 2h default
@@ -338,13 +370,47 @@ export function InboxView() {
   })
 
   const assignMutation = useMutation({
-    mutationFn: ({ id, assigneeId }: { id: string; assigneeId: string | null }) =>
-      api.post(`/api/inbox/${id}/assign`, { assigneeId }),
-    onSuccess: () => {
+    mutationFn: ({
+      id,
+      assigneeId,
+      kind,
+    }: {
+      id: string
+      assigneeId: string | null
+      kind: ConversationKind
+    }) =>
+      api.post(kind === 'thread' ? `/api/inbox/threads/${id}/assign` : `/api/inbox/${id}/assign`, {
+        assigneeId,
+      }),
+    onSuccess: (_data, vars) => {
       toast.success('ارجاع شد')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
     onError: () => toast.error('خطا در ارجاع'),
+  })
+
+  const claimMutation = useMutation({
+    mutationFn: ({ id }: { id: string }) => api.post(`/api/inbox/threads/${id}/claim`, {}),
+    onSuccess: (_data, vars) => {
+      toast.success('Thread claimed')
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+    },
+    onError: () => toast.error('خطا در دریافت گفتگو'),
+  })
+
+  const priorityMutation = useMutation({
+    mutationFn: ({ id, priority }: { id: string; priority: string }) =>
+      api.post(`/api/inbox/threads/${id}/priority`, { priority }),
+    onSuccess: (_data, vars) => {
+      toast.success('Priority updated')
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+    },
+    onError: () => toast.error('خطا در تغییر اولویت'),
   })
 
   const statusMutation = useMutation({
@@ -601,6 +667,21 @@ export function InboxView() {
                   >
                     {STATUS_LABEL[selected.status ?? 'new']}
                   </span>
+                  {selectedKind === 'thread' && selected.priority && (
+                    <span
+                      className={cn(
+                        'text-2xs font-semibold px-2 py-0.5 rounded-md border',
+                        PRIORITY_COLOR[selected.priority] ?? PRIORITY_COLOR.normal
+                      )}
+                    >
+                      {PRIORITY_LABEL[selected.priority] ?? selected.priority}
+                    </span>
+                  )}
+                  {selectedKind === 'thread' && selected.lockedByName && (
+                    <span className="text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20">
+                      Claimed by {selected.lockedByName}
+                    </span>
+                  )}
                   <span
                     className={cn(
                       'text-2xs font-semibold px-2 py-0.5 rounded-md border',
@@ -633,6 +714,16 @@ export function InboxView() {
                     <CheckCheck className="size-3" />
                     {selected.isRead ? 'ناخوانده کن' : 'خوانده کن'}
                   </button>
+                  {selectedKind === 'thread' && (
+                    <button
+                      onClick={() => claimMutation.mutate({ id: selected.id })}
+                      disabled={claimMutation.isPending}
+                      className="n-focus-ring inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
+                    >
+                      <UserCheck className="size-3" />
+                      Claim
+                    </button>
+                  )}
                   {selected.status !== 'resolved' && (
                     <button
                       onClick={() =>
@@ -681,8 +772,8 @@ export function InboxView() {
                 </div>
 
                 {/* Assign dropdown */}
-                {selectedKind === 'message' && members && members.length > 0 && (
-                  <div className="mt-2 flex items-center gap-2">
+                {members && members.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
                     <span className="text-2xs text-ink-tertiary">ارجاع به:</span>
                     <Select
                       value={selected.assigneeId ?? 'none'}
@@ -690,6 +781,7 @@ export function InboxView() {
                         assignMutation.mutate({
                           id: selected.id,
                           assigneeId: v === 'none' ? null : v,
+                          kind: selectedKind ?? 'message',
                         })
                       }
                     >
@@ -705,6 +797,28 @@ export function InboxView() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {selectedKind === 'thread' && (
+                      <>
+                        <span className="text-2xs text-ink-tertiary">Priority:</span>
+                        <Select
+                          value={selected.priority ?? 'normal'}
+                          onValueChange={(priority) =>
+                            priorityMutation.mutate({ id: selected.id, priority })
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-full sm:w-32 text-xs">
+                            <SelectValue placeholder="Priority" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1042,6 +1156,24 @@ function MessageListItem({
             >
               {STATUS_LABEL[message.status]}
             </span>
+            {message.priority && message.priority !== 'normal' && (
+              <span
+                className={cn(
+                  'text-2xs font-semibold px-1.5 py-0.5 rounded border shrink-0',
+                  PRIORITY_COLOR[message.priority] ?? PRIORITY_COLOR.normal
+                )}
+              >
+                {PRIORITY_LABEL[message.priority] ?? message.priority}
+              </span>
+            )}
+            {message.tags?.slice(0, 2).map((tag) => (
+              <span
+                key={tag}
+                className="text-2xs font-semibold px-1.5 py-0.5 rounded border text-ink-secondary bg-surface border-border shrink-0"
+              >
+                {tag}
+              </span>
+            ))}
             {!message.isRead && (
               <span className="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded border text-info bg-info-soft border-info/20 shrink-0">
                 <span className="size-1.5 rounded-full bg-info" />
