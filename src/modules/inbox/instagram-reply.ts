@@ -15,8 +15,9 @@
  * (the worker Docker image excludes src/, the app excludes mini-services/).
  */
 
-const IG_GRAPH_VERSION = process.env.INSTAGRAM_GRAPH_API_VERSION || 'v23.0'
-const GRAPH_API = `https://graph.facebook.com/${IG_GRAPH_VERSION}`
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
+
+const GRAPH_API = getInstagramGraphApiBaseUrl()
 const TIMEOUT_MS = 15_000
 
 export class ProviderReplyError extends Error {

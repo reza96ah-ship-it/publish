@@ -5,7 +5,7 @@
  * Content Publishing guide: https://developers.facebook.com/docs/instagram-api/guides/content-publishing
  *
  * Auth: OAuth 2.0 via Facebook Login. Requires Instagram Business/Creator account + Facebook Page.
- * URL: https://graph.facebook.com/v21.0/{endpoint}
+ * URL: https://graph.facebook.com/{configured-version}/{endpoint}
  *
  * Two-step publish process:
  *   1. POST /{ig-user-id}/media → create media container → returns { id }
@@ -33,12 +33,12 @@ import type {
 } from './types'
 import { getCapabilities } from '../lib/provider-capabilities'
 import { fetchWithTimeout, FetchTimeoutError } from '../lib/fetch-with-timeout'
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 
 // Issue #150: Graph API version is now configurable via env var.
-// Default: v23.0 (current as of 2025-07). Update INSTAGRAM_GRAPH_API_VERSION env var when Meta releases a new version.
+// Default lives in shared/instagram-graph.ts; update it after reviewing Meta changelogs.
 // Track deprecations: https://developers.facebook.com/docs/graph-api/changelog
-const IG_GRAPH_VERSION = process.env.INSTAGRAM_GRAPH_API_VERSION || 'v23.0'
-const GRAPH_API = `https://graph.facebook.com/${IG_GRAPH_VERSION}`
+const GRAPH_API = getInstagramGraphApiBaseUrl()
 // Issue #117: limits now come from the capability registry (single source of truth)
 
 export class InstagramAdapter implements ChannelAdapter {

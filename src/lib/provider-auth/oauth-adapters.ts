@@ -9,8 +9,8 @@
  * Before: connect route set `valid = true` without contacting IG/LinkedIn.
  * After: IG/LinkedIn CANNOT become active without successful provider validation.
  *
- * Graph API version is configurable via INSTAGRAM_GRAPH_API_VERSION env var
- * (default: v21.0). LinkedIn version via LINKEDIN_API_VERSION (default: 202505).
+ * Graph API version is configurable via INSTAGRAM_GRAPH_API_VERSION env var.
+ * LinkedIn version via LINKEDIN_API_VERSION (default: 202505).
  */
 
 import type {
@@ -23,12 +23,11 @@ import type {
 } from './types'
 import { encrypt, getActiveKeyId } from '../crypto'
 import { REQUIRED_SCOPES } from './types'
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 
 // ── Instagram (Meta Graph API) ────────────────────────────────
 
-const IG_GRAPH_API = process.env.INSTAGRAM_GRAPH_API_VERSION
-  ? `https://graph.facebook.com/${process.env.INSTAGRAM_GRAPH_API_VERSION}`
-  : 'https://graph.facebook.com/v21.0'
+const IG_GRAPH_API = getInstagramGraphApiBaseUrl()
 
 const IG_CLIENT_ID = process.env.INSTAGRAM_CLIENT_ID || ''
 const IG_CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET || ''
