@@ -75,6 +75,10 @@ export class InboxRepository {
     await db.inboxMessage.update({ where: { id }, data: { isRead: true } })
   }
 
+  async markUnread(id: string) {
+    await db.inboxMessage.update({ where: { id }, data: { isRead: false } })
+  }
+
   async assign(id: string, assigneeId: string | null) {
     // #208: assigning moves the workflow forward and starts the SLA clock.
     // Un-assigning an unresolved message returns it to `new`.
