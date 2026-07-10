@@ -314,7 +314,7 @@ export function InboxView() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
         {/* Left: List */}
         <div className="lg:col-span-4 n-card p-0 overflow-hidden">
-          <div className="p-3 border-b border-border">
+          <div className="px-3 pt-3 pb-0 border-b border-border overflow-x-auto thin-scrollbar">
             <AnimatedTabs
               value={filter}
               onValueChange={(v) => setFilter(v as typeof filter)}
@@ -469,7 +469,7 @@ export function InboxView() {
               <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3">
                 <div className="flex justify-start">
                   <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
-                    <p className="text-sm text-ink-primary whitespace-pre-wrap">
+                    <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
                       {selected.message}
                     </p>
                   </div>
@@ -717,7 +717,7 @@ function MessageListItem({
             {relativeTime(new Date(message.createdAt))}
           </span>
         </div>
-        <p className="text-sm text-ink-secondary line-clamp-2 leading-relaxed">
+        <p className="text-sm text-ink-tertiary line-clamp-2 leading-relaxed" dir="auto">
           {message.message}
         </p>
         <div className="flex items-center gap-1.5 mt-1 overflow-hidden">

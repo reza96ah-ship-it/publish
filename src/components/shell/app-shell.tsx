@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile top bar — hidden at md+ (sidebar is always visible) */}
-        <header className="flex items-center justify-between px-4 py-3 md:hidden">
+        <header className="n-glass-nav flex items-center justify-between border-b border-border/60 px-4 py-3 md:hidden">
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="n-glass-control flex size-11 items-center justify-center text-ink-primary"

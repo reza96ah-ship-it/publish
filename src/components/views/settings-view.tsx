@@ -194,7 +194,7 @@ export function SettingsView() {
     >
       <SectionTitle icon={SettingsIcon}>تنظیمات فضای کار</SectionTitle>
 
-      <div className="w-full overflow-x-auto thin-scrollbar no-scrollbar">
+      <div className="w-full overflow-x-auto thin-scrollbar">
         <AnimatedTabs
           value={tab}
           onValueChange={(v) => setTab(v as typeof tab)}

@@ -12,6 +12,7 @@ import { LiveRegionProvider } from '@/lib/aria-live'
 import { ServiceWorkerRegistrar } from '@/components/shell/service-worker-registrar'
 import { InstallPrompt } from '@/components/shell/install-prompt'
 import { OfflineIndicator } from '@/components/shell/offline-indicator'
+import { RtlProvider } from '@/components/providers/direction-provider'
 
 const vazir = Vazirmatn({
   subsets: ['arabic', 'latin'],
@@ -83,9 +84,11 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <MotionProvider>
-              <NextAuthSessionProvider>{children}</NextAuthSessionProvider>
-            </MotionProvider>
+            <RtlProvider>
+              <MotionProvider>
+                <NextAuthSessionProvider>{children}</NextAuthSessionProvider>
+              </MotionProvider>
+            </RtlProvider>
           </QueryProvider>
           <Sonner position="top-center" dir="rtl" />
           {/* aria-live announce regions — mounted once at the root so every

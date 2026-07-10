@@ -666,7 +666,7 @@ export function ComposeView() {
             <p className="text-sm text-ink-secondary leading-relaxed">
               ما تغییرات ذخیره نشده‌ای از جلسه قبلی شما پیدا کردیم که با پیش‌نویس سرور متفاوت است. مایلید کدام یک را استفاده کنید؟
             </p>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-start gap-2 pt-2">
               <Button
                 variant="outline"
                 size="sm"

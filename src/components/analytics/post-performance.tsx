@@ -118,7 +118,7 @@ function PostDetailSheet({
 
   return (
     <Sheet open={!!publicationId} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="left" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-start">{data?.title ?? 'جزئیات پست'}</SheetTitle>
           <SheetDescription className="text-start">
