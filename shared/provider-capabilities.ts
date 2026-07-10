@@ -163,6 +163,18 @@ export const PROVIDER_CAPABILITIES: Record<PlatformKey, ProviderCapability> = {
 }
 
 /**
+ * Platforms currently enabled in the product. All other platforms are fully
+ * implemented (adapters, capabilities, workers) but hidden from every user
+ * surface — connect dialogs, OAuth start, bot-token connect, analytics
+ * filters, and seed data. To re-enable a platform, add its key here.
+ */
+export const ENABLED_PLATFORMS: readonly PlatformKey[] = ['instagram']
+
+export function isPlatformEnabled(platform: string): boolean {
+  return (ENABLED_PLATFORMS as readonly string[]).includes(platform)
+}
+
+/**
  * Get capabilities for a platform type. Returns a safe default (telegram-like)
  * for unknown platforms so the UI never crashes.
  */

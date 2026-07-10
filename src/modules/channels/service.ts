@@ -7,6 +7,7 @@
 import { db } from '@/lib/db'
 import { encrypt, decrypt } from '@/lib/crypto'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
+import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import {
   computeCredentialStatus,
   REQUIRED_SCOPES,
@@ -96,6 +97,8 @@ export class ChannelsService {
     const { workspaceId, userId } = auth
     const platform = await this.repo.findInWorkspace(platformId, workspaceId)
     if (!platform) throw new PlatformNotFoundError()
+
+    if (!isPlatformEnabled(platform.type)) throw new UnsupportedProviderError(platform.type)
 
     const adapter = getProviderAuthAdapter(platform.type)
     if (!adapter) throw new UnsupportedProviderError(platform.type)

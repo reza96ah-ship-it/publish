@@ -141,13 +141,16 @@ async function main() {
         primaryIssue: 'انقضای توکن حساب اصلی',
       },
     }),
+    // Only Instagram is enabled for now (ENABLED_PLATFORMS in
+    // shared/provider-capabilities.ts) — the extra demo channels below are
+    // additional Instagram accounts so downstream seed references still work.
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'telegram',
-        name: 'تلگرام',
+        type: 'instagram',
+        name: 'اینستاگرام کانال',
         username: 'nashrino_channel',
-        accountKind: 'channel',
+        accountKind: 'professional',
         status: 'active',
         lastSuccessAt: hoursAgo(0),
       },
@@ -155,9 +158,9 @@ async function main() {
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'linkedin',
-        name: 'لینکدین',
-        username: 'Nashrino Co.',
+        type: 'instagram',
+        name: 'اینستاگرام شرکت',
+        username: 'nashrino_co',
         accountKind: 'professional',
         status: 'active',
         lastSuccessAt: hoursAgo(0.1),
@@ -166,10 +169,10 @@ async function main() {
     db.platform.create({
       data: {
         workspaceId: ws.id,
-        type: 'rubika',
-        name: 'روبیکا',
+        type: 'instagram',
+        name: 'اینستاگرام فروشگاه',
         username: 'nashrino_shop',
-        accountKind: 'channel',
+        accountKind: 'professional',
         status: 'error',
         lastSuccessAt: hoursAgo(24),
         lastError: 'خطای سرور ۵۰۰',
@@ -714,7 +717,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m3',
         message: 'لینک ثبت‌نام وبینار کجاست؟',
         isRead: false,
-        platformType: 'telegram',
+        platformType: 'instagram',
         messageType: 'comment',
         createdAt: hoursAgo(3),
       },
@@ -742,7 +745,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m5',
         message: 'Interested in your services. Can we schedule a call?',
         isRead: false,
-        platformType: 'linkedin',
+        platformType: 'instagram',
         messageType: 'dm',
         createdAt: hoursAgo(12),
       },
@@ -768,7 +771,7 @@ async function main() {
         senderAvatar: 'https://i.pravatar.cc/150?u=m7',
         message: 'سفارش من کی ارسال میشه؟',
         isRead: false,
-        platformType: 'rubika',
+        platformType: 'instagram',
         messageType: 'dm',
         createdAt: hoursAgo(2),
       },
@@ -779,7 +782,8 @@ async function main() {
   // Use createMany to avoid Prisma 7.8.0 query compiler panic on individual
   // create calls with nullable fields (Rust panic at parser.rs:855).
   const metricTypes = ['reach', 'engagement', 'followers', 'clicks']
-  const platformsForAn = ['instagram', 'telegram', 'linkedin', 'rubika', null]
+  // Instagram-only (see ENABLED_PLATFORMS); null = workspace-level aggregate.
+  const platformsForAn = ['instagram', null]
   const analyticsData: Array<{
     workspaceId: string
     date: string

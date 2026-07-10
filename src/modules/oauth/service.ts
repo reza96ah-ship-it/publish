@@ -12,6 +12,7 @@
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
+import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import { computeCredentialStatus } from '@/lib/provider-auth/types'
 import type {
   StartOAuthInput,
@@ -50,6 +51,10 @@ export class OAuthService {
    */
   async start(input: StartOAuthInput): Promise<StartOAuthResult> {
     const { workspaceId, type, baseUrl } = input
+
+    if (!isPlatformEnabled(type)) {
+      return { ok: false, redirectUrl: `/channels?oauth_error=unsupported_type&type=${type}` }
+    }
 
     const adapter = getProviderAuthAdapter(type)
     if (!adapter || !('getAuthorizationUrl' in adapter) || !adapter.getAuthorizationUrl) {
