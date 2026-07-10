@@ -1,6 +1,12 @@
-export interface AuthContext { workspaceId: string; userId: string }
+export interface AuthContext {
+  workspaceId: string
+  userId: string
+}
 
-export interface InboxListQuery { cursor?: string; limit: number }
+export interface InboxListQuery {
+  cursor?: string
+  limit: number
+}
 
 export interface InboxMessage {
   id: string
@@ -26,7 +32,59 @@ export interface InboxListResult {
   nextCursor: string | null
 }
 
-export interface AssignInput { assigneeId: string | null }
-export interface ReplyInput { reply: string }
+export interface InboxThreadSummary {
+  id: string
+  providerThreadId: string
+  providerUserId: string | null
+  title: string
+  platform: string
+  platformName: string
+  messageType: string
+  status: string
+  unreadCount: number
+  lastMessageAt: Date
+  createdAt: Date
+  updatedAt: Date
+  lastMessage: {
+    id: string
+    providerMessageId: string
+    direction: string
+    senderName: string
+    body: string
+    createdAt: Date
+  } | null
+}
 
-export interface ReplyResult { ok: boolean; reply: string | null; isReplied: boolean }
+export interface InboxThreadMessage {
+  id: string
+  providerMessageId: string
+  direction: string
+  messageType: string
+  senderExternalId: string | null
+  senderName: string
+  body: string
+  createdAt: Date
+}
+
+export interface InboxThreadDetail extends InboxThreadSummary {
+  messages: InboxThreadMessage[]
+}
+
+export interface InboxThreadListResult {
+  data: InboxThreadSummary[]
+  nextCursor: string | null
+}
+
+export interface AssignInput {
+  assigneeId: string | null
+}
+export interface ReplyInput {
+  reply: string
+}
+
+export interface ReplyResult {
+  ok: boolean
+  reply: string | null
+  isReplied: boolean
+  threadMessageId?: string
+}

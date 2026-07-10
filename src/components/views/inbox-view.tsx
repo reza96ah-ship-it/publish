@@ -69,6 +69,76 @@ interface InboxMessage {
   slaStartedAt: string | null
 }
 
+interface InboxThreadTimelineMessage {
+  id: string
+  providerMessageId: string
+  direction: 'inbound' | 'outbound' | 'internal' | string
+  messageType: string
+  senderExternalId: string | null
+  senderName: string
+  body: string
+  createdAt: string
+}
+
+interface InboxThreadSummary {
+  id: string
+  providerThreadId: string
+  providerUserId: string | null
+  title: string
+  platform: string
+  platformName: string
+  messageType: string
+  status: string
+  unreadCount: number
+  lastMessageAt: string
+  createdAt: string
+  updatedAt: string
+  lastMessage: InboxThreadTimelineMessage | null
+}
+
+interface InboxThreadDetail extends InboxThreadSummary {
+  messages: InboxThreadTimelineMessage[]
+}
+
+type ConversationKind = 'message' | 'thread'
+type InboxStatus = InboxMessage['status']
+
+const INBOX_STATUSES: InboxStatus[] = ['new', 'assigned', 'in_progress', 'resolved']
+
+function asInboxStatus(status: string): InboxStatus {
+  return INBOX_STATUSES.includes(status as InboxStatus) ? (status as InboxStatus) : 'new'
+}
+
+function latestOutbound(messages: InboxThreadTimelineMessage[] | undefined) {
+  if (!messages) return null
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i]?.direction === 'outbound') return messages[i]
+  }
+  return null
+}
+
+function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail): InboxMessage {
+  const outbound = latestOutbound(detail?.messages)
+  return {
+    id: thread.id,
+    senderName: thread.title || thread.providerUserId || 'Instagram user',
+    senderAvatar: null,
+    message: thread.lastMessage?.body ?? '',
+    isRead: thread.unreadCount === 0,
+    isReplied: Boolean(outbound),
+    reply: outbound?.body ?? null,
+    platform: thread.platform,
+    platformName: thread.platformName,
+    messageType: thread.messageType,
+    assigneeId: null,
+    assigneeName: null,
+    assigneeAvatar: null,
+    createdAt: thread.lastMessageAt,
+    status: asInboxStatus(thread.status),
+    slaStartedAt: null,
+  }
+}
+
 const STATUS_LABEL: Record<string, string> = {
   new: 'جدید',
   assigned: 'ارجاع شده',
@@ -164,14 +234,48 @@ export function InboxView() {
     queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
   })
 
+  const {
+    data: threads,
+    isLoading: isThreadsLoading,
+    isError: isThreadsError,
+    refetch: refetchThreads,
+  } = useQuery<InboxThreadSummary[]>({
+    queryKey: ['inbox-threads'],
+    queryFn: () => api.getPaginated<InboxThreadSummary>('/api/inbox/threads'),
+  })
+
   const { data: members } = useQuery<Member[]>({
     queryKey: ['members'],
     queryFn: () => api.getPaginated<Member>('/api/members'),
   })
 
+  const usingThreadConversations = (threads?.length ?? 0) > 0
+  const selectedThread =
+    usingThreadConversations && selectedId ? threads?.find((t) => t.id === selectedId) : null
+  const selectedMessage =
+    !usingThreadConversations && selectedId ? messages?.find((m) => m.id === selectedId) : null
+
+  const { data: selectedThreadDetail, isLoading: isThreadDetailLoading } =
+    useQuery<InboxThreadDetail>({
+      queryKey: ['inbox-thread', selectedThread?.id],
+      queryFn: () => api.get<InboxThreadDetail>(`/api/inbox/threads/${selectedThread?.id}`),
+      enabled: Boolean(selectedThread?.id),
+    })
+
+  const conversationMessages = useMemo(() => {
+    if (usingThreadConversations) {
+      return (threads ?? []).map((thread) =>
+        threadToMessage(
+          thread,
+          selectedThreadDetail?.id === thread.id ? selectedThreadDetail : undefined
+        )
+      )
+    }
+    return messages ?? []
+  }, [messages, selectedThreadDetail, threads, usingThreadConversations])
+
   const filtered = useMemo(() => {
-    if (!messages) return []
-    return messages.filter((m) => {
+    return conversationMessages.filter((m) => {
       if (filter === 'unread') return !m.isRead || m.id === selectedId
       if (filter === 'comment') return m.messageType === 'comment'
       if (filter === 'dm') return m.messageType === 'dm'
@@ -183,10 +287,25 @@ export function InboxView() {
       if (filter === 'resolved') return m.status === 'resolved'
       return true
     })
-  }, [messages, filter, selectedId])
+  }, [conversationMessages, filter, selectedId])
 
-  const selected = messages?.find((m) => m.id === selectedId) ?? null
-  const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0
+  const selected = selectedThread
+    ? threadToMessage(selectedThread, selectedThreadDetail)
+    : (selectedMessage ?? null)
+  const selectedKind: ConversationKind | null = selectedThread
+    ? 'thread'
+    : selectedMessage
+      ? 'message'
+      : null
+  const unreadCount = usingThreadConversations
+    ? (threads ?? []).reduce((count, thread) => count + thread.unreadCount, 0)
+    : (messages?.filter((m) => !m.isRead).length ?? 0)
+  const isConversationLoading = isLoading || isThreadsLoading
+  const isConversationError = isError && isThreadsError
+  const refetchConversations = () => {
+    void refetch()
+    void refetchThreads()
+  }
   useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
 
   const insertSnippet = useCallback(
@@ -203,12 +322,16 @@ export function InboxView() {
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
-    mutationFn: ({ id, reply }: { id: string; reply: string }) =>
-      api.post(`/api/inbox/${id}/reply`, { reply }),
-    onSuccess: () => {
+    mutationFn: ({ id, reply, kind }: { id: string; reply: string; kind: ConversationKind }) =>
+      api.post(kind === 'thread' ? `/api/inbox/threads/${id}/reply` : `/api/inbox/${id}/reply`, {
+        reply,
+      }),
+    onSuccess: (_data, vars) => {
       toast.success('پاسخ ارسال شد ✓')
       setReplyText('')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
     onError: () => toast.error('خطا در ارسال پاسخ'),
@@ -225,45 +348,72 @@ export function InboxView() {
   })
 
   const statusMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.post(`/api/inbox/${id}/status`, { status }),
+    mutationFn: ({ id, status, kind }: { id: string; status: string; kind: ConversationKind }) =>
+      api.post(kind === 'thread' ? `/api/inbox/threads/${id}/status` : `/api/inbox/${id}/status`, {
+        status,
+      }),
     onSuccess: (_data, vars) => {
       toast.success(STATUS_LABEL[vars.status] ? `وضعیت: ${STATUS_LABEL[vars.status]}` : 'به‌روزشد')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
     onError: () => toast.error('خطا در تغییر وضعیت'),
   })
 
   const readStateMutation = useMutation({
-    mutationFn: ({ id, isRead }: { id: string; isRead: boolean }) =>
-      api.post<{ ok: boolean }>(`/api/inbox/${id}/${isRead ? 'read' : 'unread'}`, {}),
+    mutationFn: ({ id, isRead, kind }: { id: string; isRead: boolean; kind: ConversationKind }) =>
+      api.post<{ ok: boolean }>(
+        kind === 'thread'
+          ? `/api/inbox/threads/${id}/${isRead ? 'read' : 'unread'}`
+          : `/api/inbox/${id}/${isRead ? 'read' : 'unread'}`,
+        {}
+      ),
     onMutate: async ({ id, isRead }) => {
       await queryClient.cancelQueries({ queryKey: ['inbox'] })
+      await queryClient.cancelQueries({ queryKey: ['inbox-threads'] })
       const previous = queryClient.getQueryData<InboxMessage[]>(['inbox'])
+      const previousThreads = queryClient.getQueryData<InboxThreadSummary[]>(['inbox-threads'])
 
       queryClient.setQueryData<InboxMessage[]>(['inbox'], (current) =>
         current?.map((message) => (message.id === id ? { ...message, isRead } : message))
       )
+      queryClient.setQueryData<InboxThreadSummary[]>(['inbox-threads'], (current) =>
+        current?.map((thread) =>
+          thread.id === id
+            ? { ...thread, unreadCount: isRead ? 0 : Math.max(thread.unreadCount, 1) }
+            : thread
+        )
+      )
 
-      return { previous }
+      return { previous, previousThreads }
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData<InboxMessage[]>(['inbox'], context.previous)
       }
+      if (context?.previousThreads) {
+        queryClient.setQueryData<InboxThreadSummary[]>(['inbox-threads'], context.previousThreads)
+      }
       toast.error('خطا در تغییر وضعیت خواندن')
     },
-    onSettled: () => {
+    onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      if (vars) queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
   })
 
   // ── Handlers ───────────────────────────────────────────────────────
   const handleSelectMessage = (id: string) => {
     setSelectedId(id)
-    const message = messages?.find((m) => m.id === id)
+    const message = conversationMessages.find((m) => m.id === id)
     if (message && !message.isRead) {
-      readStateMutation.mutate({ id, isRead: true })
+      readStateMutation.mutate({
+        id,
+        isRead: true,
+        kind: usingThreadConversations ? 'thread' : 'message',
+      })
     }
   }
 
@@ -273,7 +423,8 @@ export function InboxView() {
       return
     }
     if (!selected) return
-    replyMutation.mutate({ id: selected.id, reply: replyText })
+    if (!selectedKind) return
+    replyMutation.mutate({ id: selected.id, reply: replyText, kind: selectedKind })
   }
 
   const handleSmartReply = async () => {
@@ -367,9 +518,9 @@ export function InboxView() {
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
             <LoadingState
-              isLoading={isLoading}
-              isError={isError}
-              onRetry={refetch}
+              isLoading={isConversationLoading}
+              isError={isConversationError}
+              onRetry={refetchConversations}
               errorLabel="خطا در بارگذاری صندوق ورودی"
               skeleton={<SkeletonList rows={6} avatar />}
             >
@@ -465,7 +616,11 @@ export function InboxView() {
                   )}
                   <button
                     onClick={() =>
-                      readStateMutation.mutate({ id: selected.id, isRead: !selected.isRead })
+                      readStateMutation.mutate({
+                        id: selected.id,
+                        isRead: !selected.isRead,
+                        kind: selectedKind ?? 'message',
+                      })
                     }
                     disabled={readStateMutation.isPending}
                     className={cn(
@@ -480,7 +635,13 @@ export function InboxView() {
                   </button>
                   {selected.status !== 'resolved' && (
                     <button
-                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'resolved' })}
+                      onClick={() =>
+                        statusMutation.mutate({
+                          id: selected.id,
+                          status: 'resolved',
+                          kind: selectedKind ?? 'message',
+                        })
+                      }
                       disabled={statusMutation.isPending}
                       className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-success bg-success-soft border-success/20 hover:bg-success/20 transition-colors"
                     >
@@ -489,7 +650,13 @@ export function InboxView() {
                   )}
                   {selected.status === 'resolved' && (
                     <button
-                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'new' })}
+                      onClick={() =>
+                        statusMutation.mutate({
+                          id: selected.id,
+                          status: 'new',
+                          kind: selectedKind ?? 'message',
+                        })
+                      }
                       disabled={statusMutation.isPending}
                       className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-ink-secondary bg-surface border-border hover:bg-surface-hover transition-colors"
                     >
@@ -499,7 +666,11 @@ export function InboxView() {
                   {selected.status === 'new' && (
                     <button
                       onClick={() =>
-                        statusMutation.mutate({ id: selected.id, status: 'in_progress' })
+                        statusMutation.mutate({
+                          id: selected.id,
+                          status: 'in_progress',
+                          kind: selectedKind ?? 'message',
+                        })
                       }
                       disabled={statusMutation.isPending}
                       className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
@@ -510,7 +681,7 @@ export function InboxView() {
                 </div>
 
                 {/* Assign dropdown */}
-                {members && members.length > 0 && (
+                {selectedKind === 'message' && members && members.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
                     <span className="text-2xs text-ink-tertiary">ارجاع به:</span>
                     <Select
@@ -540,22 +711,70 @@ export function InboxView() {
 
               {/* Thread body */}
               <div className="flex-1 overflow-y-auto thin-scrollbar p-4 space-y-3">
-                <div className="flex justify-start">
-                  <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
-                    <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
-                      {selected.message}
-                    </p>
-                  </div>
-                </div>
-                {selected.isReplied && selected.reply && (
-                  <div className="flex justify-end">
-                    <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-accent-soft border border-accent/20 px-4 py-2.5">
-                      <p className="text-2xs text-accent font-bold mb-1">پاسخ شما</p>
-                      <p className="text-sm text-ink-primary whitespace-pre-wrap">
-                        {selected.reply}
-                      </p>
+                {selectedThread ? (
+                  isThreadDetailLoading ? (
+                    <div className="flex h-full min-h-48 items-center justify-center text-sm text-ink-tertiary">
+                      <Loader2 className="me-2 size-4 animate-spin" />
+                      Loading conversation
                     </div>
-                  </div>
+                  ) : selectedThreadDetail?.messages.length ? (
+                    selectedThreadDetail.messages.map((message) => {
+                      const outbound = message.direction === 'outbound'
+                      return (
+                        <div
+                          key={message.id}
+                          className={cn('flex', outbound ? 'justify-end' : 'justify-start')}
+                        >
+                          <div
+                            className={cn(
+                              'max-w-[82%] rounded-2xl px-4 py-2.5',
+                              outbound
+                                ? 'rounded-tl-sm bg-accent-soft border border-accent/20'
+                                : 'rounded-tr-sm bg-surface-hover'
+                            )}
+                          >
+                            <div className="mb-1 flex items-center gap-2 text-2xs text-ink-tertiary">
+                              <span className="font-semibold">
+                                {outbound ? 'You' : message.senderName}
+                              </span>
+                              <span>{relativeTime(new Date(message.createdAt))}</span>
+                            </div>
+                            <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
+                              {message.body}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })
+                  ) : (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
+                        <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
+                          {selected.message}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <>
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
+                        <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
+                          {selected.message}
+                        </p>
+                      </div>
+                    </div>
+                    {selected.isReplied && selected.reply && (
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-accent-soft border border-accent/20 px-4 py-2.5">
+                          <p className="text-2xs text-accent font-bold mb-1">پاسخ شما</p>
+                          <p className="text-sm text-ink-primary whitespace-pre-wrap">
+                            {selected.reply}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
