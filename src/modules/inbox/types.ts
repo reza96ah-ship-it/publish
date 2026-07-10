@@ -63,6 +63,13 @@ export interface InboxThreadSummary {
   } | null
 }
 
+export interface InboxThreadAttachment {
+  type: string
+  title: string
+  url: string | null
+  providerId: string | null
+}
+
 export interface InboxThreadMessage {
   id: string
   providerMessageId: string
@@ -71,6 +78,7 @@ export interface InboxThreadMessage {
   senderExternalId: string | null
   senderName: string
   body: string
+  attachments: InboxThreadAttachment[]
   createdAt: Date
 }
 

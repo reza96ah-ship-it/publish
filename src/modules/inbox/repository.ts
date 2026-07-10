@@ -1,6 +1,8 @@
+import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { randomUUID } from 'crypto'
 import type {
+  InboxThreadAttachment,
   InboxListQuery,
   InboxMessage,
   InboxThreadDetail,
@@ -54,6 +56,7 @@ type ThreadMessageRow = {
   senderExternalId: string | null
   senderName: string
   body: string
+  payload: Prisma.JsonValue
   createdAt: Date
 }
 
@@ -87,6 +90,31 @@ type ThreadSummaryRow = {
   messages: ThreadMessageRow[]
 }
 
+function asJsonRecord(value: Prisma.JsonValue): Record<string, Prisma.JsonValue> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, Prisma.JsonValue>)
+    : null
+}
+
+function stringFromJson(value: Prisma.JsonValue | undefined): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
+}
+
+function toThreadAttachments(payload: Prisma.JsonValue): InboxThreadAttachment[] {
+  const root = asJsonRecord(payload)
+  const attachments = Array.isArray(root?.attachments) ? root.attachments : []
+  return attachments.flatMap((value) => {
+    const record = asJsonRecord(value)
+    if (!record) return []
+    return {
+      type: stringFromJson(record.type) ?? 'attachment',
+      title: stringFromJson(record.title) ?? 'Attachment',
+      url: stringFromJson(record.url),
+      providerId: stringFromJson(record.providerId),
+    }
+  })
+}
+
 function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
   return {
     id: message.id,
@@ -96,6 +124,7 @@ function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
     senderExternalId: message.senderExternalId,
     senderName: message.senderName,
     body: message.body,
+    attachments: toThreadAttachments(message.payload),
     createdAt: message.createdAt,
   }
 }
@@ -172,6 +201,7 @@ export class InboxRepository {
             senderExternalId: true,
             senderName: true,
             body: true,
+            payload: true,
             createdAt: true,
           },
         },
@@ -205,6 +235,7 @@ export class InboxRepository {
             senderExternalId: true,
             senderName: true,
             body: true,
+            payload: true,
             createdAt: true,
           },
         },

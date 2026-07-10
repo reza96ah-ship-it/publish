@@ -33,6 +33,7 @@ describe('Instagram webhook inbox normalization', () => {
       senderName: 'buyer',
       body: 'Price?',
       messageType: 'comment',
+      attachments: [],
     })
   })
 
@@ -64,6 +65,129 @@ describe('Instagram webhook inbox normalization', () => {
       providerMessageId: 'mid-1',
       messageType: 'dm',
       body: 'Hello',
+      attachments: [],
+    })
+  })
+
+  it('keeps attachment-only Instagram DMs visible', () => {
+    const events = extractInstagramInboxEvents({
+      entry: [
+        {
+          id: 'ig-account-1',
+          messaging: [
+            {
+              sender: { id: 'user-1' },
+              timestamp: 1_788_888_888_000,
+              message: {
+                mid: 'mid-image',
+                attachments: [
+                  {
+                    type: 'image',
+                    payload: {
+                      id: 'media-1',
+                      url: 'https://cdn.example.test/image.jpg',
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      providerMessageId: 'mid-image',
+      body: 'Instagram image attachment',
+      messageType: 'dm',
+      attachments: [
+        {
+          type: 'image',
+          title: 'Image',
+          url: 'https://cdn.example.test/image.jpg',
+          providerId: 'media-1',
+        },
+      ],
+    })
+  })
+
+  it('extracts postbacks as actionable DM events', () => {
+    const events = extractInstagramInboxEvents({
+      entry: [
+        {
+          id: 'ig-account-1',
+          messaging: [
+            {
+              sender: { id: 'user-1' },
+              timestamp: 1_788_888_888_000,
+              postback: {
+                mid: 'mid-postback',
+                title: 'Start order',
+                payload: 'ORDER_START',
+              },
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      providerMessageId: 'mid-postback',
+      body: 'Start order',
+      messageType: 'dm',
+      attachments: [
+        {
+          type: 'postback',
+          title: 'Start order',
+          url: null,
+          providerId: 'ORDER_START',
+        },
+      ],
+    })
+  })
+
+  it('preserves mention media metadata', () => {
+    const events = extractInstagramInboxEvents({
+      entry: [
+        {
+          id: 'ig-account-1',
+          changes: [
+            {
+              field: 'mentions',
+              value: {
+                comment_id: 'mention-1',
+                caption: 'Thanks for the shoutout',
+                user_id: 'user-1',
+                username: 'creator',
+                media: {
+                  id: 'media-1',
+                  media_type: 'reel',
+                  permalink: 'https://instagram.example.test/reel/1',
+                },
+              },
+            },
+          ],
+        },
+      ],
+    })
+
+    expect(events).toHaveLength(1)
+    expect(events[0]).toMatchObject({
+      providerThreadId: 'mention:mention-1',
+      providerUserId: 'user-1',
+      senderName: 'creator',
+      body: 'Thanks for the shoutout',
+      messageType: 'mention',
+      attachments: [
+        {
+          type: 'reel',
+          title: 'Reel',
+          url: 'https://instagram.example.test/reel/1',
+          providerId: 'media-1',
+        },
+      ],
     })
   })
 })
