@@ -6,6 +6,8 @@ import type {
   AuthContext,
   InboxListQuery,
   InboxListResult,
+  InboxThreadDetail,
+  InboxThreadListResult,
   AssignInput,
   ReplyInput,
   ReplyResult,
@@ -22,6 +24,20 @@ export class InboxService {
     return { data: page, nextCursor }
   }
 
+  async listThreads(auth: AuthContext, query: InboxListQuery): Promise<InboxThreadListResult> {
+    const rows = await this.repo.listThreads(auth.workspaceId, query)
+    const hasMore = rows.length > query.limit
+    const page = hasMore ? rows.slice(0, query.limit) : rows
+    const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null
+    return { data: page, nextCursor }
+  }
+
+  async getThread(auth: AuthContext, threadId: string): Promise<InboxThreadDetail> {
+    const thread = await this.repo.getThread(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    return thread
+  }
+
   async markRead(auth: AuthContext, messageId: string): Promise<{ ok: boolean }> {
     const message = await this.repo.findInWorkspace(messageId, auth.workspaceId)
     if (!message) throw new InboxMessageNotFoundError()
@@ -34,6 +50,30 @@ export class InboxService {
     if (!message) throw new InboxMessageNotFoundError()
     await this.repo.markUnread(messageId)
     return { ok: true }
+  }
+
+  async markThreadRead(auth: AuthContext, threadId: string): Promise<{ ok: boolean }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    await this.repo.markThreadRead(threadId, auth.workspaceId)
+    return { ok: true }
+  }
+
+  async markThreadUnread(auth: AuthContext, threadId: string): Promise<{ ok: boolean }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    await this.repo.markThreadUnread(threadId, auth.workspaceId)
+    return { ok: true }
+  }
+
+  async setThreadStatus(
+    auth: AuthContext,
+    threadId: string,
+    status: string
+  ): Promise<{ id: string; status: string }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    return this.repo.setThreadStatus(threadId, auth.workspaceId, status)
   }
 
   async assignMessage(
@@ -81,6 +121,59 @@ export class InboxService {
 
     const updated = await this.repo.reply(messageId, input.reply)
     return { ok: true, reply: updated.reply, isReplied: updated.isReplied }
+  }
+
+  async replyToThread(
+    auth: AuthContext,
+    threadId: string,
+    input: ReplyInput
+  ): Promise<ReplyResult> {
+    const thread = await this.repo.findThreadWithPlatform(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+
+    const inbound = thread.messages[0]
+    if (!inbound) throw new ProviderReplyError('No inbound message is available for this thread')
+
+    const { platform } = thread
+    if (platform?.type === 'instagram' && platform.tokenSecret) {
+      const accessToken = decrypt(platform.tokenSecret)
+      if (inbound.messageType === 'dm') {
+        if (!platform.targetId) {
+          throw new ProviderReplyError(
+            'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
+          )
+        }
+        await sendPrivateReply(
+          accessToken,
+          platform.targetId,
+          inbound.providerMessageId,
+          input.reply
+        )
+      } else {
+        await sendCommentReply(accessToken, inbound.providerMessageId, input.reply)
+      }
+    }
+
+    const outbound = await this.repo.appendThreadReply(
+      thread.id,
+      auth.workspaceId,
+      platform.id,
+      inbound.messageType,
+      input.reply
+    )
+    await this.repo.markLegacyRepliedByExternalId(
+      auth.workspaceId,
+      platform.id,
+      inbound.providerMessageId,
+      input.reply
+    )
+
+    return {
+      ok: true,
+      reply: input.reply.trim(),
+      isReplied: true,
+      threadMessageId: outbound.id,
+    }
   }
 }
 
