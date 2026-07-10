@@ -41,6 +41,14 @@ export interface InboxThreadSummary {
   platformName: string
   messageType: string
   status: string
+  assigneeId: string | null
+  assigneeName: string | null
+  assigneeAvatar: string | null
+  priority: string
+  tags: string[]
+  lockedById: string | null
+  lockedByName: string | null
+  lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
   createdAt: Date
@@ -77,6 +85,12 @@ export interface InboxThreadListResult {
 
 export interface AssignInput {
   assigneeId: string | null
+}
+export interface ThreadTagsInput {
+  tags: string[]
+}
+export interface ThreadPriorityInput {
+  priority: string
 }
 export interface ReplyInput {
   reply: string

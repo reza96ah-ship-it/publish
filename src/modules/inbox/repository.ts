@@ -57,6 +57,12 @@ type ThreadMessageRow = {
   createdAt: Date
 }
 
+type MemberRef = {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
+
 type ThreadSummaryRow = {
   id: string
   providerThreadId: string
@@ -64,11 +70,20 @@ type ThreadSummaryRow = {
   title: string
   messageType: string
   status: string
+  assigneeId: string | null
+  assignedAt: Date | null
+  priority: string
+  tags: string[]
+  lockedById: string | null
+  lockedAt: Date | null
+  lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
   createdAt: Date
   updatedAt: Date
   platform: { type: string; name: string } | null
+  assignee: MemberRef | null
+  lockedBy: MemberRef | null
   messages: ThreadMessageRow[]
 }
 
@@ -101,6 +116,14 @@ function toThreadSummary(
     platformName: thread.platform?.name ?? 'instagram',
     messageType: thread.messageType,
     status: thread.status,
+    assigneeId: thread.assigneeId,
+    assigneeName: thread.assignee?.name ?? null,
+    assigneeAvatar: thread.assignee?.avatarUrl ?? null,
+    priority: thread.priority,
+    tags: thread.tags,
+    lockedById: thread.lockedById,
+    lockedByName: thread.lockedBy?.name ?? null,
+    lockExpiresAt: thread.lockExpiresAt,
     unreadCount: thread.unreadCount,
     lastMessageAt: thread.lastMessageAt,
     createdAt: thread.createdAt,
@@ -136,6 +159,8 @@ export class InboxRepository {
       where: { workspaceId },
       include: {
         platform: { select: { type: true, name: true } },
+        assignee: { select: { id: true, name: true, avatarUrl: true } },
+        lockedBy: { select: { id: true, name: true, avatarUrl: true } },
         messages: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -167,6 +192,8 @@ export class InboxRepository {
       where: { id, workspaceId },
       include: {
         platform: { select: { type: true, name: true } },
+        assignee: { select: { id: true, name: true, avatarUrl: true } },
+        lockedBy: { select: { id: true, name: true, avatarUrl: true } },
         messages: {
           orderBy: { createdAt: 'asc' },
           take: 100,
@@ -234,6 +261,10 @@ export class InboxRepository {
     return db.workspaceMember.findFirst({ where: { id: memberId, workspaceId } })
   }
 
+  async findMemberByUserInWorkspace(userId: string, workspaceId: string) {
+    return db.workspaceMember.findFirst({ where: { userId, workspaceId } })
+  }
+
   async markRead(id: string) {
     await db.inboxMessage.update({ where: { id }, data: { isRead: true } })
   }
@@ -278,6 +309,90 @@ export class InboxRepository {
       })
     }
     return updated
+  }
+
+  async assignThread(id: string, workspaceId: string, assigneeId: string | null) {
+    const providerMessageIds = await this.getThreadProviderMessageIds(id, workspaceId)
+    const current = await db.inboxThread.findUnique({
+      where: { id },
+      select: { status: true },
+    })
+    const isResolved = current?.status === 'resolved'
+    const now = new Date()
+    const updated = await db.inboxThread.update({
+      where: { id },
+      data: {
+        assigneeId,
+        assignedAt: assigneeId ? now : null,
+        ...(isResolved ? {} : { status: assigneeId ? 'assigned' : 'new' }),
+      },
+      select: { id: true, assigneeId: true, status: true, assignedAt: true },
+    })
+
+    if (providerMessageIds.length > 0) {
+      await db.inboxMessage.updateMany({
+        where: { workspaceId, externalId: { in: providerMessageIds } },
+        data: {
+          assigneeId,
+          ...(isResolved ? {} : { status: assigneeId ? 'assigned' : 'new' }),
+        },
+      })
+    }
+
+    return updated
+  }
+
+  async claimThread(id: string, workspaceId: string, memberId: string, leaseMinutes = 10) {
+    const now = new Date()
+    const lockExpiresAt = new Date(now.getTime() + leaseMinutes * 60_000)
+    const result = await db.inboxThread.updateMany({
+      where: {
+        id,
+        workspaceId,
+        OR: [
+          { lockedById: null },
+          { lockExpiresAt: null },
+          { lockExpiresAt: { lt: now } },
+          { lockedById: memberId },
+        ],
+      },
+      data: {
+        assigneeId: memberId,
+        assignedAt: now,
+        status: 'assigned',
+        lockedById: memberId,
+        lockedAt: now,
+        lockExpiresAt,
+      },
+    })
+
+    if (result.count === 0) return null
+
+    const providerMessageIds = await this.getThreadProviderMessageIds(id, workspaceId)
+    if (providerMessageIds.length > 0) {
+      await db.inboxMessage.updateMany({
+        where: { workspaceId, externalId: { in: providerMessageIds } },
+        data: { assigneeId: memberId, status: 'assigned' },
+      })
+    }
+
+    return { ok: true, assigneeId: memberId, lockExpiresAt }
+  }
+
+  async updateThreadTags(id: string, tags: string[]) {
+    return db.inboxThread.update({
+      where: { id },
+      data: { tags },
+      select: { id: true, tags: true },
+    })
+  }
+
+  async updateThreadPriority(id: string, priority: string) {
+    return db.inboxThread.update({
+      where: { id },
+      data: { priority },
+      select: { id: true, priority: true },
+    })
   }
 
   async assign(id: string, assigneeId: string | null) {

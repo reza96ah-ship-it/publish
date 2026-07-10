@@ -9,6 +9,8 @@ import type {
   InboxThreadDetail,
   InboxThreadListResult,
   AssignInput,
+  ThreadPriorityInput,
+  ThreadTagsInput,
   ReplyInput,
   ReplyResult,
 } from './types'
@@ -91,6 +93,62 @@ export class InboxService {
 
     const updated = await this.repo.assign(messageId, input.assigneeId)
     return { ok: true, assigneeId: updated.assigneeId }
+  }
+
+  async assignThread(
+    auth: AuthContext,
+    threadId: string,
+    input: AssignInput
+  ): Promise<{ ok: boolean; assigneeId: string | null }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+
+    if (input.assigneeId) {
+      const member = await this.repo.findMemberInWorkspace(input.assigneeId, auth.workspaceId)
+      if (!member) throw new AssigneeMemberNotFoundError()
+    }
+
+    const updated = await this.repo.assignThread(threadId, auth.workspaceId, input.assigneeId)
+    return { ok: true, assigneeId: updated.assigneeId }
+  }
+
+  async claimThread(
+    auth: AuthContext,
+    threadId: string
+  ): Promise<{ ok: boolean; assigneeId: string; lockExpiresAt: Date }> {
+    const member = await this.repo.findMemberByUserInWorkspace(auth.userId, auth.workspaceId)
+    if (!member) throw new AssigneeMemberNotFoundError()
+
+    const claimed = await this.repo.claimThread(threadId, auth.workspaceId, member.id)
+    if (!claimed) {
+      const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+      if (!thread) throw new InboxMessageNotFoundError()
+      const error = new Error('Thread is already claimed by another agent')
+      error.name = 'InboxThreadClaimConflictError'
+      throw error
+    }
+
+    return claimed
+  }
+
+  async updateThreadTags(
+    auth: AuthContext,
+    threadId: string,
+    input: ThreadTagsInput
+  ): Promise<{ id: string; tags: string[] }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    return this.repo.updateThreadTags(threadId, input.tags)
+  }
+
+  async updateThreadPriority(
+    auth: AuthContext,
+    threadId: string,
+    input: ThreadPriorityInput
+  ): Promise<{ id: string; priority: string }> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    return this.repo.updateThreadPriority(threadId, input.priority)
   }
 
   async replyToMessage(
