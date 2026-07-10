@@ -42,6 +42,7 @@ import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
 import { startCommentDmScanner, stopCommentDmScanner } from './lib/comment-dm-scanner'
 import { startInboxIngestScanner, stopInboxIngestScanner } from './lib/inbox-ingest-scanner'
+import { startAnalyticsCollector, stopAnalyticsCollector } from './lib/analytics-collector'
 import {
   unknownOutcomesCounter,
   scheduleDelayHistogram,
@@ -1015,6 +1016,7 @@ async function shutdown(signal: string) {
   stopReconciliationScanner()
   stopCommentDmScanner()
   stopInboxIngestScanner()
+  stopAnalyticsCollector()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
   await closeRedisClient() // P1-10: close shared circuit/rate-limit redis client
@@ -1053,6 +1055,10 @@ startCommentDmScanner()
 // Inbox ingest scanner: pulls real IG comments on published posts into the
 // unified inbox (InboxMessage rows) so the inbox reflects actual customers.
 startInboxIngestScanner()
+// Analytics collector: refreshes AnalyticsSnapshot (account level) and
+// PostMetricSnapshot (per post) from the IG Graph API every 6 hours, so the
+// dashboards show real numbers instead of frozen seed data.
+startAnalyticsCollector()
 
 // ── Helpers ───────────────────────────────────────────────────
 
