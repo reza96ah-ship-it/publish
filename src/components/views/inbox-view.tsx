@@ -122,8 +122,7 @@ interface AutomationDisplay {
 function ruleToAutomation(rule: CommentDmRule): AutomationDisplay {
   const kws = rule.keywords && rule.keywords.length > 0 ? rule.keywords : [rule.keyword]
   const trigger = kws.filter(Boolean).join('، ') || '—'
-  const action =
-    rule.dmTemplate.length > 50 ? `${rule.dmTemplate.slice(0, 50)}…` : rule.dmTemplate
+  const action = rule.dmTemplate.length > 50 ? `${rule.dmTemplate.slice(0, 50)}…` : rule.dmTemplate
   return {
     trigger,
     action,
@@ -133,7 +132,9 @@ function ruleToAutomation(rule: CommentDmRule): AutomationDisplay {
 }
 
 export function InboxView() {
-  const [filter, setFilter] = useState<'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'overdue' | 'resolved'>('all')
+  const [filter, setFilter] = useState<
+    'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'overdue' | 'resolved'
+  >('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
@@ -146,17 +147,19 @@ export function InboxView() {
     queryKey: ['comment-dm-rules'],
     queryFn: () => api.get<CommentDmRule[]>('/api/automation/comment-dm-rules'),
   })
-  const automations = useMemo(
-    () => (commentDmRules ?? []).map(ruleToAutomation),
-    [commentDmRules]
-  )
+  const automations = useMemo(() => (commentDmRules ?? []).map(ruleToAutomation), [commentDmRules])
 
   const { data: savedReplies } = useQuery<SavedReply[]>({
     queryKey: ['inbox-saved-replies'],
     queryFn: () => api.get<SavedReply[]>('/api/inbox/saved-replies'),
   })
 
-  const { data: messages, isLoading, isError, refetch } = useQuery<InboxMessage[]>({
+  const {
+    data: messages,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<InboxMessage[]>({
     queryKey: ['inbox'],
     queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
   })
@@ -169,7 +172,7 @@ export function InboxView() {
   const filtered = useMemo(() => {
     if (!messages) return []
     return messages.filter((m) => {
-      if (filter === 'unread') return !m.isRead
+      if (filter === 'unread') return !m.isRead || m.id === selectedId
       if (filter === 'comment') return m.messageType === 'comment'
       if (filter === 'dm') return m.messageType === 'dm'
       if (filter === 'unassigned') return !m.assigneeId && m.status !== 'resolved'
@@ -180,20 +183,23 @@ export function InboxView() {
       if (filter === 'resolved') return m.status === 'resolved'
       return true
     })
-  }, [messages, filter])
+  }, [messages, filter, selectedId])
 
   const selected = messages?.find((m) => m.id === selectedId) ?? null
   const unreadCount = messages?.filter((m) => !m.isRead).length ?? 0
   useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
 
-  const insertSnippet = useCallback((reply: SavedReply) => {
-    const text = interpolate(reply.body, {
-      senderName: selected?.senderName,
-      channelName: selected?.platform,
-    })
-    setReplyText(text)
-    setShowSnippets(false)
-  }, [selected])
+  const insertSnippet = useCallback(
+    (reply: SavedReply) => {
+      const text = interpolate(reply.body, {
+        senderName: selected?.senderName,
+        channelName: selected?.platform,
+      })
+      setReplyText(text)
+      setShowSnippets(false)
+    },
+    [selected]
+  )
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
@@ -228,10 +234,38 @@ export function InboxView() {
     onError: () => toast.error('خطا در تغییر وضعیت'),
   })
 
+  const readStateMutation = useMutation({
+    mutationFn: ({ id, isRead }: { id: string; isRead: boolean }) =>
+      api.post<{ ok: boolean }>(`/api/inbox/${id}/${isRead ? 'read' : 'unread'}`, {}),
+    onMutate: async ({ id, isRead }) => {
+      await queryClient.cancelQueries({ queryKey: ['inbox'] })
+      const previous = queryClient.getQueryData<InboxMessage[]>(['inbox'])
+
+      queryClient.setQueryData<InboxMessage[]>(['inbox'], (current) =>
+        current?.map((message) => (message.id === id ? { ...message, isRead } : message))
+      )
+
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData<InboxMessage[]>(['inbox'], context.previous)
+      }
+      toast.error('خطا در تغییر وضعیت خواندن')
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['inbox'] })
+    },
+  })
+
   // ── Handlers ───────────────────────────────────────────────────────
-  const handleSelectMessage = useCallback((id: string) => {
+  const handleSelectMessage = (id: string) => {
     setSelectedId(id)
-  }, [])
+    const message = messages?.find((m) => m.id === id)
+    if (message && !message.isRead) {
+      readStateMutation.mutate({ id, isRead: true })
+    }
+  }
 
   const handleReply = () => {
     if (!replyText.trim()) {
@@ -276,7 +310,9 @@ export function InboxView() {
                   fullText += json.content
                   setReplyText(fullText)
                 }
-              } catch { /* intentional no-op */ }
+              } catch {
+                /* intentional no-op */
+              }
             }
           }
         }
@@ -302,8 +338,7 @@ export function InboxView() {
           unreadCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
               <span className="size-1.5 rounded-full bg-info" />
-              {relativeTime(new Date(Date.now() - 1000 * 60 * 5))} —{' '}
-              {unreadCount} ناخوانده
+              {relativeTime(new Date(Date.now() - 1000 * 60 * 5))} — {unreadCount} ناخوانده
             </span>
           )
         }
@@ -331,7 +366,13 @@ export function InboxView() {
           </div>
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
-            <LoadingState isLoading={isLoading} isError={isError} onRetry={refetch} errorLabel="خطا در بارگذاری صندوق ورودی" skeleton={<SkeletonList rows={6} avatar />}>
+            <LoadingState
+              isLoading={isLoading}
+              isError={isError}
+              onRetry={refetch}
+              errorLabel="خطا در بارگذاری صندوق ورودی"
+              skeleton={<SkeletonList rows={6} avatar />}
+            >
               {filtered.length === 0 ? (
                 <EmptyState
                   icon={InboxIcon}
@@ -401,12 +442,42 @@ export function InboxView() {
                 </div>
                 {/* Status workflow */}
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span className={cn('text-2xs font-semibold px-2 py-0.5 rounded-md border', STATUS_COLOR[selected.status ?? 'new'])}>
+                  <span
+                    className={cn(
+                      'text-2xs font-semibold px-2 py-0.5 rounded-md border',
+                      STATUS_COLOR[selected.status ?? 'new']
+                    )}
+                  >
                     {STATUS_LABEL[selected.status ?? 'new']}
+                  </span>
+                  <span
+                    className={cn(
+                      'text-2xs font-semibold px-2 py-0.5 rounded-md border',
+                      selected.isRead
+                        ? 'text-ink-secondary bg-surface border-border'
+                        : 'text-info bg-info-soft border-info/20'
+                    )}
+                  >
+                    {selected.isRead ? 'خوانده‌شده' : 'ناخوانده'}
                   </span>
                   {selected.slaStartedAt && selected.status !== 'resolved' && (
                     <SlaTimer slaStartedAt={selected.slaStartedAt} />
                   )}
+                  <button
+                    onClick={() =>
+                      readStateMutation.mutate({ id: selected.id, isRead: !selected.isRead })
+                    }
+                    disabled={readStateMutation.isPending}
+                    className={cn(
+                      'n-focus-ring inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md border transition-colors',
+                      selected.isRead
+                        ? 'text-info bg-info-soft border-info/20 hover:bg-info/15'
+                        : 'text-ink-secondary bg-surface border-border hover:bg-surface-hover'
+                    )}
+                  >
+                    <CheckCheck className="size-3" />
+                    {selected.isRead ? 'ناخوانده کن' : 'خوانده کن'}
+                  </button>
                   {selected.status !== 'resolved' && (
                     <button
                       onClick={() => statusMutation.mutate({ id: selected.id, status: 'resolved' })}
@@ -427,7 +498,9 @@ export function InboxView() {
                   )}
                   {selected.status === 'new' && (
                     <button
-                      onClick={() => statusMutation.mutate({ id: selected.id, status: 'in_progress' })}
+                      onClick={() =>
+                        statusMutation.mutate({ id: selected.id, status: 'in_progress' })
+                      }
                       disabled={statusMutation.isPending}
                       className="n-focus-ring text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
                     >
@@ -629,11 +702,7 @@ export function InboxView() {
                 message="با ساخت قانون کامنت→DM، پاسخ خودکار به مخاطبان را فعال کنید."
                 size="compact"
                 action={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push('/settings')}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => router.push('/settings')}>
                     <Plus className="size-3.5" />
                     ساخت اتوماسیون
                   </Button>
@@ -665,8 +734,16 @@ function SlaTimer({ slaStartedAt }: { slaStartedAt: string }) {
   // Subtle SLA indicator — warning color text only, no full background, so the
   // message text remains the primary visual element in the row.
   return (
-    <span className={cn('text-2xs font-mono px-1.5 py-0.5 rounded-md border', overdue ? 'text-warning border-warning/30 bg-transparent' : 'text-ink-tertiary bg-surface border-border')}>
-      ⏱ {label}{overdue ? ' — تأخیر' : ''}
+    <span
+      className={cn(
+        'text-2xs font-mono px-1.5 py-0.5 rounded-md border',
+        overdue
+          ? 'text-warning border-warning/30 bg-transparent'
+          : 'text-ink-tertiary bg-surface border-border'
+      )}
+    >
+      ⏱ {label}
+      {overdue ? ' — تأخیر' : ''}
     </span>
   )
 }
@@ -685,11 +762,16 @@ function MessageListItem({
   return (
     <button
       onClick={onClick}
+      aria-current={active ? 'true' : undefined}
+      aria-label={`${message.senderName}، ${message.isRead ? 'خوانده‌شده' : 'ناخوانده'}، ${STATUS_LABEL[message.status] ?? message.status}`}
       className={cn(
-        'n-focus-ring w-full text-start flex items-start gap-3 p-3 border-b border-border transition-colors',
-        active ? 'bg-accent-soft' : 'hover:bg-surface-subtle',
-        !message.isRead && 'bg-accent-soft',
-        overdue && 'border-s-2 border-s-danger'
+        'n-focus-ring w-full text-start flex items-start gap-3 p-3 border-b border-s-4 border-border border-s-transparent transition-colors',
+        active
+          ? 'bg-accent-tint border-s-accent'
+          : message.isRead
+            ? 'hover:bg-surface-subtle'
+            : 'bg-info-soft/45 hover:bg-info-soft/70',
+        overdue && !active && 'border-s-danger'
       )}
     >
       <div className="relative shrink-0">
@@ -717,7 +799,13 @@ function MessageListItem({
             {relativeTime(new Date(message.createdAt))}
           </span>
         </div>
-        <p className="text-sm text-ink-tertiary line-clamp-2 leading-relaxed" dir="auto">
+        <p
+          className={cn(
+            'text-sm line-clamp-2 leading-relaxed',
+            message.isRead ? 'text-ink-tertiary' : 'font-medium text-ink-secondary'
+          )}
+          dir="auto"
+        >
           {message.message}
         </p>
         <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
@@ -727,15 +815,23 @@ function MessageListItem({
           </span>
           {/* Status chip row — limit visible chips to at most 2 via overflow-hidden so the message text stays primary. */}
           <span className="inline-flex items-center gap-1 ms-auto overflow-hidden">
-            {message.status !== 'new' && (
-              <span className={cn('text-2xs font-semibold px-1.5 py-0.5 rounded border shrink-0', STATUS_COLOR[message.status])}>
-                {STATUS_LABEL[message.status]}
+            <span
+              className={cn(
+                'text-2xs font-semibold px-1.5 py-0.5 rounded border shrink-0',
+                STATUS_COLOR[message.status]
+              )}
+            >
+              {STATUS_LABEL[message.status]}
+            </span>
+            {!message.isRead && (
+              <span className="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded border text-info bg-info-soft border-info/20 shrink-0">
+                <span className="size-1.5 rounded-full bg-info" />
+                ناخوانده
               </span>
             )}
             {message.isReplied && (
               <span className="text-2xs text-success font-semibold shrink-0">پاسخ داده شد</span>
             )}
-            {!message.isRead && <span className="size-2 rounded-full bg-accent shrink-0" />}
           </span>
         </div>
       </div>
