@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { getInboxOperationalMetrics } from '@/modules/inbox/metrics'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,14 +14,14 @@ export async function GET() {
   today.setHours(0, 0, 0, 0)
 
   // P8.3: Fixed N+1 — use groupBy instead of findMany + filter
-  const [jobCounts, unreadInbox, pendingContent, platformCounts, campaigns, publishedToday] =
+  const [jobCounts, inboxMetrics, pendingContent, platformCounts, campaigns, publishedToday] =
     await Promise.all([
       db.publishJob.groupBy({
         by: ['status'],
         where: { workspaceId },
         _count: { _all: true },
       }),
-      db.inboxMessage.count({ where: { workspaceId, isRead: false } }),
+      getInboxOperationalMetrics(workspaceId),
       db.content.count({ where: { workspaceId, status: 'review' } }),
       db.platform.groupBy({
         by: ['status'],
@@ -43,11 +44,13 @@ export async function GET() {
   const platMap = new Map(platformCounts.map((p) => [p.status, p._count._all]))
   const disconnected =
     (platMap.get('error') ?? 0) + (platMap.get('expired') ?? 0) + (platMap.get('disconnected') ?? 0)
+  const unreadInbox = inboxMetrics.unreadInbox
+  const slaRisk = inboxMetrics.slaRisk
 
   const health =
-    failed > 2 || disconnected > 1
+    failed > 2 || disconnected > 1 || slaRisk > 5
       ? 'critical'
-      : failed > 0 || disconnected > 0
+      : failed > 0 || disconnected > 0 || slaRisk > 0
         ? 'warning'
         : 'healthy'
   const healthLabel =
@@ -75,6 +78,9 @@ export async function GET() {
     unreadInbox,
     activeCampaigns: campaigns,
     disconnected,
-    slaRisk: Math.max(0, unreadInbox - 2),
+    slaRisk,
+    inboxThreadUnread: inboxMetrics.threadUnread,
+    inboxLegacyUnread: inboxMetrics.legacyUnread,
+    inboxSlaTargetMinutes: inboxMetrics.slaTargetMinutes,
   })
 }
