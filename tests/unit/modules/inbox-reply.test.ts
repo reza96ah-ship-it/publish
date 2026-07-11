@@ -4,6 +4,7 @@ const { igMock } = vi.hoisted(() => ({
   igMock: {
     sendCommentReply: vi.fn(),
     sendPrivateReply: vi.fn(),
+    sendDirectMessage: vi.fn(),
   },
 }))
 
@@ -14,8 +15,12 @@ vi.mock('@/modules/inbox/instagram-reply', async (importOriginal) => {
     ProviderReplyError: actual.ProviderReplyError,
     sendCommentReply: igMock.sendCommentReply,
     sendPrivateReply: igMock.sendPrivateReply,
+    sendDirectMessage: igMock.sendDirectMessage,
   }
 })
+vi.mock('@/modules/inbox/realtime-emit', () => ({
+  emitInboxThreadEvent: vi.fn().mockResolvedValue(undefined),
+}))
 
 import { InboxService } from '@/modules/inbox/service'
 import type { InboxRepository } from '@/modules/inbox/repository'
@@ -115,5 +120,113 @@ describe('inboxService.replyToMessage — real Instagram sends', () => {
 
     await expect(service.replyToMessage(AUTH, 'msg_5', { reply: 'x' })).rejects.toThrow()
     expect(repo.reply).not.toHaveBeenCalled()
+  })
+})
+
+function makeThreadRepo(thread: Record<string, unknown> | null) {
+  return {
+    findThreadWithPlatform: vi.fn().mockResolvedValue(thread),
+    appendThreadReply: vi.fn().mockResolvedValue({ id: 'out_1' }),
+    markLegacyRepliedByExternalId: vi.fn().mockResolvedValue(undefined),
+  } as unknown as InboxRepository
+}
+
+describe('inboxService.replyToThread — DM recipient addressing', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('addresses DM replies by the sender IGSID, never by message id', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_1',
+      providerUserId: 'igsid_777',
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_1',
+          providerMessageId: 'mid.HASH123',
+          messageType: 'dm',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await service.replyToThread(AUTH, 'thr_1', { reply: 'پاسخ دایرکت' })
+
+    expect(igMock.sendDirectMessage).toHaveBeenCalledWith(
+      'dec:enc_token',
+      'ig_user_1',
+      'igsid_777',
+      'پاسخ دایرکت'
+    )
+    expect(igMock.sendPrivateReply).not.toHaveBeenCalled()
+    expect(igMock.sendCommentReply).not.toHaveBeenCalled()
+  })
+
+  it('falls back to thread.providerUserId when the message has no sender id', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_2',
+      providerUserId: 'igsid_from_thread',
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_2',
+          providerMessageId: 'mid.HASH456',
+          messageType: 'dm',
+          senderExternalId: null,
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await service.replyToThread(AUTH, 'thr_2', { reply: 'x' })
+
+    expect(igMock.sendDirectMessage).toHaveBeenCalledWith(
+      'dec:enc_token',
+      'ig_user_1',
+      'igsid_from_thread',
+      'x'
+    )
+  })
+
+  it('rejects DM replies when no sender id is known at all', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_3',
+      providerUserId: null,
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_3',
+          providerMessageId: 'mid.HASH789',
+          messageType: 'dm',
+          senderExternalId: null,
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await expect(service.replyToThread(AUTH, 'thr_3', { reply: 'x' })).rejects.toThrow()
+    expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
+  })
+
+  it('still uses the comment reply endpoint for comment threads', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_4',
+      providerUserId: 'igsid_777',
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_4',
+          providerMessageId: 'cmt_42',
+          messageType: 'comment',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await service.replyToThread(AUTH, 'thr_4', { reply: 'پاسخ عمومی' })
+
+    expect(igMock.sendCommentReply).toHaveBeenCalledWith('dec:enc_token', 'cmt_42', 'پاسخ عمومی')
+    expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
   })
 })

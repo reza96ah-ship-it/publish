@@ -5,6 +5,7 @@ import {
   extractInstagramInboxEvents,
   type NormalizedInstagramInboxEvent,
 } from './instagram-webhook-normalize'
+import { emitInboxThreadEvent } from './realtime-emit'
 
 export type InstagramWebhookIngestResult = {
   extractedEvents: number
@@ -107,6 +108,15 @@ async function ingestEventForPlatform(
         lastMessageAt: event.createdAt,
         unreadCount: { increment: 1 },
       },
+    })
+
+    // Push to any open inboxes — fire-and-forget, never blocks ingestion.
+    void emitInboxThreadEvent(platform.workspaceId, {
+      threadId: thread.id,
+      kind: createdThreads === 1 ? 'created' : 'message',
+      messageType: event.messageType,
+      senderName: event.senderName,
+      preview: event.body.slice(0, 120),
     })
 
     await db.inboxMessage

@@ -35,6 +35,7 @@ import {
   AnimatedTabs,
 } from '@/components/dashboard/shared'
 import { useAnnounceValue } from '@/lib/aria-live'
+import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
@@ -254,6 +255,24 @@ export function InboxView() {
   const [showSnippets, setShowSnippets] = useState(false)
   const queryClient = useQueryClient()
   const router = useRouter()
+
+  // Realtime: webhook ingest + teammate replies land live — no manual refresh.
+  const { data: workspaceId } = useQuery<string>({
+    queryKey: ['workspace-id'],
+    queryFn: async () => {
+      const ws = await api.get<{ id: string }>('/api/workspace')
+      return ws.id
+    },
+    staleTime: Infinity,
+  })
+  useInboxStream(workspaceId, (event) => {
+    if (event.kind === 'created' || event.kind === 'message') {
+      toast.info(
+        event.senderName ? `پیام جدید از ${event.senderName}` : 'پیام جدید در صندوق ورودی',
+        { description: event.preview }
+      )
+    }
+  })
 
   // Real comment→DM automation rules (P1-17: replaces hardcoded mock data).
   const { data: commentDmRules } = useQuery<CommentDmRule[]>({

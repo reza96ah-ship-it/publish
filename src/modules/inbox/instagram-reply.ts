@@ -75,3 +75,23 @@ export async function sendPrivateReply(
     access_token: accessToken,
   })
 }
+
+/**
+ * Reply inside a DM conversation, addressed by the sender's Instagram-scoped
+ * ID (IGSID). This is the correct recipient form for webhook-ingested DM
+ * threads — recipient.comment_id is only valid for comment private replies,
+ * and passing a DM message id there is rejected by the Graph API.
+ */
+export async function sendDirectMessage(
+  accessToken: string,
+  igUserId: string,
+  recipientIgsid: string,
+  replyText: string
+): Promise<void> {
+  await graphPost(`${GRAPH_API}/${igUserId}/messages`, {
+    recipient: { id: recipientIgsid },
+    message: { text: replyText },
+    messaging_type: 'RESPONSE',
+    access_token: accessToken,
+  })
+}

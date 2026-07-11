@@ -70,13 +70,22 @@ interface JobPayload {
   externalId: string | null
 }
 
-interface EmitBody {
-  workspaceId: string
-  event: 'job:status' | 'job:progress'
-  payload: JobPayload
+/** Inbox thread event relayed to open inbox views (see src/modules/inbox/realtime-emit.ts). */
+interface InboxThreadPayload {
+  threadId: string
+  kind: 'created' | 'message' | 'updated'
+  messageType: string
+  senderName?: string
+  preview?: string
 }
 
-const ALLOWED_EVENTS = ['job:status', 'job:progress'] as const
+interface EmitBody {
+  workspaceId: string
+  event: 'job:status' | 'job:progress' | 'inbox:thread'
+  payload: JobPayload | InboxThreadPayload
+}
+
+const ALLOWED_EVENTS = ['job:status', 'job:progress', 'inbox:thread'] as const
 const roomFor = (workspaceId: string): string => `workspace:${workspaceId}`
 
 // -- In-memory workspace membership cache (avoids DB hit on every subscribe) --
@@ -150,7 +159,7 @@ const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse
       io.to(room).emit(event, payload)
       const subscribers = io.sockets.adapter.rooms.get(room)?.size ?? 0
       console.log(
-        `[emit] room=${room} event=${event} jobId=${payload.jobId} status=${payload.status} subs=${subscribers}`
+        `[emit] room=${room} event=${event} ref=${'jobId' in payload ? payload.jobId : payload.threadId} subs=${subscribers}`
       )
       return sendJson(res, 200, { ok: true, event, room, subscribers })
     }

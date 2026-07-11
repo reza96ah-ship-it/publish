@@ -11,6 +11,8 @@
 
 import { randomBytes } from 'crypto'
 import { db } from '@/lib/db'
+import { decrypt } from '@/lib/crypto'
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
 import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import { computeCredentialStatus } from '@/lib/provider-auth/types'
@@ -195,11 +197,57 @@ export class OAuthService {
         })
       } catch { /* audit write failure is non-fatal */ }
 
+      // Instagram: subscribe the connected account to webhook events so
+      // comments/messages/mentions start flowing to /api/inbox/instagram/webhook.
+      // Without this call, Meta never delivers events for the account even when
+      // the app-level webhook is configured. Best-effort — a failure here must
+      // not break the connect flow (the account may lack Advanced Access yet).
+      if (type === 'instagram' && credential.accountId) {
+        await subscribeInstagramWebhooks(credential.accountId, credential.accessTokenEncrypted)
+      }
+
       return { redirectUrl: '/channels?oauth_success=1', clearCookieName: cookieName }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'token_exchange_failed'
       return { redirectUrl: errorUrl(baseUrl, msg), clearCookieName: cookieName }
     }
+  }
+}
+
+/**
+ * Subscribe the IG account to app webhook events (comments, messages,
+ * mentions). Idempotent on Meta's side — safe to call on every reconnect.
+ * Best-effort: logs and swallows failures (e.g. missing Advanced Access).
+ */
+async function subscribeInstagramWebhooks(
+  igUserId: string,
+  accessTokenEncrypted: string
+): Promise<void> {
+  try {
+    const accessToken = decrypt(accessTokenEncrypted)
+    const params = new URLSearchParams({
+      subscribed_fields: 'comments,messages,mentions',
+      access_token: accessToken,
+    })
+    const res = await fetch(
+      `${getInstagramGraphApiBaseUrl()}/${igUserId}/subscribed_apps?${params}`,
+      { method: 'POST', signal: AbortSignal.timeout(10_000) }
+    )
+    const data = (await res.json().catch(() => null)) as {
+      success?: boolean
+      error?: { message?: string }
+    } | null
+    if (!data?.success) {
+      console.error(
+        `[oauth] instagram webhook subscription failed for ${igUserId}:`,
+        data?.error?.message ?? 'unknown error'
+      )
+    }
+  } catch (err) {
+    console.error(
+      `[oauth] instagram webhook subscription errored for ${igUserId} (non-fatal):`,
+      (err as Error).message
+    )
   }
 }
 
