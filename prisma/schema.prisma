@@ -737,6 +737,10 @@ model InboxThread {
   lockExpiresAt    DateTime?
   unreadCount      Int      @default(0)
   lastMessageAt    DateTime @default(now())
+  // Last INBOUND message time — drives the Meta reply-window countdown
+  // (24h for DMs, 7d for comment private replies). lastMessageAt can't be
+  // used: outbound replies bump it too.
+  lastInboundAt    DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

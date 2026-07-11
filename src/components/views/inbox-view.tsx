@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -22,10 +22,11 @@ import {
   CheckCheck,
   BookOpen,
   Paperclip,
+  Clock,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
-import { relativeTime } from '@/lib/jalali'
+import { relativeTime, toPersianDigits } from '@/lib/jalali'
 import {
   SectionTitle,
   PlatformIcon,
@@ -115,6 +116,8 @@ interface InboxThreadSummary {
   lockExpiresAt: string | null
   unreadCount: number
   lastMessageAt: string
+  lastInboundAt: string | null
+  replyWindowExpiresAt: string | null
   createdAt: string
   updatedAt: string
   lastMessage: InboxThreadTimelineMessage | null
@@ -359,6 +362,13 @@ export function InboxView() {
     : selectedMessage
       ? 'message'
       : null
+  // Meta 24h DM window — set only for DM threads (public comment replies have
+  // no window). Drives the countdown chip and the disabled composer state.
+  const replyWindowExpiresAt =
+    selectedThread?.messageType === 'dm' ? selectedThread.replyWindowExpiresAt : null
+  const replyWindowClosed = Boolean(
+    replyWindowExpiresAt && new Date(replyWindowExpiresAt).getTime() < Date.now()
+  )
   const unreadCount = usingThreadConversations
     ? (threads ?? []).reduce((count, thread) => count + thread.unreadCount, 0)
     : (messages?.filter((m) => !m.isRead).length ?? 0)
@@ -940,10 +950,25 @@ export function InboxView() {
                     ))}
                   </div>
                 )}
+                {replyWindowExpiresAt && (
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <ReplyWindowChip expiresAt={replyWindowExpiresAt} />
+                    {replyWindowClosed && (
+                      <span className="text-2xs text-ink-tertiary">
+                        طبق سیاست متا، پاسخ دایرکت فقط تا ۲۴ ساعت پس از آخرین پیام مشتری ممکن است
+                      </span>
+                    )}
+                  </div>
+                )}
                 <Textarea
                   dir="rtl"
                   rows={3}
-                  placeholder="پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)"
+                  placeholder={
+                    replyWindowClosed
+                      ? 'پنجره پاسخ بسته شده است'
+                      : 'پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)'
+                  }
+                  disabled={replyWindowClosed}
                   value={replyText}
                   onChange={(e) => {
                     setReplyText(e.target.value)
@@ -1003,7 +1028,7 @@ export function InboxView() {
                       size="sm"
                       className="min-h-[44px] sm:min-h-0"
                       onClick={handleReply}
-                      disabled={replyMutation.isPending || !replyText.trim()}
+                      disabled={replyMutation.isPending || !replyText.trim() || replyWindowClosed}
                     >
                       {replyMutation.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -1086,6 +1111,51 @@ export function InboxView() {
         </div>
       </div>
     </motion.div>
+  )
+}
+
+/**
+ * Meta 24h DM messaging-window countdown. Green/neutral while open, warning
+ * under 2 hours, danger when closed. Re-renders every 30s so the countdown
+ * stays honest without a per-second timer.
+ */
+function ReplyWindowChip({ expiresAt }: { expiresAt: string | Date }) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(t)
+  }, [])
+
+  const remainingMs = new Date(expiresAt).getTime() - now
+  if (Number.isNaN(remainingMs)) return null
+
+  if (remainingMs <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-full border text-danger border-danger/30 bg-danger-tint">
+        <Clock className="size-3" />
+        پنجره پاسخ بسته شد
+      </span>
+    )
+  }
+
+  const totalMin = Math.floor(remainingMs / 60_000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  const label = toPersianDigits(`${h}:${String(m).padStart(2, '0')}`)
+  const urgent = remainingMs < 2 * 60 * 60 * 1000
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-full border num-tabular',
+        urgent
+          ? 'text-warning border-warning/30 bg-warning-tint'
+          : 'text-ink-tertiary border-border bg-surface'
+      )}
+    >
+      <Clock className="size-3" />
+      پنجره پاسخ: {label}
+    </span>
   )
 }
 

@@ -24,6 +24,7 @@
 
 import { db } from './db'
 import { decrypt } from './crypto'
+import { emitInboxThread } from './emit'
 import { listComments, type IgComment } from './instagram-messaging'
 
 const SCAN_INTERVAL_MS = 2 * 60 * 1000 // 2 minutes — inbox freshness vs. IG rate limits
@@ -181,6 +182,8 @@ async function scanPlatform(
     stats.commentsSeen += inbound.length
     if (inbound.length === 0) continue
 
+    // Legacy flat rows (old inbox list) — createMany + skipDuplicates keeps
+    // re-scans idempotent via @@unique([platformId, externalId]).
     const result = await db.inboxMessage.createMany({
       data: inbound.map((c) => ({
         workspaceId: platform.workspaceId,
@@ -197,6 +200,85 @@ async function scanPlatform(
       skipDuplicates: true, // @@unique([platformId, externalId]) → re-scans are no-ops
     })
     stats.messagesCreated += result.count
+
+    // Thread rows — same shape the webhook ingest writes, so the poller acts
+    // as a webhook backfill (missed deliveries, pre-webhook comments) instead
+    // of a divergent second system. Convention matches
+    // instagram-webhook-normalize: providerThreadId = `comment:{commentId}`.
+    for (const c of inbound) {
+      await ingestCommentThread(platform, c)
+    }
+  }
+}
+
+/** Upsert one comment into the thread model; emit realtime on new inbound. */
+async function ingestCommentThread(platform: PlatformRow, c: IgComment): Promise<void> {
+  const senderName = c.from?.username ?? c.username ?? 'کاربر اینستاگرام'
+  const createdAt = safeDate(c.timestamp)
+
+  try {
+    const thread = await db.inboxThread.upsert({
+      where: {
+        platformId_providerThreadId: {
+          platformId: platform.id,
+          providerThreadId: `comment:${c.id}`,
+        },
+      },
+      create: {
+        workspaceId: platform.workspaceId,
+        platformId: platform.id,
+        providerThreadId: `comment:${c.id}`,
+        providerUserId: c.from?.id ?? null,
+        title: senderName,
+        messageType: 'comment',
+        lastMessageAt: createdAt,
+        lastInboundAt: createdAt,
+      },
+      update: {},
+      select: { id: true },
+    })
+
+    await db.inboxThreadMessage.create({
+      data: {
+        threadId: thread.id,
+        workspaceId: platform.workspaceId,
+        platformId: platform.id,
+        providerMessageId: c.id,
+        direction: 'inbound',
+        messageType: 'comment',
+        senderExternalId: c.from?.id ?? null,
+        senderName,
+        body: c.text ?? '',
+        payload: { source: 'poll-backfill', commentId: c.id, timestamp: c.timestamp ?? null },
+        createdAt,
+      },
+    })
+
+    await db.inboxThread.update({
+      where: { id: thread.id },
+      data: {
+        status: 'new',
+        lastMessageAt: createdAt,
+        lastInboundAt: createdAt,
+        unreadCount: { increment: 1 },
+      },
+    })
+
+    void emitInboxThread(platform.workspaceId, {
+      threadId: thread.id,
+      kind: 'message',
+      messageType: 'comment',
+      senderName,
+      preview: (c.text ?? '').slice(0, 120),
+    })
+  } catch (err: unknown) {
+    // P2002 on the message = webhook (or a previous scan) already ingested
+    // this comment — the whole point of the backfill being idempotent.
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') return
+    console.error(
+      `[inbox-ingest] thread ingest failed for comment ${c.id}:`,
+      (err as Error).message
+    )
   }
 }
 

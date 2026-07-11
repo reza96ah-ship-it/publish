@@ -8,6 +8,7 @@ import {
   ProviderReplyError,
 } from './instagram-reply'
 import { emitInboxThreadEvent } from './realtime-emit'
+import { getReplyWindowExpiry } from '../../../shared/instagram-graph'
 import type {
   AuthContext,
   InboxListQuery,
@@ -200,6 +201,20 @@ export class InboxService {
 
     const { platform } = thread
     if (platform?.type === 'instagram' && platform.tokenSecret) {
+      // Enforce the Meta 24h DM messaging window server-side — the Graph API
+      // would reject the send anyway; failing here gives the agent an
+      // actionable Persian message instead of a raw provider error. Public
+      // comment replies (the non-dm path below) have no window, so only DM
+      // threads are gated. The 7d limit applies to *private* replies to
+      // comments (comment→DM automation), not to public replies.
+      if (inbound.messageType === 'dm') {
+        const windowExpiresAt = getReplyWindowExpiry('dm', thread.lastInboundAt)
+        if (windowExpiresAt && windowExpiresAt.getTime() < Date.now()) {
+          throw new ProviderReplyError(
+            'پنجره ۲۴ ساعته پاسخ دایرکت به پایان رسیده است — طبق سیاست متا امکان ارسال نیست'
+          )
+        }
+      }
       const accessToken = decrypt(platform.tokenSecret)
       if (inbound.messageType === 'dm') {
         if (!platform.targetId) {
