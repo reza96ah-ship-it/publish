@@ -21,6 +21,7 @@ import {
   Loader2,
   CheckCheck,
   BookOpen,
+  Paperclip,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -69,9 +70,17 @@ interface InboxMessage {
   slaStartedAt: string | null
   priority?: string
   tags?: string[]
+  attachments?: InboxThreadAttachment[]
   lockedById?: string | null
   lockedByName?: string | null
   lockExpiresAt?: string | null
+}
+
+interface InboxThreadAttachment {
+  type: string
+  title: string
+  url: string | null
+  providerId: string | null
 }
 
 interface InboxThreadTimelineMessage {
@@ -82,6 +91,7 @@ interface InboxThreadTimelineMessage {
   senderExternalId: string | null
   senderName: string
   body: string
+  attachments: InboxThreadAttachment[]
   createdAt: string
 }
 
@@ -151,6 +161,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
     slaStartedAt: null,
     priority: thread.priority,
     tags: thread.tags,
+    attachments: thread.lastMessage?.attachments ?? [],
     lockedById: thread.lockedById,
     lockedByName: thread.lockedByName,
     lockExpiresAt: thread.lockExpiresAt,
@@ -856,6 +867,7 @@ export function InboxView() {
                             <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
                               {message.body}
                             </p>
+                            <AttachmentChips attachments={message.attachments} />
                           </div>
                         </div>
                       )
@@ -1081,6 +1093,37 @@ function SlaTimer({ slaStartedAt }: { slaStartedAt: string }) {
   )
 }
 
+function AttachmentChips({ attachments = [] }: { attachments?: InboxThreadAttachment[] }) {
+  if (attachments.length === 0) return null
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {attachments.map((attachment, index) => {
+        const label = attachment.title || attachment.type || 'Attachment'
+        const key = `${attachment.type}:${attachment.providerId ?? attachment.url ?? index}`
+        const className =
+          'inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-background/80 px-2 py-1 text-2xs font-semibold text-ink-secondary'
+        const content = (
+          <>
+            <Paperclip className="size-3 shrink-0 text-ink-tertiary" />
+            <span className="max-w-36 truncate">{label}</span>
+          </>
+        )
+
+        return attachment.url ? (
+          <a key={key} href={attachment.url} target="_blank" rel="noreferrer" className={className}>
+            {content}
+          </a>
+        ) : (
+          <span key={key} className={className}>
+            {content}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 function MessageListItem({
   message,
   active,
@@ -1146,6 +1189,12 @@ function MessageListItem({
           <span className="text-2xs text-ink-tertiary shrink-0">
             {MESSAGE_TYPE_LABEL[message.messageType] ?? message.messageType}
           </span>
+          {message.attachments && message.attachments.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary shrink-0">
+              <Paperclip className="size-3" />
+              {message.attachments.length}
+            </span>
+          )}
           {/* Status chip row — limit visible chips to at most 2 via overflow-hidden so the message text stays primary. */}
           <span className="inline-flex items-center gap-1 ms-auto overflow-hidden">
             <span

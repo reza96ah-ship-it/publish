@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
+import { INSTAGRAM_INBOX_API_LIMITS } from '../../../shared/instagram-graph'
 import {
   extractInstagramInboxEvents,
   type NormalizedInstagramInboxEvent,
@@ -20,6 +21,29 @@ function isPrismaUniqueViolation(error: unknown): boolean {
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === 'P2002'
   )
+}
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue
+}
+
+function threadMessagePayload(event: NormalizedInstagramInboxEvent): Prisma.InputJsonObject {
+  return {
+    source: 'instagram_webhook',
+    original: toJsonValue(event.payload),
+    attachments: event.attachments.map((attachment) => ({
+      type: attachment.type,
+      title: attachment.title,
+      url: attachment.url,
+      providerId: attachment.providerId,
+    })),
+    providerLimits: {
+      privateReplyWindowDays: INSTAGRAM_INBOX_API_LIMITS.privateReplyWindowDays,
+      conversationMessageReadLimit: INSTAGRAM_INBOX_API_LIMITS.conversationMessageReadLimit,
+      commentListLimit: INSTAGRAM_INBOX_API_LIMITS.commentListLimit,
+      webhookFirstEvents: [...INSTAGRAM_INBOX_API_LIMITS.webhookFirstEvents],
+    },
+  }
 }
 
 async function ingestEventForPlatform(
@@ -70,7 +94,7 @@ async function ingestEventForPlatform(
         senderExternalId: event.providerUserId,
         senderName: event.senderName,
         body: event.body,
-        payload: event.payload as Prisma.InputJsonValue,
+        payload: threadMessagePayload(event),
         createdAt: event.createdAt,
       },
     })

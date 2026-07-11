@@ -1,3 +1,12 @@
+import { INSTAGRAM_INBOX_API_LIMITS } from '../../../shared/instagram-graph'
+
+export type NormalizedInstagramAttachment = {
+  type: string
+  title: string
+  url: string | null
+  providerId: string | null
+}
+
 export type NormalizedInstagramInboxEvent = {
   providerAccountId: string
   providerThreadId: string
@@ -7,6 +16,12 @@ export type NormalizedInstagramInboxEvent = {
   body: string
   messageType: 'comment' | 'dm' | 'mention'
   createdAt: Date
+  attachments: NormalizedInstagramAttachment[]
+  providerLimits: {
+    privateReplyWindowDays: number
+    conversationMessageReadLimit: number
+    commentListLimit: number
+  }
   payload: unknown
 }
 
@@ -24,6 +39,31 @@ function numberValue(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
+function normalizedType(value: unknown, fallback = 'attachment'): string {
+  const text = stringValue(value)?.toLowerCase().replace(/[^a-z0-9:_-]+/g, '_')
+  return text || fallback
+}
+
+function titleForAttachmentType(type: string): string {
+  const normalized = normalizedType(type)
+  const labels: Record<string, string> = {
+    audio: 'Audio',
+    file: 'File',
+    ig_post: 'Instagram post',
+    image: 'Image',
+    location: 'Location',
+    media: 'Media',
+    mention_media: 'Mentioned media',
+    postback: 'Postback',
+    reel: 'Reel',
+    share: 'Shared post',
+    sticker: 'Sticker',
+    story: 'Story',
+    video: 'Video',
+  }
+  return labels[normalized] ?? 'Attachment'
+}
+
 function dateFromProvider(value: unknown): Date {
   const numeric = numberValue(value)
   if (numeric !== null) {
@@ -39,10 +79,99 @@ function dateFromProvider(value: unknown): Date {
   return new Date()
 }
 
-function summarizeAttachments(message: UnknownRecord): string {
-  const attachments = Array.isArray(message.attachments) ? message.attachments : []
+function normalizeAttachmentRecord(
+  value: unknown,
+  fallbackType = 'attachment'
+): NormalizedInstagramAttachment | null {
+  const record = asRecord(value)
+  if (!record) return null
+
+  const payload = asRecord(record.payload)
+  const type = normalizedType(record.type ?? payload?.type, fallbackType)
+  const url =
+    stringValue(payload?.url) ??
+    stringValue(payload?.media_url) ??
+    stringValue(payload?.thumbnail_url) ??
+    stringValue(record.url) ??
+    stringValue(record.media_url) ??
+    null
+  const providerId =
+    stringValue(payload?.id) ??
+    stringValue(payload?.sticker_id) ??
+    stringValue(record.id) ??
+    stringValue(record.media_id) ??
+    null
+  const title = stringValue(record.title) ?? titleForAttachmentType(type)
+
+  return { type, title, url, providerId }
+}
+
+function normalizeCommentAttachments(value: UnknownRecord, field: string): NormalizedInstagramAttachment[] {
+  const attachments: NormalizedInstagramAttachment[] = []
+  const media = asRecord(value.media) ?? asRecord(value.media_object)
+  if (media) {
+    const mediaType =
+      field.includes('mention') && !stringValue(media.media_type)
+        ? 'mention_media'
+        : normalizedType(media.media_type ?? media.type, 'media')
+    attachments.push({
+      type: mediaType,
+      title: titleForAttachmentType(mediaType),
+      url:
+        stringValue(media.permalink) ??
+        stringValue(media.media_url) ??
+        stringValue(media.thumbnail_url) ??
+        null,
+      providerId: stringValue(media.id) ?? stringValue(value.media_id) ?? null,
+    })
+  } else if (stringValue(value.media_id) || stringValue(value.media_url)) {
+    const type = field.includes('mention') ? 'mention_media' : 'media'
+    attachments.push({
+      type,
+      title: titleForAttachmentType(type),
+      url: stringValue(value.media_url),
+      providerId: stringValue(value.media_id),
+    })
+  }
+
+  return attachments
+}
+
+function normalizeMessagingAttachments(message: UnknownRecord | null): NormalizedInstagramAttachment[] {
+  const rawAttachments = Array.isArray(message?.attachments) ? message.attachments : []
+  return rawAttachments
+    .map((attachment) => normalizeAttachmentRecord(attachment))
+    .filter((attachment): attachment is NormalizedInstagramAttachment => Boolean(attachment))
+}
+
+function normalizePostbackAttachment(postback: UnknownRecord | null): NormalizedInstagramAttachment[] {
+  if (!postback) return []
+  return [
+    {
+      type: 'postback',
+      title: stringValue(postback.title) ?? 'Postback',
+      url: null,
+      providerId: stringValue(postback.payload) ?? stringValue(postback.mid) ?? null,
+    },
+  ]
+}
+
+function summarizeAttachments(attachments: NormalizedInstagramAttachment[]): string {
   if (attachments.length === 0) return ''
-  return '[Instagram attachment]'
+  if (attachments.length === 1) {
+    return `Instagram ${attachments[0]?.title.toLowerCase() ?? 'attachment'} attachment`
+  }
+  return `Instagram ${attachments[0]?.title.toLowerCase() ?? 'attachment'} + ${
+    attachments.length - 1
+  } more`
+}
+
+function providerLimits() {
+  return {
+    privateReplyWindowDays: INSTAGRAM_INBOX_API_LIMITS.privateReplyWindowDays,
+    conversationMessageReadLimit: INSTAGRAM_INBOX_API_LIMITS.conversationMessageReadLimit,
+    commentListLimit: INSTAGRAM_INBOX_API_LIMITS.commentListLimit,
+  }
 }
 
 function normalizeCommentChange(
@@ -62,10 +191,16 @@ function normalizeCommentChange(
     stringValue(value.username) ??
     stringValue(value.sender_name) ??
     'Instagram user'
-  const body = stringValue(value.text) ?? stringValue(value.message) ?? ''
-  if (!body) return null
 
   const isMention = field.includes('mention')
+  const attachments = normalizeCommentAttachments(value, field)
+  const body =
+    stringValue(value.text) ??
+    stringValue(value.message) ??
+    stringValue(value.caption) ??
+    summarizeAttachments(attachments)
+  if (!body) return null
+
   return {
     providerAccountId,
     providerThreadId: `${isMention ? 'mention' : 'comment'}:${providerMessageId}`,
@@ -75,6 +210,8 @@ function normalizeCommentChange(
     body,
     messageType: isMention ? 'mention' : 'comment',
     createdAt: dateFromProvider(value.timestamp ?? value.created_time ?? entryTime),
+    attachments,
+    providerLimits: providerLimits(),
     payload: value,
   }
 }
@@ -89,6 +226,10 @@ function normalizeMessagingEvent(
   if (message?.is_echo === true) return null
 
   const providerUserId = stringValue(sender?.id)
+  const attachments = [
+    ...normalizeMessagingAttachments(message),
+    ...normalizePostbackAttachment(postback),
+  ]
   const providerMessageId =
     stringValue(message?.mid) ??
     stringValue(postback?.mid) ??
@@ -97,7 +238,8 @@ function normalizeMessagingEvent(
   const body =
     stringValue(message?.text) ??
     stringValue(postback?.title) ??
-    (message ? summarizeAttachments(message) : '')
+    stringValue(postback?.payload) ??
+    summarizeAttachments(attachments)
   if (!body) return null
 
   return {
@@ -109,6 +251,8 @@ function normalizeMessagingEvent(
     body,
     messageType: 'dm',
     createdAt: dateFromProvider(event.timestamp),
+    attachments,
+    providerLimits: providerLimits(),
     payload: event,
   }
 }
