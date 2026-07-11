@@ -62,7 +62,7 @@ export function OperationalSummary() {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         <Stat
           icon={CheckCircle2}
           label="منتشرشده امروز"
@@ -98,6 +98,13 @@ export function OperationalSummary() {
           value={data?.unreadInbox}
           color="text-info"
           bg="bg-info-soft"
+        />
+        <Stat
+          icon={AlertTriangle}
+          label="ریسک SLA"
+          value={data?.slaRisk}
+          color="text-warning"
+          bg="bg-warning-soft"
         />
         <Stat
           icon={Flag}
