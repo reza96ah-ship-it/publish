@@ -29,6 +29,9 @@ services:
       ACTIVE_ENCRYPTION_KEY_ID: ${ACTIVE_ENCRYPTION_KEY_ID:-1}
       EMIT_SECRET: ${EMIT_SECRET}
       REALTIME_JWT_SECRET: ${REALTIME_JWT_SECRET}
+      # Inbox realtime: app-side webhook ingest pushes thread events to the
+      # realtime service (same /emit endpoint the worker uses for job status).
+      REALTIME_EMIT_URL: http://realtime:3003/emit
     depends_on:
       pgbouncer: { condition: service_healthy }
       redis-queue: { condition: service_healthy }

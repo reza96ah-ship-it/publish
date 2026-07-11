@@ -1,7 +1,13 @@
 import { decrypt } from '@/lib/crypto'
 import { InboxRepository } from './repository'
 import { InboxMessageNotFoundError, AssigneeMemberNotFoundError } from './errors'
-import { sendCommentReply, sendPrivateReply, ProviderReplyError } from './instagram-reply'
+import {
+  sendCommentReply,
+  sendPrivateReply,
+  sendDirectMessage,
+  ProviderReplyError,
+} from './instagram-reply'
+import { emitInboxThreadEvent } from './realtime-emit'
 import type {
   AuthContext,
   InboxListQuery,
@@ -201,12 +207,16 @@ export class InboxService {
             'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
           )
         }
-        await sendPrivateReply(
-          accessToken,
-          platform.targetId,
-          inbound.providerMessageId,
-          input.reply
-        )
+        // DM threads must be addressed by the sender's Instagram-scoped ID
+        // (IGSID) — recipient.comment_id is only valid for comment private
+        // replies, and a DM message id there is rejected by the Graph API.
+        const recipientIgsid = inbound.senderExternalId ?? thread.providerUserId
+        if (!recipientIgsid) {
+          throw new ProviderReplyError(
+            'شناسه فرستنده این گفتگو در دسترس نیست — پاسخ از اینستاگرام ممکن نیست'
+          )
+        }
+        await sendDirectMessage(accessToken, platform.targetId, recipientIgsid, input.reply)
       } else {
         await sendCommentReply(accessToken, inbound.providerMessageId, input.reply)
       }
@@ -225,6 +235,14 @@ export class InboxService {
       inbound.providerMessageId,
       input.reply
     )
+
+    // Let other open inboxes (teammates) see the reply land live.
+    void emitInboxThreadEvent(auth.workspaceId, {
+      threadId: thread.id,
+      kind: 'updated',
+      messageType: inbound.messageType,
+      preview: input.reply.slice(0, 120),
+    })
 
     return {
       ok: true,

@@ -2,13 +2,16 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, render } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SessionProvider } from 'next-auth/react'
 import type { ReactElement } from 'react'
 
 afterEach(() => cleanup())
 
 /**
- * Render with React Query provider (for component tests).
- * Disables retries so tests don't hang on failed queries.
+ * Render with React Query + NextAuth session providers (for component tests).
+ * Disables retries so tests don't hang on failed queries. session={null}
+ * renders components in the unauthenticated state — hooks like useSession
+ * (used by useInboxStream / usePublishStream) need the provider to exist.
  */
 export function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
@@ -17,5 +20,9 @@ export function renderWithProviders(ui: ReactElement) {
       mutations: { retry: false },
     },
   })
-  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
+  return render(
+    <SessionProvider session={null} refetchOnWindowFocus={false}>
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+    </SessionProvider>
+  )
 }
