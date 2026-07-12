@@ -250,7 +250,7 @@ function ruleToAutomation(rule: CommentDmRule): AutomationDisplay {
 
 export function InboxView() {
   const [filter, setFilter] = useState<
-    'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'overdue' | 'resolved'
+    'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'mine' | 'urgent' | 'overdue' | 'resolved'
   >('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -299,15 +299,31 @@ export function InboxView() {
     queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
   })
 
+  // Server-side queue filter — 'overdue' stays client-side (SLA math in view).
+  const serverQueue = filter === 'overdue' ? 'all' : filter
   const {
     data: threads,
     isLoading: isThreadsLoading,
     isError: isThreadsError,
     refetch: refetchThreads,
   } = useQuery<InboxThreadSummary[]>({
-    queryKey: ['inbox-threads'],
-    queryFn: () => api.getPaginated<InboxThreadSummary>('/api/inbox/threads'),
+    queryKey: ['inbox-threads', serverQueue],
+    queryFn: () =>
+      api.getPaginated<InboxThreadSummary>(`/api/inbox/threads?queue=${serverQueue}`),
   })
+
+  // Queue-rail badge counts + own membership id (hides own presence lock).
+  const { data: queueCounts } = useQuery<{
+    counts: Record<string, number>
+    membershipId: string | null
+  }>({
+    queryKey: ['inbox-thread-counts'],
+    queryFn: () =>
+      api.get<{ counts: Record<string, number>; membershipId: string | null }>(
+        '/api/inbox/threads/counts'
+      ),
+  })
+  const myMembershipId = queueCounts?.membershipId ?? null
 
   const { data: members } = useQuery<Member[]>({
     queryKey: ['members'],
@@ -345,6 +361,9 @@ export function InboxView() {
       if (filter === 'comment') return m.messageType === 'comment'
       if (filter === 'dm') return m.messageType === 'dm'
       if (filter === 'unassigned') return !m.assigneeId && m.status !== 'resolved'
+      if (filter === 'mine') return Boolean(myMembershipId) && m.assigneeId === myMembershipId
+      if (filter === 'urgent')
+        return (m.priority === 'high' || m.priority === 'urgent') && m.status !== 'resolved'
       if (filter === 'overdue') {
         if (!m.slaStartedAt || m.status === 'resolved') return false
         return (Date.now() - new Date(m.slaStartedAt).getTime()) / 60000 > SLA_TARGET_MINUTES
@@ -352,7 +371,7 @@ export function InboxView() {
       if (filter === 'resolved') return m.status === 'resolved'
       return true
     })
-  }, [conversationMessages, filter, selectedId])
+  }, [conversationMessages, filter, selectedId, myMembershipId])
 
   const selected = selectedThread
     ? threadToMessage(selectedThread, selectedThreadDetail)
@@ -362,6 +381,21 @@ export function InboxView() {
     : selectedMessage
       ? 'message'
       : null
+  // Presence: claim the thread when the agent starts typing so teammates see
+  // "در حال پاسخ" live. Once per thread selection; 409 (already claimed by
+  // someone else) is informational, not an error.
+  const [claimedThreadIds] = useState(() => new Set<string>())
+  const claimOnType = useCallback(
+    (threadId: string) => {
+      if (claimedThreadIds.has(threadId)) return
+      claimedThreadIds.add(threadId)
+      api.post(`/api/inbox/threads/${threadId}/claim`, {}).catch(() => {
+        // Claim conflicts and transient failures must never block typing.
+      })
+    },
+    [claimedThreadIds]
+  )
+
   // Meta 24h DM window — set only for DM threads (public comment replies have
   // no window). Drives the countdown chip and the disabled composer state.
   const replyWindowExpiresAt =
@@ -611,13 +645,15 @@ export function InboxView() {
               value={filter}
               onValueChange={(v) => setFilter(v as typeof filter)}
               tabs={[
-                { value: 'all', label: 'همه' },
-                { value: 'unread', label: 'ناخوانده', count: unreadCount },
-                { value: 'unassigned', label: 'بدون ارجاع' },
+                { value: 'all', label: 'همه', count: queueCounts?.counts.all },
+                { value: 'unread', label: 'ناخوانده', count: queueCounts?.counts.unread ?? unreadCount },
+                { value: 'mine', label: 'من', count: queueCounts?.counts.mine },
+                { value: 'unassigned', label: 'بدون ارجاع', count: queueCounts?.counts.unassigned },
+                { value: 'urgent', label: 'فوری', count: queueCounts?.counts.urgent },
                 { value: 'overdue', label: 'تأخیر SLA' },
-                { value: 'resolved', label: 'حل‌شده' },
-                { value: 'comment', label: 'کامنت' },
-                { value: 'dm', label: 'پیام مستقیم' },
+                { value: 'resolved', label: 'حل‌شده', count: queueCounts?.counts.resolved },
+                { value: 'comment', label: 'کامنت', count: queueCounts?.counts.comment },
+                { value: 'dm', label: 'پیام مستقیم', count: queueCounts?.counts.dm },
               ]}
             />
           </div>
@@ -644,6 +680,7 @@ export function InboxView() {
                     message={m}
                     active={m.id === selectedId}
                     onClick={() => handleSelectMessage(m.id)}
+                    currentMembershipId={myMembershipId}
                   />
                 ))
               )}
@@ -972,6 +1009,7 @@ export function InboxView() {
                   value={replyText}
                   onChange={(e) => {
                     setReplyText(e.target.value)
+                    if (e.target.value.trim() && selectedThread) claimOnType(selectedThread.id)
                     if (e.target.value.startsWith('/')) setShowSnippets(true)
                     else setShowSnippets(false)
                   }}
@@ -1217,13 +1255,22 @@ function MessageListItem({
   message,
   active,
   onClick,
+  currentMembershipId,
 }: {
   message: InboxMessage
   active: boolean
   onClick: () => void
+  currentMembershipId?: string | null
 }) {
   const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare
   const overdue = useSlaOverdue(message.slaStartedAt)
+  // Presence: a teammate holds an unexpired claim lock on this thread.
+  const lockedByTeammate = Boolean(
+    message.lockedByName &&
+      message.lockExpiresAt &&
+      new Date(message.lockExpiresAt).getTime() > Date.now() &&
+      message.lockedById !== currentMembershipId
+  )
   return (
     <button
       onClick={onClick}
@@ -1282,6 +1329,12 @@ function MessageListItem({
             <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary shrink-0">
               <Paperclip className="size-3" />
               {message.attachments.length}
+            </span>
+          )}
+          {lockedByTeammate && (
+            <span className="inline-flex items-center gap-1 text-2xs font-semibold text-accent shrink-0">
+              <UserCheck className="size-3" />
+              {message.lockedByName} در حال پاسخ
             </span>
           )}
           {/* Status chip row — limit visible chips to at most 2 via overflow-hidden so the message text stays primary. */}

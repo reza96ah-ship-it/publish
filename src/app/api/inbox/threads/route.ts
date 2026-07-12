@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
-import { cursorPaginationSchema, validateParams } from '@/lib/validations'
+import { inboxThreadsQuerySchema, validateParams } from '@/lib/validations'
 import { inboxService } from '@/modules/inbox'
 
 export const dynamic = 'force-dynamic'
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   if (guard.error) return guard.error
 
   const query = Object.fromEntries(req.nextUrl.searchParams.entries())
-  const queryCheck = validateParams(cursorPaginationSchema, query)
+  const queryCheck = validateParams(inboxThreadsQuerySchema, query)
   if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
 
   const result = await inboxService.listThreads(

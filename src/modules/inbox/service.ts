@@ -15,6 +15,8 @@ import type {
   InboxListResult,
   InboxThreadDetail,
   InboxThreadListResult,
+  InboxThreadListQuery,
+  InboxThreadQueueCounts,
   AssignInput,
   ThreadPriorityInput,
   ThreadTagsInput,
@@ -33,12 +35,26 @@ export class InboxService {
     return { data: page, nextCursor }
   }
 
-  async listThreads(auth: AuthContext, query: InboxListQuery): Promise<InboxThreadListResult> {
-    const rows = await this.repo.listThreads(auth.workspaceId, query)
+  async listThreads(auth: AuthContext, query: InboxThreadListQuery): Promise<InboxThreadListResult> {
+    // 'mine' filters by WorkspaceMember id — resolve it once per request.
+    const membershipId =
+      query.queue === 'mine'
+        ? ((await this.repo.findMemberByUserInWorkspace(auth.userId, auth.workspaceId))?.id ?? null)
+        : null
+    const rows = await this.repo.listThreads(auth.workspaceId, query, membershipId)
     const hasMore = rows.length > query.limit
     const page = hasMore ? rows.slice(0, query.limit) : rows
     const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null
     return { data: page, nextCursor }
+  }
+
+  /** Queue counts + the caller's membership id (for presence self-filtering). */
+  async threadQueueCounts(
+    auth: AuthContext
+  ): Promise<{ counts: InboxThreadQueueCounts; membershipId: string | null }> {
+    const member = await this.repo.findMemberByUserInWorkspace(auth.userId, auth.workspaceId)
+    const counts = await this.repo.threadQueueCounts(auth.workspaceId, member?.id ?? null)
+    return { counts, membershipId: member?.id ?? null }
   }
 
   async getThread(auth: AuthContext, threadId: string): Promise<InboxThreadDetail> {
@@ -134,6 +150,13 @@ export class InboxService {
       error.name = 'InboxThreadClaimConflictError'
       throw error
     }
+
+    // Presence: teammates' open inboxes show "X در حال پاسخ" immediately.
+    void emitInboxThreadEvent(auth.workspaceId, {
+      threadId,
+      kind: 'updated',
+      messageType: 'presence',
+    })
 
     return claimed
   }
