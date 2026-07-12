@@ -80,6 +80,7 @@ const eslintConfig = [
       '.next/**',
       'out/**',
       'build/**',
+      'tmp-visual-report/**',
       'next-env.d.ts',
       'examples/**',
       'skills/**',

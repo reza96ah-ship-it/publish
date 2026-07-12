@@ -95,15 +95,15 @@ export async function getInboxOperationalMetrics(
       FROM "InboxThread"
       WHERE "workspaceId" = ${workspaceId}
         AND "status" <> 'resolved'
-        AND "unreadCount" > 0
-        AND "lastMessageAt" <= ${slaCutoff}
+        AND "firstResponseAt" IS NULL
+        AND "slaStartedAt" <= ${slaCutoff}
     `),
     readCount(Prisma.sql`
       SELECT COUNT(*)::int AS count
       FROM "InboxMessage" im
       WHERE ${legacyPredicate}
         AND im."status" <> 'resolved'
-        AND im."isRead" = false
+        AND im."firstResponseAt" IS NULL
         AND COALESCE(im."slaStartedAt", im."createdAt") <= ${slaCutoff}
     `),
   ])

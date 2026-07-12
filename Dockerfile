@@ -75,6 +75,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY package.json bun.lock ./
 COPY prisma ./prisma
 COPY prisma.config.ts ./
+COPY src/lib/db.ts ./src/lib/db.ts
+COPY src/lib/password.ts ./src/lib/password.ts
 COPY shared ./shared
 COPY scripts ./scripts
 CMD ["sh", "-c", "bun run scripts/validate-migrate.ts && bunx prisma migrate deploy"]

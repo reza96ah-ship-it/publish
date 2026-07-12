@@ -87,6 +87,9 @@ type ThreadSummaryRow = {
   unreadCount: number
   lastMessageAt: Date
   lastInboundAt: Date | null
+  slaStartedAt: Date
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
   updatedAt: Date
   platform: { type: string; name: string } | null
@@ -161,6 +164,9 @@ function toThreadSummary(
     unreadCount: thread.unreadCount,
     lastMessageAt: thread.lastMessageAt,
     lastInboundAt: thread.lastInboundAt,
+    slaStartedAt: thread.slaStartedAt,
+    firstResponseAt: thread.firstResponseAt,
+    resolvedAt: thread.resolvedAt,
     // Meta 24h DM messaging-window deadline — the UI shows a countdown and
     // the service refuses sends past it. Null for comment threads: public
     // comment replies have no window (7d only applies to comment→DM).
@@ -460,8 +466,11 @@ export class InboxRepository {
     const providerMessageIds = await this.getThreadProviderMessageIds(id, workspaceId)
     const updated = await db.inboxThread.update({
       where: { id },
-      data: { status },
-      select: { id: true, status: true },
+      data: {
+        status,
+        resolvedAt: status === 'resolved' ? new Date() : null,
+      },
+      select: { id: true, status: true, resolvedAt: true },
     })
     if (providerMessageIds.length > 0) {
       await db.inboxMessage.updateMany({
@@ -624,30 +633,36 @@ export class InboxRepository {
     replyText: string
   ) {
     const now = new Date()
-    const threadMessage = await db.inboxThreadMessage.create({
-      data: {
-        threadId,
-        workspaceId,
-        platformId,
-        providerMessageId: `outbound:${threadId}:${randomUUID()}`,
-        direction: 'outbound',
-        messageType,
-        senderName: 'You',
-        body: replyText.trim(),
-        payload: { source: 'app-reply' },
-        createdAt: now,
-      },
-    })
+    return db.$transaction(async (tx) => {
+      const threadMessage = await tx.inboxThreadMessage.create({
+        data: {
+          threadId,
+          workspaceId,
+          platformId,
+          providerMessageId: `outbound:${threadId}:${randomUUID()}`,
+          direction: 'outbound',
+          messageType,
+          senderName: 'You',
+          body: replyText.trim(),
+          payload: { source: 'app-reply' },
+          createdAt: now,
+        },
+      })
 
-    await db.inboxThread.update({
-      where: { id: threadId },
-      data: {
-        unreadCount: 0,
-        status: 'in_progress',
-        lastMessageAt: now,
-      },
-    })
+      await tx.inboxThread.update({
+        where: { id: threadId },
+        data: {
+          unreadCount: 0,
+          status: 'in_progress',
+          lastMessageAt: now,
+        },
+      })
+      await tx.inboxThread.updateMany({
+        where: { id: threadId, firstResponseAt: null },
+        data: { firstResponseAt: now },
+      })
 
-    return threadMessage
+      return threadMessage
+    })
   }
 }
