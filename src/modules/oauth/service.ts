@@ -15,6 +15,7 @@ import { decrypt } from '@/lib/crypto'
 import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
 import { isPlatformEnabled } from '@/lib/provider-capabilities'
+import { backfillInstagramConversations } from '@/modules/inbox/instagram-backfill'
 import { computeCredentialStatus } from '@/lib/provider-auth/types'
 import type {
   StartOAuthInput,
@@ -204,6 +205,12 @@ export class OAuthService {
       // not break the connect flow (the account may lack Advanced Access yet).
       if (type === 'instagram' && credential.accountId) {
         await subscribeInstagramWebhooks(credential.accountId, credential.accessTokenEncrypted)
+        // Seed recent DM history (20-message API cap per conversation) so the
+        // inbox isn't empty until the first webhook. Fire-and-forget: the
+        // redirect must not wait on Graph pagination.
+        void backfillInstagramConversations(platformId).catch((err) =>
+          console.error('[oauth] inbox backfill failed (non-fatal):', (err as Error).message)
+        )
       }
 
       return { redirectUrl: '/channels?oauth_success=1', clearCookieName: cookieName }

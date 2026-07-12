@@ -127,6 +127,17 @@ interface InboxThreadDetail extends InboxThreadSummary {
   messages: InboxThreadTimelineMessage[]
 }
 
+interface ThreadCustomerContext {
+  customer: { name: string; firstSeenAt: string | null; threadCount: number }
+  priorThreads: {
+    id: string
+    messageType: string
+    status: string
+    lastMessageAt: string
+    preview: string
+  }[]
+}
+
 type ConversationKind = 'message' | 'thread'
 type InboxStatus = InboxMessage['status']
 
@@ -342,6 +353,13 @@ export function InboxView() {
       queryFn: () => api.get<InboxThreadDetail>(`/api/inbox/threads/${selectedThread?.id}`),
       enabled: Boolean(selectedThread?.id),
     })
+
+  const { data: threadContext } = useQuery<ThreadCustomerContext>({
+    queryKey: ['inbox-thread-context', selectedThread?.id],
+    queryFn: () =>
+      api.get<ThreadCustomerContext>(`/api/inbox/threads/${selectedThread?.id}/context`),
+    enabled: Boolean(selectedThread?.id),
+  })
 
   const conversationMessages = useMemo(() => {
     if (usingThreadConversations) {
@@ -899,6 +917,32 @@ export function InboxView() {
                     )}
                   </div>
                 )}
+                {/* Customer context — sender history across the workspace */}
+                {selectedKind === 'thread' && threadContext && (
+                  <div className="mt-2 flex items-center gap-2 flex-wrap text-2xs text-ink-tertiary">
+                    <span className="inline-flex items-center gap-1">
+                      <UserCheck className="size-3" />
+                      {threadContext.customer.firstSeenAt
+                        ? `مشتری از ${relativeTime(new Date(threadContext.customer.firstSeenAt))}`
+                        : 'مشتری جدید'}
+                    </span>
+                    <span>•</span>
+                    <span className="num-tabular">
+                      {toPersianDigits(String(threadContext.customer.threadCount))} گفتگو
+                    </span>
+                    {threadContext.priorThreads.slice(0, 3).map((prior) => (
+                      <button
+                        key={prior.id}
+                        onClick={() => setSelectedId(prior.id)}
+                        className="n-focus-ring inline-flex max-w-44 items-center gap-1 truncate rounded-full border border-border bg-surface px-2 py-0.5 font-semibold text-ink-secondary hover:bg-surface-hover"
+                        title={prior.preview}
+                      >
+                        {MESSAGE_TYPE_LABEL[prior.messageType] ?? prior.messageType}:{' '}
+                        <span className="truncate">{prior.preview || '—'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Thread body */}
@@ -1224,30 +1268,61 @@ function SlaTimer({ slaStartedAt }: { slaStartedAt: string }) {
 function AttachmentChips({ attachments = [] }: { attachments?: InboxThreadAttachment[] }) {
   if (attachments.length === 0) return null
 
-  return (
-    <div className="mt-2 flex flex-wrap gap-1.5">
-      {attachments.map((attachment, index) => {
-        const label = attachment.title || attachment.type || 'Attachment'
-        const key = `${attachment.type}:${attachment.providerId ?? attachment.url ?? index}`
-        const className =
-          'inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-background/80 px-2 py-1 text-2xs font-semibold text-ink-secondary'
-        const content = (
-          <>
-            <Paperclip className="size-3 shrink-0 text-ink-tertiary" />
-            <span className="max-w-36 truncate">{label}</span>
-          </>
-        )
+  // Visual attachments (images with a fetchable URL) render inline like
+  // native Instagram; everything else stays a compact labeled chip.
+  const images = attachments.filter((a) => a.type === 'image' && a.url)
+  const rest = attachments.filter((a) => !(a.type === 'image' && a.url))
 
-        return attachment.url ? (
-          <a key={key} href={attachment.url} target="_blank" rel="noreferrer" className={className}>
-            {content}
-          </a>
-        ) : (
-          <span key={key} className={className}>
-            {content}
-          </span>
-        )
-      })}
+  return (
+    <div className="mt-2 space-y-1.5">
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {images.map((attachment, index) => (
+            <a
+              key={`img:${attachment.providerId ?? attachment.url ?? index}`}
+              href={attachment.url ?? undefined}
+              target="_blank"
+              rel="noreferrer"
+              className="n-focus-ring block overflow-hidden rounded-lg border border-border"
+              aria-label={attachment.title || 'پیوست تصویری'}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element -- provider CDN URLs, next/image needs allowlisted domains */}
+              <img
+                src={attachment.url ?? ''}
+                alt={attachment.title || 'پیوست تصویری'}
+                loading="lazy"
+                className="size-32 max-w-full object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {rest.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {rest.map((attachment, index) => {
+            const label = attachment.title || attachment.type || 'Attachment'
+            const key = `${attachment.type}:${attachment.providerId ?? attachment.url ?? index}`
+            const className =
+              'inline-flex max-w-full items-center gap-1.5 rounded border border-border bg-background/80 px-2 py-1 text-2xs font-semibold text-ink-secondary'
+            const content = (
+              <>
+                <Paperclip className="size-3 shrink-0 text-ink-tertiary" />
+                <span className="max-w-36 truncate">{label}</span>
+              </>
+            )
+
+            return attachment.url ? (
+              <a key={key} href={attachment.url} target="_blank" rel="noreferrer" className={className}>
+                {content}
+              </a>
+            ) : (
+              <span key={key} className={className}>
+                {content}
+              </span>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

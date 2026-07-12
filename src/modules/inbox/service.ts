@@ -63,6 +63,13 @@ export class InboxService {
     return thread
   }
 
+  /** Customer context panel: sender history across the workspace. */
+  async getThreadCustomerContext(auth: AuthContext, threadId: string) {
+    const context = await this.repo.getThreadCustomerContext(threadId, auth.workspaceId)
+    if (!context) throw new InboxMessageNotFoundError()
+    return context
+  }
+
   async markRead(auth: AuthContext, messageId: string): Promise<{ ok: boolean }> {
     const message = await this.repo.findInWorkspace(messageId, auth.workspaceId)
     if (!message) throw new InboxMessageNotFoundError()
