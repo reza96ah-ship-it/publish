@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -23,6 +23,7 @@ import {
   BookOpen,
   Paperclip,
   Clock,
+  Search,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -310,6 +311,15 @@ export function InboxView() {
     queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
   })
 
+  // Full-text search over titles + message bodies (server-side `q` param).
+  // Debounced so keystrokes don't fan out into a request each.
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchInput])
+
   // Server-side queue filter — 'overdue' stays client-side (SLA math in view).
   const serverQueue = filter === 'overdue' ? 'all' : filter
   const {
@@ -318,9 +328,11 @@ export function InboxView() {
     isError: isThreadsError,
     refetch: refetchThreads,
   } = useQuery<InboxThreadSummary[]>({
-    queryKey: ['inbox-threads', serverQueue],
+    queryKey: ['inbox-threads', serverQueue, search],
     queryFn: () =>
-      api.getPaginated<InboxThreadSummary>(`/api/inbox/threads?queue=${serverQueue}`),
+      api.getPaginated<InboxThreadSummary>(
+        `/api/inbox/threads?queue=${serverQueue}${search ? `&q=${encodeURIComponent(search)}` : ''}`
+      ),
   })
 
   // Queue-rail badge counts + own membership id (hides own presence lock).
@@ -458,7 +470,18 @@ export function InboxView() {
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
-    onError: () => toast.error('خطا در ارسال پاسخ'),
+    onError: (err) => {
+      // Surface the server's actionable message (e.g. the Meta 24h-window
+      // rejection) instead of a generic failure — the body is JSON {error}.
+      let message = 'خطا در ارسال پاسخ'
+      try {
+        const parsed = JSON.parse((err as Error).message) as { error?: string }
+        if (parsed?.error) message = parsed.error
+      } catch {
+        /* non-JSON body → keep the generic message */
+      }
+      toast.error(message)
+    },
   })
 
   const assignMutation = useMutation({
@@ -575,6 +598,72 @@ export function InboxView() {
     }
   }
 
+  // ── Keyboard shortcuts (agent speed) ────────────────────────────────
+  // j/k or ↓/↑ move through the list, r focuses the composer, e resolves,
+  // / focuses search. Suppressed while typing in any field. The keydown
+  // listener binds once; per-render state and handlers are read through a
+  // ref synced in an every-render effect (refs must not be written during
+  // render — react-compiler rule).
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const composerRef = useRef<HTMLTextAreaElement>(null)
+  const shortcutStateRef = useRef<{
+    list: InboxMessage[]
+    current: string | null
+    select: (id: string) => void
+    resolve: (id: string) => void
+  }>({ list: [], current: null, select: () => {}, resolve: () => {} })
+  useEffect(() => {
+    shortcutStateRef.current = {
+      list: filtered,
+      current: selectedId,
+      select: handleSelectMessage,
+      resolve: (id) => {
+        const msg = filtered.find((m) => m.id === id)
+        if (msg && msg.status !== 'resolved') {
+          statusMutation.mutate({
+            id,
+            status: 'resolved',
+            kind: usingThreadConversations ? 'thread' : 'message',
+          })
+        }
+      },
+    }
+  })
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const typing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target?.isContentEditable
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return
+
+      const { list, current, select, resolve } = shortcutStateRef.current
+      const index = list.findIndex((m) => m.id === current)
+
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        const next = list[Math.min(index + 1, list.length - 1)]
+        if (next) select(next.id)
+        e.preventDefault()
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        const prev = list[Math.max(index - 1, 0)]
+        if (prev) select(prev.id)
+        e.preventDefault()
+      } else if (e.key === 'r' && current) {
+        composerRef.current?.focus()
+        e.preventDefault()
+      } else if (e.key === 'e' && current) {
+        resolve(current)
+        e.preventDefault()
+      } else if (e.key === '/') {
+        searchInputRef.current?.focus()
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   const handleReply = () => {
     if (!replyText.trim()) {
       toast.error('متن پاسخ خالی است.')
@@ -674,6 +763,29 @@ export function InboxView() {
                 { value: 'dm', label: 'پیام مستقیم', count: queueCounts?.counts.dm },
               ]}
             />
+          </div>
+
+          {/* Full-text search — server-side over titles + message bodies */}
+          <div className="px-3 py-2 border-b border-border">
+            <div className="relative">
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 size-3.5 text-ink-tertiary" />
+              <input
+                ref={searchInputRef}
+                dir="rtl"
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchInput('')
+                    ;(e.target as HTMLInputElement).blur()
+                  }
+                }}
+                placeholder="جستجو در گفتگوها… ( / )"
+                aria-label="جستجو در گفتگوها"
+                className="n-control n-focus-ring w-full h-9 ps-8 pe-3 text-sm text-ink-primary placeholder:text-ink-tertiary"
+              />
+            </div>
           </div>
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
@@ -1042,7 +1154,24 @@ export function InboxView() {
                     )}
                   </div>
                 )}
+                {/* Quick replies — one tap inserts the rendered template */}
+                {!replyWindowClosed && !replyText && (savedReplies ?? []).length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {(savedReplies ?? []).slice(0, 3).map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => insertSnippet(r)}
+                        className="n-focus-ring inline-flex max-w-56 items-center gap-1 truncate rounded-full border border-border bg-surface px-2.5 py-1 text-2xs font-semibold text-ink-secondary hover:bg-surface-hover min-h-[32px]"
+                        title={r.body}
+                      >
+                        <BookOpen className="size-3 shrink-0" />
+                        <span className="truncate">{r.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Textarea
+                  ref={composerRef}
                   dir="rtl"
                   rows={3}
                   placeholder={
@@ -1286,7 +1415,6 @@ function AttachmentChips({ attachments = [] }: { attachments?: InboxThreadAttach
               className="n-focus-ring block overflow-hidden rounded-lg border border-border"
               aria-label={attachment.title || 'پیوست تصویری'}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- provider CDN URLs, next/image needs allowlisted domains */}
               <img
                 src={attachment.url ?? ''}
                 alt={attachment.title || 'پیوست تصویری'}
