@@ -883,6 +883,7 @@ export function LoadingState({
   isError,
   onRetry,
   errorLabel = 'خطا در بارگذاری اطلاعات',
+  animated = true,
 }: {
   isLoading: boolean
   skeleton: React.ReactNode
@@ -890,7 +891,18 @@ export function LoadingState({
   isError?: boolean
   onRetry?: () => void
   errorLabel?: string
+  /**
+   * animated={false} swaps states with a plain conditional instead of
+   * AnimatePresence. Use for views with many concurrent queries: rapid
+   * re-renders during the skeleton's exit can wedge mode="wait" and leave
+   * the skeleton on screen forever (seen on the inbox thread list).
+   */
+  animated?: boolean
 }) {
+  if (!animated) {
+    if (isError) return <ErrorState label={errorLabel} onRetry={onRetry} />
+    return <>{isLoading ? skeleton : children}</>
+  }
   return (
     <AnimatePresence mode="wait">
       {isError ? (

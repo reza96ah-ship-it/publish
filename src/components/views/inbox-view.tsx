@@ -660,6 +660,7 @@ export function InboxView() {
 
           <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
             <LoadingState
+              animated={false}
               isLoading={isConversationLoading}
               isError={isConversationError}
               onRetry={refetchConversations}
