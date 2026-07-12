@@ -1,26 +1,28 @@
+// @vitest-environment node
+
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-
-// vi.mock factories are hoisted above imports — use vi.hoisted() so the mock
-// object exists before the factory runs.
-const { dbMock } = vi.hoisted(() => ({
-  dbMock: {
-    platform: { findMany: vi.fn() },
-    publication: { findMany: vi.fn() },
-    inboxMessage: { createMany: vi.fn() },
-    inboxThread: { upsert: vi.fn(), update: vi.fn() },
-    inboxThreadMessage: { createMany: vi.fn() },
-    $transaction: vi.fn(),
-  },
-}))
-
-vi.mock('../../../mini-services/publish-worker/lib/db', () => ({ db: dbMock }))
-vi.mock('../../../mini-services/publish-worker/lib/crypto', () => ({
-  decrypt: vi.fn((value: string) => value),
-}))
-
-// Import the scanner AFTER mocks are registered.
-import { scanInbox } from '../../../mini-services/publish-worker/lib/inbox-ingest-scanner'
+import {
+  scanInbox,
+  type IngestDeps,
+} from '../../../mini-services/publish-worker/lib/inbox-ingest-scanner'
 import type { IgComment } from '../../../mini-services/publish-worker/lib/instagram-messaging'
+
+const dbMock = {
+  platform: { findMany: vi.fn() },
+  publication: { findMany: vi.fn() },
+  inboxMessage: { createMany: vi.fn() },
+  inboxThread: { upsert: vi.fn(), update: vi.fn() },
+  inboxThreadMessage: { createMany: vi.fn() },
+  $transaction: vi.fn(),
+}
+const decryptMock = vi.fn((value: string) => value)
+const emitThreadMock = vi.fn().mockResolvedValue(undefined)
+
+const injectedDeps = (): Pick<IngestDeps, 'database' | 'decryptToken' | 'emitThread'> => ({
+  database: dbMock as unknown as NonNullable<IngestDeps['database']>,
+  decryptToken: decryptMock,
+  emitThread: emitThreadMock,
+})
 
 const IG_USER_ID = 'ig_user_456'
 
@@ -46,6 +48,8 @@ function makeComment(overrides: Partial<IgComment> = {}): IgComment {
 describe('inbox-ingest-scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    decryptMock.mockImplementation((value: string) => value)
+    emitThreadMock.mockResolvedValue(undefined)
     dbMock.$transaction.mockImplementation(async (callback: (tx: typeof dbMock) => unknown) =>
       callback(dbMock)
     )
@@ -67,7 +71,10 @@ describe('inbox-ingest-scanner', () => {
 
   it('creates an InboxMessage for each inbound comment', async () => {
     const comment = makeComment({ id: 'cmt_1', text: 'سلام، موجوده؟' })
-    const stats = await scanInbox({ listComments: vi.fn().mockResolvedValue([comment]) })
+    const stats = await scanInbox({
+      ...injectedDeps(),
+      listComments: vi.fn().mockResolvedValue([comment]),
+    })
 
     expect(stats.platformsScanned).toBe(1)
     expect(stats.mediaScanned).toBe(1)
@@ -95,7 +102,10 @@ describe('inbox-ingest-scanner', () => {
 
   it('skips the account own comments (self-replies)', async () => {
     const own = makeComment({ from: { id: IG_USER_ID, username: 'brand' } })
-    const stats = await scanInbox({ listComments: vi.fn().mockResolvedValue([own]) })
+    const stats = await scanInbox({
+      ...injectedDeps(),
+      listComments: vi.fn().mockResolvedValue([own]),
+    })
 
     expect(stats.commentsSeen).toBe(0)
     expect(dbMock.inboxMessage.createMany).not.toHaveBeenCalled()
@@ -111,7 +121,7 @@ describe('inbox-ingest-scanner', () => {
       .mockRejectedValueOnce(new Error('IG 403'))
       .mockResolvedValueOnce([makeComment()])
 
-    const stats = await scanInbox({ listComments })
+    const stats = await scanInbox({ ...injectedDeps(), listComments })
 
     expect(stats.mediaScanned).toBe(2)
     expect(stats.commentsSeen).toBe(1)
@@ -119,12 +129,11 @@ describe('inbox-ingest-scanner', () => {
   })
 
   it('skips platforms whose token fails to decrypt', async () => {
-    const { decrypt } = await import('../../../mini-services/publish-worker/lib/crypto')
-    vi.mocked(decrypt).mockImplementationOnce(() => {
+    decryptMock.mockImplementationOnce(() => {
       throw new Error('bad key')
     })
 
-    const stats = await scanInbox({ listComments: vi.fn() })
+    const stats = await scanInbox({ ...injectedDeps(), listComments: vi.fn() })
 
     expect(stats.platformsScanned).toBe(1)
     expect(stats.mediaScanned).toBe(0)
@@ -133,7 +142,10 @@ describe('inbox-ingest-scanner', () => {
 
   it('falls back to now for malformed timestamps', async () => {
     const comment = makeComment({ timestamp: 'not-a-date' })
-    await scanInbox({ listComments: vi.fn().mockResolvedValue([comment]) })
+    await scanInbox({
+      ...injectedDeps(),
+      listComments: vi.fn().mockResolvedValue([comment]),
+    })
 
     const arg = dbMock.inboxMessage.createMany.mock.calls[0][0] as {
       data: Array<{ createdAt: Date }>

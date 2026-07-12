@@ -131,13 +131,15 @@ describe('Component: InboxView', () => {
     const first = await screen.findByRole('button', { name: /مریم حسینی/ })
     const second = screen.getByRole('button', { name: /رضا کاظمی/ })
 
-    expect(first).toHaveClass('border-s-info')
-    expect(second).toHaveClass('border-s-info')
+    expect(first).toHaveClass('bg-surface-subtle')
+    expect(second).toHaveClass('bg-surface-subtle')
+    expect(first).not.toHaveClass('border-s-accent')
+    expect(second).not.toHaveClass('border-s-accent')
 
     fireEvent.click(first)
     await waitFor(() => expect(first).toHaveAttribute('aria-current', 'true'))
     expect(first).toHaveClass('border-s-accent')
-    expect(second).toHaveClass('border-s-info')
+    expect(second).not.toHaveClass('border-s-accent')
     expect(document.querySelectorAll('[aria-current="true"]')).toHaveLength(1)
     expect(window.location.search).toBe('?thread=thread-1')
 

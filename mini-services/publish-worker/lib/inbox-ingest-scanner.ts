@@ -33,6 +33,9 @@ const MAX_MEDIA_PER_PLATFORM = 10
 
 export interface IngestDeps {
   listComments?: typeof listComments
+  database?: typeof db
+  decryptToken?: typeof decrypt
+  emitThread?: typeof emitInboxThread
 }
 
 export interface IngestStats {
@@ -91,9 +94,9 @@ export async function scanInbox(deps: IngestDeps = {}): Promise<IngestStats> {
 }
 
 async function scanInboxInner(deps: IngestDeps, stats: IngestStats): Promise<IngestStats> {
-  const listCommentsFn = deps.listComments ?? listComments
+  const database = deps.database ?? db
 
-  const platforms = await db.platform.findMany({
+  const platforms = await database.platform.findMany({
     where: {
       type: 'instagram',
       status: 'active',
@@ -106,7 +109,7 @@ async function scanInboxInner(deps: IngestDeps, stats: IngestStats): Promise<Ing
   for (const platform of platforms) {
     stats.platformsScanned++
     try {
-      await scanPlatform(platform, listCommentsFn, stats)
+      await scanPlatform(platform, deps, stats)
     } catch (err) {
       console.error(
         `[inbox-ingest] platform ${platform.id} (${platform.name}) failed:`,
@@ -133,14 +136,18 @@ interface PlatformRow {
 
 async function scanPlatform(
   platform: PlatformRow,
-  listCommentsFn: typeof listComments,
+  deps: IngestDeps,
   stats: IngestStats
 ): Promise<void> {
   if (!platform.tokenSecret || !platform.targetId) return
+  const database = deps.database ?? db
+  const decryptToken = deps.decryptToken ?? decrypt
+  const listCommentsFn = deps.listComments ?? listComments
+  const emitThread = deps.emitThread ?? emitInboxThread
 
   let accessToken: string
   try {
-    accessToken = decrypt(platform.tokenSecret)
+    accessToken = decryptToken(platform.tokenSecret)
   } catch (err) {
     console.error(
       `[inbox-ingest] platform ${platform.id}: token decrypt failed:`,
@@ -150,7 +157,7 @@ async function scanPlatform(
   }
 
   const since = new Date(Date.now() - PUBLICATION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
-  const pubs = await db.publication.findMany({
+  const pubs = await database.publication.findMany({
     where: {
       platformId: platform.id,
       status: 'success',
@@ -183,18 +190,23 @@ async function scanPlatform(
     if (inbound.length === 0) continue
 
     for (const c of inbound) {
-      if (await ingestCommentThread(platform, c)) stats.messagesCreated++
+      if (await ingestCommentThread(platform, c, database, emitThread)) stats.messagesCreated++
     }
   }
 }
 
 /** Upsert one comment into the thread model; emit realtime on new inbound. */
-async function ingestCommentThread(platform: PlatformRow, c: IgComment): Promise<boolean> {
+async function ingestCommentThread(
+  platform: PlatformRow,
+  c: IgComment,
+  database: typeof db,
+  emitThread: typeof emitInboxThread
+): Promise<boolean> {
   const senderName = c.from?.username ?? c.username ?? 'کاربر اینستاگرام'
   const createdAt = safeDate(c.timestamp)
 
   try {
-    const outcome = await db.$transaction(async (tx) => {
+    const outcome = await database.$transaction(async (tx) => {
       const thread = await tx.inboxThread.upsert({
         where: {
           platformId_providerThreadId: {
@@ -293,7 +305,7 @@ async function ingestCommentThread(platform: PlatformRow, c: IgComment): Promise
     })
 
     if (outcome.inserted) {
-      void emitInboxThread(platform.workspaceId, {
+      void emitThread(platform.workspaceId, {
         threadId: outcome.threadId,
         kind: 'message',
         messageType: 'comment',
