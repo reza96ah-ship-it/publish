@@ -7,11 +7,13 @@
  * clears the state cookie. (Issue #200: thin handler.)
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { oauthService } from '@/modules/oauth'
+import { backfillInstagramConversations } from '@/modules/inbox/instagram-backfill'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 
@@ -40,5 +42,11 @@ export async function GET(req: NextRequest) {
 
   const response = NextResponse.redirect(new URL(result.redirectUrl, BASE_URL))
   if (result.clearCookieName) response.cookies.delete(result.clearCookieName)
+  if (result.inboxBackfillPlatformId) {
+    const platformId = result.inboxBackfillPlatformId
+    after(async () => {
+      await backfillInstagramConversations(platformId)
+    })
+  }
   return response
 }

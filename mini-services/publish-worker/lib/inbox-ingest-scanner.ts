@@ -33,6 +33,9 @@ const MAX_MEDIA_PER_PLATFORM = 10
 
 export interface IngestDeps {
   listComments?: typeof listComments
+  database?: typeof db
+  decryptToken?: typeof decrypt
+  emitThread?: typeof emitInboxThread
 }
 
 export interface IngestStats {
@@ -91,9 +94,9 @@ export async function scanInbox(deps: IngestDeps = {}): Promise<IngestStats> {
 }
 
 async function scanInboxInner(deps: IngestDeps, stats: IngestStats): Promise<IngestStats> {
-  const listCommentsFn = deps.listComments ?? listComments
+  const database = deps.database ?? db
 
-  const platforms = await db.platform.findMany({
+  const platforms = await database.platform.findMany({
     where: {
       type: 'instagram',
       status: 'active',
@@ -106,7 +109,7 @@ async function scanInboxInner(deps: IngestDeps, stats: IngestStats): Promise<Ing
   for (const platform of platforms) {
     stats.platformsScanned++
     try {
-      await scanPlatform(platform, listCommentsFn, stats)
+      await scanPlatform(platform, deps, stats)
     } catch (err) {
       console.error(
         `[inbox-ingest] platform ${platform.id} (${platform.name}) failed:`,
@@ -133,14 +136,18 @@ interface PlatformRow {
 
 async function scanPlatform(
   platform: PlatformRow,
-  listCommentsFn: typeof listComments,
+  deps: IngestDeps,
   stats: IngestStats
 ): Promise<void> {
   if (!platform.tokenSecret || !platform.targetId) return
+  const database = deps.database ?? db
+  const decryptToken = deps.decryptToken ?? decrypt
+  const listCommentsFn = deps.listComments ?? listComments
+  const emitThread = deps.emitThread ?? emitInboxThread
 
   let accessToken: string
   try {
-    accessToken = decrypt(platform.tokenSecret)
+    accessToken = decryptToken(platform.tokenSecret)
   } catch (err) {
     console.error(
       `[inbox-ingest] platform ${platform.id}: token decrypt failed:`,
@@ -150,7 +157,7 @@ async function scanPlatform(
   }
 
   const since = new Date(Date.now() - PUBLICATION_LOOKBACK_DAYS * 24 * 60 * 60 * 1000)
-  const pubs = await db.publication.findMany({
+  const pubs = await database.publication.findMany({
     where: {
       platformId: platform.id,
       status: 'success',
@@ -182,103 +189,137 @@ async function scanPlatform(
     stats.commentsSeen += inbound.length
     if (inbound.length === 0) continue
 
-    // Legacy flat rows (old inbox list) — createMany + skipDuplicates keeps
-    // re-scans idempotent via @@unique([platformId, externalId]).
-    const result = await db.inboxMessage.createMany({
-      data: inbound.map((c) => ({
-        workspaceId: platform.workspaceId,
-        platformId: platform.id,
-        senderName: c.from?.username ?? c.username ?? 'کاربر اینستاگرام',
-        message: c.text ?? '',
-        platformType: 'instagram',
-        externalId: c.id,
-        messageType: 'comment',
-        // Preserve the provider-side timestamp so inbox ordering reflects
-        // when the customer actually commented, not when we ingested it.
-        createdAt: safeDate(c.timestamp),
-      })),
-      skipDuplicates: true, // @@unique([platformId, externalId]) → re-scans are no-ops
-    })
-    stats.messagesCreated += result.count
-
-    // Thread rows — same shape the webhook ingest writes, so the poller acts
-    // as a webhook backfill (missed deliveries, pre-webhook comments) instead
-    // of a divergent second system. Convention matches
-    // instagram-webhook-normalize: providerThreadId = `comment:{commentId}`.
     for (const c of inbound) {
-      await ingestCommentThread(platform, c)
+      if (await ingestCommentThread(platform, c, database, emitThread)) stats.messagesCreated++
     }
   }
 }
 
 /** Upsert one comment into the thread model; emit realtime on new inbound. */
-async function ingestCommentThread(platform: PlatformRow, c: IgComment): Promise<void> {
+async function ingestCommentThread(
+  platform: PlatformRow,
+  c: IgComment,
+  database: typeof db,
+  emitThread: typeof emitInboxThread
+): Promise<boolean> {
   const senderName = c.from?.username ?? c.username ?? 'کاربر اینستاگرام'
   const createdAt = safeDate(c.timestamp)
 
   try {
-    const thread = await db.inboxThread.upsert({
-      where: {
-        platformId_providerThreadId: {
+    const outcome = await database.$transaction(async (tx) => {
+      const thread = await tx.inboxThread.upsert({
+        where: {
+          platformId_providerThreadId: {
+            platformId: platform.id,
+            providerThreadId: `comment:${c.id}`,
+          },
+        },
+        create: {
+          workspaceId: platform.workspaceId,
           platformId: platform.id,
           providerThreadId: `comment:${c.id}`,
+          providerUserId: c.from?.id ?? null,
+          title: senderName,
+          messageType: 'comment',
+          lastMessageAt: createdAt,
+          lastInboundAt: createdAt,
+          slaStartedAt: createdAt,
         },
-      },
-      create: {
-        workspaceId: platform.workspaceId,
-        platformId: platform.id,
-        providerThreadId: `comment:${c.id}`,
-        providerUserId: c.from?.id ?? null,
-        title: senderName,
-        messageType: 'comment',
-        lastMessageAt: createdAt,
-        lastInboundAt: createdAt,
-      },
-      update: {},
-      select: { id: true },
+        update: {
+          providerUserId: c.from?.id ?? null,
+          title: senderName,
+        },
+        select: {
+          id: true,
+          status: true,
+          lastMessageAt: true,
+          lastInboundAt: true,
+          slaStartedAt: true,
+          firstResponseAt: true,
+          resolvedAt: true,
+        },
+      })
+
+      const inserted = await tx.inboxThreadMessage.createMany({
+        data: [{
+          threadId: thread.id,
+          workspaceId: platform.workspaceId,
+          platformId: platform.id,
+          providerMessageId: c.id,
+          direction: 'inbound',
+          messageType: 'comment',
+          senderExternalId: c.from?.id ?? null,
+          senderName,
+          body: c.text ?? '',
+          payload: { source: 'poll-backfill', commentId: c.id, timestamp: c.timestamp ?? null },
+          createdAt,
+        }],
+        skipDuplicates: true,
+      })
+      if (inserted.count === 0) return { inserted: false, threadId: thread.id }
+
+      const startsNewCycle = Boolean(
+        (thread.firstResponseAt && createdAt > thread.firstResponseAt) ||
+        (thread.resolvedAt && createdAt > thread.resolvedAt)
+      )
+      const lastMessageAt = createdAt > thread.lastMessageAt ? createdAt : thread.lastMessageAt
+      const lastInboundAt =
+        !thread.lastInboundAt || createdAt > thread.lastInboundAt
+          ? createdAt
+          : thread.lastInboundAt
+      const slaStartedAt = startsNewCycle
+        ? createdAt
+        : thread.firstResponseAt === null && createdAt < thread.slaStartedAt
+          ? createdAt
+          : thread.slaStartedAt
+
+      await tx.inboxThread.update({
+        where: { id: thread.id },
+        data: {
+          status: 'new',
+          lastMessageAt,
+          lastInboundAt,
+          slaStartedAt,
+          unreadCount: { increment: 1 },
+          firstResponseAt: startsNewCycle ? null : thread.firstResponseAt,
+          resolvedAt: null,
+        },
+      })
+      await tx.inboxMessage.createMany({
+        data: [{
+          workspaceId: platform.workspaceId,
+          platformId: platform.id,
+          senderName,
+          message: c.text ?? '',
+          platformType: 'instagram',
+          externalId: c.id,
+          messageType: 'comment',
+          slaStartedAt,
+          firstResponseAt: startsNewCycle ? null : thread.firstResponseAt,
+          createdAt,
+        }],
+        skipDuplicates: true,
+      })
+
+      return { inserted: true, threadId: thread.id }
     })
 
-    await db.inboxThreadMessage.create({
-      data: {
-        threadId: thread.id,
-        workspaceId: platform.workspaceId,
-        platformId: platform.id,
-        providerMessageId: c.id,
-        direction: 'inbound',
+    if (outcome.inserted) {
+      void emitThread(platform.workspaceId, {
+        threadId: outcome.threadId,
+        kind: 'message',
         messageType: 'comment',
-        senderExternalId: c.from?.id ?? null,
         senderName,
-        body: c.text ?? '',
-        payload: { source: 'poll-backfill', commentId: c.id, timestamp: c.timestamp ?? null },
-        createdAt,
-      },
-    })
-
-    await db.inboxThread.update({
-      where: { id: thread.id },
-      data: {
-        status: 'new',
-        lastMessageAt: createdAt,
-        lastInboundAt: createdAt,
-        unreadCount: { increment: 1 },
-      },
-    })
-
-    void emitInboxThread(platform.workspaceId, {
-      threadId: thread.id,
-      kind: 'message',
-      messageType: 'comment',
-      senderName,
-      preview: (c.text ?? '').slice(0, 120),
-    })
+        preview: (c.text ?? '').slice(0, 120),
+      })
+    }
+    return outcome.inserted
   } catch (err: unknown) {
-    // P2002 on the message = webhook (or a previous scan) already ingested
-    // this comment — the whole point of the backfill being idempotent.
-    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') return
     console.error(
       `[inbox-ingest] thread ingest failed for comment ${c.id}:`,
       (err as Error).message
     )
+    return false
   }
 }
 

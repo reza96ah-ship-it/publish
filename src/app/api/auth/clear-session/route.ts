@@ -21,8 +21,9 @@ const SESSION_COOKIES = [
 ]
 
 export async function GET(req: Request) {
+  const publicOrigin = process.env.NEXTAUTH_URL || req.url
   const res = NextResponse.redirect(
-    new URL('/auth/signin?error=SessionExpired', req.url)
+    new URL('/auth/signin?error=SessionExpired', publicOrigin)
   )
   for (const name of SESSION_COOKIES) {
     res.cookies.set(name, '', { maxAge: 0, path: '/' })

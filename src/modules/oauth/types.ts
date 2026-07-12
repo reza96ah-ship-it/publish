@@ -55,4 +55,6 @@ export interface CallbackResult {
   redirectUrl: string
   /** Cookie to clear on the response (always set, even on success) */
   clearCookieName: string
+  /** Instagram platform whose recent inbox history should be backfilled after redirect. */
+  inboxBackfillPlatformId?: string
 }

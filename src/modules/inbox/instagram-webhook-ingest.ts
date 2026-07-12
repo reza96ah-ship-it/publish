@@ -17,13 +17,6 @@ export type InstagramWebhookIngestResult = {
   unmatchedEvents: number
 }
 
-function isPrismaUniqueViolation(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  )
-}
-
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue
 }
@@ -51,42 +44,53 @@ async function ingestEventForPlatform(
   event: NormalizedInstagramInboxEvent,
   platform: { id: string; workspaceId: string }
 ): Promise<Pick<InstagramWebhookIngestResult, 'createdThreads' | 'createdThreadMessages' | 'createdInboxMessages' | 'duplicateMessages'>> {
-  let createdThreads = 0
-  let createdThreadMessages = 0
-  let createdInboxMessages = 0
-  let duplicateMessages = 0
-
-  const thread = await db.inboxThread.upsert({
+  const existingThread = await db.inboxThread.findUnique({
     where: {
       platformId_providerThreadId: {
         platformId: platform.id,
         providerThreadId: event.providerThreadId,
       },
     },
-    create: {
-      workspaceId: platform.workspaceId,
-      platformId: platform.id,
-      providerThreadId: event.providerThreadId,
-      providerUserId: event.providerUserId,
-      title: event.senderName,
-      messageType: event.messageType,
-      lastMessageAt: event.createdAt,
-      lastInboundAt: event.createdAt,
-    },
-    update: {
-      title: event.senderName,
-      providerUserId: event.providerUserId,
-    },
-    select: { id: true, createdAt: true },
+    select: { id: true },
   })
 
-  if (Math.abs(thread.createdAt.getTime() - Date.now()) < 5_000) {
-    createdThreads = 1
-  }
+  const outcome = await db.$transaction(async (tx) => {
+    const thread = await tx.inboxThread.upsert({
+      where: {
+        platformId_providerThreadId: {
+          platformId: platform.id,
+          providerThreadId: event.providerThreadId,
+        },
+      },
+      create: {
+        workspaceId: platform.workspaceId,
+        platformId: platform.id,
+        providerThreadId: event.providerThreadId,
+        providerUserId: event.providerUserId,
+        title: event.senderName,
+        messageType: event.messageType,
+        lastMessageAt: event.createdAt,
+        lastInboundAt: event.createdAt,
+        slaStartedAt: event.createdAt,
+      },
+      update: {
+        title: event.senderName,
+        providerUserId: event.providerUserId,
+      },
+      select: {
+        id: true,
+        status: true,
+        unreadCount: true,
+        lastMessageAt: true,
+        lastInboundAt: true,
+        slaStartedAt: true,
+        firstResponseAt: true,
+        resolvedAt: true,
+      },
+    })
 
-  try {
-    await db.inboxThreadMessage.create({
-      data: {
+    const inserted = await tx.inboxThreadMessage.createMany({
+      data: [{
         threadId: thread.id,
         workspaceId: platform.workspaceId,
         platformId: platform.id,
@@ -98,54 +102,81 @@ async function ingestEventForPlatform(
         body: event.body,
         payload: threadMessagePayload(event),
         createdAt: event.createdAt,
-      },
+      }],
+      skipDuplicates: true,
     })
-    createdThreadMessages = 1
+    if (inserted.count === 0) return { threadId: thread.id, duplicate: true, legacyCount: 0 }
 
-    await db.inboxThread.update({
+    const startsNewCycle = Boolean(
+      (thread.firstResponseAt && event.createdAt > thread.firstResponseAt) ||
+      (thread.resolvedAt && event.createdAt > thread.resolvedAt)
+    )
+    const requiresAttention = thread.firstResponseAt === null || startsNewCycle
+    const lastMessageAt = event.createdAt > thread.lastMessageAt ? event.createdAt : thread.lastMessageAt
+    const lastInboundAt =
+      !thread.lastInboundAt || event.createdAt > thread.lastInboundAt
+        ? event.createdAt
+        : thread.lastInboundAt
+    const slaStartedAt = startsNewCycle
+      ? event.createdAt
+      : thread.firstResponseAt === null && event.createdAt < thread.slaStartedAt
+        ? event.createdAt
+        : thread.slaStartedAt
+
+    await tx.inboxThread.update({
       where: { id: thread.id },
       data: {
-        status: 'new',
-        lastMessageAt: event.createdAt,
-        lastInboundAt: event.createdAt,
-        unreadCount: { increment: 1 },
+        lastMessageAt,
+        lastInboundAt,
+        slaStartedAt,
+        ...(requiresAttention
+          ? {
+              status: 'new',
+              unreadCount: { increment: 1 },
+              firstResponseAt: startsNewCycle ? null : thread.firstResponseAt,
+              resolvedAt: null,
+            }
+          : {}),
       },
     })
 
-    // Push to any open inboxes — fire-and-forget, never blocks ingestion.
+    const legacy = await tx.inboxMessage.createMany({
+      data: [{
+        workspaceId: platform.workspaceId,
+        platformId: platform.id,
+        senderName: event.senderName,
+        message: event.body,
+        platformType: 'instagram',
+        externalId: event.providerMessageId,
+        messageType: event.messageType,
+        isRead: !requiresAttention,
+        status: requiresAttention ? 'new' : thread.status,
+        slaStartedAt,
+        firstResponseAt: requiresAttention ? null : thread.firstResponseAt,
+        createdAt: event.createdAt,
+      }],
+      skipDuplicates: true,
+    })
+
+    return { threadId: thread.id, duplicate: false, legacyCount: legacy.count }
+  })
+
+  if (!outcome.duplicate) {
     void emitInboxThreadEvent(platform.workspaceId, {
-      threadId: thread.id,
-      kind: createdThreads === 1 ? 'created' : 'message',
+      threadId: outcome.threadId,
+      kind: existingThread ? 'message' : 'created',
       messageType: event.messageType,
       senderName: event.senderName,
       preview: event.body.slice(0, 120),
     })
-
-    await db.inboxMessage
-      .create({
-        data: {
-          workspaceId: platform.workspaceId,
-          platformId: platform.id,
-          senderName: event.senderName,
-          message: event.body,
-          platformType: 'instagram',
-          externalId: event.providerMessageId,
-          messageType: event.messageType,
-          createdAt: event.createdAt,
-        },
-      })
-      .then(() => {
-        createdInboxMessages = 1
-      })
-      .catch((error: unknown) => {
-        if (!isPrismaUniqueViolation(error)) throw error
-      })
-  } catch (error) {
-    if (!isPrismaUniqueViolation(error)) throw error
-    duplicateMessages = 1
   }
 
-  return { createdThreads, createdThreadMessages, createdInboxMessages, duplicateMessages }
+  return {
+    createdThreads: existingThread ? 0 : 1,
+    createdThreadMessages: outcome.duplicate ? 0 : 1,
+    createdInboxMessages: outcome.legacyCount,
+    duplicateMessages: outcome.duplicate ? 1 : 0,
+  }
 }
 
 export async function ingestInstagramWebhookPayload(

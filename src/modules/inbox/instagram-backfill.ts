@@ -71,7 +71,7 @@ export async function fetchInstagramConversations(
     error?: { message?: string }
     data?: IgConversation[]
   } | null
-  if (!data || data.error) {
+  if (!res.ok || !data || data.error) {
     throw new Error(`IG conversations fetch failed: ${data?.error?.message ?? 'unknown error'}`)
   }
   return data.data ?? []
@@ -155,39 +155,57 @@ async function ingestConversation(
   const newestInboundAt = inboundTimes.length
     ? new Date(Math.max(...inboundTimes.map((d) => d.getTime())))
     : null
-  const newestAt = new Date(Math.max(...messages.map((m) => safeDate(m.created_time).getTime())))
+  const datedMessages = messages.map((message) => ({
+    message,
+    createdAt: safeDate(message.created_time),
+  }))
+  const newestAt = new Date(Math.max(...datedMessages.map(({ createdAt }) => createdAt.getTime())))
+  const firstResponseAt = newestInboundAt
+    ? (datedMessages
+        .filter(
+          ({ message, createdAt }) =>
+            message.from?.id !== customer.id && createdAt >= newestInboundAt
+        )
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]?.createdAt ?? null)
+    : null
+  const providerThreadId = `dm:${customer.id}`
 
-  const thread = await db.inboxThread.upsert({
-    where: {
-      platformId_providerThreadId: {
-        platformId,
-        // Same convention as instagram-webhook-normalize — later webhook
-        // events for this customer land in this exact thread.
-        providerThreadId: `dm:${customer.id}`,
+  return db.$transaction(async (tx) => {
+    const existing = await tx.inboxThread.findUnique({
+      where: { platformId_providerThreadId: { platformId, providerThreadId } },
+      select: {
+        id: true,
+        lastMessageAt: true,
+        lastInboundAt: true,
+        slaStartedAt: true,
+        firstResponseAt: true,
       },
-    },
-    create: {
-      workspaceId,
-      platformId,
-      providerThreadId: `dm:${customer.id}`,
-      providerUserId: customer.id,
-      title: customerName,
-      messageType: 'dm',
-      // History, not new work: read state stays clean (unreadCount 0).
-      lastMessageAt: newestAt,
-      lastInboundAt: newestInboundAt,
-    },
-    update: {},
-    select: { id: true, createdAt: true },
-  })
-  const threadCreated = Math.abs(thread.createdAt.getTime() - Date.now()) < 5_000
+    })
+    const thread = await tx.inboxThread.upsert({
+      where: { platformId_providerThreadId: { platformId, providerThreadId } },
+      create: {
+        workspaceId,
+        platformId,
+        providerThreadId,
+        providerUserId: customer.id,
+        title: customerName,
+        messageType: 'dm',
+        lastMessageAt: newestAt,
+        lastInboundAt: newestInboundAt,
+        slaStartedAt: newestInboundAt ?? newestAt,
+        firstResponseAt,
+      },
+      update: {
+        providerUserId: customer.id,
+        title: customerName,
+      },
+      select: { id: true },
+    })
 
-  let messagesCreated = 0
-  for (const message of messages) {
-    const inbound = message.from?.id === customer.id
-    try {
-      await db.inboxThreadMessage.create({
-        data: {
+    const inserted = await tx.inboxThreadMessage.createMany({
+      data: datedMessages.map(({ message, createdAt }) => {
+        const inbound = message.from?.id === customer.id
+        return {
           threadId: thread.id,
           workspaceId,
           platformId,
@@ -202,18 +220,35 @@ async function ingestConversation(
             conversationId: conversation.id,
             timestamp: message.created_time ?? null,
           },
-          createdAt: safeDate(message.created_time),
+          createdAt,
+        }
+      }),
+      skipDuplicates: true,
+    })
+
+    if (existing) {
+      const hasNewerInbound = Boolean(
+        newestInboundAt &&
+          (!existing.lastInboundAt || newestInboundAt > existing.lastInboundAt)
+      )
+      const cycleUpdate = hasNewerInbound && newestInboundAt
+        ? {
+            slaStartedAt: newestInboundAt,
+            firstResponseAt,
+          }
+        : {}
+      await tx.inboxThread.update({
+        where: { id: thread.id },
+        data: {
+          lastMessageAt: newestAt > existing.lastMessageAt ? newestAt : existing.lastMessageAt,
+          lastInboundAt: hasNewerInbound ? newestInboundAt : existing.lastInboundAt,
+          ...cycleUpdate,
         },
       })
-      messagesCreated++
-    } catch (err: unknown) {
-      // P2002 = already ingested (webhook or a previous backfill) — expected.
-      if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') continue
-      throw err
     }
-  }
 
-  return { threadCreated, messagesCreated }
+    return { threadCreated: !existing, messagesCreated: inserted.count }
+  })
 }
 
 function safeDate(iso: string | undefined): Date {

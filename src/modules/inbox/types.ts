@@ -72,18 +72,14 @@ export interface InboxThreadSummary {
   unreadCount: number
   lastMessageAt: Date
   lastInboundAt: Date | null
+  slaStartedAt: Date
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   /** Meta reply-window deadline (24h DM / 7d comment); null = unknown. */
   replyWindowExpiresAt: Date | null
   createdAt: Date
   updatedAt: Date
-  lastMessage: {
-    id: string
-    providerMessageId: string
-    direction: string
-    senderName: string
-    body: string
-    createdAt: Date
-  } | null
+  lastMessage: InboxThreadMessage | null
 }
 
 export interface InboxThreadAttachment {
@@ -107,6 +103,11 @@ export interface InboxThreadMessage {
 
 export interface InboxThreadDetail extends InboxThreadSummary {
   messages: InboxThreadMessage[]
+}
+
+export interface InboxThreadMessageListResult {
+  data: InboxThreadMessage[]
+  nextCursor: string | null
 }
 
 export interface InboxThreadListResult {

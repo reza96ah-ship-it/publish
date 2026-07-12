@@ -53,6 +53,21 @@ describe('God-node: api fetch wrapper', () => {
     })
   })
 
+  describe('api.getPage()', () => {
+    it('preserves page data and the opaque next cursor', async () => {
+      const page = { data: [{ id: 'thread-1' }], nextCursor: 'cursor-2' }
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(page),
+      })
+
+      await expect(api.getPage<{ id: string }>('/api/inbox/threads')).resolves.toEqual(page)
+      expect(mockFetch).toHaveBeenCalledWith('/api/inbox/threads', {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+  })
+
   describe('api.post()', () => {
     it('makes POST request with JSON body', async () => {
       mockFetch.mockResolvedValueOnce({

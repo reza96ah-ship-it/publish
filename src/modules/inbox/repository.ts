@@ -87,12 +87,56 @@ type ThreadSummaryRow = {
   unreadCount: number
   lastMessageAt: Date
   lastInboundAt: Date | null
+  slaStartedAt: Date
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
   updatedAt: Date
   platform: { type: string; name: string } | null
   assignee: MemberRef | null
   lockedBy: MemberRef | null
   messages: ThreadMessageRow[]
+}
+
+type ThreadCursor = { id: string; lastMessageAt: string }
+type ThreadMessageCursor = { id: string; createdAt: string }
+
+export function encodeThreadCursor(thread: Pick<InboxThreadSummary, 'id' | 'lastMessageAt'>): string {
+  return Buffer.from(
+    JSON.stringify({ id: thread.id, lastMessageAt: thread.lastMessageAt.toISOString() })
+  ).toString('base64url')
+}
+
+function decodeThreadCursor(value: string): ThreadCursor | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as Partial<ThreadCursor>
+    if (!parsed.id || !parsed.lastMessageAt || Number.isNaN(Date.parse(parsed.lastMessageAt))) {
+      return null
+    }
+    return { id: parsed.id, lastMessageAt: parsed.lastMessageAt }
+  } catch {
+    return null
+  }
+}
+
+export function encodeThreadMessageCursor(
+  message: Pick<InboxThreadMessage, 'id' | 'createdAt'>
+): string {
+  return Buffer.from(
+    JSON.stringify({ id: message.id, createdAt: message.createdAt.toISOString() })
+  ).toString('base64url')
+}
+
+function decodeThreadMessageCursor(value: string): ThreadMessageCursor | null {
+  try {
+    const parsed = JSON.parse(
+      Buffer.from(value, 'base64url').toString('utf8')
+    ) as Partial<ThreadMessageCursor>
+    if (!parsed.id || !parsed.createdAt || Number.isNaN(Date.parse(parsed.createdAt))) return null
+    return { id: parsed.id, createdAt: parsed.createdAt }
+  } catch {
+    return null
+  }
 }
 
 function asJsonRecord(value: Prisma.JsonValue): Record<string, Prisma.JsonValue> | null {
@@ -161,6 +205,9 @@ function toThreadSummary(
     unreadCount: thread.unreadCount,
     lastMessageAt: thread.lastMessageAt,
     lastInboundAt: thread.lastInboundAt,
+    slaStartedAt: thread.slaStartedAt,
+    firstResponseAt: thread.firstResponseAt,
+    resolvedAt: thread.resolvedAt,
     // Meta 24h DM messaging-window deadline — the UI shows a countdown and
     // the service refuses sends past it. Null for comment threads: public
     // comment replies have no window (7d only applies to comment→DM).
@@ -182,16 +229,36 @@ function toThreadDetail(thread: ThreadSummaryRow): InboxThreadDetail {
 
 export class InboxRepository {
   async list(workspaceId: string, query: InboxListQuery) {
+    const cursorSql = query.cursor
+      ? Prisma.sql`AND im."id" < ${query.cursor}`
+      : Prisma.empty
+    const ids = await db.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT im."id"
+      FROM "InboxMessage" im
+      WHERE im."workspaceId" = ${workspaceId}
+        ${cursorSql}
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "InboxThreadMessage" itm
+          WHERE itm."workspaceId" = im."workspaceId"
+            AND itm."platformId" = im."platformId"
+            AND im."externalId" IS NOT NULL
+            AND itm."providerMessageId" = im."externalId"
+        )
+      ORDER BY im."id" DESC
+      LIMIT ${query.limit + 1}
+    `)
+    if (ids.length === 0) return []
+
     const rows = await db.inboxMessage.findMany({
-      where: {
-        workspaceId,
-        ...(query.cursor ? { id: { lt: query.cursor } } : {}),
-      },
+      where: { id: { in: ids.map(({ id }) => id) }, workspaceId },
       include: { platform: { select: { type: true, name: true } } },
-      orderBy: { id: 'desc' },
-      take: query.limit + 1,
     })
-    return rows.map(toMessage)
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    return ids.flatMap(({ id }) => {
+      const row = byId.get(id)
+      return row ? [toMessage(row)] : []
+    })
   }
 
   /** Build the where clause for one queue. membershipId powers 'mine'. */
@@ -235,6 +302,28 @@ export class InboxRepository {
         { messages: { some: { body: { contains: query.q, mode: 'insensitive' } } } },
       ]
     }
+    if (query.cursor) {
+      let cursor = decodeThreadCursor(query.cursor)
+      if (!cursor) {
+        const legacyCursor = await db.inboxThread.findFirst({
+          where: { id: query.cursor, workspaceId },
+          select: { id: true, lastMessageAt: true },
+        })
+        cursor = legacyCursor
+          ? { id: legacyCursor.id, lastMessageAt: legacyCursor.lastMessageAt.toISOString() }
+          : null
+      }
+      if (!cursor) return []
+      const lastMessageAt = new Date(cursor.lastMessageAt)
+      where.AND = [
+        {
+          OR: [
+            { lastMessageAt: { lt: lastMessageAt } },
+            { lastMessageAt, id: { lt: cursor.id } },
+          ],
+        },
+      ]
+    }
     const rows = await db.inboxThread.findMany({
       where,
       include: {
@@ -258,7 +347,6 @@ export class InboxRepository {
         },
       },
       orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
       take: query.limit + 1,
     })
     return rows.map((row) => toThreadSummary(row))
@@ -300,7 +388,7 @@ export class InboxRepository {
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         lockedBy: { select: { id: true, name: true, avatarUrl: true } },
         messages: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
           take: 100,
           select: {
             id: true,
@@ -316,7 +404,9 @@ export class InboxRepository {
         },
       },
     })
-    return thread ? toThreadDetail(thread) : null
+    return thread
+      ? toThreadDetail({ ...thread, messages: [...thread.messages].reverse() })
+      : null
   }
 
   async findThreadWithPlatform(id: string, workspaceId: string) {
@@ -363,34 +453,36 @@ export class InboxRepository {
       return { customer: { name: thread.title, firstSeenAt: null, threadCount: 1 }, priorThreads: [] }
     }
 
-    const related = await db.inboxThread.findMany({
-      where: { workspaceId, providerUserId: thread.providerUserId },
-      orderBy: { lastMessageAt: 'desc' },
-      select: {
-        id: true,
-        messageType: true,
-        status: true,
-        lastMessageAt: true,
-        createdAt: true,
-        messages: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { body: true },
+    const relatedWhere = { workspaceId, providerUserId: thread.providerUserId }
+    const [summary, related] = await db.$transaction([
+      db.inboxThread.aggregate({
+        where: relatedWhere,
+        _count: { _all: true },
+        _min: { createdAt: true },
+      }),
+      db.inboxThread.findMany({
+        where: relatedWhere,
+        orderBy: { lastMessageAt: 'desc' },
+        select: {
+          id: true,
+          messageType: true,
+          status: true,
+          lastMessageAt: true,
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { body: true },
+          },
         },
-      },
-      take: 20,
-    })
-
-    const firstSeenAt = related.reduce<Date | null>(
-      (min, t) => (min === null || t.createdAt < min ? t.createdAt : min),
-      null
-    )
+        take: 20,
+      }),
+    ])
 
     return {
       customer: {
         name: thread.title,
-        firstSeenAt,
-        threadCount: related.length,
+        firstSeenAt: summary._min.createdAt,
+        threadCount: summary._count._all,
       },
       priorThreads: related
         .filter((t) => t.id !== thread.id)
@@ -460,8 +552,11 @@ export class InboxRepository {
     const providerMessageIds = await this.getThreadProviderMessageIds(id, workspaceId)
     const updated = await db.inboxThread.update({
       where: { id },
-      data: { status },
-      select: { id: true, status: true },
+      data: {
+        status,
+        resolvedAt: status === 'resolved' ? new Date() : null,
+      },
+      select: { id: true, status: true, resolvedAt: true },
     })
     if (providerMessageIds.length > 0) {
       await db.inboxMessage.updateMany({
@@ -621,33 +716,96 @@ export class InboxRepository {
     workspaceId: string,
     platformId: string,
     messageType: string,
-    replyText: string
+    replyText: string,
+    providerMessageId: string | null = null
   ) {
     const now = new Date()
-    const threadMessage = await db.inboxThreadMessage.create({
-      data: {
-        threadId,
+    return db.$transaction(async (tx) => {
+      const threadMessage = await tx.inboxThreadMessage.create({
+        data: {
+          threadId,
+          workspaceId,
+          platformId,
+          providerMessageId: providerMessageId ?? `outbound:${threadId}:${randomUUID()}`,
+          direction: 'outbound',
+          messageType,
+          senderName: 'You',
+          body: replyText.trim(),
+          payload: {
+            source: 'app-reply',
+            providerAcknowledged: true,
+            providerMessageId,
+          },
+          createdAt: now,
+        },
+      })
+
+      await tx.inboxThread.update({
+        where: { id: threadId },
+        data: {
+          unreadCount: 0,
+          status: 'in_progress',
+          lastMessageAt: now,
+        },
+      })
+      await tx.inboxThread.updateMany({
+        where: { id: threadId, firstResponseAt: null },
+        data: { firstResponseAt: now },
+      })
+
+      return threadMessage
+    })
+  }
+
+  async legacyUnreadCount(workspaceId: string): Promise<number> {
+    const rows = await db.$queryRaw<{ count: number }[]>(Prisma.sql`
+      SELECT COUNT(*)::int AS count
+      FROM "InboxMessage" im
+      WHERE im."workspaceId" = ${workspaceId}
+        AND im."isRead" = false
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "InboxThreadMessage" itm
+          WHERE itm."workspaceId" = im."workspaceId"
+            AND itm."platformId" = im."platformId"
+            AND im."externalId" IS NOT NULL
+            AND itm."providerMessageId" = im."externalId"
+        )
+    `)
+    return rows[0]?.count ?? 0
+  }
+
+  async listThreadMessages(id: string, workspaceId: string, query: InboxListQuery) {
+    const cursor = query.cursor ? decodeThreadMessageCursor(query.cursor) : null
+    if (query.cursor && !cursor) return []
+    const createdAt = cursor ? new Date(cursor.createdAt) : null
+    const rows = await db.inboxThreadMessage.findMany({
+      where: {
+        threadId: id,
         workspaceId,
-        platformId,
-        providerMessageId: `outbound:${threadId}:${randomUUID()}`,
-        direction: 'outbound',
-        messageType,
-        senderName: 'You',
-        body: replyText.trim(),
-        payload: { source: 'app-reply' },
-        createdAt: now,
+        ...(cursor && createdAt
+          ? {
+              OR: [
+                { createdAt: { lt: createdAt } },
+                { createdAt, id: { lt: cursor.id } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: query.limit + 1,
+      select: {
+        id: true,
+        providerMessageId: true,
+        direction: true,
+        messageType: true,
+        senderExternalId: true,
+        senderName: true,
+        body: true,
+        payload: true,
+        createdAt: true,
       },
     })
-
-    await db.inboxThread.update({
-      where: { id: threadId },
-      data: {
-        unreadCount: 0,
-        status: 'in_progress',
-        lastMessageAt: now,
-      },
-    })
-
-    return threadMessage
+    return rows.map(toThreadMessage)
   }
 }

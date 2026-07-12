@@ -37,7 +37,12 @@ function makeRepo(message: Record<string, unknown> | null) {
 const igPlatform = { type: 'instagram', tokenSecret: 'enc_token', targetId: 'ig_user_1' }
 
 describe('inboxService.replyToMessage — real Instagram sends', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    igMock.sendCommentReply.mockResolvedValue({ providerMessageId: 'provider-comment-reply' })
+    igMock.sendPrivateReply.mockResolvedValue({ providerMessageId: 'provider-private-reply' })
+    igMock.sendDirectMessage.mockResolvedValue({ providerMessageId: 'provider-dm-reply' })
+  })
 
   it('sends a public comment reply via the Graph API before persisting', async () => {
     const repo = makeRepo({
@@ -121,18 +126,44 @@ describe('inboxService.replyToMessage — real Instagram sends', () => {
     await expect(service.replyToMessage(AUTH, 'msg_5', { reply: 'x' })).rejects.toThrow()
     expect(repo.reply).not.toHaveBeenCalled()
   })
+
+  it('never records an external reply when the Instagram token is missing', async () => {
+    const repo = makeRepo({
+      id: 'msg_missing_token',
+      externalId: 'cmt_external',
+      messageType: 'comment',
+      platform: { ...igPlatform, tokenSecret: null },
+    })
+    const service = new InboxService(repo)
+
+    await expect(service.replyToMessage(AUTH, 'msg_missing_token', { reply: 'x' })).rejects.toThrow(
+      /دوباره متصل/
+    )
+    expect(repo.reply).not.toHaveBeenCalled()
+  })
 })
 
 function makeThreadRepo(thread: Record<string, unknown> | null) {
   return {
     findThreadWithPlatform: vi.fn().mockResolvedValue(thread),
+    findMemberByUserInWorkspace: vi.fn().mockResolvedValue({ id: 'member_1' }),
+    claimThread: vi.fn().mockResolvedValue({
+      ok: true,
+      assigneeId: 'member_1',
+      lockExpiresAt: new Date(Date.now() + 10 * 60_000),
+    }),
     appendThreadReply: vi.fn().mockResolvedValue({ id: 'out_1' }),
     markLegacyRepliedByExternalId: vi.fn().mockResolvedValue(undefined),
   } as unknown as InboxRepository
 }
 
 describe('inboxService.replyToThread — DM recipient addressing', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    igMock.sendCommentReply.mockResolvedValue({ providerMessageId: 'provider-comment-reply' })
+    igMock.sendPrivateReply.mockResolvedValue({ providerMessageId: 'provider-private-reply' })
+    igMock.sendDirectMessage.mockResolvedValue({ providerMessageId: 'provider-dm-reply' })
+  })
 
   it('addresses DM replies by the sender IGSID, never by message id', async () => {
     const repo = makeThreadRepo({
@@ -160,6 +191,14 @@ describe('inboxService.replyToThread — DM recipient addressing', () => {
     )
     expect(igMock.sendPrivateReply).not.toHaveBeenCalled()
     expect(igMock.sendCommentReply).not.toHaveBeenCalled()
+    expect(repo.appendThreadReply).toHaveBeenCalledWith(
+      'thr_1',
+      'ws_1',
+      'plat_1',
+      'dm',
+      'پاسخ دایرکت',
+      'provider-dm-reply'
+    )
   })
 
   it('falls back to thread.providerUserId when the message has no sender id', async () => {
@@ -293,5 +332,51 @@ describe('inboxService.replyToThread — DM recipient addressing', () => {
 
     expect(igMock.sendCommentReply).toHaveBeenCalledWith('dec:enc_token', 'cmt_42', 'پاسخ عمومی')
     expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
+  })
+
+  it('rejects a send when another agent owns the active claim', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_claimed',
+      providerUserId: 'igsid_777',
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_claimed',
+          providerMessageId: 'mid.CLAIMED',
+          messageType: 'dm',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    vi.mocked(repo.claimThread).mockResolvedValueOnce(null)
+    const service = new InboxService(repo)
+
+    await expect(service.replyToThread(AUTH, 'thr_claimed', { reply: 'x' })).rejects.toThrow(
+      /عضو دیگری/
+    )
+    expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
+    expect(repo.appendThreadReply).not.toHaveBeenCalled()
+  })
+
+  it('rejects thread replies when the platform token is missing', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_missing_token',
+      providerUserId: 'igsid_777',
+      platform: { id: 'plat_1', ...igPlatform, tokenSecret: null },
+      messages: [
+        {
+          id: 'm_missing_token',
+          providerMessageId: 'mid.MISSING',
+          messageType: 'dm',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await expect(service.replyToThread(AUTH, 'thr_missing_token', { reply: 'x' })).rejects.toThrow(
+      /دوباره متصل/
+    )
+    expect(repo.appendThreadReply).not.toHaveBeenCalled()
   })
 })
