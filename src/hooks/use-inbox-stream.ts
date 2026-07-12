@@ -87,6 +87,7 @@ export function useInboxStream(
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', payload.threadId] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
       onEventRef.current?.(payload)
     }

@@ -9,6 +9,9 @@ import type {
   InboxThreadDetail,
   InboxThreadMessage,
   InboxThreadSummary,
+  InboxThreadListQuery,
+  InboxThreadQueue,
+  InboxThreadQueueCounts,
 } from './types'
 
 function toMessage(m: {
@@ -191,9 +194,49 @@ export class InboxRepository {
     return rows.map(toMessage)
   }
 
-  async listThreads(workspaceId: string, query: InboxListQuery) {
+  /** Build the where clause for one queue. membershipId powers 'mine'. */
+  private threadQueueWhere(
+    workspaceId: string,
+    queue: InboxThreadQueue,
+    membershipId: string | null
+  ): Prisma.InboxThreadWhereInput {
+    const base: Prisma.InboxThreadWhereInput = { workspaceId }
+    switch (queue) {
+      case 'unread':
+        return { ...base, unreadCount: { gt: 0 } }
+      case 'unassigned':
+        return { ...base, assigneeId: null, status: { not: 'resolved' } }
+      case 'mine':
+        // No membership → empty queue (impossible in practice; guards resolve it)
+        return { ...base, assigneeId: membershipId ?? '__none__' }
+      case 'urgent':
+        return { ...base, priority: { in: ['high', 'urgent'] }, status: { not: 'resolved' } }
+      case 'comment':
+      case 'dm':
+      case 'mention':
+        return { ...base, messageType: queue }
+      case 'resolved':
+        return { ...base, status: 'resolved' }
+      case 'all':
+      default:
+        return base
+    }
+  }
+
+  async listThreads(
+    workspaceId: string,
+    query: InboxThreadListQuery,
+    membershipId: string | null = null
+  ) {
+    const where = this.threadQueueWhere(workspaceId, query.queue ?? 'all', membershipId)
+    if (query.q) {
+      where.OR = [
+        { title: { contains: query.q, mode: 'insensitive' } },
+        { messages: { some: { body: { contains: query.q, mode: 'insensitive' } } } },
+      ]
+    }
     const rows = await db.inboxThread.findMany({
-      where: { workspaceId },
+      where,
       include: {
         platform: { select: { type: true, name: true } },
         assignee: { select: { id: true, name: true, avatarUrl: true } },
@@ -219,6 +262,30 @@ export class InboxRepository {
       take: query.limit + 1,
     })
     return rows.map((row) => toThreadSummary(row))
+  }
+
+  /** One count per queue for the rail badges. 9 cheap indexed counts. */
+  async threadQueueCounts(
+    workspaceId: string,
+    membershipId: string | null
+  ): Promise<InboxThreadQueueCounts> {
+    const queues: InboxThreadQueue[] = [
+      'all',
+      'unread',
+      'unassigned',
+      'mine',
+      'urgent',
+      'comment',
+      'dm',
+      'mention',
+      'resolved',
+    ]
+    const counts = await Promise.all(
+      queues.map((queue) =>
+        db.inboxThread.count({ where: this.threadQueueWhere(workspaceId, queue, membershipId) })
+      )
+    )
+    return Object.fromEntries(queues.map((q, i) => [q, counts[i]])) as InboxThreadQueueCounts
   }
 
   async findThreadInWorkspace(id: string, workspaceId: string) {

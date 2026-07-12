@@ -564,6 +564,26 @@ export const cursorPaginationSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
 })
 
+// Inbox thread queues — server-side filters for the queue rail. 'overdue'
+// stays client-side (SLA math lives in the view for now).
+export const inboxThreadQueueSchema = z.enum([
+  'all',
+  'unread',
+  'unassigned',
+  'mine',
+  'urgent',
+  'comment',
+  'dm',
+  'mention',
+  'resolved',
+])
+export type InboxThreadQueue = z.infer<typeof inboxThreadQueueSchema>
+
+export const inboxThreadsQuerySchema = cursorPaginationSchema.extend({
+  queue: inboxThreadQueueSchema.optional().default('all'),
+  q: z.string().trim().max(100).optional(),
+})
+
 // ── Listening (#251) ────────────────────────────────────────────────────────
 //
 // Social listening saved searches. Each query tracks keywords across one or

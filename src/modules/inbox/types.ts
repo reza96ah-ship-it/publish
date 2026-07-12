@@ -8,6 +8,26 @@ export interface InboxListQuery {
   limit: number
 }
 
+export type InboxThreadQueue =
+  | 'all'
+  | 'unread'
+  | 'unassigned'
+  | 'mine'
+  | 'urgent'
+  | 'comment'
+  | 'dm'
+  | 'mention'
+  | 'resolved'
+
+export interface InboxThreadListQuery extends InboxListQuery {
+  queue?: InboxThreadQueue
+  /** Full-text search over thread title and message bodies. */
+  q?: string
+}
+
+/** Per-queue thread counts for the queue rail badges. */
+export type InboxThreadQueueCounts = Record<InboxThreadQueue, number>
+
 export interface InboxMessage {
   id: string
   senderName: string | null
