@@ -27,6 +27,10 @@ export class ProviderReplyError extends Error {
   }
 }
 
+export interface ProviderReplyReceipt {
+  providerMessageId: string | null
+}
+
 async function graphPost(url: string, body: Record<string, unknown>): Promise<Record<string, unknown>> {
   let res: Response
   try {
@@ -41,7 +45,7 @@ async function graphPost(url: string, body: Record<string, unknown>): Promise<Re
   }
   const data = (await res.json().catch(() => null)) as Record<string, unknown> | null
   const error = data?.error as { message?: string } | undefined
-  if (!data || error) {
+  if (!res.ok || !data || error) {
     throw new ProviderReplyError(
       `ارسال پاسخ به اینستاگرام ناموفق بود${error?.message ? `: ${error.message}` : ''}`
     )
@@ -49,16 +53,22 @@ async function graphPost(url: string, body: Record<string, unknown>): Promise<Re
   return data
 }
 
+function toReceipt(data: Record<string, unknown>): ProviderReplyReceipt {
+  const id = data.message_id ?? data.id
+  return { providerMessageId: typeof id === 'string' && id.length > 0 ? id : null }
+}
+
 /** Public nested reply under the original comment. */
 export async function sendCommentReply(
   accessToken: string,
   commentId: string,
   replyText: string
-): Promise<void> {
-  await graphPost(`${GRAPH_API}/${commentId}/replies`, {
+): Promise<ProviderReplyReceipt> {
+  const data = await graphPost(`${GRAPH_API}/${commentId}/replies`, {
     message: replyText,
     access_token: accessToken,
   })
+  return toReceipt(data)
 }
 
 /** Private reply (DM) to the commenter, addressed by comment_id. */
@@ -67,13 +77,14 @@ export async function sendPrivateReply(
   igUserId: string,
   commentId: string,
   replyText: string
-): Promise<void> {
-  await graphPost(`${GRAPH_API}/${igUserId}/messages`, {
+): Promise<ProviderReplyReceipt> {
+  const data = await graphPost(`${GRAPH_API}/${igUserId}/messages`, {
     recipient: { comment_id: commentId },
     message: { text: replyText },
     messaging_type: 'RESPONSE',
     access_token: accessToken,
   })
+  return toReceipt(data)
 }
 
 /**
@@ -87,11 +98,12 @@ export async function sendDirectMessage(
   igUserId: string,
   recipientIgsid: string,
   replyText: string
-): Promise<void> {
-  await graphPost(`${GRAPH_API}/${igUserId}/messages`, {
+): Promise<ProviderReplyReceipt> {
+  const data = await graphPost(`${GRAPH_API}/${igUserId}/messages`, {
     recipient: { id: recipientIgsid },
     message: { text: replyText },
     messaging_type: 'RESPONSE',
     access_token: accessToken,
   })
+  return toReceipt(data)
 }

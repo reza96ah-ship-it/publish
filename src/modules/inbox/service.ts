@@ -1,6 +1,14 @@
 import { decrypt } from '@/lib/crypto'
-import { InboxRepository } from './repository'
-import { InboxMessageNotFoundError, AssigneeMemberNotFoundError } from './errors'
+import {
+  encodeThreadCursor,
+  encodeThreadMessageCursor,
+  InboxRepository,
+} from './repository'
+import {
+  InboxMessageNotFoundError,
+  AssigneeMemberNotFoundError,
+  InboxThreadClaimConflictError,
+} from './errors'
 import {
   sendCommentReply,
   sendPrivateReply,
@@ -14,6 +22,7 @@ import type {
   InboxListQuery,
   InboxListResult,
   InboxThreadDetail,
+  InboxThreadMessageListResult,
   InboxThreadListResult,
   InboxThreadListQuery,
   InboxThreadQueueCounts,
@@ -44,7 +53,8 @@ export class InboxService {
     const rows = await this.repo.listThreads(auth.workspaceId, query, membershipId)
     const hasMore = rows.length > query.limit
     const page = hasMore ? rows.slice(0, query.limit) : rows
-    const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null
+    const cursorThread = page[page.length - 1]
+    const nextCursor = hasMore && cursorThread ? encodeThreadCursor(cursorThread) : null
     return { data: page, nextCursor }
   }
 
@@ -61,6 +71,22 @@ export class InboxService {
     const thread = await this.repo.getThread(threadId, auth.workspaceId)
     if (!thread) throw new InboxMessageNotFoundError()
     return thread
+  }
+
+  async listThreadMessages(
+    auth: AuthContext,
+    threadId: string,
+    query: InboxListQuery
+  ): Promise<InboxThreadMessageListResult> {
+    const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
+    if (!thread) throw new InboxMessageNotFoundError()
+    const rows = await this.repo.listThreadMessages(threadId, auth.workspaceId, query)
+    const hasMore = rows.length > query.limit
+    const page = hasMore ? rows.slice(0, query.limit) : rows
+    const cursorMessage = page[page.length - 1]
+    const nextCursor =
+      hasMore && cursorMessage ? encodeThreadMessageCursor(cursorMessage) : null
+    return { data: [...page].reverse(), nextCursor }
   }
 
   /** Customer context panel: sender history across the workspace. */
@@ -153,9 +179,7 @@ export class InboxService {
     if (!claimed) {
       const thread = await this.repo.findThreadInWorkspace(threadId, auth.workspaceId)
       if (!thread) throw new InboxMessageNotFoundError()
-      const error = new Error('Thread is already claimed by another agent')
-      error.name = 'InboxThreadClaimConflictError'
-      throw error
+      throw new InboxThreadClaimConflictError()
     }
 
     // Presence: teammates' open inboxes show "X در حال پاسخ" immediately.
@@ -200,7 +224,12 @@ export class InboxService {
     // the provider accepted it. Demo/seed rows (no externalId) and platforms
     // without a token stay local-only, so the demo workspace keeps working.
     const { platform } = message
-    if (message.externalId && platform?.type === 'instagram' && platform.tokenSecret) {
+    if (message.externalId && platform?.type === 'instagram') {
+      if (!platform.tokenSecret) {
+        throw new ProviderReplyError(
+          'اتصال اینستاگرام معتبر نیست — کانال را دوباره متصل کنید و سپس پاسخ را ارسال کنید'
+        )
+      }
       const accessToken = decrypt(platform.tokenSecret)
       if (message.messageType === 'dm') {
         if (!platform.targetId) {
@@ -230,41 +259,64 @@ export class InboxService {
     if (!inbound) throw new ProviderReplyError('No inbound message is available for this thread')
 
     const { platform } = thread
-    if (platform?.type === 'instagram' && platform.tokenSecret) {
-      // Enforce the Meta 24h DM messaging window server-side — the Graph API
-      // would reject the send anyway; failing here gives the agent an
-      // actionable Persian message instead of a raw provider error. Public
-      // comment replies (the non-dm path below) have no window, so only DM
-      // threads are gated. The 7d limit applies to *private* replies to
-      // comments (comment→DM automation), not to public replies.
-      if (inbound.messageType === 'dm') {
-        const windowExpiresAt = getReplyWindowExpiry('dm', thread.lastInboundAt)
-        if (windowExpiresAt && windowExpiresAt.getTime() < Date.now()) {
-          throw new ProviderReplyError(
-            'پنجره ۲۴ ساعته پاسخ دایرکت به پایان رسیده است — طبق سیاست متا امکان ارسال نیست'
-          )
-        }
+    if (platform?.type !== 'instagram') {
+      throw new ProviderReplyError('ارسال پاسخ برای این کانال پشتیبانی نمی‌شود')
+    }
+    if (!platform.tokenSecret) {
+      throw new ProviderReplyError(
+        'اتصال اینستاگرام معتبر نیست — کانال را دوباره متصل کنید و سپس پاسخ را ارسال کنید'
+      )
+    }
+
+    if (inbound.messageType === 'dm') {
+      const windowExpiresAt = getReplyWindowExpiry('dm', thread.lastInboundAt)
+      if (windowExpiresAt && windowExpiresAt.getTime() < Date.now()) {
+        throw new ProviderReplyError(
+          'پنجره ۲۴ ساعته پاسخ دایرکت به پایان رسیده است — طبق سیاست متا امکان ارسال نیست'
+        )
       }
-      const accessToken = decrypt(platform.tokenSecret)
-      if (inbound.messageType === 'dm') {
-        if (!platform.targetId) {
-          throw new ProviderReplyError(
-            'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
-          )
-        }
-        // DM threads must be addressed by the sender's Instagram-scoped ID
-        // (IGSID) — recipient.comment_id is only valid for comment private
-        // replies, and a DM message id there is rejected by the Graph API.
-        const recipientIgsid = inbound.senderExternalId ?? thread.providerUserId
-        if (!recipientIgsid) {
-          throw new ProviderReplyError(
-            'شناسه فرستنده این گفتگو در دسترس نیست — پاسخ از اینستاگرام ممکن نیست'
-          )
-        }
-        await sendDirectMessage(accessToken, platform.targetId, recipientIgsid, input.reply)
-      } else {
-        await sendCommentReply(accessToken, inbound.providerMessageId, input.reply)
+      if (!platform.targetId) {
+        throw new ProviderReplyError(
+          'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
+        )
       }
+    }
+
+    const member = await this.repo.findMemberByUserInWorkspace(auth.userId, auth.workspaceId)
+    if (!member) throw new AssigneeMemberNotFoundError()
+    const claim = await this.repo.claimThread(threadId, auth.workspaceId, member.id)
+    if (!claim) throw new InboxThreadClaimConflictError()
+
+    void emitInboxThreadEvent(auth.workspaceId, {
+      threadId,
+      kind: 'updated',
+      messageType: 'presence',
+    })
+
+    const accessToken = decrypt(platform.tokenSecret)
+    let providerMessageId: string | null = null
+    if (inbound.messageType === 'dm') {
+      if (!platform.targetId) {
+        throw new ProviderReplyError(
+          'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
+        )
+      }
+      const recipientIgsid = inbound.senderExternalId ?? thread.providerUserId
+      if (!recipientIgsid) {
+        throw new ProviderReplyError(
+          'شناسه فرستنده این گفتگو در دسترس نیست — پاسخ از اینستاگرام ممکن نیست'
+        )
+      }
+      const receipt = await sendDirectMessage(
+        accessToken,
+        platform.targetId,
+        recipientIgsid,
+        input.reply
+      )
+      providerMessageId = receipt?.providerMessageId ?? null
+    } else {
+      const receipt = await sendCommentReply(accessToken, inbound.providerMessageId, input.reply)
+      providerMessageId = receipt?.providerMessageId ?? null
     }
 
     const outbound = await this.repo.appendThreadReply(
@@ -272,7 +324,8 @@ export class InboxService {
       auth.workspaceId,
       platform.id,
       inbound.messageType,
-      input.reply
+      input.reply,
+      providerMessageId
     )
     await this.repo.markLegacyRepliedByExternalId(
       auth.workspaceId,

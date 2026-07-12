@@ -105,6 +105,11 @@ export interface InboxThreadDetail extends InboxThreadSummary {
   messages: InboxThreadMessage[]
 }
 
+export interface InboxThreadMessageListResult {
+  data: InboxThreadMessage[]
+  nextCursor: string | null
+}
+
 export interface InboxThreadListResult {
   data: InboxThreadSummary[]
   nextCursor: string | null

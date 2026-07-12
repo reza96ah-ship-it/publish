@@ -7,6 +7,9 @@ const { dbMock } = vi.hoisted(() => ({
     platform: { findMany: vi.fn() },
     publication: { findMany: vi.fn() },
     inboxMessage: { createMany: vi.fn() },
+    inboxThread: { upsert: vi.fn(), update: vi.fn() },
+    inboxThreadMessage: { createMany: vi.fn() },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -43,9 +46,23 @@ function makeComment(overrides: Partial<IgComment> = {}): IgComment {
 describe('inbox-ingest-scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    dbMock.$transaction.mockImplementation(async (callback: (tx: typeof dbMock) => unknown) =>
+      callback(dbMock)
+    )
     dbMock.platform.findMany.mockResolvedValue([basePlatform])
     dbMock.publication.findMany.mockResolvedValue([{ providerPostId: 'ig_media_1' }])
     dbMock.inboxMessage.createMany.mockResolvedValue({ count: 1 })
+    dbMock.inboxThread.upsert.mockResolvedValue({
+      id: 'thread_1',
+      status: 'new',
+      lastMessageAt: new Date('2026-07-05T10:00:00.000Z'),
+      lastInboundAt: new Date('2026-07-05T10:00:00.000Z'),
+      slaStartedAt: new Date('2026-07-05T10:00:00.000Z'),
+      firstResponseAt: null,
+      resolvedAt: null,
+    })
+    dbMock.inboxThread.update.mockResolvedValue({})
+    dbMock.inboxThreadMessage.createMany.mockResolvedValue({ count: 1 })
   })
 
   it('creates an InboxMessage for each inbound comment', async () => {
@@ -55,6 +72,8 @@ describe('inbox-ingest-scanner', () => {
     expect(stats.platformsScanned).toBe(1)
     expect(stats.mediaScanned).toBe(1)
     expect(stats.commentsSeen).toBe(1)
+    expect(stats.messagesCreated).toBe(1)
+    expect(dbMock.inboxThreadMessage.createMany).toHaveBeenCalledOnce()
     expect(dbMock.inboxMessage.createMany).toHaveBeenCalledOnce()
 
     const arg = dbMock.inboxMessage.createMany.mock.calls[0][0] as {

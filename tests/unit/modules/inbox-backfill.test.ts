@@ -3,8 +3,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const { dbMock } = vi.hoisted(() => ({
   dbMock: {
     platform: { findUnique: vi.fn() },
-    inboxThread: { upsert: vi.fn() },
-    inboxThreadMessage: { create: vi.fn() },
+    inboxThread: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
+    inboxThreadMessage: { createMany: vi.fn() },
+    $transaction: vi.fn(),
   },
 }))
 
@@ -55,9 +56,14 @@ function makeConversation(overrides: Record<string, unknown> = {}) {
 describe('instagram DM history backfill', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    dbMock.$transaction.mockImplementation(async (callback: (tx: typeof dbMock) => unknown) =>
+      callback(dbMock)
+    )
     dbMock.platform.findUnique.mockResolvedValue(basePlatform)
-    dbMock.inboxThread.upsert.mockResolvedValue({ id: 'thr_1', createdAt: new Date() })
-    dbMock.inboxThreadMessage.create.mockResolvedValue({})
+    dbMock.inboxThread.findUnique.mockResolvedValue(null)
+    dbMock.inboxThread.upsert.mockResolvedValue({ id: 'thr_1' })
+    dbMock.inboxThread.update.mockResolvedValue({})
+    dbMock.inboxThreadMessage.createMany.mockResolvedValue({ count: 2 })
   })
 
   it('creates a thread per conversation using the webhook dm:{igsid} convention', async () => {
@@ -90,9 +96,11 @@ describe('instagram DM history backfill', () => {
       fetchConversations: vi.fn().mockResolvedValue([makeConversation()]),
     })
 
-    const directions = dbMock.inboxThreadMessage.create.mock.calls.map(
-      (c) => (c[0] as { data: { providerMessageId: string; direction: string } }).data
-    )
+    const directions = (
+      dbMock.inboxThreadMessage.createMany.mock.calls[0][0] as {
+        data: Array<{ providerMessageId: string; direction: string }>
+      }
+    ).data
     expect(directions).toContainEqual(
       expect.objectContaining({ providerMessageId: 'mid.1', direction: 'inbound' })
     )
@@ -102,9 +110,7 @@ describe('instagram DM history backfill', () => {
   })
 
   it('skips duplicate messages already ingested by webhooks (P2002)', async () => {
-    dbMock.inboxThreadMessage.create
-      .mockRejectedValueOnce(Object.assign(new Error('dup'), { code: 'P2002' }))
-      .mockResolvedValueOnce({})
+    dbMock.inboxThreadMessage.createMany.mockResolvedValueOnce({ count: 1 })
 
     const stats = await backfillInstagramConversations('plat_1', {
       fetchConversations: vi.fn().mockResolvedValue([makeConversation()]),
@@ -131,5 +137,28 @@ describe('instagram DM history backfill', () => {
 
     expect(stats.errors).toBe(1)
     expect(dbMock.inboxThread.upsert).not.toHaveBeenCalled()
+  })
+
+  it('keeps existing thread timestamps monotonic while importing older history', async () => {
+    dbMock.inboxThread.findUnique.mockResolvedValue({
+      id: 'thr_1',
+      lastMessageAt: new Date('2026-07-12T12:00:00.000Z'),
+      lastInboundAt: new Date('2026-07-12T11:00:00.000Z'),
+      slaStartedAt: new Date('2026-07-12T11:00:00.000Z'),
+      firstResponseAt: null,
+    })
+
+    await backfillInstagramConversations('plat_1', {
+      fetchConversations: vi.fn().mockResolvedValue([makeConversation()]),
+    })
+
+    expect(dbMock.inboxThread.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          lastMessageAt: new Date('2026-07-12T12:00:00.000Z'),
+          lastInboundAt: new Date('2026-07-12T11:00:00.000Z'),
+        }),
+      })
+    )
   })
 })
