@@ -51,6 +51,9 @@ export interface InboxThreadSummary {
   lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
+  lastInboundAt: Date | null
+  /** Meta reply-window deadline (24h DM / 7d comment); null = unknown. */
+  replyWindowExpiresAt: Date | null
   createdAt: Date
   updatedAt: Date
   lastMessage: {

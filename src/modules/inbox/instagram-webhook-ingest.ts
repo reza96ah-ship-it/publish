@@ -71,6 +71,7 @@ async function ingestEventForPlatform(
       title: event.senderName,
       messageType: event.messageType,
       lastMessageAt: event.createdAt,
+      lastInboundAt: event.createdAt,
     },
     update: {
       title: event.senderName,
@@ -106,6 +107,7 @@ async function ingestEventForPlatform(
       data: {
         status: 'new',
         lastMessageAt: event.createdAt,
+        lastInboundAt: event.createdAt,
         unreadCount: { increment: 1 },
       },
     })

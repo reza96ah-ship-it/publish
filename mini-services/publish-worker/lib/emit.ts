@@ -43,3 +43,35 @@ export async function emitJobStatus(evt: JobStatusEvent): Promise<void> {
     console.warn('[emit] realtime service unreachable:', (err as Error).message)
   }
 }
+
+/** Inbox thread event — mirrors src/modules/inbox/realtime-emit.ts. */
+export interface InboxThreadEvent {
+  threadId: string
+  kind: 'created' | 'message' | 'updated'
+  messageType: string
+  senderName?: string
+  preview?: string
+}
+
+/** Push an inbox thread event to open inbox views. Fire-and-forget. */
+export async function emitInboxThread(
+  workspaceId: string,
+  payload: InboxThreadEvent
+): Promise<void> {
+  try {
+    const res = await fetch(REALTIME_EMIT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Emit-Secret': EMIT_SECRET,
+      },
+      body: JSON.stringify({ workspaceId, event: 'inbox:thread', payload }),
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!res.ok && res.status === 401) {
+      console.error('[emit] 401 — EMIT_SECRET mismatch between worker and realtime')
+    }
+  } catch (err) {
+    console.warn('[emit] realtime service unreachable (inbox):', (err as Error).message)
+  }
+}

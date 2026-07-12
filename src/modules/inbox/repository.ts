@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { randomUUID } from 'crypto'
+import { getReplyWindowExpiry } from '../../../shared/instagram-graph'
 import type {
   InboxThreadAttachment,
   InboxListQuery,
@@ -82,6 +83,7 @@ type ThreadSummaryRow = {
   lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
+  lastInboundAt: Date | null
   createdAt: Date
   updatedAt: Date
   platform: { type: string; name: string } | null
@@ -155,6 +157,12 @@ function toThreadSummary(
     lockExpiresAt: thread.lockExpiresAt,
     unreadCount: thread.unreadCount,
     lastMessageAt: thread.lastMessageAt,
+    lastInboundAt: thread.lastInboundAt,
+    // Meta 24h DM messaging-window deadline — the UI shows a countdown and
+    // the service refuses sends past it. Null for comment threads: public
+    // comment replies have no window (7d only applies to comment→DM).
+    replyWindowExpiresAt:
+      thread.messageType === 'dm' ? getReplyWindowExpiry('dm', thread.lastInboundAt) : null,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
     lastMessage: lastMessage ? toThreadMessage(lastMessage) : null,

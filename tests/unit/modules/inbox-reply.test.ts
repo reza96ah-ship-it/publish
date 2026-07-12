@@ -208,6 +208,71 @@ describe('inboxService.replyToThread — DM recipient addressing', () => {
     expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
   })
 
+  it('rejects DM replies after the 24h messaging window closes', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_win1',
+      providerUserId: 'igsid_777',
+      lastInboundAt: new Date(Date.now() - 25 * 60 * 60 * 1000), // 25h ago
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_w1',
+          providerMessageId: 'mid.OLD',
+          messageType: 'dm',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await expect(service.replyToThread(AUTH, 'thr_win1', { reply: 'x' })).rejects.toThrow(
+      /۲۴ ساعته/
+    )
+    expect(igMock.sendDirectMessage).not.toHaveBeenCalled()
+  })
+
+  it('sends DM replies while the 24h window is still open', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_win2',
+      providerUserId: 'igsid_777',
+      lastInboundAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h ago
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_w2',
+          providerMessageId: 'mid.FRESH',
+          messageType: 'dm',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await service.replyToThread(AUTH, 'thr_win2', { reply: 'x' })
+    expect(igMock.sendDirectMessage).toHaveBeenCalledOnce()
+  })
+
+  it('never gates public comment replies on a window', async () => {
+    const repo = makeThreadRepo({
+      id: 'thr_win3',
+      providerUserId: 'igsid_777',
+      lastInboundAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      platform: { id: 'plat_1', ...igPlatform },
+      messages: [
+        {
+          id: 'm_w3',
+          providerMessageId: 'cmt_old',
+          messageType: 'comment',
+          senderExternalId: 'igsid_777',
+        },
+      ],
+    })
+    const service = new InboxService(repo)
+
+    await service.replyToThread(AUTH, 'thr_win3', { reply: 'x' })
+    expect(igMock.sendCommentReply).toHaveBeenCalledOnce()
+  })
+
   it('still uses the comment reply endpoint for comment threads', async () => {
     const repo = makeThreadRepo({
       id: 'thr_4',
