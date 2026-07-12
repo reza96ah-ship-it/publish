@@ -82,6 +82,9 @@ type ThreadSummaryRow = {
   lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
+  slaStartedAt: Date
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
   updatedAt: Date
   platform: { type: string; name: string } | null
@@ -155,6 +158,9 @@ function toThreadSummary(
     lockExpiresAt: thread.lockExpiresAt,
     unreadCount: thread.unreadCount,
     lastMessageAt: thread.lastMessageAt,
+    slaStartedAt: thread.slaStartedAt,
+    firstResponseAt: thread.firstResponseAt,
+    resolvedAt: thread.resolvedAt,
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
     lastMessage: lastMessage ? toThreadMessage(lastMessage) : null,
@@ -180,7 +186,22 @@ export class InboxRepository {
       orderBy: { id: 'desc' },
       take: query.limit + 1,
     })
-    return rows.map(toMessage)
+    const mirrorCandidates = rows.flatMap((row) =>
+      row.externalId ? [{ platformId: row.platformId, providerMessageId: row.externalId }] : []
+    )
+    const mirrored =
+      mirrorCandidates.length > 0
+        ? await db.inboxThreadMessage.findMany({
+            where: { workspaceId, OR: mirrorCandidates },
+            select: { platformId: true, providerMessageId: true },
+          })
+        : []
+    const mirroredKeys = new Set(
+      mirrored.map((message) => `${message.platformId}:${message.providerMessageId}`)
+    )
+    return rows
+      .filter((row) => !row.externalId || !mirroredKeys.has(`${row.platformId}:${row.externalId}`))
+      .map(toMessage)
   }
 
   async listThreads(workspaceId: string, query: InboxListQuery) {
@@ -330,8 +351,11 @@ export class InboxRepository {
     const providerMessageIds = await this.getThreadProviderMessageIds(id, workspaceId)
     const updated = await db.inboxThread.update({
       where: { id },
-      data: { status },
-      select: { id: true, status: true },
+      data: {
+        status,
+        resolvedAt: status === 'resolved' ? new Date() : null,
+      },
+      select: { id: true, status: true, resolvedAt: true },
     })
     if (providerMessageIds.length > 0) {
       await db.inboxMessage.updateMany({
@@ -516,6 +540,10 @@ export class InboxRepository {
         status: 'in_progress',
         lastMessageAt: now,
       },
+    })
+    await db.inboxThread.updateMany({
+      where: { id: threadId, firstResponseAt: null },
+      data: { firstResponseAt: now },
     })
 
     return threadMessage

@@ -51,16 +51,12 @@ export interface InboxThreadSummary {
   lockExpiresAt: Date | null
   unreadCount: number
   lastMessageAt: Date
+  slaStartedAt: Date
+  firstResponseAt: Date | null
+  resolvedAt: Date | null
   createdAt: Date
   updatedAt: Date
-  lastMessage: {
-    id: string
-    providerMessageId: string
-    direction: string
-    senderName: string
-    body: string
-    createdAt: Date
-  } | null
+  lastMessage: InboxThreadMessage | null
 }
 
 export interface InboxThreadAttachment {

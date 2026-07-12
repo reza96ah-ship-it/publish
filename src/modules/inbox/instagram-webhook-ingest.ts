@@ -17,10 +17,7 @@ export type InstagramWebhookIngestResult = {
 }
 
 function isPrismaUniqueViolation(error: unknown): boolean {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  )
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
 }
 
 function toJsonValue(value: unknown): Prisma.InputJsonValue {
@@ -49,7 +46,12 @@ function threadMessagePayload(event: NormalizedInstagramInboxEvent): Prisma.Inpu
 async function ingestEventForPlatform(
   event: NormalizedInstagramInboxEvent,
   platform: { id: string; workspaceId: string }
-): Promise<Pick<InstagramWebhookIngestResult, 'createdThreads' | 'createdThreadMessages' | 'createdInboxMessages' | 'duplicateMessages'>> {
+): Promise<
+  Pick<
+    InstagramWebhookIngestResult,
+    'createdThreads' | 'createdThreadMessages' | 'createdInboxMessages' | 'duplicateMessages'
+  >
+> {
   let createdThreads = 0
   let createdThreadMessages = 0
   let createdInboxMessages = 0
@@ -70,12 +72,13 @@ async function ingestEventForPlatform(
       title: event.senderName,
       messageType: event.messageType,
       lastMessageAt: event.createdAt,
+      slaStartedAt: event.createdAt,
     },
     update: {
       title: event.senderName,
       providerUserId: event.providerUserId,
     },
-    select: { id: true, createdAt: true },
+    select: { id: true, createdAt: true, status: true },
   })
 
   if (Math.abs(thread.createdAt.getTime() - Date.now()) < 5_000) {
@@ -106,6 +109,10 @@ async function ingestEventForPlatform(
         status: 'new',
         lastMessageAt: event.createdAt,
         unreadCount: { increment: 1 },
+        resolvedAt: null,
+        ...(thread.status === 'resolved'
+          ? { slaStartedAt: event.createdAt, firstResponseAt: null }
+          : {}),
       },
     })
 

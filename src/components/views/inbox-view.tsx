@@ -22,6 +22,8 @@ import {
   CheckCheck,
   BookOpen,
   Paperclip,
+  Tag,
+  X,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
@@ -37,6 +39,7 @@ import {
 import { useAnnounceValue } from '@/lib/aria-live'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -68,6 +71,8 @@ interface InboxMessage {
   createdAt: string
   status: 'new' | 'assigned' | 'in_progress' | 'resolved'
   slaStartedAt: string | null
+  firstResponseAt?: string | null
+  resolvedAt?: string | null
   priority?: string
   tags?: string[]
   attachments?: InboxThreadAttachment[]
@@ -114,6 +119,9 @@ interface InboxThreadSummary {
   lockExpiresAt: string | null
   unreadCount: number
   lastMessageAt: string
+  slaStartedAt: string
+  firstResponseAt: string | null
+  resolvedAt: string | null
   createdAt: string
   updatedAt: string
   lastMessage: InboxThreadTimelineMessage | null
@@ -158,7 +166,9 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
     assigneeAvatar: thread.assigneeAvatar,
     createdAt: thread.lastMessageAt,
     status: asInboxStatus(thread.status),
-    slaStartedAt: null,
+    slaStartedAt: thread.slaStartedAt,
+    firstResponseAt: thread.firstResponseAt,
+    resolvedAt: thread.resolvedAt,
     priority: thread.priority,
     tags: thread.tags,
     attachments: thread.lastMessage?.attachments ?? [],
@@ -169,7 +179,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  new: 'جدید',
+  new: 'رسیدگی‌نشده',
   assigned: 'ارجاع شده',
   in_progress: 'در حال بررسی',
   resolved: 'حل شده',
@@ -183,10 +193,10 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const PRIORITY_LABEL: Record<string, string> = {
-  low: 'Low',
-  normal: 'Normal',
-  high: 'High',
-  urgent: 'Urgent',
+  low: 'کم',
+  normal: 'عادی',
+  high: 'زیاد',
+  urgent: 'فوری',
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -252,6 +262,7 @@ export function InboxView() {
   const [replyText, setReplyText] = useState('')
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [showSnippets, setShowSnippets] = useState(false)
+  const [tagDraft, setTagDraft] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
 
@@ -292,11 +303,8 @@ export function InboxView() {
     queryFn: () => api.getPaginated<Member>('/api/members'),
   })
 
-  const usingThreadConversations = (threads?.length ?? 0) > 0
-  const selectedThread =
-    usingThreadConversations && selectedId ? threads?.find((t) => t.id === selectedId) : null
-  const selectedMessage =
-    !usingThreadConversations && selectedId ? messages?.find((m) => m.id === selectedId) : null
+  const selectedThread = selectedId ? (threads?.find((t) => t.id === selectedId) ?? null) : null
+  const selectedMessage = selectedId ? (messages?.find((m) => m.id === selectedId) ?? null) : null
 
   const { data: selectedThreadDetail, isLoading: isThreadDetailLoading } =
     useQuery<InboxThreadDetail>({
@@ -306,16 +314,16 @@ export function InboxView() {
     })
 
   const conversationMessages = useMemo(() => {
-    if (usingThreadConversations) {
-      return (threads ?? []).map((thread) =>
-        threadToMessage(
-          thread,
-          selectedThreadDetail?.id === thread.id ? selectedThreadDetail : undefined
-        )
+    const threadMessages = (threads ?? []).map((thread) =>
+      threadToMessage(
+        thread,
+        selectedThreadDetail?.id === thread.id ? selectedThreadDetail : undefined
       )
-    }
-    return messages ?? []
-  }, [messages, selectedThreadDetail, threads, usingThreadConversations])
+    )
+    return [...threadMessages, ...(messages ?? [])].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }, [messages, selectedThreadDetail, threads])
 
   const filtered = useMemo(() => {
     return conversationMessages.filter((m) => {
@@ -324,7 +332,7 @@ export function InboxView() {
       if (filter === 'dm') return m.messageType === 'dm'
       if (filter === 'unassigned') return !m.assigneeId && m.status !== 'resolved'
       if (filter === 'overdue') {
-        if (!m.slaStartedAt || m.status === 'resolved') return false
+        if (!m.slaStartedAt || m.firstResponseAt || m.status === 'resolved') return false
         return (Date.now() - new Date(m.slaStartedAt).getTime()) / 60000 > SLA_TARGET_MINUTES
       }
       if (filter === 'resolved') return m.status === 'resolved'
@@ -340,9 +348,9 @@ export function InboxView() {
     : selectedMessage
       ? 'message'
       : null
-  const unreadCount = usingThreadConversations
-    ? (threads ?? []).reduce((count, thread) => count + thread.unreadCount, 0)
-    : (messages?.filter((m) => !m.isRead).length ?? 0)
+  const unreadCount =
+    (threads ?? []).reduce((count, thread) => count + thread.unreadCount, 0) +
+    (messages?.filter((m) => !m.isRead).length ?? 0)
   const isConversationLoading = isLoading || isThreadsLoading
   const isConversationError = isError && isThreadsError
   const refetchConversations = () => {
@@ -405,7 +413,7 @@ export function InboxView() {
   const claimMutation = useMutation({
     mutationFn: ({ id }: { id: string }) => api.post(`/api/inbox/threads/${id}/claim`, {}),
     onSuccess: (_data, vars) => {
-      toast.success('Thread claimed')
+      toast.success('گفتگو به شما واگذار شد')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
@@ -417,11 +425,23 @@ export function InboxView() {
     mutationFn: ({ id, priority }: { id: string; priority: string }) =>
       api.post(`/api/inbox/threads/${id}/priority`, { priority }),
     onSuccess: (_data, vars) => {
-      toast.success('Priority updated')
+      toast.success('اولویت به‌روزرسانی شد')
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
     onError: () => toast.error('خطا در تغییر اولویت'),
+  })
+
+  const tagsMutation = useMutation({
+    mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
+      api.post(`/api/inbox/threads/${id}/tags`, { tags }),
+    onSuccess: (_data, vars) => {
+      setTagDraft('')
+      toast.success('برچسب‌ها به‌روزرسانی شدند')
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+    },
+    onError: () => toast.error('خطا در تغییر برچسب‌ها'),
   })
 
   const statusMutation = useMutation({
@@ -489,9 +509,24 @@ export function InboxView() {
       readStateMutation.mutate({
         id,
         isRead: true,
-        kind: usingThreadConversations ? 'thread' : 'message',
+        kind: threads?.some((thread) => thread.id === id) ? 'thread' : 'message',
       })
     }
+  }
+
+  const addTag = () => {
+    if (!selectedThread) return
+    const tag = tagDraft.trim()
+    if (!tag || selectedThread.tags.includes(tag)) return
+    tagsMutation.mutate({ id: selectedThread.id, tags: [...selectedThread.tags, tag].slice(0, 8) })
+  }
+
+  const removeTag = (tag: string) => {
+    if (!selectedThread) return
+    tagsMutation.mutate({
+      id: selectedThread.id,
+      tags: selectedThread.tags.filter((current) => current !== tag),
+    })
   }
 
   const handleReply = () => {
@@ -690,7 +725,7 @@ export function InboxView() {
                   )}
                   {selectedKind === 'thread' && selected.lockedByName && (
                     <span className="text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20">
-                      Claimed by {selected.lockedByName}
+                      در اختیار {selected.lockedByName}
                     </span>
                   )}
                   <span
@@ -703,9 +738,11 @@ export function InboxView() {
                   >
                     {selected.isRead ? 'خوانده‌شده' : 'ناخوانده'}
                   </span>
-                  {selected.slaStartedAt && selected.status !== 'resolved' && (
-                    <SlaTimer slaStartedAt={selected.slaStartedAt} />
-                  )}
+                  {selected.slaStartedAt &&
+                    !selected.firstResponseAt &&
+                    selected.status !== 'resolved' && (
+                      <SlaTimer slaStartedAt={selected.slaStartedAt} />
+                    )}
                   <button
                     onClick={() =>
                       readStateMutation.mutate({
@@ -732,7 +769,7 @@ export function InboxView() {
                       className="n-focus-ring inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
                     >
                       <UserCheck className="size-3" />
-                      Claim
+                      واگذاری به من
                     </button>
                   )}
                   {selected.status !== 'resolved' && (
@@ -810,7 +847,7 @@ export function InboxView() {
                     </Select>
                     {selectedKind === 'thread' && (
                       <>
-                        <span className="text-2xs text-ink-tertiary">Priority:</span>
+                        <span className="text-2xs text-ink-tertiary">اولویت:</span>
                         <Select
                           value={selected.priority ?? 'normal'}
                           onValueChange={(priority) =>
@@ -818,7 +855,7 @@ export function InboxView() {
                           }
                         >
                           <SelectTrigger className="h-7 w-full sm:w-32 text-xs">
-                            <SelectValue placeholder="Priority" />
+                            <SelectValue placeholder="اولویت" />
                           </SelectTrigger>
                           <SelectContent>
                             {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
@@ -830,6 +867,63 @@ export function InboxView() {
                         </Select>
                       </>
                     )}
+                  </div>
+                )}
+                {selectedKind === 'thread' && (
+                  <div
+                    className="mt-2 flex items-center gap-2 flex-wrap"
+                    aria-label="برچسب‌های گفتگو"
+                  >
+                    <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary">
+                      <Tag className="size-3" />
+                      برچسب‌ها:
+                    </span>
+                    {selected.tags?.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 rounded border border-border bg-surface px-2 py-1 text-2xs font-semibold text-ink-secondary"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          title={`حذف برچسب ${tag}`}
+                          aria-label={`حذف برچسب ${tag}`}
+                          onClick={() => removeTag(tag)}
+                          disabled={tagsMutation.isPending}
+                          className="n-focus-ring text-ink-tertiary hover:text-danger"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <div className="flex min-w-44 flex-1 items-center gap-1 sm:max-w-56">
+                      <Input
+                        value={tagDraft}
+                        onChange={(event) => setTagDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            addTag()
+                          }
+                        }}
+                        maxLength={32}
+                        placeholder="افزودن برچسب"
+                        aria-label="برچسب جدید"
+                        className="h-7 text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        title="افزودن برچسب"
+                        aria-label="افزودن برچسب"
+                        onClick={addTag}
+                        disabled={!tagDraft.trim() || tagsMutation.isPending}
+                        className="size-7 shrink-0"
+                      >
+                        <Plus className="size-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1134,7 +1228,7 @@ function MessageListItem({
   onClick: () => void
 }) {
   const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare
-  const overdue = useSlaOverdue(message.slaStartedAt)
+  const overdue = useSlaOverdue(message.firstResponseAt ? null : message.slaStartedAt)
   return (
     <button
       onClick={onClick}

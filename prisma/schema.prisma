@@ -320,6 +320,7 @@ model Platform {
   workspace     Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   contentLinks   ContentPlatform[]
   publishJobs    PublishJob[]
+  publications  Publication[]
   inboxThreads    InboxThread[]
   inboxMessages  InboxMessage[]
   commentDmRules CommentDmRule[]
@@ -511,6 +512,7 @@ model Publication {
   workspace   Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   content     Content     @relation(fields: [contentId], references: [id], onDelete: Cascade)
   revision    ContentRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+  platform    Platform    @relation(fields: [platformId], references: [id], onDelete: Restrict)
   attempts    PublicationAttempt[]
   commentDmRules CommentDmRule[]
   metricSnapshots PostMetricSnapshot[]
@@ -737,6 +739,9 @@ model InboxThread {
   lockExpiresAt    DateTime?
   unreadCount      Int      @default(0)
   lastMessageAt    DateTime @default(now())
+  slaStartedAt     DateTime @default(now())
+  firstResponseAt  DateTime?
+  resolvedAt       DateTime?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
