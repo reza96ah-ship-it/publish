@@ -21,6 +21,7 @@ async function fetcher<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   get: <T>(url: string) => fetcher<T>(url),
+  getPage: <T>(url: string) => fetcher<PaginatedResponse<T>>(url),
   getPaginated: async <T>(url: string) => {
     const page = await fetcher<PaginatedResponse<T>>(url)
     return page.data

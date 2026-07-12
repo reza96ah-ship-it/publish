@@ -757,6 +757,24 @@ export class InboxRepository {
     })
   }
 
+  async legacyUnreadCount(workspaceId: string): Promise<number> {
+    const rows = await db.$queryRaw<{ count: number }[]>(Prisma.sql`
+      SELECT COUNT(*)::int AS count
+      FROM "InboxMessage" im
+      WHERE im."workspaceId" = ${workspaceId}
+        AND im."isRead" = false
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "InboxThreadMessage" itm
+          WHERE itm."workspaceId" = im."workspaceId"
+            AND itm."platformId" = im."platformId"
+            AND im."externalId" IS NOT NULL
+            AND itm."providerMessageId" = im."externalId"
+        )
+    `)
+    return rows[0]?.count ?? 0
+  }
+
   async listThreadMessages(id: string, workspaceId: string, query: InboxListQuery) {
     const cursor = query.cursor ? decodeThreadMessageCursor(query.cursor) : null
     if (query.cursor && !cursor) return []

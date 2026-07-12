@@ -1,7 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { pageTransition, pageTransitionProps } from '@/lib/motion'
@@ -24,9 +30,13 @@ import {
   Paperclip,
   Clock,
   Search,
+  Tag,
+  X,
+  ChevronRight,
 } from 'lucide-react'
 
 import { api } from '@/lib/api'
+import type { PaginatedResponse } from '@/lib/api'
 import { relativeTime, toPersianDigits } from '@/lib/jalali'
 import {
   SectionTitle,
@@ -40,6 +50,7 @@ import { useAnnounceValue } from '@/lib/aria-live'
 import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -71,6 +82,8 @@ interface InboxMessage {
   createdAt: string
   status: 'new' | 'assigned' | 'in_progress' | 'resolved'
   slaStartedAt: string | null
+  firstResponseAt?: string | null
+  resolvedAt?: string | null
   priority?: string
   tags?: string[]
   attachments?: InboxThreadAttachment[]
@@ -118,6 +131,9 @@ interface InboxThreadSummary {
   unreadCount: number
   lastMessageAt: string
   lastInboundAt: string | null
+  slaStartedAt: string
+  firstResponseAt: string | null
+  resolvedAt: string | null
   replyWindowExpiresAt: string | null
   createdAt: string
   updatedAt: string
@@ -174,7 +190,9 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
     assigneeAvatar: thread.assigneeAvatar,
     createdAt: thread.lastMessageAt,
     status: asInboxStatus(thread.status),
-    slaStartedAt: null,
+    slaStartedAt: thread.slaStartedAt,
+    firstResponseAt: thread.firstResponseAt,
+    resolvedAt: thread.resolvedAt,
     priority: thread.priority,
     tags: thread.tags,
     attachments: thread.lastMessage?.attachments ?? [],
@@ -185,7 +203,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  new: 'جدید',
+  new: 'رسیدگی‌نشده',
   assigned: 'ارجاع شده',
   in_progress: 'در حال بررسی',
   resolved: 'حل شده',
@@ -199,10 +217,10 @@ const STATUS_COLOR: Record<string, string> = {
 }
 
 const PRIORITY_LABEL: Record<string, string> = {
-  low: 'Low',
-  normal: 'Normal',
-  high: 'High',
-  urgent: 'Urgent',
+  low: 'کم',
+  normal: 'عادی',
+  high: 'زیاد',
+  urgent: 'فوری',
 }
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -260,14 +278,51 @@ function ruleToAutomation(rule: CommentDmRule): AutomationDisplay {
   }
 }
 
+function updateInfiniteItems<T>(
+  data: InfiniteData<PaginatedResponse<T>> | undefined,
+  update: (item: T) => T
+): InfiniteData<PaginatedResponse<T>> | undefined {
+  if (!data) return data
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      data: page.data.map(update),
+    })),
+  }
+}
+
+function initialInboxSelection(): { id: string | null; kind: ConversationKind | null } {
+  if (typeof window === 'undefined') return { id: null, kind: null }
+  const params = new URLSearchParams(window.location.search)
+  const threadId = params.get('thread')
+  if (threadId) return { id: threadId, kind: 'thread' }
+  const messageId = params.get('message')
+  return messageId ? { id: messageId, kind: 'message' } : { id: null, kind: null }
+}
+
+function setInboxSelectionUrl(id: string | null, kind: ConversationKind | null) {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  url.searchParams.delete('thread')
+  url.searchParams.delete('message')
+  if (id && kind) url.searchParams.set(kind === 'thread' ? 'thread' : 'message', id)
+  window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`)
+}
+
 export function InboxView() {
+  const [initialSelection] = useState(initialInboxSelection)
   const [filter, setFilter] = useState<
     'all' | 'unread' | 'comment' | 'dm' | 'unassigned' | 'mine' | 'urgent' | 'overdue' | 'resolved'
   >('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelection.id)
+  const [selectedKindHint, setSelectedKindHint] = useState<ConversationKind | null>(
+    initialSelection.kind
+  )
   const [replyText, setReplyText] = useState('')
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [showSnippets, setShowSnippets] = useState(false)
+  const [tagDraft, setTagDraft] = useState('')
   const queryClient = useQueryClient()
   const router = useRouter()
 
@@ -302,14 +357,26 @@ export function InboxView() {
   })
 
   const {
-    data: messages,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery<InboxMessage[]>({
+    data: legacyPages,
+    isPending: isLegacyPending,
+    isError: isLegacyError,
+    refetch: refetchLegacy,
+    fetchNextPage: fetchNextLegacy,
+    hasNextPage: hasNextLegacy,
+    isFetchingNextPage: isFetchingNextLegacy,
+  } = useInfiniteQuery({
     queryKey: ['inbox'],
-    queryFn: () => api.getPaginated<InboxMessage>('/api/inbox'),
+    queryFn: ({ pageParam }) =>
+      api.getPage<InboxMessage>(
+        `/api/inbox${pageParam ? `?cursor=${encodeURIComponent(pageParam)}` : ''}`
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   })
+  const messages = useMemo(
+    () => legacyPages?.pages.flatMap((page) => page.data) ?? [],
+    [legacyPages]
+  )
 
   // Full-text search over titles + message bodies (server-side `q` param).
   // Debounced so keystrokes don't fan out into a request each.
@@ -323,26 +390,42 @@ export function InboxView() {
   // Server-side queue filter — 'overdue' stays client-side (SLA math in view).
   const serverQueue = filter === 'overdue' ? 'all' : filter
   const {
-    data: threads,
-    isLoading: isThreadsLoading,
+    data: threadPages,
+    isPending: isThreadsPending,
     isError: isThreadsError,
     refetch: refetchThreads,
-  } = useQuery<InboxThreadSummary[]>({
+    fetchNextPage: fetchNextThreads,
+    hasNextPage: hasNextThreads,
+    isFetchingNextPage: isFetchingNextThreads,
+  } = useInfiniteQuery({
     queryKey: ['inbox-threads', serverQueue, search],
-    queryFn: () =>
-      api.getPaginated<InboxThreadSummary>(
-        `/api/inbox/threads?queue=${serverQueue}${search ? `&q=${encodeURIComponent(search)}` : ''}`
-      ),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ queue: serverQueue })
+      if (search) params.set('q', search)
+      if (pageParam) params.set('cursor', pageParam)
+      return api.getPage<InboxThreadSummary>(`/api/inbox/threads?${params}`)
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
   })
+  const threads = useMemo(
+    () => threadPages?.pages.flatMap((page) => page.data) ?? [],
+    [threadPages]
+  )
 
   // Queue-rail badge counts + own membership id (hides own presence lock).
   const { data: queueCounts } = useQuery<{
     counts: Record<string, number>
     membershipId: string | null
+    legacyUnread: number
   }>({
     queryKey: ['inbox-thread-counts'],
     queryFn: () =>
-      api.get<{ counts: Record<string, number>; membershipId: string | null }>(
+      api.get<{
+        counts: Record<string, number>
+        membershipId: string | null
+        legacyUnread: number
+      }>(
         '/api/inbox/threads/counts'
       ),
   })
@@ -353,18 +436,48 @@ export function InboxView() {
     queryFn: () => api.getPaginated<Member>('/api/members'),
   })
 
-  const usingThreadConversations = (threads?.length ?? 0) > 0
-  const selectedThread =
-    usingThreadConversations && selectedId ? threads?.find((t) => t.id === selectedId) : null
+  const selectedThreadFromList =
+    selectedKindHint === 'thread' && selectedId
+      ? (threads.find((thread) => thread.id === selectedId) ?? null)
+      : null
   const selectedMessage =
-    !usingThreadConversations && selectedId ? messages?.find((m) => m.id === selectedId) : null
+    selectedKindHint === 'message' && selectedId
+      ? (messages.find((message) => message.id === selectedId) ?? null)
+      : null
+  const selectedThreadId = selectedKindHint === 'thread' ? selectedId : null
 
   const { data: selectedThreadDetail, isLoading: isThreadDetailLoading } =
     useQuery<InboxThreadDetail>({
-      queryKey: ['inbox-thread', selectedThread?.id],
-      queryFn: () => api.get<InboxThreadDetail>(`/api/inbox/threads/${selectedThread?.id}`),
-      enabled: Boolean(selectedThread?.id),
+      queryKey: ['inbox-thread', selectedThreadId],
+      queryFn: () => api.get<InboxThreadDetail>(`/api/inbox/threads/${selectedThreadId}`),
+      enabled: Boolean(selectedThreadId),
     })
+  const selectedThread =
+    selectedThreadFromList ??
+    (selectedThreadDetail?.id === selectedThreadId ? selectedThreadDetail : null)
+
+  const {
+    data: timelinePages,
+    fetchNextPage: fetchOlderMessages,
+    hasNextPage: hasOlderMessages,
+    isFetchingNextPage: isFetchingOlderMessages,
+  } = useInfiniteQuery({
+    queryKey: ['inbox-thread-messages', selectedThreadId],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: '50' })
+      if (pageParam) params.set('cursor', pageParam)
+      return api.getPage<InboxThreadTimelineMessage>(
+        `/api/inbox/threads/${selectedThreadId}/messages?${params}`
+      )
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: Boolean(selectedThreadId),
+  })
+  const timelineMessages = useMemo(() => {
+    if (!timelinePages) return selectedThreadDetail?.messages ?? []
+    return [...timelinePages.pages].reverse().flatMap((page) => page.data)
+  }, [selectedThreadDetail?.messages, timelinePages])
 
   const { data: threadContext } = useQuery<ThreadCustomerContext>({
     queryKey: ['inbox-thread-context', selectedThread?.id],
@@ -374,19 +487,23 @@ export function InboxView() {
   })
 
   const conversationMessages = useMemo(() => {
-    if (usingThreadConversations) {
-      return (threads ?? []).map((thread) =>
+    const threadMessages = threads.map((thread) =>
         threadToMessage(
           thread,
           selectedThreadDetail?.id === thread.id ? selectedThreadDetail : undefined
         )
       )
-    }
-    return messages ?? []
-  }, [messages, selectedThreadDetail, threads, usingThreadConversations])
+    return [...threadMessages, ...messages].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+  }, [messages, selectedThreadDetail, threads])
 
   const filtered = useMemo(() => {
     return conversationMessages.filter((m) => {
+      if (search) {
+        const haystack = `${m.senderName} ${m.message}`.toLocaleLowerCase('fa')
+        if (!haystack.includes(search.toLocaleLowerCase('fa'))) return false
+      }
       if (filter === 'unread') return !m.isRead || m.id === selectedId
       if (filter === 'comment') return m.messageType === 'comment'
       if (filter === 'dm') return m.messageType === 'dm'
@@ -395,13 +512,13 @@ export function InboxView() {
       if (filter === 'urgent')
         return (m.priority === 'high' || m.priority === 'urgent') && m.status !== 'resolved'
       if (filter === 'overdue') {
-        if (!m.slaStartedAt || m.status === 'resolved') return false
+        if (!m.slaStartedAt || m.firstResponseAt || m.status === 'resolved') return false
         return (Date.now() - new Date(m.slaStartedAt).getTime()) / 60000 > SLA_TARGET_MINUTES
       }
       if (filter === 'resolved') return m.status === 'resolved'
       return true
     })
-  }, [conversationMessages, filter, selectedId, myMembershipId])
+  }, [conversationMessages, filter, myMembershipId, search, selectedId])
 
   const selected = selectedThread
     ? threadToMessage(selectedThread, selectedThreadDetail)
@@ -414,17 +531,25 @@ export function InboxView() {
   // Presence: claim the thread when the agent starts typing so teammates see
   // "در حال پاسخ" live. Once per thread selection; 409 (already claimed by
   // someone else) is informational, not an error.
-  const [claimedThreadIds] = useState(() => new Set<string>())
+  const claimAttemptAtRef = useRef(new Map<string, number>())
   const claimOnType = useCallback(
     (threadId: string) => {
-      if (claimedThreadIds.has(threadId)) return
-      claimedThreadIds.add(threadId)
-      api.post(`/api/inbox/threads/${threadId}/claim`, {}).catch(() => {
-        // Claim conflicts and transient failures must never block typing.
-      })
+      const now = Date.now()
+      const previousAttempt = claimAttemptAtRef.current.get(threadId) ?? 0
+      if (now - previousAttempt < 4 * 60_000) return
+      claimAttemptAtRef.current.set(threadId, now)
+      void api.post(`/api/inbox/threads/${threadId}/claim`, {}).then(
+        () => queryClient.invalidateQueries({ queryKey: ['inbox-threads'] }),
+        () => claimAttemptAtRef.current.set(threadId, now - 3 * 60_000)
+      )
     },
-    [claimedThreadIds]
+    [queryClient]
   )
+  useEffect(() => {
+    if (!selectedThreadId || !replyText.trim()) return
+    const timer = window.setInterval(() => claimOnType(selectedThreadId), 4 * 60_000)
+    return () => window.clearInterval(timer)
+  }, [claimOnType, replyText, selectedThreadId])
 
   // Meta 24h DM window — set only for DM threads (public comment replies have
   // no window). Drives the countdown chip and the disabled composer state.
@@ -433,13 +558,21 @@ export function InboxView() {
   const replyWindowClosed = Boolean(
     replyWindowExpiresAt && new Date(replyWindowExpiresAt).getTime() < Date.now()
   )
-  const unreadCount = usingThreadConversations
-    ? (threads ?? []).reduce((count, thread) => count + thread.unreadCount, 0)
-    : (messages?.filter((m) => !m.isRead).length ?? 0)
-  const isConversationLoading = isLoading || isThreadsLoading
-  const isConversationError = isError && isThreadsError
+  const lockActive = Boolean(
+    selectedThread?.lockedById &&
+      selectedThread.lockExpiresAt &&
+      new Date(selectedThread.lockExpiresAt).getTime() > Date.now()
+  )
+  const claimedByMe = Boolean(lockActive && selectedThread?.lockedById === myMembershipId)
+  const claimedByOther = Boolean(lockActive && selectedThread?.lockedById !== myMembershipId)
+  const composerBlocked = replyWindowClosed || claimedByOther
+  const unreadCount =
+    (queueCounts?.counts.unread ?? threads.reduce((count, thread) => count + thread.unreadCount, 0)) +
+    (queueCounts?.legacyUnread ?? messages.filter((message) => !message.isRead).length)
+  const isConversationLoading = isLegacyPending && isThreadsPending
+  const isConversationError = isLegacyError && isThreadsError
   const refetchConversations = () => {
-    void refetch()
+    void refetchLegacy()
     void refetchThreads()
   }
   useAnnounceValue(unreadCount, 'پیام خوانده‌نشده')
@@ -468,6 +601,8 @@ export function InboxView() {
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
     onError: (err) => {
@@ -509,7 +644,7 @@ export function InboxView() {
   const claimMutation = useMutation({
     mutationFn: ({ id }: { id: string }) => api.post(`/api/inbox/threads/${id}/claim`, {}),
     onSuccess: (_data, vars) => {
-      toast.success('Thread claimed')
+      toast.success('گفتگو به شما واگذار شد')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
@@ -521,11 +656,25 @@ export function InboxView() {
     mutationFn: ({ id, priority }: { id: string; priority: string }) =>
       api.post(`/api/inbox/threads/${id}/priority`, { priority }),
     onSuccess: (_data, vars) => {
-      toast.success('Priority updated')
+      toast.success('اولویت به‌روزرسانی شد')
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
     onError: () => toast.error('خطا در تغییر اولویت'),
+  })
+
+  const tagsMutation = useMutation({
+    mutationFn: ({ id, tags }: { id: string; tags: string[] }) =>
+      api.post(`/api/inbox/threads/${id}/tags`, { tags }),
+    onSuccess: (_data, vars) => {
+      setTagDraft('')
+      toast.success('برچسب‌ها به‌روزرسانی شدند')
+      queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
+    },
+    onError: () => toast.error('خطا در تغییر برچسب‌ها'),
   })
 
   const statusMutation = useMutation({
@@ -553,49 +702,89 @@ export function InboxView() {
     onMutate: async ({ id, isRead }) => {
       await queryClient.cancelQueries({ queryKey: ['inbox'] })
       await queryClient.cancelQueries({ queryKey: ['inbox-threads'] })
-      const previous = queryClient.getQueryData<InboxMessage[]>(['inbox'])
-      const previousThreads = queryClient.getQueryData<InboxThreadSummary[]>(['inbox-threads'])
+      const previousLegacy = queryClient.getQueriesData<
+        InfiniteData<PaginatedResponse<InboxMessage>>
+      >({ queryKey: ['inbox'] })
+      const previousThreads = queryClient.getQueriesData<
+        InfiniteData<PaginatedResponse<InboxThreadSummary>>
+      >({ queryKey: ['inbox-threads'] })
 
-      queryClient.setQueryData<InboxMessage[]>(['inbox'], (current) =>
-        current?.map((message) => (message.id === id ? { ...message, isRead } : message))
+      queryClient.setQueriesData<InfiniteData<PaginatedResponse<InboxMessage>>>(
+        { queryKey: ['inbox'] },
+        (current) =>
+          updateInfiniteItems(current, (message) =>
+            message.id === id ? { ...message, isRead } : message
+          )
       )
-      queryClient.setQueryData<InboxThreadSummary[]>(['inbox-threads'], (current) =>
-        current?.map((thread) =>
-          thread.id === id
-            ? { ...thread, unreadCount: isRead ? 0 : Math.max(thread.unreadCount, 1) }
-            : thread
-        )
+      queryClient.setQueriesData<InfiniteData<PaginatedResponse<InboxThreadSummary>>>(
+        { queryKey: ['inbox-threads'] },
+        (current) =>
+          updateInfiniteItems(current, (thread) =>
+            thread.id === id
+              ? { ...thread, unreadCount: isRead ? 0 : Math.max(thread.unreadCount, 1) }
+              : thread
+          )
       )
 
-      return { previous, previousThreads }
+      return { previousLegacy, previousThreads }
     },
     onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData<InboxMessage[]>(['inbox'], context.previous)
-      }
-      if (context?.previousThreads) {
-        queryClient.setQueryData<InboxThreadSummary[]>(['inbox-threads'], context.previousThreads)
-      }
+      context?.previousLegacy.forEach(([key, data]) => queryClient.setQueryData(key, data))
+      context?.previousThreads.forEach(([key, data]) => queryClient.setQueryData(key, data))
       toast.error('خطا در تغییر وضعیت خواندن')
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
       if (vars) queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
     },
   })
 
   // ── Handlers ───────────────────────────────────────────────────────
   const handleSelectMessage = (id: string) => {
+    const kind: ConversationKind = threads.some((thread) => thread.id === id)
+      ? 'thread'
+      : 'message'
     setSelectedId(id)
+    setSelectedKindHint(kind)
+    setInboxSelectionUrl(id, kind)
     const message = conversationMessages.find((m) => m.id === id)
     if (message && !message.isRead) {
       readStateMutation.mutate({
         id,
         isRead: true,
-        kind: usingThreadConversations ? 'thread' : 'message',
+        kind,
       })
     }
+  }
+
+  const clearSelection = () => {
+    setSelectedId(null)
+    setSelectedKindHint(null)
+    setReplyText('')
+    setInboxSelectionUrl(null, null)
+  }
+
+  const selectThreadById = (id: string) => {
+    setSelectedId(id)
+    setSelectedKindHint('thread')
+    setInboxSelectionUrl(id, 'thread')
+  }
+
+  const addTag = () => {
+    if (!selectedThread) return
+    const tag = tagDraft.trim()
+    if (!tag || selectedThread.tags.includes(tag)) return
+    tagsMutation.mutate({ id: selectedThread.id, tags: [...selectedThread.tags, tag].slice(0, 8) })
+  }
+
+  const removeTag = (tag: string) => {
+    if (!selectedThread) return
+    tagsMutation.mutate({
+      id: selectedThread.id,
+      tags: selectedThread.tags.filter((current) => current !== tag),
+    })
   }
 
   // ── Keyboard shortcuts (agent speed) ────────────────────────────────
@@ -623,7 +812,7 @@ export function InboxView() {
           statusMutation.mutate({
             id,
             status: 'resolved',
-            kind: usingThreadConversations ? 'thread' : 'message',
+            kind: threads.some((thread) => thread.id === id) ? 'thread' : 'message',
           })
         }
       },
@@ -665,6 +854,14 @@ export function InboxView() {
   }, [])
 
   const handleReply = () => {
+    if (composerBlocked) {
+      toast.error(
+        claimedByOther
+          ? `${selectedThread?.lockedByName ?? 'هم‌تیمی شما'} در حال پاسخ به این گفتگو است`
+          : 'پنجره پاسخ این گفتگو بسته شده است'
+      )
+      return
+    }
     if (!replyText.trim()) {
       toast.error('متن پاسخ خالی است.')
       return
@@ -736,7 +933,7 @@ export function InboxView() {
           unreadCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs bg-info-soft text-info border border-info/20 px-2 py-0.5 rounded-full num-tabular">
               <span className="size-1.5 rounded-full bg-info" />
-              {relativeTime(new Date(Date.now() - 1000 * 60 * 5))} — {unreadCount} ناخوانده
+              {toPersianDigits(String(unreadCount))} ناخوانده
             </span>
           )
         }
@@ -744,16 +941,21 @@ export function InboxView() {
         صندوق ورودی یکپارچه
       </SectionTitle>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: List */}
-        <div className="lg:col-span-4 n-card p-0 overflow-hidden">
+        <div
+          className={cn(
+            'lg:col-span-4 n-card p-0 overflow-hidden flex-col lg:h-[calc(100dvh-10rem)] lg:max-h-[52rem] lg:min-h-[32rem]',
+            selected ? 'hidden lg:flex' : 'flex'
+          )}
+        >
           <div className="px-3 pt-3 pb-0 border-b border-border overflow-x-auto thin-scrollbar">
             <AnimatedTabs
               value={filter}
               onValueChange={(v) => setFilter(v as typeof filter)}
               tabs={[
                 { value: 'all', label: 'همه', count: queueCounts?.counts.all },
-                { value: 'unread', label: 'ناخوانده', count: queueCounts?.counts.unread ?? unreadCount },
+                { value: 'unread', label: 'ناخوانده', count: unreadCount },
                 { value: 'mine', label: 'من', count: queueCounts?.counts.mine },
                 { value: 'unassigned', label: 'بدون ارجاع', count: queueCounts?.counts.unassigned },
                 { value: 'urgent', label: 'فوری', count: queueCounts?.counts.urgent },
@@ -788,7 +990,7 @@ export function InboxView() {
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto thin-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto thin-scrollbar">
             <LoadingState
               animated={false}
               isLoading={isConversationLoading}
@@ -805,22 +1007,50 @@ export function InboxView() {
                   illustration="inbox"
                 />
               ) : (
-                filtered.map((m) => (
-                  <MessageListItem
-                    key={m.id}
-                    message={m}
-                    active={m.id === selectedId}
-                    onClick={() => handleSelectMessage(m.id)}
-                    currentMembershipId={myMembershipId}
-                  />
-                ))
+                <>
+                  {filtered.map((m) => (
+                    <MessageListItem
+                      key={m.id}
+                      message={m}
+                      active={m.id === selectedId}
+                      onClick={() => handleSelectMessage(m.id)}
+                      currentMembershipId={myMembershipId}
+                    />
+                  ))}
+                  {(hasNextThreads || hasNextLegacy) && (
+                    <div className="p-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={isFetchingNextThreads || isFetchingNextLegacy}
+                        onClick={() => {
+                          if (hasNextThreads) void fetchNextThreads()
+                          if (hasNextLegacy) void fetchNextLegacy()
+                        }}
+                      >
+                        {isFetchingNextThreads || isFetchingNextLegacy ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <ChevronLeft className="size-3.5 -rotate-90" />
+                        )}
+                        گفتگوهای بیشتر
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </LoadingState>
           </div>
         </div>
 
         {/* Center: Thread */}
-        <div className="lg:col-span-5 n-card n-gradient-border p-0 overflow-hidden flex flex-col min-h-0 sm:min-h-[60vh]">
+        <div
+          className={cn(
+            'lg:col-span-8 xl:col-span-6 n-card n-gradient-border p-0 overflow-hidden flex-col min-h-0 lg:h-[calc(100dvh-10rem)] lg:max-h-[52rem] lg:min-h-[32rem]',
+            selected ? 'flex' : 'hidden lg:flex'
+          )}
+        >
           {!selected ? (
             <div className="flex-1 flex items-center justify-center p-10">
               <EmptyState
@@ -835,6 +1065,17 @@ export function InboxView() {
               {/* Thread header */}
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 lg:hidden"
+                    onClick={clearSelection}
+                    aria-label="بازگشت به فهرست گفتگوها"
+                    title="بازگشت به فهرست گفتگوها"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
                   <Avatar className="size-10">
                     {selected.senderAvatar && (
                       <AvatarImage src={selected.senderAvatar} alt={selected.senderName} />
@@ -887,7 +1128,7 @@ export function InboxView() {
                   )}
                   {selectedKind === 'thread' && selected.lockedByName && (
                     <span className="text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20">
-                      Claimed by {selected.lockedByName}
+                      {claimedByMe ? 'در اختیار شما' : `${selected.lockedByName} در حال پاسخ`}
                     </span>
                   )}
                   <span
@@ -900,7 +1141,7 @@ export function InboxView() {
                   >
                     {selected.isRead ? 'خوانده‌شده' : 'ناخوانده'}
                   </span>
-                  {selected.slaStartedAt && selected.status !== 'resolved' && (
+                  {selected.slaStartedAt && !selected.firstResponseAt && selected.status !== 'resolved' && (
                     <SlaTimer slaStartedAt={selected.slaStartedAt} />
                   )}
                   <button
@@ -922,14 +1163,14 @@ export function InboxView() {
                     <CheckCheck className="size-3" />
                     {selected.isRead ? 'ناخوانده کن' : 'خوانده کن'}
                   </button>
-                  {selectedKind === 'thread' && (
+                  {selectedKind === 'thread' && !lockActive && (
                     <button
                       onClick={() => claimMutation.mutate({ id: selected.id })}
                       disabled={claimMutation.isPending}
                       className="n-focus-ring inline-flex items-center gap-1 text-2xs font-semibold px-2 py-0.5 rounded-md border text-accent bg-accent/10 border-accent/20 hover:bg-accent/20 transition-colors"
                     >
                       <UserCheck className="size-3" />
-                      Claim
+                      دریافت گفتگو
                     </button>
                   )}
                   {selected.status !== 'resolved' && (
@@ -980,34 +1221,38 @@ export function InboxView() {
                 </div>
 
                 {/* Assign dropdown */}
-                {members && members.length > 0 && (
+                {((members?.length ?? 0) > 0 || selectedKind === 'thread') && (
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="text-2xs text-ink-tertiary">ارجاع به:</span>
-                    <Select
-                      value={selected.assigneeId ?? 'none'}
-                      onValueChange={(v) =>
-                        assignMutation.mutate({
-                          id: selected.id,
-                          assigneeId: v === 'none' ? null : v,
-                          kind: selectedKind ?? 'message',
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-7 w-full sm:w-40 text-xs">
-                        <SelectValue placeholder="بدون ارجاع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">بدون ارجاع</SelectItem>
-                        {members.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            {m.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(members?.length ?? 0) > 0 && (
+                      <>
+                        <span className="text-2xs text-ink-tertiary">ارجاع به:</span>
+                        <Select
+                          value={selected.assigneeId ?? 'none'}
+                          onValueChange={(v) =>
+                            assignMutation.mutate({
+                              id: selected.id,
+                              assigneeId: v === 'none' ? null : v,
+                              kind: selectedKind ?? 'message',
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-full sm:w-40 text-xs">
+                            <SelectValue placeholder="بدون ارجاع" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">بدون ارجاع</SelectItem>
+                            {members?.map((m) => (
+                              <SelectItem key={m.id} value={m.id}>
+                                {m.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
                     {selectedKind === 'thread' && (
                       <>
-                        <span className="text-2xs text-ink-tertiary">Priority:</span>
+                        <span className="text-2xs text-ink-tertiary">اولویت:</span>
                         <Select
                           value={selected.priority ?? 'normal'}
                           onValueChange={(priority) =>
@@ -1015,7 +1260,7 @@ export function InboxView() {
                           }
                         >
                           <SelectTrigger className="h-7 w-full sm:w-32 text-xs">
-                            <SelectValue placeholder="Priority" />
+                            <SelectValue placeholder="اولویت" />
                           </SelectTrigger>
                           <SelectContent>
                             {Object.entries(PRIORITY_LABEL).map(([value, label]) => (
@@ -1026,6 +1271,66 @@ export function InboxView() {
                           </SelectContent>
                         </Select>
                       </>
+                    )}
+                  </div>
+                )}
+                {selectedKind === 'thread' && selectedThread && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1 text-2xs text-ink-tertiary">
+                      <Tag className="size-3" />
+                      برچسب‌ها:
+                    </span>
+                    {selectedThread.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex min-h-7 items-center gap-1 rounded-md border border-border bg-surface px-2 text-2xs font-semibold text-ink-secondary"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          disabled={tagsMutation.isPending}
+                          className="n-focus-ring rounded text-ink-tertiary hover:text-danger"
+                          aria-label={`حذف برچسب ${tag}`}
+                          title={`حذف برچسب ${tag}`}
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </span>
+                    ))}
+                    {selectedThread.tags.length < 8 && (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          value={tagDraft}
+                          onChange={(event) => setTagDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              addTag()
+                            }
+                          }}
+                          className="h-7 w-28 text-xs"
+                          placeholder="برچسب جدید"
+                          aria-label="برچسب جدید"
+                          maxLength={24}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="size-7"
+                          onClick={addTag}
+                          disabled={!tagDraft.trim() || tagsMutation.isPending}
+                          aria-label="افزودن برچسب"
+                          title="افزودن برچسب"
+                        >
+                          {tagsMutation.isPending ? (
+                            <Loader2 className="size-3 animate-spin" />
+                          ) : (
+                            <Plus className="size-3" />
+                          )}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1045,7 +1350,7 @@ export function InboxView() {
                     {threadContext.priorThreads.slice(0, 3).map((prior) => (
                       <button
                         key={prior.id}
-                        onClick={() => setSelectedId(prior.id)}
+                        onClick={() => selectThreadById(prior.id)}
                         className="n-focus-ring inline-flex max-w-44 items-center gap-1 truncate rounded-full border border-border bg-surface px-2 py-0.5 font-semibold text-ink-secondary hover:bg-surface-hover"
                         title={prior.preview}
                       >
@@ -1063,38 +1368,58 @@ export function InboxView() {
                   isThreadDetailLoading ? (
                     <div className="flex h-full min-h-48 items-center justify-center text-sm text-ink-tertiary">
                       <Loader2 className="me-2 size-4 animate-spin" />
-                      Loading conversation
+                      در حال بارگذاری گفتگو
                     </div>
-                  ) : selectedThreadDetail?.messages.length ? (
-                    selectedThreadDetail.messages.map((message) => {
-                      const outbound = message.direction === 'outbound'
-                      return (
-                        <div
-                          key={message.id}
-                          className={cn('flex', outbound ? 'justify-end' : 'justify-start')}
-                        >
-                          <div
-                            className={cn(
-                              'max-w-[82%] rounded-2xl px-4 py-2.5',
-                              outbound
-                                ? 'rounded-tl-sm bg-accent-soft border border-accent/20'
-                                : 'rounded-tr-sm bg-surface-hover'
-                            )}
+                  ) : timelineMessages.length ? (
+                    <>
+                      {hasOlderMessages && (
+                        <div className="flex justify-center pb-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void fetchOlderMessages()}
+                            disabled={isFetchingOlderMessages}
                           >
-                            <div className="mb-1 flex items-center gap-2 text-2xs text-ink-tertiary">
-                              <span className="font-semibold">
-                                {outbound ? 'You' : message.senderName}
-                              </span>
-                              <span>{relativeTime(new Date(message.createdAt))}</span>
-                            </div>
-                            <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
-                              {message.body}
-                            </p>
-                            <AttachmentChips attachments={message.attachments} />
-                          </div>
+                            {isFetchingOlderMessages ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Clock className="size-3.5" />
+                            )}
+                            پیام‌های قدیمی‌تر
+                          </Button>
                         </div>
-                      )
-                    })
+                      )}
+                      {timelineMessages.map((message) => {
+                        const outbound = message.direction === 'outbound'
+                        return (
+                          <div
+                            key={message.id}
+                            className={cn('flex', outbound ? 'justify-end' : 'justify-start')}
+                          >
+                            <div
+                              className={cn(
+                                'max-w-[82%] rounded-2xl px-4 py-2.5',
+                                outbound
+                                  ? 'rounded-tl-sm bg-accent-soft border border-accent/20'
+                                  : 'rounded-tr-sm bg-surface-hover'
+                              )}
+                            >
+                              <div className="mb-1 flex items-center gap-2 text-2xs text-ink-tertiary">
+                                <span className="font-semibold">
+                                  {outbound ? 'شما' : message.senderName}
+                                </span>
+                                <span>{relativeTime(new Date(message.createdAt))}</span>
+                              </div>
+                              <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
+                                {message.body}
+                              </p>
+                              <AttachmentChips attachments={message.attachments} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </>
                   ) : (
                     <div className="flex justify-start">
                       <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-surface-hover px-4 py-2.5">
@@ -1145,7 +1470,7 @@ export function InboxView() {
                   </div>
                 )}
                 {replyWindowExpiresAt && (
-                  <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <ReplyWindowChip expiresAt={replyWindowExpiresAt} />
                     {replyWindowClosed && (
                       <span className="text-2xs text-ink-tertiary">
@@ -1154,8 +1479,17 @@ export function InboxView() {
                     )}
                   </div>
                 )}
+                {claimedByOther && (
+                  <div className="mb-2 flex items-center gap-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+                    <UserCheck className="size-4 shrink-0" />
+                    <span>
+                      {selectedThread?.lockedByName ?? 'هم‌تیمی شما'} در حال پاسخ به این گفتگو است.
+                      برای جلوگیری از پاسخ تکراری، ارسال موقتاً غیرفعال شده است.
+                    </span>
+                  </div>
+                )}
                 {/* Quick replies — one tap inserts the rendered template */}
-                {!replyWindowClosed && !replyText && (savedReplies ?? []).length > 0 && (
+                {!composerBlocked && !replyText && (savedReplies ?? []).length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {(savedReplies ?? []).slice(0, 3).map((r) => (
                       <button
@@ -1175,11 +1509,13 @@ export function InboxView() {
                   dir="rtl"
                   rows={3}
                   placeholder={
-                    replyWindowClosed
+                    claimedByOther
+                      ? `${selectedThread?.lockedByName ?? 'هم‌تیمی شما'} در حال پاسخ است`
+                      : replyWindowClosed
                       ? 'پنجره پاسخ بسته شده است'
                       : 'پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)'
                   }
-                  disabled={replyWindowClosed}
+                  disabled={composerBlocked}
                   value={replyText}
                   onChange={(e) => {
                     setReplyText(e.target.value)
@@ -1189,7 +1525,7 @@ export function InboxView() {
                   }}
                   className="resize-none bg-background mb-2"
                 />
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-1.5 text-xs text-ink-tertiary">
                     {isGeneratingReply ? (
                       <>
@@ -1208,13 +1544,14 @@ export function InboxView() {
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {savedReplies && savedReplies.length > 0 && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="min-h-[44px] sm:min-h-0"
                         onClick={() => setShowSnippets((v) => !v)}
+                        disabled={composerBlocked}
                         aria-label="پاسخ‌های ذخیره‌شده"
                         aria-expanded={showSnippets}
                       >
@@ -1227,7 +1564,7 @@ export function InboxView() {
                       size="sm"
                       className="min-h-[44px] sm:min-h-0"
                       onClick={handleSmartReply}
-                      disabled={isGeneratingReply}
+                      disabled={isGeneratingReply || composerBlocked}
                     >
                       {isGeneratingReply ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -1240,7 +1577,7 @@ export function InboxView() {
                       size="sm"
                       className="min-h-[44px] sm:min-h-0"
                       onClick={handleReply}
-                      disabled={replyMutation.isPending || !replyText.trim() || replyWindowClosed}
+                      disabled={replyMutation.isPending || !replyText.trim() || composerBlocked}
                     >
                       {replyMutation.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
@@ -1257,7 +1594,7 @@ export function InboxView() {
         </div>
 
         {/* Right: Automation events — desktop only */}
-        <div className="hidden lg:block lg:col-span-3 n-card p-4 h-fit">
+        <div className="hidden xl:block xl:col-span-2 n-card p-4 h-fit">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="size-4 text-accent" />
             <h3 className="text-sm font-semibold text-ink-primary">رویدادهای اتوماسیون</h3>
@@ -1467,7 +1804,7 @@ function MessageListItem({
   currentMembershipId?: string | null
 }) {
   const TypeIcon = MESSAGE_TYPE_ICON[message.messageType] ?? MessageSquare
-  const overdue = useSlaOverdue(message.slaStartedAt)
+  const overdue = useSlaOverdue(message.firstResponseAt ? null : message.slaStartedAt)
   // Presence: a teammate holds an unexpired claim lock on this thread.
   const lockedByTeammate = Boolean(
     message.lockedByName &&
@@ -1483,10 +1820,10 @@ function MessageListItem({
       className={cn(
         'n-focus-ring w-full text-start flex items-start gap-3 p-3 border-b border-s-4 border-border border-s-transparent transition-colors',
         active
-          ? 'bg-accent-tint border-s-accent'
+          ? 'bg-accent-tint border-s-accent shadow-[inset_0_0_0_1px_var(--color-accent)]'
           : message.isRead
-            ? 'hover:bg-surface-subtle'
-            : 'bg-info-soft/45 hover:bg-info-soft/70',
+            ? 'bg-background hover:bg-surface-subtle'
+            : 'bg-surface-subtle border-s-info hover:bg-surface-hover',
         overdue && !active && 'border-s-danger'
       )}
     >

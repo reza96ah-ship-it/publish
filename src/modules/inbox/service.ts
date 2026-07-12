@@ -61,10 +61,17 @@ export class InboxService {
   /** Queue counts + the caller's membership id (for presence self-filtering). */
   async threadQueueCounts(
     auth: AuthContext
-  ): Promise<{ counts: InboxThreadQueueCounts; membershipId: string | null }> {
+  ): Promise<{
+    counts: InboxThreadQueueCounts
+    membershipId: string | null
+    legacyUnread: number
+  }> {
     const member = await this.repo.findMemberByUserInWorkspace(auth.userId, auth.workspaceId)
-    const counts = await this.repo.threadQueueCounts(auth.workspaceId, member?.id ?? null)
-    return { counts, membershipId: member?.id ?? null }
+    const [counts, legacyUnread] = await Promise.all([
+      this.repo.threadQueueCounts(auth.workspaceId, member?.id ?? null),
+      this.repo.legacyUnreadCount(auth.workspaceId),
+    ])
+    return { counts, membershipId: member?.id ?? null, legacyUnread }
   }
 
   async getThread(auth: AuthContext, threadId: string): Promise<InboxThreadDetail> {
