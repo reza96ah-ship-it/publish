@@ -349,6 +349,61 @@ export class InboxRepository {
     return messages.map((message) => message.providerMessageId)
   }
 
+  /**
+   * Customer context for one thread: how long we've known this sender, and
+   * their other conversations in this workspace (matched by providerUserId).
+   */
+  async getThreadCustomerContext(id: string, workspaceId: string) {
+    const thread = await db.inboxThread.findFirst({
+      where: { id, workspaceId },
+      select: { id: true, providerUserId: true, title: true },
+    })
+    if (!thread) return null
+    if (!thread.providerUserId) {
+      return { customer: { name: thread.title, firstSeenAt: null, threadCount: 1 }, priorThreads: [] }
+    }
+
+    const related = await db.inboxThread.findMany({
+      where: { workspaceId, providerUserId: thread.providerUserId },
+      orderBy: { lastMessageAt: 'desc' },
+      select: {
+        id: true,
+        messageType: true,
+        status: true,
+        lastMessageAt: true,
+        createdAt: true,
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { body: true },
+        },
+      },
+      take: 20,
+    })
+
+    const firstSeenAt = related.reduce<Date | null>(
+      (min, t) => (min === null || t.createdAt < min ? t.createdAt : min),
+      null
+    )
+
+    return {
+      customer: {
+        name: thread.title,
+        firstSeenAt,
+        threadCount: related.length,
+      },
+      priorThreads: related
+        .filter((t) => t.id !== thread.id)
+        .map((t) => ({
+          id: t.id,
+          messageType: t.messageType,
+          status: t.status,
+          lastMessageAt: t.lastMessageAt,
+          preview: t.messages[0]?.body?.slice(0, 80) ?? '',
+        })),
+    }
+  }
+
   async findInWorkspace(id: string, workspaceId: string) {
     return db.inboxMessage.findFirst({ where: { id, workspaceId } })
   }
