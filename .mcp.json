@@ -3,7 +3,7 @@
     "shadcn": {
       "command": "bunx",
       "args": [
-        "shadcn@latest",
+        "shadcn",
         "mcp"
       ]
     }
