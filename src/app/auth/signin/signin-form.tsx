@@ -2,175 +2,431 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Coffee, Mail, Lock, ArrowLeft, Loader2, AlertCircle } from 'lucide-react'
-import { ease } from '@/lib/motion'
+import {
+  ArrowLeft, Loader2, AlertCircle, BarChart3, Clock,
+  CheckCircle2, MoreHorizontal, MessageCircle, Heart,
+  Share2, ShieldCheck, Eye, EyeOff,
+} from 'lucide-react'
+import { ease, useShouldAnimate } from '@/lib/motion'
+import { TelegramLogo, InstagramLogo } from '@/components/ui/platform-logo'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 
 interface SignInFormProps {
   callbackUrl: string
   error?: string
 }
 
-/** Map next-auth error codes to Persian user-facing messages. */
 function mapAuthError(code?: string): string | null {
   if (!code) return null
   switch (code) {
-    case 'CredentialsSignin':
-      return 'ایمیل یا رمز عبور اشتباه است'
-    case 'Callback':
-      return 'خطا در ورود — لطفاً دوباره تلاش کنید'
-    case 'Configuration':
-      return 'خطای پیکربندی سرور'
-    case 'AccessDenied':
-      return 'دسترسی رد شد'
-    case 'SessionExpired':
-      return 'نشست شما منقضی شده است — لطفاً دوباره وارد شوید'
-    default:
-      return 'خطا در ورود'
+    case 'CredentialsSignin': return 'نشانی ایمیل یا رمز عبور اشتباه است'
+    case 'Callback':          return 'خطا در ورود — لطفاً دوباره تلاش کنید'
+    case 'Configuration':     return 'خطای پیکربندی سرور'
+    case 'AccessDenied':      return 'دسترسی رد شد'
+    case 'SessionExpired':    return 'نشست شما منقضی شده — دوباره وارد شوید'
+    default:                  return 'خطا در ورود'
   }
 }
 
-export function SignInForm({ error }: SignInFormProps) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [csrfToken, setCsrfToken] = useState('')
-  // Derive the error message directly from the prop (P1-18). Reading the
-  // next-auth ?error= param server-side and passing it down avoids both
-  // useSearchParams + a Suspense boundary and a setState-in-effect cascade.
-  const errorMessage = mapAuthError(error)
+// ── کارت‌های محصول — ردیف بالا + کارت پست پایین ─────────────────
+function DashboardMockup() {
+  const shouldAnimate = useShouldAnimate()
 
-  // Fetch CSRF token CLIENT-SIDE — this sets the next-auth.csrf-token COOKIE
-  // on the user's browser. The server-side getCsrfToken() does NOT set the
-  // cookie on the browser (it sets it on the server's HTTP client), which
-  // causes CSRF validation to fail on form POST.
+  const cardHover = {
+    scale: 1.03,
+    y: -6,
+    transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] },
+  }
+
+  return (
+    <div className="w-full max-w-[470px] mx-auto mt-6 select-none">
+
+      {/* ردیف اول: تقویم + نرخ تعامل */}
+      <div className="flex gap-3 items-start mb-4">
+
+        {/* کارت تقویم انتشار */}
+        <motion.div
+          initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: ease.enter, delay: 0.12 }}
+          whileHover={cardHover}
+          className="flex-1 cursor-default"
+          style={{ rotate: -2, willChange: 'transform' }}
+        >
+          <div className="n-card n-card-compact bg-surface/95 border-border shadow-popover overflow-hidden">
+            <div className="p-3 pb-2 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-bold text-ink-primary">تقویم انتشار</span>
+              <Badge variant="secondary" className="bg-canvas text-ink-secondary text-2xs font-medium border-0 px-2 py-0.5">امروز</Badge>
+            </div>
+            <div className="p-3 space-y-2">
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-canvas border border-border">
+                <div className="size-7 rounded-md bg-surface flex items-center justify-center shrink-0">
+                  <TelegramLogo className="size-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-ink-primary leading-tight truncate">معرفی زمان‌بندی هوشمند محتوا</p>
+                  <p className="text-2xs text-ink-secondary mt-0.5 flex items-center gap-1 num-tabular">
+                    <Clock className="size-3 text-info shrink-0" /> دوشنبه ۲۴ اردیبهشت · ۱۰:۳۰
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-canvas border border-border">
+                <div className="size-7 rounded-md bg-surface flex items-center justify-center shrink-0">
+                  <InstagramLogo className="size-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-ink-primary leading-tight truncate">مرور عملکرد محتوای هفته</p>
+                  <p className="text-2xs text-ink-secondary mt-0.5 flex items-center gap-1">
+                    <CheckCircle2 className="size-3 text-success shrink-0" /> منتشرشده
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* کارت نرخ تعامل */}
+        <motion.div
+          initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: ease.enter, delay: 0.22 }}
+          whileHover={cardHover}
+          className="flex-1 cursor-default"
+          style={{ rotate: 2, willChange: 'transform' }}
+        >
+          <div className="n-card n-card-compact bg-surface/95 border border-border shadow-popover overflow-hidden">
+            <div className="p-3 pb-2">
+              <p className="text-2xs font-bold text-ink-tertiary tracking-wider mb-2">نرخ تعامل</p>
+              <div className="flex items-end justify-between mb-0.5">
+                <p className="text-xl font-extrabold text-ink-primary num-tabular">۴.۸٪</p>
+                <span className="text-2xs font-bold text-success bg-success/10 rounded-md px-1.5 py-0.5 num-tabular">
+                  ↑ ۱۲.۵٪
+                </span>
+              </div>
+              <p className="text-2xs text-ink-tertiary">نسبت به هفته قبل</p>
+            </div>
+            <div className="px-3 pb-3 space-y-2.5">
+              <div>
+                <div className="flex justify-between text-2xs mb-1 font-medium">
+                  <span className="text-ink-secondary">اینستاگرام</span>
+                  <span className="text-ink-primary font-bold num-tabular">۵.۲٪</span>
+                </div>
+                <div className="h-1.5 w-full bg-canvas rounded-full overflow-hidden">
+                  <motion.div
+                    initial={shouldAnimate ? { width: 0 } : false}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 1.2, delay: 0.7, ease: ease.enter }}
+                    className="h-full bg-accent rounded-full"
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-2xs mb-1 font-medium">
+                  <span className="text-ink-secondary">تلگرام</span>
+                  <span className="text-ink-primary font-bold num-tabular">۳.۹٪</span>
+                </div>
+                <div className="h-1.5 w-full bg-canvas rounded-full overflow-hidden">
+                  <motion.div
+                    initial={shouldAnimate ? { width: 0 } : false}
+                    animate={{ width: '75%' }}
+                    transition={{ duration: 1.2, delay: 0.85, ease: ease.enter }}
+                    className="h-full bg-info rounded-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* ردیف دوم: کارت پست — وسط‌چین */}
+      <div className="flex justify-center">
+        <motion.div
+          initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: ease.enter, delay: 0.34 }}
+          whileHover={cardHover}
+          className="cursor-default"
+          style={{ width: 210, willChange: 'transform' }}
+        >
+          <div className="n-card bg-surface border border-border shadow-2xl rounded-2xl overflow-hidden">
+            <div className="p-2.5 flex items-center justify-between border-b border-border bg-surface">
+              <div className="flex items-center gap-2">
+                <Avatar className="size-7 border border-border">
+                  <AvatarFallback className="bg-accent/15 text-accent text-2xs font-bold">NS</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xs font-bold text-ink-primary leading-none">Nashrino</p>
+                  <p className="text-2xs text-ink-tertiary mt-0.5">زمان‌بندی‌شده</p>
+                </div>
+              </div>
+              <MoreHorizontal className="size-3.5 text-ink-tertiary" />
+            </div>
+            <div className="w-full aspect-square overflow-hidden">
+              <img
+                src="/images/post-preview.jpg"
+                alt="پیش‌نمایش پست"
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+            <div className="p-2.5 bg-surface">
+              <div className="flex items-center gap-2.5 mb-1.5">
+                <Heart className="size-3.5 text-danger fill-danger" />
+                <MessageCircle className="size-3.5 text-ink-secondary" />
+                <Share2 className="size-3.5 text-ink-secondary" />
+              </div>
+              <p className="text-2xs text-ink-primary font-bold num-tabular">۲٬۴۵۱ پسند</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+    </div>
+  )
+}
+
+export function SignInForm({ callbackUrl, error }: SignInFormProps) {
+  const [email, setEmail]             = useState('')
+  const [password, setPassword]       = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [csrfToken, setCsrfToken]     = useState('')
+  const [pending, setPending]         = useState(false)
+  const errorMessage = mapAuthError(error)
+  const shouldAnimate = useShouldAnimate()
+
   useEffect(() => {
     fetch('/api/auth/csrf')
-      .then((res) => res.json())
-      .then((data) => setCsrfToken(data.csrfToken))
+      .then((r) => r.json())
+      .then((d) => setCsrfToken(d.csrfToken))
       .catch(() => {})
   }, [])
 
+  function fillDemo() {
+    setEmail('demo@nashrino.ir')
+    setPassword('demo1234')
+  }
+
   return (
-    <div className="min-h-dvh flex items-center justify-center p-4 sm:p-6 bg-canvas">
-      <motion.div
-        initial={false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: ease.enter }}
-        className="w-full max-w-[400px]"
-      >
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex size-14 items-center justify-center rounded-xl bg-accent shadow-lg shadow-accent/20 mb-4">
-            <Coffee className="size-7 text-white" strokeWidth={2} />
+    // RTL grid: first DOM child → RIGHT column, second → LEFT column
+    <main
+      className="min-h-dvh grid lg:grid-cols-[1fr_1.8fr] bg-canvas text-ink-primary font-sans selection:bg-accent/20"
+      dir="rtl"
+    >
+
+      {/* ── Section 1: فرم ورود — ستون راست ───────────────── */}
+      <section className="flex flex-col items-center justify-center p-8 sm:p-12 relative z-20 bg-canvas">
+        <motion.div
+          initial={shouldAnimate ? { opacity: 0, y: 16 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: ease.enter }}
+          className="w-full max-w-[400px]"
+        >
+          {/* لوگو و برند */}
+          <div className="flex flex-col items-center mb-8">
+            <div className="size-12 rounded-[14px] bg-accent flex items-center justify-center shadow-lg shadow-accent/30 mb-4">
+              <span className="text-lg font-extrabold text-white tracking-tight">N</span>
+            </div>
+            <h1 className="text-xl font-bold text-ink-primary">نشرینو</h1>
+            <p className="text-sm text-ink-tertiary mt-1">پلتفرم مدیریت محتوای شبکه‌های اجتماعی</p>
           </div>
-          <h1 className="text-2xl font-bold text-ink-primary tracking-tight">نشرینو</h1>
-          <p className="text-sm text-ink-tertiary mt-1">استودیوی عملیات شبکه‌های اجتماعی</p>
-        </div>
 
-        {/* Native form POST — browser handles cookies + redirect natively */}
-        <div className="n-card p-5 sm:p-6">
-          <h2 className="text-lg font-semibold text-ink-primary mb-1">ورود به حساب</h2>
-          <p className="text-xs text-ink-tertiary mb-5">
-            برای ادامه وارد حساب کاربری خود شوید
-          </p>
-
+          {/* بنر خطا */}
           {errorMessage && (
             <div
               role="alert"
               aria-live="assertive"
-              className="flex items-start gap-2 bg-danger-soft text-danger border border-danger/20 rounded-lg p-3 text-sm mb-4"
+              className="flex items-start gap-2 bg-danger/8 text-danger border border-danger/20 rounded-xl p-3 text-sm mb-5"
             >
-              <AlertCircle className="size-4 shrink-0 mt-0.5" strokeWidth={2} />
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span className="leading-snug">{errorMessage}</span>
             </div>
           )}
 
-          <form action="/api/auth/callback/credentials" method="POST" className="space-y-4">
-            {/* Client-fetched CSRF token (cookie is set on browser) */}
-            <input type="hidden" name="csrfToken" value={csrfToken} />
-            {/* Relative callback URL */}
-            <input type="hidden" name="callbackUrl" value="/" />
+          {/* عنوان فرم */}
+          <div className="mb-5">
+            <h2 className="text-lg font-bold text-ink-primary">ورود به نشرینو</h2>
+            <p className="text-sm text-ink-tertiary mt-1 leading-relaxed">
+              برای دسترسی به فضای کاری خود، اطلاعات حساب را وارد کنید.
+            </p>
+          </div>
 
-            {/* Email */}
-            <div>
-              <label className="text-sm font-semibold text-ink-secondary mb-1.5 block">
-                ایمیل
-              </label>
-              <div className="relative">
-                <Mail className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary pointer-events-none" />
-                <input
-                  type="email"
-                  name="email"
-                  dir="ltr"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="n-control w-full h-10 ps-10 pe-3 text-sm text-ink-primary placeholder:text-ink-tertiary"
-                  autoComplete="email"
-                  autoFocus
-                />
-              </div>
+          {/* فرم ورود */}
+          <form
+            action="/api/auth/callback/credentials"
+            method="POST"
+            className="space-y-4"
+            onSubmit={() => setPending(true)}
+          >
+            <input type="hidden" name="csrfToken" value={csrfToken} />
+            <input type="hidden" name="callbackUrl" value={callbackUrl || '/'} />
+
+            {/* ایمیل */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-sm font-semibold text-ink-secondary">نشانی ایمیل</Label>
+              <Input
+                id="email"
+                type="email"
+                name="email"
+                dir="ltr"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@company.ir"
+                className="h-11 rounded-xl"
+                autoComplete="email"
+                autoFocus
+              />
             </div>
 
-            {/* Password */}
-            <div>
-              <label className="text-sm font-semibold text-ink-secondary mb-1.5 block">
-                رمز عبور
-              </label>
+            {/* رمز عبور با toggle نمایش */}
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-sm font-semibold text-ink-secondary">رمز عبور</Label>
               <div className="relative">
-                <Lock className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary pointer-events-none" />
-                <input
-                  type="password"
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   dir="ltr"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="n-control w-full h-10 ps-10 pe-3 text-sm text-ink-primary placeholder:text-ink-tertiary"
+                  className="h-11 rounded-xl pe-10"
                   autoComplete="current-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-tertiary hover:text-ink-secondary transition-colors p-1 rounded"
+                  aria-label={showPassword ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور'}
+                >
+                  {showPassword
+                    ? <EyeOff className="size-4" />
+                    : <Eye className="size-4" />}
+                </button>
               </div>
             </div>
 
-            {/* Submit — disabled until CSRF token loads (prevents race condition) */}
-            <button
+            {/* یادآوری و فراموشی */}
+            <div className="flex items-center justify-between">
+              <a
+                href="#"
+                className="text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
+              >
+                رمز عبور را فراموش کرده‌اید؟
+              </a>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <span className="text-sm text-ink-secondary">مرا به خاطر بسپار</span>
+                <input
+                  type="checkbox"
+                  name="remember"
+                  className="size-[18px] rounded cursor-pointer"
+                  style={{ accentColor: 'var(--color-accent)' }}
+                />
+              </label>
+            </div>
+
+            {/* دکمه اصلی */}
+            <Button
               type="submit"
-              disabled={!csrfToken}
-              aria-label="ورود"
-              aria-busy={!csrfToken}
-              className="n-focus-ring w-full h-10 rounded-lg bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50 flex items-center justify-center gap-2 dark:text-canvas"
+              disabled={!csrfToken || pending}
+              className="h-12 w-full rounded-xl bg-accent hover:bg-accent-hover text-white font-semibold text-base gap-2 shadow-sm shadow-accent/25 group active:scale-[0.98] transition-transform"
             >
-              {!csrfToken ? (
-                <Loader2 className="size-4 animate-spin" strokeWidth={2.5} />
+              {pending ? (
+                <Loader2 className="size-4 animate-spin" />
               ) : (
                 <>
-                  ورود
-                  <ArrowLeft className="size-4" strokeWidth={2.5} />
+                  ورود به فضای کاری
+                  <ArrowLeft className="size-4 transition-transform duration-200 group-hover:-translate-x-1" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
-          {/* Demo credentials hint */}
-          <div className="mt-5 pt-4 border-t border-border">
-            <p className="text-xs text-ink-tertiary text-center">
-              دمو:{' '}
-              <span className="num-tabular font-semibold" dir="ltr">
-                demo@nashrino.ir
-              </span>{' '}
-              /{' '}
-              <span className="num-tabular font-semibold" dir="ltr">
-                demo1234
-              </span>
-            </p>
+          {/* دسترسی آزمایشی */}
+          <div className="mt-5 pt-4 border-t border-border/60">
+            <button
+              type="button"
+              onClick={fillDemo}
+              className="w-full h-10 rounded-lg border border-border/70 bg-transparent hover:bg-surface text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
+            >
+              ورود با حساب آزمایشی
+            </button>
           </div>
-        </div>
 
-        <p className="text-center text-xs text-ink-tertiary mt-6">
-          نشرینو © ۱۴۰۴ — سامانه مدیریت انتشار شبکه‌های اجتماعی
-        </p>
-      </motion.div>
-    </div>
+          {/* امنیت و لینک‌ها */}
+          <div className="mt-5 flex flex-col items-center gap-3">
+            <p className="flex items-center gap-1.5 text-xs text-ink-tertiary">
+              <ShieldCheck className="size-3.5 text-success" />
+              اتصال امن و رمزگذاری‌شده
+            </p>
+            <div className="flex items-center gap-3 text-xs text-ink-tertiary">
+              <a href="#" className="hover:text-ink-secondary transition-colors">حریم خصوصی</a>
+              <span>·</span>
+              <a href="#" className="hover:text-ink-secondary transition-colors">شرایط استفاده</a>
+              <span>·</span>
+              <a href="#" className="hover:text-ink-secondary transition-colors">پشتیبانی</a>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── Section 2: پیش‌نمایش محصول — ستون چپ ──────────── */}
+      <section className="hidden lg:flex relative flex-col justify-center overflow-hidden border-e border-border/50 bg-surface/50 ambient-mesh">
+        {/* بافت نقطه‌ای */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.06]"
+          style={{
+            backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}
+        />
+
+        <div className="relative z-10 px-10 py-12 flex flex-col">
+          {/* وضعیت سامانه */}
+          <motion.div
+            initial={shouldAnimate ? { opacity: 0, y: -8 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: ease.enter, delay: 0.05 }}
+            className="self-start mb-6"
+          >
+            <Badge
+              variant="outline"
+              className="gap-1.5 text-xs font-medium px-3 py-1 rounded-full border-success/40 text-success bg-success/8"
+            >
+              <span className="size-1.5 rounded-full bg-success inline-block" />
+              همه سرویس‌ها فعال هستند
+            </Badge>
+          </motion.div>
+
+          {/* شعار اصلی — بدون ویرگول */}
+          <motion.div
+            initial={shouldAnimate ? { opacity: 0, y: 12 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: ease.enter, delay: 0.1 }}
+          >
+            <h2 className="text-4xl font-extrabold leading-tight text-ink-primary mb-3">
+              مدیریت یکپارچه محتوا
+              <br />
+              <span className="bg-gradient-to-l from-accent to-violet-500 bg-clip-text text-transparent">
+                از برنامه‌ریزی تا انتشار
+              </span>
+            </h2>
+            <p className="text-sm text-ink-secondary leading-relaxed max-w-md">
+              محتوا را برنامه‌ریزی، بازبینی و منتشر کنید و عملکرد همه شبکه‌ها را یکجا ببینید.
+            </p>
+          </motion.div>
+
+          {/* کارت‌های محصول */}
+          <DashboardMockup />
+        </div>
+      </section>
+
+    </main>
   )
 }
