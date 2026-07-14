@@ -121,7 +121,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10
       DIRECT_DATABASE_URL: postgresql://nashrino:${POSTGRES_PASSWORD:-nashrino_dev}@postgres:5432/nashrino?schema=public
-    command: ['bunx', 'prisma', 'migrate', 'deploy']
+    command: ['sh', '-c', 'bun run scripts/validate-migrate.ts && bunx prisma migrate deploy']
     depends_on:
       postgres: { condition: service_healthy }
     restart: 'no'

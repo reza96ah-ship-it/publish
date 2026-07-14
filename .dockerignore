@@ -29,6 +29,7 @@ agent-ctx
 upload
 download
 skills
+login ui
 .env
 .env.local
 .env.*.local
