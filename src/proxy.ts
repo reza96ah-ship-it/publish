@@ -53,7 +53,7 @@ function buildCsp(nonce: string, isProd: boolean): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
-    "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.facebook.com https://api.linkedin.com wss:",
+    "connect-src 'self' https://api.gapgpt.app https://api.telegram.org https://tapi.bale.ai https://botapi.rubika.ir https://graph.instagram.com https://api.instagram.com https://api.linkedin.com wss:",
     "media-src 'self' data:",
     isProd ? "frame-ancestors 'none'" : 'frame-ancestors *',
     "base-uri 'self'",

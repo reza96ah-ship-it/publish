@@ -1,16 +1,18 @@
 export const INSTAGRAM_GRAPH_API_VERSION_ENV = 'INSTAGRAM_GRAPH_API_VERSION'
 export const DEFAULT_INSTAGRAM_GRAPH_API_VERSION = 'v25.0'
-export const INSTAGRAM_GRAPH_API_ORIGIN = 'https://graph.facebook.com'
+// Instagram API with Instagram Login — new path (2024+), no Facebook Page required.
+export const INSTAGRAM_GRAPH_API_ORIGIN = 'https://graph.instagram.com'
+// OAuth authorize + short-lived token exchange use the auth API, not the graph API.
+export const INSTAGRAM_AUTH_API_ORIGIN = 'https://api.instagram.com'
 export const INSTAGRAM_GRAPH_API_CHANGELOG_URL =
-  'https://developers.facebook.com/docs/graph-api/changelog/'
+  'https://developers.facebook.com/docs/instagram-platform/changelog'
 
 export const INSTAGRAM_INBOX_REQUIRED_SCOPES = [
-  'instagram_basic',
-  'instagram_content_publish',
-  'pages_show_list',
-  'pages_read_engagement',
-  'instagram_manage_comments',
-  'instagram_manage_messages',
+  'instagram_business_basic',
+  'instagram_business_content_publish',
+  'instagram_business_manage_comments',
+  'instagram_business_manage_messages',
+  'instagram_business_manage_insights',
 ] as const
 
 export const INSTAGRAM_INBOX_API_LIMITS = {

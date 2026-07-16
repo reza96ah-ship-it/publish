@@ -23,9 +23,9 @@
  *   - Self-contained: ships its own normalizePersian/matchComment (persian-match.ts)
  *     because the worker does not import from src/.
  *
- * Permissions: the IG access token must have pages_read_engagement,
- * instagram_manage_comments, and instagram_manage_messages scopes. Missing
- * scopes surface as API 403s → CommentDmLog status='failed'.
+ * Permissions: the IG access token must have instagram_business_manage_comments
+ * and instagram_business_manage_messages scopes. Missing scopes surface as
+ * API 403s → CommentDmLog status='failed'.
  */
 
 import { db } from './db'

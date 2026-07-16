@@ -4,8 +4,8 @@
  * Official docs: https://developers.facebook.com/docs/instagram-api
  * Content Publishing guide: https://developers.facebook.com/docs/instagram-api/guides/content-publishing
  *
- * Auth: OAuth 2.0 via Facebook Login. Requires Instagram Business/Creator account + Facebook Page.
- * URL: https://graph.facebook.com/{configured-version}/{endpoint}
+ * Auth: Instagram API with Instagram Login (2024+ path, no Facebook Page required).
+ * URL: https://graph.instagram.com/{configured-version}/{endpoint}
  *
  * Two-step publish process:
  *   1. POST /{ig-user-id}/media → create media container → returns { id }
@@ -14,10 +14,9 @@
  * Media types: IMAGE, VIDEO, REEL, CAROUSEL (2-10 items)
  * Caption limit: 2200 chars, 30 hashtags
  * Rate limit: 200 calls/hour per user
- * Token: long-lived (60 days, must refresh before expiry)
+ * Token: long-lived (60 days, refreshable via ig_refresh_token)
  *
- * Permissions needed: instagram_basic, instagram_content_publish, pages_show_list,
- *   pages_read_engagement, instagram_manage_insights
+ * Permissions needed: instagram_business_basic, instagram_business_content_publish
  */
 
 import type {

@@ -23,11 +23,19 @@ import type {
 } from './types'
 import { encrypt, getActiveKeyId } from '../crypto'
 import { REQUIRED_SCOPES } from './types'
-import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
+import {
+  getInstagramGraphApiBaseUrl,
+  INSTAGRAM_AUTH_API_ORIGIN,
+} from '../../../shared/instagram-graph'
 
-// ── Instagram (Meta Graph API) ────────────────────────────────
+// ── Instagram API with Instagram Login (2024+ path) ───────────
+// Auth flow:   api.instagram.com/oauth/authorize  (no Facebook Page required)
+// Token exch:  api.instagram.com/oauth/access_token (short-lived)
+// Long-lived:  graph.instagram.com/access_token?grant_type=ig_exchange_token
+// API calls:   graph.instagram.com/{version}/{endpoint}
 
 const IG_GRAPH_API = getInstagramGraphApiBaseUrl()
+const IG_AUTH_API = INSTAGRAM_AUTH_API_ORIGIN
 
 const IG_CLIENT_ID = process.env.INSTAGRAM_CLIENT_ID || ''
 const IG_CLIENT_SECRET = process.env.INSTAGRAM_CLIENT_SECRET || ''
@@ -61,8 +69,8 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     if (!input.codeVerifier) {
       throw new Error('Instagram exchangeCode requires codeVerifier (PKCE is mandatory)')
     }
-    // Exchange authorization code for short-lived access token
-    const tokenRes = await fetch(`${IG_GRAPH_API}/oauth/access_token`, {
+    // Step 1: Exchange authorization code for short-lived token (via api.instagram.com)
+    const tokenRes = await fetch(`${IG_AUTH_API}/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -80,13 +88,13 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
       throw new Error(`Instagram token exchange failed: ${tokenData.error.message}`)
     }
 
-    // Exchange short-lived for long-lived token (60 days)
+    // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token
+    // New path uses ig_exchange_token (not fb_exchange_token); no client_id needed.
     const longLivedRes = await fetch(
       `${IG_GRAPH_API}/access_token?${new URLSearchParams({
-        grant_type: 'fb_exchange_token',
-        client_id: IG_CLIENT_ID,
+        grant_type: 'ig_exchange_token',
         client_secret: IG_CLIENT_SECRET,
-        fb_exchange_token: tokenData.access_token,
+        access_token: tokenData.access_token,
       })}`
     )
     const longLived = await longLivedRes.json()

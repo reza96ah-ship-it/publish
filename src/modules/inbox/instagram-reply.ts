@@ -7,8 +7,8 @@
  *   - dm      → POST /{ig-user-id}/messages     (private reply via comment_id;
  *               the only Graph-supported way to DM a commenter, 7-day window)
  *
- * Permissions: instagram_manage_comments (replies) and
- * instagram_manage_messages (private replies) on the platform's token.
+ * Permissions: instagram_business_manage_comments (replies) and
+ * instagram_business_manage_messages (private replies) on the platform's token.
  *
  * Mirrors mini-services/publish-worker/lib/instagram-messaging.ts — kept
  * separate because src/ and the worker never import from each other

@@ -9,10 +9,9 @@
  *   - Comments:  https://developers.facebook.com/docs/instagram-api/guides/comment-management
  *   - Messaging: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging
  *
- * Permissions required (in addition to instagram_basic + pages_show_list):
- *   - pages_read_engagement   (list comments)
- *   - instagram_manage_comments (reply to comments)
- *   - instagram_manage_messages (send private reply / DM)
+ * Permissions required (Instagram API with Instagram Login):
+ *   - instagram_business_manage_comments (list + reply to comments)
+ *   - instagram_business_manage_messages (send private reply / DM)
  *
  * Auth: same long-lived access token as the publish adapter (Platform.tokenSecret).
  * The token must have the above scopes; otherwise the API returns a 403 which

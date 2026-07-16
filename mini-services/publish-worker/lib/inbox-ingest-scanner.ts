@@ -17,9 +17,9 @@
  * Self-comments (the account replying to its own commenters) are skipped so
  * the inbox only contains inbound customer messages.
  *
- * Permissions: the IG access token needs pages_read_engagement (same scope
- * the comment→DM scanner already requires). Missing scope → per-platform
- * fetch errors are logged and skipped; the scan continues.
+ * Permissions: the IG access token needs instagram_business_manage_comments
+ * (same scope the comment→DM scanner already requires). Missing scope →
+ * per-platform fetch errors are logged and skipped; the scan continues.
  */
 
 import { db } from './db'
