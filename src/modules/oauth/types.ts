@@ -57,4 +57,8 @@ export interface CallbackResult {
   clearCookieName: string
   /** Instagram platform whose recent inbox history should be backfilled after redirect. */
   inboxBackfillPlatformId?: string
+  /** Instagram platform that should trigger an initial sync run after redirect. */
+  initialSyncPlatformId?: string
+  /** Workspace for the initial sync run. */
+  initialSyncWorkspaceId?: string
 }

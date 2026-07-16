@@ -11,6 +11,7 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { oauthService } from '@/modules/oauth'
 import { backfillInstagramConversations } from '@/modules/inbox/instagram-backfill'
+import { startInstagramSync, runInstagramSync } from '@/modules/instagram-sync/service'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -42,11 +43,22 @@ export async function GET(req: NextRequest) {
 
   const response = NextResponse.redirect(new URL(result.redirectUrl, BASE_URL))
   if (result.clearCookieName) response.cookies.delete(result.clearCookieName)
+
   if (result.inboxBackfillPlatformId) {
     const platformId = result.inboxBackfillPlatformId
     after(async () => {
       await backfillInstagramConversations(platformId)
     })
   }
+
+  if (result.initialSyncPlatformId && result.initialSyncWorkspaceId) {
+    const platformId = result.initialSyncPlatformId
+    const workspaceId = result.initialSyncWorkspaceId
+    after(async () => {
+      const runId = await startInstagramSync(platformId, workspaceId)
+      await runInstagramSync(runId)
+    })
+  }
+
   return response
 }

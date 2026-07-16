@@ -174,6 +174,7 @@ model Workspace {
   // Issue #221: billing — the workspace's currently active subscription.
   subscription    Subscription?
   invoices        Invoice[]
+  instagramSyncRuns InstagramSyncRun[]
 }
 
 /* ─── #256: Enterprise SSO + custom roles + audit export ─── */
@@ -325,6 +326,7 @@ model Platform {
   inboxMessages  InboxMessage[]
   commentDmRules CommentDmRule[]
   postingSchedules PostingSchedule[]
+  syncRuns      InstagramSyncRun[]
 
   @@index([workspaceId])
   @@index([workspaceId, type])
@@ -374,6 +376,11 @@ model Content {
   hashtags    String?
   internalNote String?
   status      String   @default("draft") // draft, review, approved, scheduled, published, failed, rejected
+  // NASHRINO = created here and published; INSTAGRAM_IMPORT = pulled from existing IG account.
+  // Imported content must never be dispatched as a new publication (checked before any publish action).
+  origin      String   @default("NASHRINO") // NASHRINO | INSTAGRAM_IMPORT
+  // Instagram media ID for INSTAGRAM_IMPORT rows — used for sync deduplication.
+  importedPostId String?
   thumbnailUrl String?
   authorName  String?
   scheduledAt DateTime?
@@ -1529,4 +1536,50 @@ model Subscription {
 
   @@index([planId])
   @@index([status])
+}
+
+/* ─── Instagram Initial Sync (Issue #346) ─── */
+
+// Tracks one full idempotent sync run per Instagram platform account.
+// Status: PENDING | RUNNING | COMPLETED | FAILED | PARTIAL
+// Safe to run multiple times — checkpoint + cursor prevent duplicates.
+model InstagramSyncRun {
+  id                        String    @id @default(cuid())
+  workspaceId               String
+  platformId                String
+
+  // PENDING | RUNNING | COMPLETED | FAILED | PARTIAL
+  status                    String    @default("PENDING")
+  // Human-readable step label surfaced in the UI (e.g. "مرحله ۳: وارد کردن رسانه")
+  currentStep               String?
+  // Step index 0-8 (9 steps per INITIAL_SYNC_SPEC.md)
+  currentStepIndex          Int       @default(0)
+
+  startedAt                 DateTime  @default(now())
+  completedAt               DateTime?
+
+  // Cursor-based resume: serialised JSON saved after each step succeeds.
+  // Allows the sync to resume mid-page if interrupted (server restart, timeout).
+  checkpoint                Json?
+  // Last pagination cursor from the Instagram media list endpoint
+  lastProviderCursor        String?
+
+  importedMediaCount        Int       @default(0)
+  importedConversationCount Int       @default(0)
+
+  // Non-fatal warnings (e.g. "insights unavailable: account < 100 followers")
+  warnings                  String[]
+  // Fatal step errors — each entry is one failed step
+  errors                    String[]
+
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  platform   Platform  @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([platformId])
+  @@index([platformId, status])
+  @@index([workspaceId, createdAt])
 }

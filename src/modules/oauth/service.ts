@@ -209,7 +209,11 @@ export class OAuthService {
       return {
         redirectUrl: '/channels?oauth_success=1',
         clearCookieName: cookieName,
-        ...(type === 'instagram' ? { inboxBackfillPlatformId: platformId } : {}),
+        ...(type === 'instagram' ? {
+          inboxBackfillPlatformId: platformId,
+          initialSyncPlatformId: platformId,
+          initialSyncWorkspaceId: workspaceId,
+        } : {}),
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'token_exchange_failed'
