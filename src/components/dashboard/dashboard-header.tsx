@@ -4,16 +4,21 @@
  * DashboardHeader — page context + global filters (plan §2A / §11 / §12).
  *
  * Start side: workspace chip (§12) → title/subtitle → freshness row with
- * offline badge (§11) and manual stale-refresh button (§11).
+ * connection-status badge (§11 / resilience §5) and manual stale-refresh button.
  * End side: [range][platform] selects (desktop) · filter sheet (mobile).
+ *
+ * Connection status distinguishes 3 states (issue #351 §5):
+ *   - user_offline: browser has no internet (navigator.onLine === false)
+ *   - server_down: browser is online but Nashrino /api/health is unreachable
+ *   - ok: all layers reachable (Meta API errors surface per-panel, not here)
  *
  * Filter state lives in the URL via useDashboardFilters.
  * Workspace name fetched from /api/workspace (stale 5 min, no spinner on card).
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
-import { SlidersHorizontal, WifiOff, RefreshCw, Building2, ChevronDown } from 'lucide-react'
+import { SlidersHorizontal, WifiOff, ServerCrash, RefreshCw, Building2, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import {
@@ -39,14 +44,26 @@ import {
 import { api } from '@/lib/api'
 import { relativeTime } from '@/lib/jalali'
 
-// ── useOnline ────────────────────────────────────────────────────────────────
+// ── useConnectionStatus ───────────────────────────────────────────────────────
 
-function useOnline(): boolean {
-  const [online, setOnline] = useState(true)
+type ConnectionStatus = 'ok' | 'user_offline' | 'server_down'
+
+/**
+ * Polls /api/health every 30s when online to detect Nashrino server availability.
+ * Returns the most specific available diagnosis (issue #351 §5):
+ *   user_offline  → navigator.onLine false
+ *   server_down   → online but /api/health unreachable or non-2xx
+ *   ok            → all clear
+ */
+function useConnectionStatus(): ConnectionStatus {
+  const [browserOnline, setBrowserOnline] = useState(true)
+  const [serverReachable, setServerReachable] = useState(true)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
-    setOnline(navigator.onLine)
-    const on = () => setOnline(true)
-    const off = () => setOnline(false)
+    setBrowserOnline(navigator.onLine)
+    const on = () => setBrowserOnline(true)
+    const off = () => setBrowserOnline(false)
     window.addEventListener('online', on)
     window.addEventListener('offline', off)
     return () => {
@@ -54,7 +71,40 @@ function useOnline(): boolean {
       window.removeEventListener('offline', off)
     }
   }, [])
-  return online
+
+  useEffect(() => {
+    const check = async () => {
+      if (!navigator.onLine) return // skip — already shown as user_offline
+      try {
+        const res = await fetch('/api/health', {
+          method: 'GET',
+          cache: 'no-store',
+          signal: AbortSignal.timeout(5_000),
+        })
+        setServerReachable(res.ok)
+      } catch {
+        setServerReachable(false)
+      }
+    }
+    check()
+    timerRef.current = setInterval(check, 30_000)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  // Reset server-reachable when browser comes back online
+  useEffect(() => {
+    if (browserOnline) {
+      fetch('/api/health', { method: 'GET', cache: 'no-store', signal: AbortSignal.timeout(5_000) })
+        .then((r) => setServerReachable(r.ok))
+        .catch(() => setServerReachable(false))
+    }
+  }, [browserOnline])
+
+  if (!browserOnline) return 'user_offline'
+  if (!serverReachable) return 'server_down'
+  return 'ok'
 }
 
 // ── useFreshnessState ────────────────────────────────────────────────────────
@@ -147,9 +197,43 @@ function FilterSelects({ className = '' }: { className?: string }) {
 
 // ── DashboardHeader ──────────────────────────────────────────────────────────
 
+// ── ConnectionBadge ──────────────────────────────────────────────────────────
+
+function ConnectionBadge({ status }: { status: ConnectionStatus }) {
+  if (status === 'user_offline') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-md border bg-danger-soft text-danger border-danger/20"
+        role="status"
+        aria-live="polite"
+        aria-label="اینترنت در دسترس نیست"
+      >
+        <WifiOff className="size-3" aria-hidden />
+        بدون اینترنت
+      </span>
+    )
+  }
+  if (status === 'server_down') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-md border bg-warning-soft text-warning border-warning/20"
+        role="status"
+        aria-live="polite"
+        aria-label="سرور ناشرینو در دسترس نیست"
+      >
+        <ServerCrash className="size-3" aria-hidden />
+        سرور در دسترس نیست
+      </span>
+    )
+  }
+  return null
+}
+
+// ── DashboardHeader ──────────────────────────────────────────────────────────
+
 export function DashboardHeader() {
   const { label: freshnessLabel, isStale, refresh } = useFreshnessState()
-  const isOnline = useOnline()
+  const connectionStatus = useConnectionStatus()
   const { data: workspace } = useWorkspace()
   const [sheetOpen, setSheetOpen] = useState(false)
   const router = useRouter()
@@ -175,24 +259,15 @@ export function DashboardHeader() {
           مرور عملکرد محتوا و وضعیت انتشارها
         </p>
 
-        {/* Freshness row — last-updated label + offline badge + stale refresh (plan §11) */}
+        {/* Freshness row — last-updated label + connection badge + stale refresh (#351 §5) */}
         <div className="flex flex-wrap items-center gap-2 mt-1.5">
           <p className="text-xs text-ink-tertiary num-tabular">
             آخرین به‌روزرسانی: {freshnessLabel}
           </p>
 
-          {!isOnline && (
-            <span
-              className="inline-flex items-center gap-1 text-2xs font-semibold px-1.5 py-0.5 rounded-md border bg-danger-soft text-danger border-danger/20"
-              role="status"
-              aria-live="polite"
-            >
-              <WifiOff className="size-3" aria-hidden />
-              آفلاین
-            </span>
-          )}
+          <ConnectionBadge status={connectionStatus} />
 
-          {isOnline && isStale && (
+          {connectionStatus === 'ok' && isStale && (
             <button
               type="button"
               onClick={refresh}

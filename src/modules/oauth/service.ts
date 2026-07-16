@@ -16,6 +16,7 @@ import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 import { getProviderAuthAdapter } from '@/lib/provider-auth'
 import { isPlatformEnabled } from '@/lib/provider-capabilities'
 import { computeCredentialStatus } from '@/lib/provider-auth/types'
+import { track } from '@/lib/track'
 import type {
   StartOAuthInput,
   StartOAuthResult,
@@ -98,6 +99,8 @@ export class OAuthService {
       type,
     })
 
+    void track({ event: 'channel_connect_started', workspaceId, platformType: type })
+
     return {
       ok: true,
       authorizationUrl,
@@ -121,6 +124,7 @@ export class OAuthService {
     // Provider returned an error (user denied consent, etc.)
     if (providerError) {
       const desc = providerErrorDescription || providerError
+      void track({ event: 'channel_connect_failed', workspaceId, platformType: 'unknown', reason: 'oauth_denied' })
       return { redirectUrl: errorUrl(baseUrl, desc), clearCookieName: '' }
     }
     if (!code || !state) {
@@ -206,6 +210,13 @@ export class OAuthService {
         await subscribeInstagramWebhooks(credential.accountId, credential.accessTokenEncrypted)
       }
 
+      void track({
+        event: 'channel_connect_succeeded',
+        workspaceId,
+        platformType: type,
+        accountKind: 'business',
+      })
+
       return {
         redirectUrl: '/channels?oauth_success=1',
         clearCookieName: cookieName,
@@ -217,6 +228,12 @@ export class OAuthService {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'token_exchange_failed'
+      void track({
+        event: 'channel_connect_failed',
+        workspaceId,
+        platformType: type,
+        reason: 'token_exchange_failed',
+      })
       return { redirectUrl: errorUrl(baseUrl, msg), clearCookieName: cookieName }
     }
   }
