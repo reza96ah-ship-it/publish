@@ -20,26 +20,37 @@ Capability | Status | Code path | API route | Worker | Permission | Webhook | Te
 
 ## A. Connection
 
+Code paths (from code audit 2026-07-16):
+- OAuth start: `src/app/api/platforms/oauth/start/route.ts` → `src/modules/oauth/service.ts:54`
+- OAuth callback: `src/app/api/platforms/oauth/callback/route.ts` → `src/modules/oauth/service.ts:118`
+- Auth adapter: `src/lib/provider-auth/oauth-adapters.ts` (InstagramAuthAdapter)
+- State cookie: `oauth_state_{state}`, 15-min TTL, httpOnly
+- Token storage: `db.platform.tokenSecret` (encrypted), `tokenExpiresAt`, `tokenScopes`
+- Audit log: `db.auditLog` action `platform.connected`
+- Webhook subscription: `src/modules/oauth/service.ts:226` — `POST /{igUserId}/subscribed_apps?subscribed_fields=comments,messages,mentions`
+
 | Capability | Status | Code path | API route | Permission | Webhook | Tests | Non-tester | Limitation | Issue |
 |---|---|---|---|---|---|---|---|---|---|
-| OAuth start | Implemented-unproven | ❓ | ❓ | `instagram_business_basic` | — | ❓ | ❓ | — | #347 |
-| OAuth callback + token storage | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| CSRF / state validation | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| PKCE (if required by chosen path) | ❓ | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| Account identity verification | Implemented-unproven | ❓ | ❓ | `instagram_business_basic` | — | ❓ | ❓ | — | #347 |
-| Professional account type validation | Implemented-unproven | ❓ | ❓ | `instagram_business_basic` | — | ❓ | ❓ | Personal accounts rejected | #347 |
-| Permission grant / denial handling | Implemented-unproven | ❓ | ❓ | All | — | ❓ | ❓ | — | #347 |
-| Token encryption at rest | Implemented-unproven | ❓ | — | — | — | ❓ | ❓ | — | #160 |
-| Token expiry storage | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| Scope storage | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| Health check | Implemented-unproven | ❓ | ❓ | `instagram_business_basic` | — | ❓ | ❓ | — | #347 |
-| Webhook subscription | Implemented-unproven | ❓ | ❓ | — | All | ❓ | ❓ | — | #347 |
-| Reconnect flow | Implemented-unproven | ❓ | ❓ | All | — | ❓ | ❓ | — | #347 |
+| OAuth start | Implemented-unproven | `oauth/service.ts:54` | `GET /api/platforms/oauth/start` | `instagram_basic` | — | ❓ | ❓ | — | #347 |
+| OAuth callback + token storage | Implemented-unproven | `oauth/service.ts:118` | `GET /api/platforms/oauth/callback` | — | — | ❓ | ❓ | — | #347 |
+| CSRF / state validation | Implemented-unproven | `oauth/service.ts:130` | callback | — | — | ❓ | ❓ | — | #347 |
+| PKCE S256 | Implemented-unproven | `oauth-adapters.ts:47-57` | auth + token exchange | — | — | ❓ | ❓ | Mandatory, always generated | #347 |
+| Account identity verification | Implemented-unproven | `oauth-adapters.ts:99-110` | `GET /me?fields=id,username` | `instagram_basic` | — | ❓ | ❓ | — | #347 |
+| Scope verification after token exchange | Implemented-unproven | `oauth-adapters.ts:104-110` | `GET /me/permissions` | — | — | ❓ | ❓ | Returns granted scopes only | #347 |
+| Permission grant / denial handling | Implemented-unproven | `oauth/service.ts:123` | callback | All | — | ❓ | ❓ | User denial → error redirect | #347 |
+| Token encryption at rest | Implemented-unproven | `oauth-adapters.ts:113` | — | — | — | ❓ | ❓ | Uses `encrypt()` from `lib/crypto` | #160 |
+| Long-lived token exchange (60-day) | Implemented-unproven | `oauth-adapters.ts:84-92` | `GET /access_token?grant_type=fb_exchange_token` | — | — | ❓ | ❓ | Fallback: 60-day estimate | #347 |
+| Token expiry storage | Implemented-unproven | `oauth/service.ts:170` | — | — | — | ❓ | ❓ | `platform.tokenExpiresAt` | #347 |
+| Scope storage | Implemented-unproven | `oauth/service.ts:173` | — | — | — | ❓ | ❓ | `platform.tokenScopes` comma-joined | #347 |
+| Health check (`/me` re-validation) | Implemented-unproven | `oauth-adapters.ts:125-190` | `GET /me?fields=id,username` | `instagram_basic` | — | ❓ | ❓ | 401 → expired, else → active | #347 |
+| Webhook per-account subscription | Implemented-unproven | `oauth/service.ts:206-256` | `POST /{igUserId}/subscribed_apps` | Advanced Access required | comments,messages,mentions | ❓ | ❓ | Best-effort, swallows errors silently | #347 |
+| Reconnect flow (reuse platform row) | Implemented-unproven | `oauth/service.ts:73-85` | start | All | — | ❓ | ❓ | Reuses existing Platform row | #347 |
 | Disconnect flow | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| Audit log | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
-| Non-tester business account | ❓ | — | — | All | All | — | ❓ | Advanced Access required | #345 |
-| Non-tester creator account | ❓ | — | — | All | All | — | ❓ | Advanced Access required | #345 |
-| Workspace isolation | Implemented-unproven | ❓ | ❓ | — | — | ❓ | ❓ | — | #347 |
+| Audit log | Implemented-unproven | `oauth/service.ts:182-198` | — | — | — | ❓ | ❓ | Non-fatal if write fails | #347 |
+| Non-tester business account | ❓ Untested | — | — | All (Advanced Access) | All | — | ❓ | **Critical gate** — Advanced Access required for publish/messages/comments | #345 |
+| Non-tester creator account | ❓ Untested | — | — | All (Advanced Access) | All | — | ❓ | Advanced Access required | #345 |
+| Workspace isolation | Implemented-unproven | `oauth/service.ts:73,143` | start+callback | — | — | ❓ | ❓ | `workspaceId` filter on all queries | #347 |
+| Pages_show_list scope behavior | ❓ Untested | — | — | `pages_show_list` | — | — | ❓ | **Flag:** Page permission requested at Instagram Login endpoint — may require linked Facebook Page | #343 |
 
 ---
 
