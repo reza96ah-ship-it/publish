@@ -377,7 +377,7 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
       </section>
 
       {/* ── Section 2: پیش‌نمایش محصول — ستون چپ ──────────── */}
-      <section className="hidden lg:flex relative flex-col justify-center overflow-hidden border-e border-border/50 bg-surface/50 ambient-mesh">
+      <section className="hidden lg:flex relative flex-col justify-center overflow-hidden border-e border-border/50 bg-surface/50 ambient-mesh" aria-hidden="true">
         {/* بافت نقطه‌ای */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.03] dark:opacity-[0.06]"

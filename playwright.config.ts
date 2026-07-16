@@ -48,6 +48,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     locale: 'fa-IR',
     timezoneId: 'Asia/Tehran',
+    reducedMotion: 'reduce',
   },
   // Issue #153: browser matrix - Chromium, Firefox, WebKit desktop + mobile.
   // Visual regression has its own GitHub Actions job and is included only
