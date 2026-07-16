@@ -30,6 +30,7 @@ import {
   EmptyState,
   Skeleton,
   LoadingState,
+  DataFreshness,
 } from '@/components/dashboard/shared'
 import { announce } from '@/lib/aria-live'
 import { Button } from '@/components/ui/button'
@@ -103,7 +104,7 @@ export function ContentView() {
   const [revisionsOpenFor, setRevisionsOpenFor] = useState<ContentItem | null>(null)
   const queryClient = useQueryClient()
 
-  const { data: content, isLoading, isError, refetch } = useQuery<ContentItem[]>({
+  const { data: content, isLoading, isError, refetch, dataUpdatedAt: contentUpdatedAt } = useQuery<ContentItem[]>({
     queryKey: ['content'],
     queryFn: () => api.getPaginated<ContentItem>('/api/content'),
   })
@@ -187,6 +188,7 @@ export function ContentView() {
       >
         کتابخانه محتوا
       </SectionTitle>
+      <DataFreshness dataUpdatedAt={contentUpdatedAt} onRefresh={refetch} className="mb-2" />
 
       {/* Filter bar */}
       <div className="n-card p-4">

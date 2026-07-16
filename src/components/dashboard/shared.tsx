@@ -2,10 +2,10 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
+import { type LucideIcon, AlertCircle, RefreshCw, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useShouldAnimate, ease, duration } from '@/lib/motion'
-import { toPersianDigits, formatCompact } from '@/lib/jalali'
+import { toPersianDigits, formatCompact, relativeTime } from '@/lib/jalali'
 import { cn } from '@/lib/utils'
 import { PlatformLogo } from '@/components/ui/platform-logo'
 import { ILLUSTRATIONS, type IllustrationKey } from '@/components/dashboard/illustrations'
@@ -1069,6 +1069,65 @@ export function AnimatedTabs<T extends string>({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * DataFreshness — "آخرین به‌روزرسانی" row for data views (inbox, analytics, content).
+ * Shows the last-fetched timestamp and a warning when data is stale.
+ * Satisfies resilience issue #351 §7 (last-synced timestamps).
+ *
+ * Usage:
+ *   const { dataUpdatedAt } = useQuery(...)
+ *   <DataFreshness dataUpdatedAt={dataUpdatedAt} onRefresh={refetch} />
+ */
+export function DataFreshness({
+  dataUpdatedAt,
+  staleThresholdMs = 5 * 60 * 1000,
+  onRefresh,
+  className = '',
+}: {
+  dataUpdatedAt: number
+  /** How old data has to be before showing a stale warning. Default: 5 min */
+  staleThresholdMs?: number
+  onRefresh?: () => void
+  className?: string
+}) {
+  const [, setTick] = useState(0)
+
+  // Rerender every 30s so the relative time label stays current
+  useEffect(() => {
+    if (!dataUpdatedAt) return
+    const timer = setInterval(() => setTick((n) => n + 1), 30_000)
+    return () => clearInterval(timer)
+  }, [dataUpdatedAt])
+
+  if (!dataUpdatedAt) return null
+
+  const ageMs = Date.now() - dataUpdatedAt
+  const isStale = ageMs > staleThresholdMs
+  const label = ageMs < 60_000 ? 'همین حالا' : relativeTime(new Date(dataUpdatedAt))
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <Clock
+        className={`size-3 shrink-0 ${isStale ? 'text-warning' : 'text-ink-tertiary'}`}
+        aria-hidden
+      />
+      <span className={`text-xs num-tabular ${isStale ? 'text-warning' : 'text-ink-tertiary'}`}>
+        آخرین به‌روزرسانی: {label}
+      </span>
+      {isStale && onRefresh && (
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="n-focus-ring text-xs text-ink-tertiary hover:text-accent transition-colors rounded"
+          aria-label="به‌روزرسانی داده‌ها"
+        >
+          <RefreshCw className="size-3" aria-hidden />
+        </button>
+      )}
     </div>
   )
 }

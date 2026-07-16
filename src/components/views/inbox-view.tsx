@@ -45,6 +45,7 @@ import {
   SkeletonList,
   LoadingState,
   AnimatedTabs,
+  DataFreshness,
 } from '@/components/dashboard/shared'
 import { useAnnounceValue } from '@/lib/aria-live'
 import { useInboxStream } from '@/hooks/use-inbox-stream'
@@ -397,6 +398,7 @@ export function InboxView() {
     fetchNextPage: fetchNextThreads,
     hasNextPage: hasNextThreads,
     isFetchingNextPage: isFetchingNextThreads,
+    dataUpdatedAt: threadsUpdatedAt,
   } = useInfiniteQuery({
     queryKey: ['inbox-threads', serverQueue, search],
     queryFn: ({ pageParam }) => {
@@ -940,6 +942,7 @@ export function InboxView() {
       >
         صندوق ورودی یکپارچه
       </SectionTitle>
+      <DataFreshness dataUpdatedAt={threadsUpdatedAt} onRefresh={refetchThreads} className="mb-2" />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: List */}

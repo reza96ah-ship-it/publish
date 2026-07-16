@@ -46,6 +46,7 @@ import {
   EmptyState,
   AnimatedTabs,
   KpiCard,
+  DataFreshness,
 } from '@/components/dashboard/shared'
 import { ChartTooltip, BarChartTooltip } from '@/components/dashboard/chart-tooltip'
 import { PostPerformanceSection } from '@/components/analytics/post-performance'
@@ -118,7 +119,7 @@ export function AnalyticsView() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [reportOpen, setReportOpen] = useState(false)
 
-  const { data, isLoading, isError, refetch } = useQuery<AnalyticsData>({
+  const { data, isLoading, isError, refetch, dataUpdatedAt: analyticsUpdatedAt } = useQuery<AnalyticsData>({
     queryKey: ['analytics', 'all'],
     queryFn: () => api.get<AnalyticsData>('/api/analytics?platform=all'),
   })
@@ -273,6 +274,7 @@ export function AnalyticsView() {
       >
         تحلیل و گزارش‌ها
       </SectionTitle>
+      <DataFreshness dataUpdatedAt={analyticsUpdatedAt} onRefresh={refetch} className="mb-2" />
 
       {/* KPI row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
