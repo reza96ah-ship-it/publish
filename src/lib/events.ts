@@ -178,6 +178,35 @@ export interface AiSuggestionOutcomeEvent extends BaseEvent {
   outcome: 'accepted' | 'edited' | 'rejected'
 }
 
+// ─── Dashboard interactions (client-side, via /api/track) ────────────────────
+
+export interface DashboardFilterChangedEvent extends BaseEvent {
+  event: 'dashboard_filter_changed'
+  filterKey: 'range' | 'platform'
+  value: string
+}
+
+export interface DashboardKpiOpenedEvent extends BaseEvent {
+  event: 'dashboard_kpi_opened'
+  kpi: string
+}
+
+export interface PublishingRetryStartedEvent extends BaseEvent {
+  event: 'publishing_retry_started'
+  jobId: string
+  platformType: string
+}
+
+export interface PublishingBulkRetryStartedEvent extends BaseEvent {
+  event: 'publishing_bulk_retry_started'
+  count: number
+}
+
+export interface PublishingBulkCancelStartedEvent extends BaseEvent {
+  event: 'publishing_bulk_cancel_started'
+  count: number
+}
+
 // ─── Billing ─────────────────────────────────────────────────────────────────
 
 export interface BillingCheckoutStartedEvent extends BaseEvent {
@@ -227,3 +256,8 @@ export type NashrinoEvent =
   | BillingCheckoutStartedEvent
   | BillingCheckoutCompletedEvent
   | BillingCheckoutFailedEvent
+  | DashboardFilterChangedEvent
+  | DashboardKpiOpenedEvent
+  | PublishingRetryStartedEvent
+  | PublishingBulkRetryStartedEvent
+  | PublishingBulkCancelStartedEvent

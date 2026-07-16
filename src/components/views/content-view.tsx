@@ -195,7 +195,7 @@ export function ContentView() {
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 size-4 text-ink-tertiary" />
             <Input
               dir="rtl"
-              placeholder="جستجو در عنوان محتوا…"
+              placeholder="فیلتر بر اساس عنوان…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="ps-9"
@@ -229,15 +229,9 @@ export function ContentView() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            size="sm"
-            className="ms-auto n-focus-ring"
-            onClick={handleCreateContent}
-            disabled={createContentMutation.isPending}
-          >
-            <Plus className="size-4" />
-            محتوای جدید
-          </Button>
+          {/* «محتوای جدید» removed — the global «انتشار جدید» in the command
+              bar is the single create action (plan §1: one primary action per
+              page). The empty state keeps its contextual create CTA. */}
         </div>
       </div>
 

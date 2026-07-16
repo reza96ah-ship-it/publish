@@ -11,6 +11,7 @@ import type { ReactNode } from 'react'
 
 interface ChartPanelProps {
   title: string
+  subtitle?: string        // secondary line under the title (PanelHeader parity)
   icon?: LucideIcon
   source?: string          // e.g. "Instagram API"
   lastUpdated?: Date
@@ -27,6 +28,7 @@ interface ChartPanelProps {
 
 export function ChartPanel({
   title,
+  subtitle,
   icon: Icon = BarChart3,
   source,
   lastUpdated,
@@ -42,16 +44,27 @@ export function ChartPanel({
 }: ChartPanelProps) {
   return (
     <div className={cn('n-card p-5', className)}>
-      {/* Header row */}
+      {/* Header row — visual parity with PanelHeader (icon chip + bold title) */}
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2 min-w-0">
-          <Icon className="size-4 text-accent shrink-0" />
-          <h2 className="text-sm font-semibold text-ink-primary truncate">{title}</h2>
-          {period && (
-            <span className="text-2xs text-ink-tertiary bg-surface-subtle px-1.5 py-0.5 rounded-full num-tabular shrink-0">
-              {period}
-            </span>
-          )}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-accent-soft">
+            <Icon className="size-[14px] text-accent" strokeWidth={2} />
+          </div>
+          <div className="leading-tight min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-ink-primary tracking-tight truncate">
+                {title}
+              </h2>
+              {period && (
+                <span className="text-2xs text-ink-tertiary bg-surface-subtle px-1.5 py-0.5 rounded-full num-tabular shrink-0">
+                  {period}
+                </span>
+              )}
+            </div>
+            {subtitle && (
+              <p className="text-xs text-ink-tertiary mt-0.5 leading-tight truncate">{subtitle}</p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {headerSlot}

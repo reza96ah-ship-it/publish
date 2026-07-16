@@ -16,18 +16,35 @@ export class AnalyticsService {
 
   async getSnapshotSeries(
     auth: AuthContext,
-    platform: string | undefined
+    platform: string | undefined,
+    days = 30
   ): Promise<SnapshotSeriesResult> {
-    const snapshots = await this.repo.findSnapshots(auth.workspaceId, platform, 30)
+    const sinceDate = new Date(Date.now() - days * 86400_000)
+    const since = sinceDate.toISOString().slice(0, 10)
+    const [snapshots, publishedJobs] = await Promise.all([
+      this.repo.findSnapshotsSince(auth.workspaceId, platform, since),
+      this.repo.findPublishedJobDates(
+        auth.workspaceId,
+        platform && platform !== 'all' ? platform : null,
+        sinceDate
+      ),
+    ])
     const dates = [...new Set(snapshots.map((s) => s.date))].sort()
     const series = (metric: string) =>
       dates.map((d) => snapshots.find((s) => s.date === d && s.metricType === metric)?.value ?? 0)
+    // Publications per day — successful publish jobs bucketed by calendar day.
+    const pubsByDay = new Map<string, number>()
+    for (const job of publishedJobs) {
+      const day = job.createdAt.toISOString().slice(0, 10)
+      pubsByDay.set(day, (pubsByDay.get(day) ?? 0) + 1)
+    }
     return {
       dates,
       reach: series('reach'),
       engagement: series('engagement'),
       followers: series('followers'),
       clicks: series('clicks'),
+      publications: dates.map((d) => pubsByDay.get(d) ?? 0),
     }
   }
 

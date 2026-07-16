@@ -4,26 +4,32 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+const RANGE_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90 }
+
+export async function GET(req: Request) {
   const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
-  // Fetch all aggregate (platform=null) snapshots for the last 7 days.
-  // There are 7 days أ— 4 metrics = 28 rows; take a comfortable ceiling so
-  // every metric gets a full 7-point series (a tight take would starve some metrics).
-  const since = new Date(Date.now() - 8 * 86400_000)
+  // Global dashboard filters (plan §10): range + platform, both URL-driven.
+  const { searchParams } = new URL(req.url)
+  const days = RANGE_DAYS[searchParams.get('range') ?? '7d'] ?? 7
+  const platformParam = searchParams.get('platform')
+  const platform = platformParam && platformParam !== 'all' ? platformParam : null
+
+  // Fetch snapshots for the selected window. platform=null rows are the
+  // cross-platform aggregates; a platform filter narrows to that network.
+  const since = new Date(Date.now() - (days + 1) * 86400_000)
   const snapshots = await db.analyticsSnapshot.findMany({
-    where: { workspaceId, platform: null, date: { gte: since.toISOString().slice(0, 10) } },
+    where: { workspaceId, platform, date: { gte: since.toISOString().slice(0, 10) } },
     orderBy: { date: 'asc' },
-    take: 60,
+    take: days * 4 + 8,
   })
 
   const byMetric = (m: string) => snapshots.filter((s) => s.metricType === m).map((s) => s.value)
   const reach = byMetric('reach')
   const engagement = byMetric('engagement')
   const followers = byMetric('followers')
-  const _clicks = byMetric('clicks')
 
   const last = (arr: number[]) => arr[arr.length - 1] ?? 0
   const prev = (arr: number[]) => arr[arr.length - 2] ?? arr[arr.length - 1] ?? 0
@@ -31,18 +37,20 @@ export async function GET() {
 
   const activeCampaigns = await db.campaign.count({ where: { workspaceId, status: 'active' } })
 
+  const periodLabel = days === 90 ? '۹۰ روز' : days === 30 ? '۳۰ روز' : '۷ روز'
+
   return NextResponse.json([
     {
       id: 'engagement',
-      title: 'تعامل کل',
+      title: 'نرخ تعامل',
       value: last(engagement),
       trend: pct(last(engagement), prev(engagement)),
-      context: 'نسبت به ۳۰ روز قبل',
+      context: `نسبت به ${periodLabel} قبل`,
       chartData: engagement,
     },
     {
       id: 'reach',
-      title: 'دسترسی و مشاهده',
+      title: 'دسترسی محتوا',
       value: last(reach),
       trend: pct(last(reach), prev(reach)),
       context: 'مجموع پلتفرم‌ها',
@@ -58,7 +66,7 @@ export async function GET() {
     },
     {
       id: 'campaigns',
-      title: 'کمپین‌های فعال',
+      title: 'تحقق هدف کمپین‌ها',
       value: activeCampaigns,
       trend: 0,
       context: 'درحال اجرا',

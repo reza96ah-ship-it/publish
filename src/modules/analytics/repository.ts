@@ -18,6 +18,33 @@ export class AnalyticsRepository {
     })
   }
 
+  async findSnapshotsSince(
+    workspaceId: string,
+    platform: string | null | undefined,
+    since: string
+  ) {
+    return db.analyticsSnapshot.findMany({
+      where: {
+        workspaceId,
+        platform: platform === 'all' ? null : (platform ?? null),
+        date: { gte: since },
+      },
+      orderBy: { date: 'asc' },
+    })
+  }
+
+  async findPublishedJobDates(workspaceId: string, platform: string | null, since: Date) {
+    return db.publishJob.findMany({
+      where: {
+        workspaceId,
+        status: 'success',
+        createdAt: { gte: since },
+        ...(platform ? { platform: { type: platform } } : {}),
+      },
+      select: { createdAt: true },
+    })
+  }
+
   async findRecentSnapshots(workspaceId: string, since: string) {
     return db.analyticsSnapshot.findMany({
       where: { workspaceId, date: { gte: since } },

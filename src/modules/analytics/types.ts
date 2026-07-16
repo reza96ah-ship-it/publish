@@ -9,6 +9,7 @@ export interface SnapshotSeriesResult {
   engagement: number[]
   followers: number[]
   clicks: number[]
+  publications: number[]
 }
 
 export interface RealStat {

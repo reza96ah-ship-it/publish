@@ -1,69 +1,99 @@
 'use client'
 
 /**
- * DashboardView — the default landing view at /
- * Shows: Operational Summary, Publishing Pulse, Action Center, Executive Metrics, Campaigns, Platforms
+ * DashboardView — the default landing view at /  (plan §2).
+ *
+ * Structure: header + global filters → status strip → four KPIs →
+ * performance chart (8 col) + action panel (4 col) → publishing table →
+ * campaign health + account health. No fixed panel heights, no inner
+ * scroll. Below-fold panels are lazy-loaded (plan §14).
+ *
+ * Mobile order (plan §5): header/filters → KPIs → actions → chart →
+ * queue cards → campaigns → accounts.
  */
 
+import { Suspense } from 'react'
+import dynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
-import { pageTransition, pageTransitionProps } from '@/lib/motion'
+import { listContainer, listItem } from '@/lib/motion'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { OperationalSummary } from '@/components/dashboard/operational-summary'
 import { ExecutiveMetrics } from '@/components/dashboard/executive-metrics'
-import { PublishingPulse } from '@/components/dashboard/publishing-pulse'
-import { CampaignsPanel } from '@/components/dashboard/campaigns-panel'
-import { PlatformsPanel } from '@/components/dashboard/platforms-panel'
+import { PerformanceChart } from '@/components/dashboard/performance-chart'
 import { ActionCenter } from '@/components/dashboard/action-center'
+import { SkeletonCard } from '@/components/dashboard/shared'
+
+// Below-fold panels: deferred chunks with layout-matched skeletons (plan §14).
+const PublishingTable = dynamic(
+  () => import('@/components/dashboard/publishing-table').then((m) => m.PublishingTable),
+  { loading: () => <SkeletonCard /> }
+)
+const CampaignsPanel = dynamic(
+  () => import('@/components/dashboard/campaigns-panel').then((m) => m.CampaignsPanel),
+  { loading: () => <SkeletonCard /> }
+)
+const PlatformsPanel = dynamic(
+  () => import('@/components/dashboard/platforms-panel').then((m) => m.PlatformsPanel),
+  { loading: () => <SkeletonCard /> }
+)
 
 export function DashboardView() {
   return (
     <motion.div
-      initial={pageTransition.initial}
-      animate={pageTransition.animate}
-      transition={pageTransitionProps}
+      variants={listContainer}
+      initial="hidden"
+      animate="visible"
       className="flex flex-col gap-4 md:gap-5 w-full"
     >
-      {/* Live operations summary */}
-      <div className="order-1 lg:order-none">
-        <OperationalSummary />
-      </div>
+      {/* useSearchParams (filters) requires a Suspense boundary at prerender */}
+      <Suspense fallback={<SkeletonCard />}>
+        {/* A — header: context, global filters, primary CTA */}
+        <motion.div variants={listItem}>
+          <DashboardHeader />
+        </motion.div>
 
-      {/* Action Center - mobile only (hidden at md+, where it's in the grid) */}
-      <div className="order-2 md:hidden h-[300px] sm:h-[360px]">
-        <ActionCenter />
-      </div>
+        {/* Status strip — وضعیت امروز */}
+        <motion.div variants={listItem} className="hidden md:block">
+          <OperationalSummary />
+        </motion.div>
 
-      {/* Publishing Pulse + Action Center — 2-col at md, 8/4 at lg */}
-      <div className="order-3 lg:order-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5">
-        <div className="lg:col-span-8">
-          <div className="h-[320px] sm:h-[420px] md:h-[460px] lg:h-[500px]">
-            <PublishingPulse />
-          </div>
-        </div>
-        <div className="hidden md:block lg:col-span-4">
-          <div className="h-[460px] lg:h-[500px]">
+        {/* B — four strategic KPIs (2-col on mobile) */}
+        <motion.div variants={listItem}>
+          <ExecutiveMetrics />
+        </motion.div>
+
+        {/* C — action panel first on mobile, chart 8/4 split at lg */}
+        <motion.div
+          variants={listItem}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-5"
+        >
+          <div className="order-1 lg:order-2 lg:col-span-4">
             <ActionCenter />
           </div>
-        </div>
-      </div>
-
-      {/* Executive metrics */}
-      <div className="order-4 lg:order-none">
-        <ExecutiveMetrics />
-      </div>
-
-      {/* Campaigns and Platforms */}
-      <div className="order-5 lg:order-none grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 md:gap-5">
-        <div className="lg:col-span-8">
-          <div className="h-[320px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
-            <CampaignsPanel />
+          <div className="order-2 lg:order-1 lg:col-span-8">
+            <PerformanceChart />
           </div>
-        </div>
-        <div className="lg:col-span-4">
-          <div className="h-[320px] sm:h-[400px] md:h-[440px] lg:h-[460px]">
-            <PlatformsPanel />
-          </div>
-        </div>
-      </div>
+        </motion.div>
+
+        {/* Status strip on mobile — after the fold-critical sections */}
+        <motion.div variants={listItem} className="md:hidden">
+          <OperationalSummary />
+        </motion.div>
+
+        {/* D — publishing queue, full width */}
+        <motion.div variants={listItem}>
+          <PublishingTable />
+        </motion.div>
+
+        {/* E — campaign health + account connections */}
+        <motion.div
+          variants={listItem}
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5"
+        >
+          <CampaignsPanel />
+          <PlatformsPanel />
+        </motion.div>
+      </Suspense>
     </motion.div>
   )
 }

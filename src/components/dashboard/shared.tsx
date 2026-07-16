@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { type LucideIcon, AlertCircle, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useShouldAnimate, ease, duration } from '@/lib/motion'
@@ -513,21 +514,23 @@ export function MiniChart({
         }}
         aria-hidden
       />
-      {/* FIX 4: Pulse ring — wrapped in a centering container div that holds translate(-50%, -50%),
-          letting the inner motion.div freely animate scale from its own center */}
-      <div
-        className="absolute size-2"
-        style={{ left: xFor(lastIdx), top: lastY, transform: 'translate(-50%, -50%)' }}
-        aria-hidden
-      >
-        <motion.div
-          className="size-2 rounded-full"
-          style={{ borderColor: color, borderWidth: 1.5, borderStyle: 'solid' }}
-          initial={{ scale: 1, opacity: 0.5 }}
-          animate={{ scale: 3.5, opacity: 0 }}
-          transition={{ duration: duration.deliberate, repeat: shouldAnimate ? Infinity : 0, ease: ease.enter }}
-        />
-      </div>
+      {/* Pulse ring — single announce on mount only (plan §12 prohibits permanent
+          KPI pulse). Skipped entirely under prefers-reduced-motion. */}
+      {shouldAnimate && (
+        <div
+          className="absolute size-2"
+          style={{ left: xFor(lastIdx), top: lastY, transform: 'translate(-50%, -50%)' }}
+          aria-hidden
+        >
+          <motion.div
+            className="size-2 rounded-full"
+            style={{ borderColor: color, borderWidth: 1.5, borderStyle: 'solid' }}
+            initial={{ scale: 1, opacity: 0.5 }}
+            animate={{ scale: 3.5, opacity: 0 }}
+            transition={{ duration: duration.deliberate, repeat: 0, ease: ease.enter }}
+          />
+        </div>
+      )}
 
       {/* Hover layer — guide line + dot + tooltip */}
       {hoverIdx != null && hovered != null && (
@@ -594,6 +597,8 @@ export function KpiCard({
   loading = false,
   timeLabel = '۷ روز پیش',
   className = '',
+  href,
+  onNavigate,
 }: {
   label: string
   value: number
@@ -609,8 +614,19 @@ export function KpiCard({
   loading?: boolean
   timeLabel?: string
   className?: string
+  /** Analytics route this KPI drills into — click / Enter navigates (plan §2B). */
+  href?: string
+  /** Called just before navigation — use for telemetry (plan §18). */
+  onNavigate?: () => void
 }) {
+  const router = useRouter()
   const fmt = formatValue ?? ((v: number) => toPersianDigits(formatCompact(v)))
+  const navigate = href
+    ? () => {
+        onNavigate?.()
+        router.push(href)
+      }
+    : undefined
   const sparkFmt = formatSparkValue ?? fmt
   const delta =
     previousValue != null && previousValue > 0
@@ -619,9 +635,25 @@ export function KpiCard({
 
   return (
     <div
-      className={cn('n-card-interactive min-h-[210px] p-4 n-focus-ring', className)}
+      className={cn(
+        'n-card-interactive min-h-[210px] p-4 n-focus-ring',
+        navigate && 'cursor-pointer',
+        className
+      )}
       data-visual-mask="metric-card"
-      tabIndex={0}
+      tabIndex={navigate ? 0 : undefined}
+      role={navigate ? 'link' : undefined}
+      onClick={navigate}
+      onKeyDown={
+        navigate
+          ? (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                navigate()
+              }
+            }
+          : undefined
+      }
       aria-label={`${label}: ${fmt(value)}${trend != null ? `، ${trend >= 0 ? 'افزایش' : 'کاهش'} ${toPersianDigits(Math.abs(trend).toFixed(1))} درصد` : ''}`}
     >
       {/* Header: icon + label (right in RTL) · trend chip (left) */}

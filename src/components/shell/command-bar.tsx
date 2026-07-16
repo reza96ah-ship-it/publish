@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Search, Plus, Sparkles, Keyboard } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 import { useAppStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -20,7 +20,6 @@ export function CommandBar() {
   const router = useRouter()
   const navigateTo = (path: string) => router.push(path)
   const setCommandPaletteOpen = useAppStore((s) => s.setCommandPaletteOpen)
-  const setShortcutsOpen = useAppStore((s) => s.setShortcutsOpen)
   useQuery<Summary>({
     queryKey: ['dashboard-summary'],
     queryFn: () => api.get<Summary>('/api/dashboard/summary'),
@@ -41,20 +40,10 @@ export function CommandBar() {
         </kbd>
       </button>
 
-      {/* Keyboard shortcuts hint — opens shortcuts modal */}
-      <button
-        onClick={() => setShortcutsOpen(true)}
-        className="n-glass-control n-focus-ring hidden h-10 items-center justify-center gap-2 px-3 text-ink-tertiary transition-colors hover:text-ink-secondary md:flex"
-        aria-label="میانبرهای صفحه‌کلید"
-        title="میانبرهای صفحه‌کلید (؟)"
-      >
-        <Keyboard className="size-[15px]" strokeWidth={2} />
-        <kbd className="rounded border border-border bg-surface-hover px-1.5 py-0.5 text-2xs font-semibold text-ink-tertiary">
-          ؟
-        </kbd>
-      </button>
-
-      {/* Quick create — solid accent (primary action) */}
+      {/* Quick create — solid accent (primary action).
+          Plan §4: shortcuts hint and AI assistant were removed from the bar —
+          shortcuts stay reachable via the «؟» key and the command palette;
+          the AI assistant appears contextually inside compose. */}
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -65,15 +54,6 @@ export function CommandBar() {
         <Plus className="size-4" strokeWidth={2.5} />
         <span className="hidden sm:block">انتشار جدید</span>
       </motion.button>
-
-      {/* AI assistant — glass control */}
-      <button
-        onClick={() => navigateTo('/compose')}
-        className="n-glass-control n-focus-ring hidden h-10 items-center gap-2 rounded-lg px-3.5 text-sm font-semibold text-ink-secondary transition-colors hover:text-ink-primary md:flex"
-      >
-        <Sparkles className="size-4 text-accent" strokeWidth={2} />
-        <span>دستیار هوش مصنوعی</span>
-      </button>
 
       {/* Notifications — popover */}
       <NotificationPopover />

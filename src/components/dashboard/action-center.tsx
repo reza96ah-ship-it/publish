@@ -1,12 +1,23 @@
 'use client'
 
+/**
+ * موارد نیازمند اقدام — the dashboard's action panel (plan §2C).
+ *
+ * Rules: max 5 visible items, most critical first, content-driven height
+ * (no inner scroll), «مشاهده همه موارد» only when more exist. Every row
+ * answers: what happened / why it matters / when / what to do now.
+ */
+
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { api } from '@/lib/api'
 import { relativeTime } from '@/lib/jalali'
+import { toPersianDigits } from '@/lib/jalali'
+import { listContainer, listItem } from '@/lib/motion'
 import * as Lucide from 'lucide-react'
 import { AlertTriangle, ArrowLeft } from 'lucide-react'
-import { PanelHeader, EmptyState } from './shared'
+import { PanelHeader, EmptyState, ErrorState, LinkAction } from './shared'
 
 interface ActionItem {
   id: string
@@ -33,38 +44,69 @@ interface ActionCenterData {
   secondary: ActionItem[]
 }
 
+/** Group labels per plan §2C — the five action groups. */
+const GROUP_LABELS: Record<string, string> = {
+  publish_failed: 'انتشار ناموفق',
+  approval_requested: 'در انتظار بازبینی',
+  token_expiring: 'اتصال نیازمند بررسی',
+  channel_disconnected: 'اتصال نیازمند بررسی',
+  inbox_new: 'پیام بدون پاسخ',
+  campaign_at_risk: 'کمپین در معرض تأخیر',
+}
+
+/** Criticality order — lower sorts first (plan: موارد بحرانی در ابتدا). */
+const SEVERITY: Record<string, number> = {
+  publish_failed: 0,
+  channel_disconnected: 1,
+  token_expiring: 2,
+  campaign_at_risk: 3,
+  approval_requested: 4,
+  inbox_new: 5,
+}
+
+const MAX_VISIBLE = 5
+
 export function ActionCenter() {
   const router = useRouter()
-  const { data } = useQuery<ActionCenterData>({
+  const { data, isError, refetch } = useQuery<ActionCenterData>({
     queryKey: ['dashboard-action-center'],
     queryFn: () => api.get<ActionCenterData>('/api/dashboard/action-center'),
-    refetchInterval: 30000,
+    refetchInterval: 60000,
+    refetchIntervalInBackground: false,
   })
 
-  // Primary CTA navigates to the route the service layer attached, with a
-  // sensible fallback to /compose so the button is never a no-op.
-  const handlePrimaryClick = () => {
-    router.push(data?.primary?.href ?? '/compose')
+  if (isError) {
+    return (
+      <ErrorState label="دریافت موارد نیازمند اقدام با مشکل روبه‌رو شد" onRetry={() => refetch()} />
+    )
   }
 
-  // Secondary items: navigate when we have an href; otherwise the row is a
-  // plain status display (focusable + role=button for a11y, but no nav).
-  const handleSecondaryClick = (item: ActionItem) => {
-    if (item.href) router.push(item.href)
-  }
-  const handleSecondaryKey = (e: React.KeyboardEvent, item: ActionItem) => {
-    if ((e.key === 'Enter' || e.key === ' ') && item.href) {
-      e.preventDefault()
-      router.push(item.href)
-    }
-  }
+  // Sort by criticality; primary always leads. Cap at MAX_VISIBLE total rows.
+  const sorted = [...(data?.secondary ?? [])].sort(
+    (a, b) => (SEVERITY[a.type] ?? 9) - (SEVERITY[b.type] ?? 9)
+  )
+  const secondaryBudget = data?.primary ? MAX_VISIBLE - 1 : MAX_VISIBLE
+  const visible = sorted.slice(0, secondaryBudget)
+  const hiddenCount = sorted.length - visible.length
+  const isEmpty = !data?.primary && sorted.length === 0
 
   return (
-    <div className="n-card p-5 h-full flex flex-col">
-      <PanelHeader icon={AlertTriangle} title="مرکز اقدام" subtitle="موارد نیازمند توجه" />
+    <div className="n-card p-5 flex flex-col">
+      <PanelHeader
+        icon={AlertTriangle}
+        title="موارد نیازمند اقدام"
+        subtitle="مرتب‌شده بر اساس اهمیت"
+        action={
+          hiddenCount > 0 ? (
+            <LinkAction onClick={() => router.push('/inbox')}>
+              مشاهده همه موارد ({toPersianDigits(sorted.length + (data?.primary ? 1 : 0))})
+            </LinkAction>
+          ) : undefined
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto thin-scrollbar -mx-1 px-1 space-y-2">
-        {/* Primary critical task */}
+      <div className="space-y-2">
+        {/* Primary critical item — what / why / when / action */}
         {data?.primary && (
           <div className="relative overflow-hidden rounded-lg border border-danger/20 bg-danger-soft p-3">
             <div className="absolute top-0 start-0 h-full w-[3px] bg-danger" />
@@ -73,6 +115,9 @@ export function ActionCenter() {
                 <AlertTriangle className="size-3.5" strokeWidth={2} />
               </span>
               <div className="flex-1 min-w-0">
+                <span className="text-2xs font-bold text-danger">
+                  {GROUP_LABELS[data.primary.type] ?? 'انتشار ناموفق'}
+                </span>
                 <p className="text-sm font-semibold text-ink-primary leading-snug">
                   {data.primary.title}
                 </p>
@@ -89,7 +134,7 @@ export function ActionCenter() {
               </span>
               <button
                 type="button"
-                onClick={handlePrimaryClick}
+                onClick={() => router.push(data.primary?.href ?? '/compose')}
                 className="n-focus-ring inline-flex min-h-[44px] items-center gap-1 text-xs font-semibold text-white bg-danger hover:bg-danger/90 rounded-md px-2.5 transition-colors"
               >
                 {data.primary.action}
@@ -99,42 +144,70 @@ export function ActionCenter() {
           </div>
         )}
 
-        {/* Secondary tasks */}
-        {data?.secondary.map((item) => {
-          const Icon =
-            (Lucide as unknown as Record<string, Lucide.LucideIcon>)[item.iconName] ?? Lucide.Bell
-          const interactive = !!item.href
-          return (
-            <div
-              key={item.id}
-              role={interactive ? 'button' : undefined}
-              tabIndex={interactive ? 0 : undefined}
-              onClick={() => handleSecondaryClick(item)}
-              onKeyDown={(e) => handleSecondaryKey(e, item)}
-              className={`n-card-compact flex items-center gap-2.5 p-2.5 ${
-                interactive ? 'cursor-pointer hover:bg-surface-hover transition-colors' : ''
-              }`}
-            >
-              <span
-                className={`flex size-7 items-center justify-center rounded-md ${item.bg} ${item.color} shrink-0`}
-              >
-                <Icon className="size-3.5" strokeWidth={2} />
-              </span>
-              <p className="flex-1 text-xs font-medium text-ink-primary leading-snug">
-                {item.title}
-              </p>
-              <span className="text-2xs text-ink-tertiary shrink-0">
-                {relativeTime(new Date(item.time))}
-              </span>
-            </div>
-          )
-        })}
+        {/* Remaining items — flat divided list (no nested cards), staggered
+            entrance (plan §12: ورود ردیف جدید مجاز است). */}
+        {visible.length > 0 && (
+          <motion.div
+            variants={listContainer}
+            initial="hidden"
+            animate="visible"
+            className="divide-y divide-border"
+          >
+            {visible.map((item) => {
+              const Icon =
+                (Lucide as unknown as Record<string, Lucide.LucideIcon>)[item.iconName] ??
+                Lucide.Bell
+              const interactive = !!item.href
+              const group = GROUP_LABELS[item.type]
+              const row = (
+                <>
+                  <span
+                    className={`flex size-7 items-center justify-center rounded-md ${item.bg} ${item.color} shrink-0`}
+                  >
+                    <Icon className="size-3.5" strokeWidth={2} />
+                  </span>
+                  <div className="flex-1 min-w-0 text-start">
+                    {group && <span className={`text-2xs font-bold ${item.color}`}>{group}</span>}
+                    <p className="text-xs font-medium text-ink-primary leading-snug">
+                      {item.title}
+                    </p>
+                  </div>
+                  <span className="text-2xs text-ink-tertiary shrink-0">
+                    {relativeTime(new Date(item.time))}
+                  </span>
+                </>
+              )
+              // Actionable rows are real buttons; informational rows are plain
+              // divs (plan: non-actionable data must not get role="button").
+              return interactive ? (
+                <motion.button
+                  key={item.id}
+                  variants={listItem}
+                  type="button"
+                  onClick={() => item.href && router.push(item.href)}
+                  className="n-focus-ring flex w-full min-h-[44px] items-center gap-2.5 px-1.5 py-2 cursor-pointer rounded-md hover:bg-surface-hover transition-colors"
+                >
+                  {row}
+                </motion.button>
+              ) : (
+                <motion.div
+                  key={item.id}
+                  variants={listItem}
+                  className="flex min-h-[44px] items-center gap-2.5 px-1.5 py-2"
+                >
+                  {row}
+                </motion.div>
+              )
+            })}
+          </motion.div>
+        )}
 
-        {(!data || (!data.primary && data.secondary.length === 0)) && (
+        {isEmpty && (
           <EmptyState
             icon={Lucide.CheckCircle2}
-            title="هیچ اقدام فوری وجود ندارد"
-            message="همه چیز روند طبیعی خود را طی می‌کند."
+            title="موردی نیازمند اقدام نیست"
+            message="همه انتشارها و اتصال‌ها در وضعیت عادی قرار دارند."
+            size="compact"
           />
         )}
       </div>

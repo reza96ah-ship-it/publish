@@ -11,7 +11,9 @@ function createClient() {
     throw new Error('DATABASE_URL is required. For migrations use DIRECT_DATABASE_URL.')
   }
   const adapter = new PrismaPg({ connectionString: url })
-  const logQuery = process.env.NODE_ENV !== 'production' || process.env.LOG_QUERIES === '1'
+  // Query logging is opt-in (LOG_QUERIES=1) — with dashboard polling it
+  // floods the dev console and noticeably slows the dev server.
+  const logQuery = process.env.LOG_QUERIES === '1'
   return new PrismaClient({
     adapter,
     log: logQuery ? ['query', 'warn', 'error'] : ['warn', 'error'],
