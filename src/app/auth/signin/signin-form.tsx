@@ -39,7 +39,7 @@ function DashboardMockup() {
   const cardHover = {
     scale: 1.03,
     y: -6,
-    transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] },
+    transition: { duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] },
   }
 
   return (
