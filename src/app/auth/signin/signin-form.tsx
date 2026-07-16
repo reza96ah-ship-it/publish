@@ -302,7 +302,7 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute start-3 top-1/2 -translate-y-1/2 text-ink-tertiary hover:text-ink-secondary transition-colors p-1 rounded"
+                  className="absolute inset-y-0 start-0 min-w-[44px] flex items-center justify-center text-ink-tertiary hover:text-ink-secondary transition-colors"
                   aria-label={showPassword ? 'پنهان کردن رمز عبور' : 'نمایش رمز عبور'}
                 >
                   {showPassword
@@ -316,7 +316,7 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
             <div className="flex items-center justify-between">
               <a
                 href="#"
-                className="text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
+                className="min-h-[44px] inline-flex items-center text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
               >
                 رمز عبور را فراموش کرده‌اید؟
               </a>
@@ -353,7 +353,7 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
             <button
               type="button"
               onClick={fillDemo}
-              className="w-full h-10 rounded-lg border border-border/70 bg-transparent hover:bg-surface text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
+              className="w-full h-11 rounded-lg border border-border/70 bg-transparent hover:bg-surface text-xs text-ink-tertiary hover:text-ink-secondary transition-colors"
             >
               ورود با حساب آزمایشی
             </button>
@@ -366,11 +366,11 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
               اتصال امن و رمزگذاری‌شده
             </p>
             <div className="flex items-center gap-3 text-xs text-ink-tertiary">
-              <a href="#" className="hover:text-ink-secondary transition-colors">حریم خصوصی</a>
+              <a href="#" className="min-h-[44px] inline-flex items-center hover:text-ink-secondary transition-colors">حریم خصوصی</a>
               <span>·</span>
-              <a href="#" className="hover:text-ink-secondary transition-colors">شرایط استفاده</a>
+              <a href="#" className="min-h-[44px] inline-flex items-center hover:text-ink-secondary transition-colors">شرایط استفاده</a>
               <span>·</span>
-              <a href="#" className="hover:text-ink-secondary transition-colors">پشتیبانی</a>
+              <a href="#" className="min-h-[44px] inline-flex items-center hover:text-ink-secondary transition-colors">پشتیبانی</a>
             </div>
           </div>
         </motion.div>
