@@ -1,6 +1,6 @@
 /**
  * Channels domain module — service layer.
- * Business logic for platform (channel) lifecycle: list, connect, validate.
+ * Business logic for platform (channel) lifecycle: list, connect, validate, disconnect.
  * No HTTP. No direct Prisma.
  */
 
@@ -15,6 +15,7 @@ import {
   type CredentialHealth,
   type ProviderCredential,
 } from '@/lib/provider-auth/types'
+import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
 import { ChannelsRepository } from './repository'
 import {
   PlatformNotFoundError,
@@ -25,6 +26,7 @@ import type {
   AuthContext,
   ConnectInput,
   ConnectResult,
+  DisconnectResult,
   PlatformListResult,
   ValidateResult,
   ChannelHealthItem,
@@ -241,6 +243,69 @@ export class ChannelsService {
       valid,
       botInfo: rawBot ? { username: rawBot.username, firstName: rawBot.first_name } : null,
     }
+  }
+
+  /**
+   * DELETE /api/platforms/[id] — disconnect a platform (TC-CONN-10).
+   *
+   * 1. Verifies ownership (workspace isolation)
+   * 2. For Instagram: unsubscribes the account from app webhooks (best-effort)
+   * 3. Nullifies token, targetId, scopes so they cannot be replayed
+   * 4. Sets status to 'disconnected'
+   * 5. Writes audit log
+   *
+   * Drafts, scheduled content, and historical publication records are
+   * intentionally preserved — they belong to the workspace, not the credential.
+   */
+  async disconnectPlatform(
+    auth: AuthContext,
+    platformId: string,
+  ): Promise<DisconnectResult> {
+    const { workspaceId, userId } = auth
+    const platform = await this.repo.findInWorkspace(platformId, workspaceId)
+    if (!platform) throw new PlatformNotFoundError()
+
+    let webhookUnsubscribed = false
+
+    // Unsubscribe Instagram webhooks before nullifying the token
+    if (platform.type === 'instagram' && platform.tokenSecret && platform.targetId) {
+      try {
+        const token = decrypt(platform.tokenSecret)
+        const igUserId = platform.targetId
+        const res = await fetch(
+          `${getInstagramGraphApiBaseUrl()}/${igUserId}/subscribed_apps?access_token=${token}`,
+          { method: 'DELETE', signal: AbortSignal.timeout(10_000) }
+        )
+        const data = (await res.json().catch(() => null)) as { success?: boolean } | null
+        webhookUnsubscribed = data?.success === true
+      } catch {
+        // non-fatal — the token may already be expired or revoked
+      }
+    }
+
+    await this.repo.update(platformId, {
+      status: 'disconnected',
+      tokenSecret: null,
+      targetId: null,
+      tokenScopes: null,
+      tokenExpiresAt: null,
+      lastError: null,
+      lastValidatedAt: null,
+    })
+
+    try {
+      await db.auditLog.create({
+        data: {
+          userId,
+          workspaceId,
+          action: 'platform.disconnected',
+          resource: 'Platform',
+          metadata: { platformId, platformType: platform.type, webhookUnsubscribed },
+        },
+      })
+    } catch { /* audit write failure is non-fatal */ }
+
+    return { ok: true, webhookUnsubscribed }
   }
 
   /**

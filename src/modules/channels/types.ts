@@ -61,6 +61,11 @@ export interface ValidateResult {
   botInfo: { username?: string; firstName?: string } | null
 }
 
+export interface DisconnectResult {
+  ok: true
+  webhookUnsubscribed: boolean
+}
+
 // Issue #200: per-channel health diagnostics (GET /api/channels/health)
 export interface ChannelHealthItem {
   id: string
