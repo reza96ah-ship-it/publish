@@ -714,11 +714,13 @@ export function KpiCard({
         )}
       </div>
 
-      {/* Time anchors (RTL: today left → oldest right, matches reversed sparkline) */}
+      {/* Time anchors (RTL: today left → oldest right, matches reversed sparkline).
+          aria-hidden: card's aria-label already covers the metric; these are decorative.
+          No opacity modifier: text-ink-tertiary/60 fails WCAG AA at text-2xs in dark mode. */}
       {!loading && spark.length >= 2 && (
         <div
-          className="flex items-center justify-between mt-1.5 text-2xs text-ink-tertiary/60 num-tabular"
-          aria-hidden
+          className="flex items-center justify-between mt-1.5 text-2xs text-ink-tertiary num-tabular"
+          aria-hidden="true"
         >
           <span>{timeLabel}</span>
           <span>امروز</span>
