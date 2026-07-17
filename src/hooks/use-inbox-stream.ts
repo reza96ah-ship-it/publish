@@ -77,6 +77,9 @@ export function useInboxStream(
   useEffect(() => {
     if (!workspaceId) return
     if (status === 'loading') return
+    // Don't connect while authenticated but token not yet fetched — the server
+    // rejects null-token connections in production, causing an infinite reconnect loop.
+    if (status === 'authenticated' && realtimeToken === null) return
 
     const s = getSocket(realtimeToken)
 

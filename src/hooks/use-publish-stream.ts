@@ -80,8 +80,10 @@ export function usePublishStream(workspaceId: string | null | undefined): void {
 
   useEffect(() => {
     if (!workspaceId) return
-    // Wait until we have a token (or confirmed unauthenticated for dev bypass)
     if (status === 'loading') return
+    // Don't connect while authenticated but token not yet fetched — the server
+    // rejects null-token connections in production, causing an infinite reconnect loop.
+    if (status === 'authenticated' && realtimeToken === null) return
 
     const s = getSocket(realtimeToken)
 
