@@ -283,25 +283,32 @@ jobs:
         run: |
           sleep 30
           DOMAIN="${{ secrets.PRODUCTION_DOMAIN }}"
+          # Accept full base-URL in PRODUCTION_DOMAIN (e.g. http://1.2.3.4 or https://example.com).
+          # Fall back to https:// when no protocol is included.
+          if [[ "$DOMAIN" == http://* ]] || [[ "$DOMAIN" == https://* ]]; then
+            BASE_URL="${DOMAIN%/}"
+          else
+            BASE_URL="https://${DOMAIN}"
+          fi
 
-          echo "=== Health check ==="
-          curl -sf "https://$DOMAIN/api/health" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)" || { echo "::error::Health check failed"; exit 1; }
+          echo "=== Health check (${BASE_URL}) ==="
+          curl -sf "${BASE_URL}/api/health" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)" || { echo "::error::Health check failed"; exit 1; }
 
           echo "=== Readiness check ==="
-          READY=$(curl -sf "https://$DOMAIN/api/readyz" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ok', False))" 2>/dev/null || echo "false")
+          READY=$(curl -sf "${BASE_URL}/api/readyz" | python3 -c "import json,sys; print(json.load(sys.stdin).get('ok', False))" 2>/dev/null || echo "false")
           if [ "$READY" != "True" ] && [ "$READY" != "true" ]; then
             echo "::warning::Readiness check not yet ready (may still be starting up)"
           fi
 
           echo "=== Auth endpoint check ==="
-          AUTH_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://$DOMAIN/auth/signin")
+          AUTH_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${BASE_URL}/auth/signin")
           if [ "$AUTH_STATUS" != "200" ]; then
             echo "::error::Auth page not responding (status $AUTH_STATUS)"
             exit 1
           fi
 
           echo "=== Realtime check ==="
-          RT_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "https://$DOMAIN/?XTransformPort=3003/health" 2>/dev/null || echo "000")
+          RT_STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "${BASE_URL}/?XTransformPort=3003/health" 2>/dev/null || echo "000")
           # Realtime may be internal-only; not a hard failure
           echo "Realtime status: $RT_STATUS"
 
