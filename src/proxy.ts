@@ -89,7 +89,9 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
-    pathname === '/logo.svg'
+    pathname === '/logo.svg' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js'
 
   if (!isPublicPath) {
     // Explicit opt-in bypass via DISABLE_AUTH=1 (dev/preview only)
@@ -154,6 +156,6 @@ export const config = {
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
   ],
 }
