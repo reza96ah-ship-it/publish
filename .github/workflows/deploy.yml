@@ -276,6 +276,9 @@ jobs:
             docker compose -f compose.production.yaml up -d app worker realtime
             sleep 10
             docker compose -f compose.production.yaml ps
+            # Remove images not used by any running container to keep disk usage low.
+            # Runs after containers are up so the new images are "active" and won't be removed.
+            docker image prune -af
 
       # Issue #141: smoke tests after deploy — verify all critical services
       - name: Post-deploy smoke tests
