@@ -26,6 +26,7 @@ import { REQUIRED_SCOPES } from './types'
 import {
   getInstagramGraphApiBaseUrl,
   INSTAGRAM_AUTH_API_ORIGIN,
+  INSTAGRAM_GRAPH_API_ORIGIN,
 } from '../../../shared/instagram-graph'
 
 // ── Instagram API with Instagram Login (2024+ path) ───────────
@@ -97,16 +98,15 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     }
 
     // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token.
-    // Instagram changed this endpoint to require POST (was GET in older API versions).
-    const longLivedRes = await fetch(`${IG_GRAPH_API}/access_token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
+    // This endpoint is NOT versioned — it lives at graph.instagram.com/access_token,
+    // not graph.instagram.com/v25.0/access_token (which returns "Unsupported request").
+    const longLivedRes = await fetch(
+      `${INSTAGRAM_GRAPH_API_ORIGIN}/access_token?${new URLSearchParams({
         grant_type: 'ig_exchange_token',
         client_secret: IG_CLIENT_SECRET,
         access_token: tokenData.access_token,
-      }),
-    })
+      })}`
+    )
     const longLived = await longLivedRes.json()
 
     if (longLived.error || longLived.error_type) {
