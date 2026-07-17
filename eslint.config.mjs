@@ -91,6 +91,7 @@ const eslintConfig = [
     ignores: [
       'node_modules/**',
       '.next/**',
+      '.claude/**', // Claude Code session artifacts (worktrees, caches)
       'out/**',
       'build/**',
       'tmp-visual-report/**',
@@ -99,6 +100,7 @@ const eslintConfig = [
       'skills/**',
       'k6/**', // k6 load test scripts — separate runtime with its own globals
       'mini-services/**', // separate bun projects with their own lint configs
+      'login ui/**', // experimental UI sandbox — not part of the main app
     ],
   },
 ]
