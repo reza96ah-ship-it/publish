@@ -79,6 +79,11 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/smart-pages/public/') ||
     pathname.startsWith('/api/smart-pages/track') ||
     pathname.startsWith('/api/inbox/instagram/webhook') ||
+    // OAuth callback: Instagram/LinkedIn redirect here with code — the browser
+    // session cookie is present but the old middleware (without cookieName fix)
+    // can't find it on HTTPS, causing a redirect loop. The route handler itself
+    // calls requirePermissionApi, so auth is still enforced after this gate.
+    pathname.startsWith('/api/platforms/oauth/callback') ||
     // Issue #254: Client portal access via token — public, no session.
     pathname.startsWith('/api/agency/portal/') ||
     // Issue #255: Public API v1 uses Bearer-token auth, not session cookies.
@@ -167,6 +172,6 @@ export const config = {
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/inbox/instagram/webhook|api/agency/portal|api/v1|auth|p|privacy|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/inbox/instagram/webhook|api/platforms/oauth/callback|api/agency/portal|api/v1|auth|p|privacy|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
   ],
 }

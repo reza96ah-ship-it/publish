@@ -96,15 +96,17 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
       throw new Error(`Instagram token exchange failed: ${msg}`)
     }
 
-    // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token
-    // New path uses ig_exchange_token (not fb_exchange_token); no client_id needed.
-    const longLivedRes = await fetch(
-      `${IG_GRAPH_API}/access_token?${new URLSearchParams({
+    // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token.
+    // Instagram changed this endpoint to require POST (was GET in older API versions).
+    const longLivedRes = await fetch(`${IG_GRAPH_API}/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
         grant_type: 'ig_exchange_token',
         client_secret: IG_CLIENT_SECRET,
         access_token: tokenData.access_token,
-      })}`
-    )
+      }),
+    })
     const longLived = await longLivedRes.json()
 
     if (longLived.error || longLived.error_type) {
