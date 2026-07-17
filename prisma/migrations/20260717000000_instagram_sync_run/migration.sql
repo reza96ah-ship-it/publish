@@ -21,8 +21,8 @@ CREATE TABLE "InstagramSyncRun" (
     "lastProviderCursor" TEXT,
     "importedMediaCount" INTEGER NOT NULL DEFAULT 0,
     "importedConversationCount" INTEGER NOT NULL DEFAULT 0,
-    "warnings" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
-    "errors" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    "warnings" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "errors" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

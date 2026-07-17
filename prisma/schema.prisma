@@ -1568,9 +1568,9 @@ model InstagramSyncRun {
   importedConversationCount Int       @default(0)
 
   // Non-fatal warnings (e.g. "insights unavailable: account < 100 followers")
-  warnings                  String[]
+  warnings                  String[]  @default([])
   // Fatal step errors — each entry is one failed step
-  errors                    String[]
+  errors                    String[]  @default([])
 
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
