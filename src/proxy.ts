@@ -96,7 +96,16 @@ export async function proxy(req: NextRequest) {
   if (!isPublicPath) {
     // Explicit opt-in bypass via DISABLE_AUTH=1 (dev/preview only)
     if (process.env.DISABLE_AUTH !== '1') {
-      const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+      const token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+        // Our auth config uses a non-prefixed cookie name even on HTTPS.
+        // Without this, getToken() defaults to __Secure-next-auth.session-token
+        // on HTTPS (based on NEXTAUTH_URL), causing a redirect loop: the middleware
+        // can't find the token → redirects to signin, but the signin page (which
+        // reads authOptions.cookies) finds the session → redirects back to /.
+        cookieName: 'next-auth.session-token',
+      })
       if (!token) {
         // API routes get a 401, not a redirect: redirecting fetch/beacon
         // calls (e.g. /api/vitals) to the signin page is useless to the

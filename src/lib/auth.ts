@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
   // ASVS L2 V3.4.1: Explicit cookie configuration.
   // SameSite=Lax (ASVS L2 accepts Lax; only L3 requires Strict).
   // No __Secure- prefix — it requires HTTPS, but CI/staging run on HTTP.
-  // The secure flag is only set when behind TLS (production with HTTPS).
+  // The cookie name must match what getToken() is told in src/proxy.ts.
   cookies: {
     sessionToken: {
       name: 'next-auth.session-token',
@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
       },
     },
     callbackUrl: {
@@ -43,7 +43,7 @@ export const authOptions: NextAuthOptions = {
       options: {
         sameSite: 'lax',
         path: '/',
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
       },
     },
     csrfToken: {
@@ -52,7 +52,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
       },
     },
   },
