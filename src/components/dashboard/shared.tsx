@@ -718,6 +718,7 @@ export function KpiCard({
       {!loading && spark.length >= 2 && (
         <div
           className="flex items-center justify-between mt-1.5 text-2xs text-ink-tertiary/60 num-tabular"
+          aria-hidden
         >
           <span>{timeLabel}</span>
           <span>امروز</span>
