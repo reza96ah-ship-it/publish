@@ -212,6 +212,9 @@ jobs:
         uses: github/codeql-action/analyze@v4
 
       # 5. Container scan — trivy on the built Docker image
+      # BuildKit (setup-buildx) + GHA cache avoids a bare docker build that
+      # triggers a known intermittent Prisma Rust engine panic in the builder stage.
+      - uses: docker/setup-buildx-action@v4
       - name: Build image for scan
         uses: docker/build-push-action@v7
         with:
@@ -220,6 +223,7 @@ jobs:
           push: false
           tags: nashrino:scan
           load: true
+          cache-from: type=gha
       - name: Container scan (trivy — HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@v0.24.0
         with:
