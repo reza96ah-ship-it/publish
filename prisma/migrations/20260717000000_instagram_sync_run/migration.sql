@@ -1,3 +1,9 @@
+-- Content.origin + Content.importedPostId: distinguish Nashrino-created vs
+-- Instagram-imported content (issue #346). Existing rows default to NASHRINO.
+ALTER TABLE "Content"
+  ADD COLUMN IF NOT EXISTS "origin" TEXT NOT NULL DEFAULT 'NASHRINO',
+  ADD COLUMN IF NOT EXISTS "importedPostId" TEXT;
+
 -- InstagramSyncRun: idempotent, resumable, checkpointed initial sync run tracker.
 -- Issue #346: each sync run records status, step progress, cursor, and import counts.
 -- Safe to run multiple times — checkpoint + cursor prevent duplicates.
