@@ -28,6 +28,8 @@ export const authOptions: NextAuthOptions = {
   // SameSite=Lax (ASVS L2 accepts Lax; only L3 requires Strict).
   // No __Secure- prefix — it requires HTTPS, but CI/staging run on HTTP.
   // The cookie name must match what getToken() is told in src/proxy.ts.
+  // Secure flag is derived from NEXTAUTH_URL scheme, not NODE_ENV, because
+  // E2E CI runs NODE_ENV=production but still uses http://localhost.
   cookies: {
     sessionToken: {
       name: 'next-auth.session-token',
@@ -35,7 +37,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? false,
       },
     },
     callbackUrl: {
@@ -43,7 +45,7 @@ export const authOptions: NextAuthOptions = {
       options: {
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? false,
       },
     },
     csrfToken: {
@@ -52,7 +54,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? false,
       },
     },
   },
