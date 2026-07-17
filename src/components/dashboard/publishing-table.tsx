@@ -37,6 +37,7 @@ import {
   ArrowUpDown,
   Columns3,
   Clock3,
+  Download,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { toPersianDigits, relativeTime } from '@/lib/jalali'
@@ -379,6 +380,18 @@ export function PublishingTable() {
                     مشاهده عملکرد
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    const a = document.createElement('a')
+                    a.href = `/api/publish-jobs/${j.id}/export`
+                    a.download = ''
+                    a.click()
+                  }}
+                >
+                  <Download className="size-3.5 me-2" />
+                  دانلود برای انتشار دستی
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )
