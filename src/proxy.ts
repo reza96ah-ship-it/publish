@@ -78,6 +78,7 @@ export async function proxy(req: NextRequest) {
     // If metrics must be scraped without auth, configure network-level protection.
     pathname.startsWith('/api/smart-pages/public/') ||
     pathname.startsWith('/api/smart-pages/track') ||
+    pathname.startsWith('/api/inbox/instagram/webhook') ||
     // Issue #254: Client portal access via token — public, no session.
     pathname.startsWith('/api/agency/portal/') ||
     // Issue #255: Public API v1 uses Bearer-token auth, not session cookies.
@@ -165,6 +166,6 @@ export const config = {
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/inbox/instagram/webhook|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
   ],
 }
