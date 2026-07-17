@@ -98,15 +98,17 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     }
 
     // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token.
-    // This endpoint is NOT versioned — it lives at graph.instagram.com/access_token,
-    // not graph.instagram.com/v25.0/access_token (which returns "Unsupported request").
-    const longLivedRes = await fetch(
-      `${INSTAGRAM_GRAPH_API_ORIGIN}/access_token?${new URLSearchParams({
+    // URL must be unversioned: graph.instagram.com/access_token (NOT /v25.0/access_token).
+    // Method must be POST with form body — GET returns "Unsupported request - method type: get".
+    const longLivedRes = await fetch(`${INSTAGRAM_GRAPH_API_ORIGIN}/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
         grant_type: 'ig_exchange_token',
         client_secret: IG_CLIENT_SECRET,
         access_token: tokenData.access_token,
-      })}`
-    )
+      }),
+    })
     const longLived = await longLivedRes.json()
 
     if (longLived.error || longLived.error_type) {
