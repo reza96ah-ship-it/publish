@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest'
 import { PlatformRateLimiter } from '../../../mini-services/publish-worker/lib/rate-limiter'
 
 // P1-10: tryAcquire is now async (Redis-backed under horizontal scaling,
@@ -13,7 +13,12 @@ describe('Issue #147 E — PlatformRateLimiter (per-platform token bucket)', () 
   let limiter: PlatformRateLimiter
 
   beforeEach(() => {
+    vi.useFakeTimers()
     limiter = new PlatformRateLimiter()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('allows acquiring up to the bucket capacity immediately', async () => {
@@ -44,8 +49,8 @@ describe('Issue #147 E — PlatformRateLimiter (per-platform token bucket)', () 
   it('refills over time (bucket gains tokens back)', async () => {
     for (let i = 0; i < 25; i++) await limiter.tryAcquire('telegram')
     expect(await limiter.tryAcquire('telegram')).toBe(false)
-    // telegram refills at 25 tokens/sec → waiting ~50ms should yield ~1 token
-    await new Promise((r) => setTimeout(r, 80))
+    // telegram refills at 25 tokens/sec → advancing 80ms yields ~2 tokens
+    vi.advanceTimersByTime(80)
     expect(await limiter.tryAcquire('telegram')).toBe(true)
   })
 })
