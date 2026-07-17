@@ -22,7 +22,7 @@ function getSocket(authToken: string | null): Socket {
   // proxy — in normal deployments it hit :3000 and the socket always failed.
   const realtimeUrl =
     process.env.NEXT_PUBLIC_REALTIME_URL ??
-    `${window.location.protocol}//${window.location.hostname}:3003`
+    window.location.origin
   socket = io(realtimeUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,

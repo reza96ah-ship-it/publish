@@ -84,8 +84,16 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     })
     const tokenData = await tokenRes.json()
 
-    if (tokenData.error) {
-      throw new Error(`Instagram token exchange failed: ${tokenData.error.message}`)
+    // Instagram short-lived token endpoint can return errors in two shapes:
+    //   {"error_type":"OAuthException","code":400,"error_message":"..."}
+    //   {"error":{"message":"...","type":"OAuthException","code":190}}
+    if (tokenData.error || tokenData.error_type) {
+      const msg =
+        (typeof tokenData.error === 'object' ? tokenData.error?.message : tokenData.error) ??
+        tokenData.error_message ??
+        'unknown'
+      console.error('[instagram-oauth] short-lived token exchange failed:', JSON.stringify(tokenData))
+      throw new Error(`Instagram token exchange failed: ${msg}`)
     }
 
     // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token
@@ -99,8 +107,13 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     )
     const longLived = await longLivedRes.json()
 
-    if (longLived.error) {
-      throw new Error(`Instagram long-lived token exchange failed: ${longLived.error.message}`)
+    if (longLived.error || longLived.error_type) {
+      const msg =
+        (typeof longLived.error === 'object' ? longLived.error?.message : longLived.error) ??
+        longLived.error_message ??
+        'unknown'
+      console.error('[instagram-oauth] long-lived token exchange failed:', JSON.stringify(longLived))
+      throw new Error(`Instagram long-lived token exchange failed: ${msg}`)
     }
 
     // Get the IG user ID + account info

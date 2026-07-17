@@ -18,7 +18,7 @@ function getSocket(authToken: string | null): Socket {
   socketToken = authToken
   const realtimeUrl =
     process.env.NEXT_PUBLIC_REALTIME_URL ??
-    `${window.location.protocol}//${window.location.hostname}:3003`
+    window.location.origin
   socket = io(realtimeUrl, {
     transports: ['websocket', 'polling'],
     reconnection: true,
