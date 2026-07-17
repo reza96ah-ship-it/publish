@@ -18,7 +18,20 @@ const eslintConfig = [
 
       // ── React rules ───────────────────────────────────────────
       'react-hooks/exhaustive-deps': 'warn',
+      // React Compiler rules added in eslint-plugin-react-hooks@7 — off until we opt in
       'react-hooks/purity': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/use-memo': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/component-hook-factories': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/globals': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/error-boundaries': 'off',
+      'react-hooks/set-state-in-render': 'off',
+      'react-hooks/config': 'off',
+      'react-hooks/gating': 'off',
       // Persian text has many quotes/apostrophes — would generate noise
       'react/no-unescaped-entities': 'off',
       'react/display-name': 'off',
