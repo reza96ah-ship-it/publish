@@ -87,6 +87,7 @@ export async function proxy(req: NextRequest) {
     pathname.startsWith('/api/v1') ||
     pathname.startsWith('/auth/') ||
     pathname.startsWith('/p/') ||
+    pathname.startsWith('/privacy') ||
     pathname.startsWith('/_next/') ||
     pathname === '/favicon.ico' ||
     pathname === '/robots.txt' ||
@@ -166,6 +167,6 @@ export const config = {
     //   _next/static   -- Next.js static assets
     //   _next/image    -- Next.js image optimizer
     //   favicon.ico, robots.txt, logo.svg, logos/* -- public assets
-    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/inbox/instagram/webhook|api/agency/portal|api/v1|auth|p|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
+    '/((?!api/auth|api/webhooks|api/health|api/readyz|api/metrics|api/smart-pages/public|api/smart-pages/track|api/inbox/instagram/webhook|api/agency/portal|api/v1|auth|p|privacy|_next/static|_next/image|favicon.ico|robots.txt|logo.svg|logos|images|manifest.json|sw.js).*)',
   ],
 }
