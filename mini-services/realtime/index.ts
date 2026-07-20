@@ -99,9 +99,11 @@ async function checkMembership(userId: string, workspaceId: string): Promise<boo
     return cached.ok
   }
 
-  // Dynamic import to avoid loading Prisma on every request
-  const { db } = await import('./lib/db')
   try {
+    // Dynamic import to avoid loading Prisma on every request. Kept inside the
+    // try — a bad/missing DATABASE_URL previously threw at import time, escaping
+    // this function as an unhandled rejection and crashing the whole process.
+    const { db } = await import('./lib/db')
     const member = await db.workspaceMember.findFirst({
       where: { userId, workspaceId },
       select: { id: true },

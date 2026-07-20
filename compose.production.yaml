@@ -78,6 +78,11 @@ services:
         required: false
     environment:
       NODE_ENV: production
+      # Same default expression as app/worker — resolves identically since compose
+      # interpolates ${DATABASE_URL} from the same host context for every service
+      # in this file. Required for workspace-membership checks on socket subscribe;
+      # its absence here previously crashed the realtime process on every subscribe.
+      DATABASE_URL: ${DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10}
       REDIS_CACHE_URL: redis://redis-cache:6379
     depends_on:
       redis-cache: { condition: service_healthy }
