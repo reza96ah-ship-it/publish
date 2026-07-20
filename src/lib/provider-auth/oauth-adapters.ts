@@ -97,48 +97,81 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
       throw new Error(`Instagram token exchange failed: ${msg}`)
     }
 
-    // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token.
-    // URL must be unversioned: graph.instagram.com/access_token (NOT /v25.0/access_token).
-    // Method must be POST with form body — GET returns "Unsupported request - method type: get".
-    const longLivedRes = await fetch(`${INSTAGRAM_GRAPH_API_ORIGIN}/access_token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'ig_exchange_token',
-        client_secret: IG_CLIENT_SECRET,
-        access_token: tokenData.access_token,
-      }),
+    // Log Step 1 result metadata (not the token value) to diagnose which API path we're on.
+    // New Instagram API with Instagram Login (2024+) may return a long-lived token directly
+    // from api.instagram.com/oauth/access_token (expires_in ≈ 5184000 = 60 days).
+    // Old Basic Display API (deprecated) returns a 1-hour token with no expires_in.
+    console.log('[instagram-oauth] step1 token received:', {
+      hasToken: !!tokenData.access_token,
+      expiresIn: tokenData.expires_in ?? null,
+      tokenType: tokenData.token_type ?? null,
+      userId: tokenData.user_id ?? null,
     })
-    const longLived = await longLivedRes.json()
 
-    if (longLived.error || longLived.error_type) {
-      const msg =
-        (typeof longLived.error === 'object' ? longLived.error?.message : longLived.error) ??
-        longLived.error_message ??
-        'unknown'
-      console.error('[instagram-oauth] long-lived token exchange failed:', JSON.stringify(longLived))
-      throw new Error(`Instagram long-lived token exchange failed: ${msg}`)
+    // If Step 1 already returned a long-lived token (expires_in > 1 hour), skip exchange.
+    const step1IsLongLived = tokenData.expires_in && tokenData.expires_in > 3600
+    let finalToken = tokenData.access_token
+    let finalExpiresIn: number | undefined = tokenData.expires_in
+
+    if (!step1IsLongLived) {
+      // Step 2: Exchange short-lived for long-lived token (60 days) via ig_exchange_token.
+      // Endpoint must be unversioned — graph.instagram.com/access_token (no /v25.0/ prefix).
+      // The new Instagram API with Instagram Login uses POST with form body.
+      const longLivedRes = await fetch(`${INSTAGRAM_GRAPH_API_ORIGIN}/access_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'ig_exchange_token',
+          client_secret: IG_CLIENT_SECRET,
+          access_token: tokenData.access_token,
+        }),
+      })
+      const longLived = await longLivedRes.json()
+      console.log('[instagram-oauth] long-lived exchange response:', {
+        status: longLivedRes.status,
+        hasToken: !!longLived.access_token,
+        expiresIn: longLived.expires_in ?? null,
+        error: longLived.error ? JSON.stringify(longLived.error) : null,
+        errorType: longLived.error_type ?? null,
+      })
+
+      if (longLived.error || longLived.error_type) {
+        const msg =
+          (typeof longLived.error === 'object' ? longLived.error?.message : longLived.error) ??
+          longLived.error_message ??
+          'unknown'
+        // Non-fatal: log and fall back to the step-1 token. The new Instagram API may
+        // already return long-lived tokens from the authorization code exchange.
+        console.warn(
+          `[instagram-oauth] ig_exchange_token failed (HTTP ${longLivedRes.status}): ${msg} — using step-1 token`
+        )
+      } else {
+        finalToken = longLived.access_token
+        finalExpiresIn = longLived.expires_in
+      }
+    } else {
+      console.log('[instagram-oauth] step-1 token is already long-lived, skipping ig_exchange_token')
     }
 
     // Get the IG user ID + account info
     const meRes = await fetch(
-      `${IG_GRAPH_API}/me?fields=id,username&access_token=${longLived.access_token}`
+      `${IG_GRAPH_API}/me?fields=id,username&access_token=${finalToken}`
     )
     const me = await meRes.json()
 
     // Get granted scopes
     const scopesRes = await fetch(
-      `${IG_GRAPH_API}/me/permissions?access_token=${longLived.access_token}`
+      `${IG_GRAPH_API}/me/permissions?access_token=${finalToken}`
     )
     const scopesData = await scopesRes.json()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const grantedScopes = (scopesData.data || []).map((s: any) => s.permission)
 
     return {
-      accessTokenEncrypted: encrypt(longLived.access_token),
+      accessTokenEncrypted: encrypt(finalToken),
       tokenType: 'bearer',
-      expiresAt: longLived.expires_in
-        ? new Date(Date.now() + longLived.expires_in * 1000)
+      expiresAt: finalExpiresIn
+        ? new Date(Date.now() + finalExpiresIn * 1000)
         : new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // fallback 60 days
       scopes: grantedScopes,
       accountId: me.id,
