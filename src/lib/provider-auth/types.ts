@@ -164,12 +164,10 @@ export function getProviderAuthAdapter(provider: string): ProviderAuthAdapter | 
 export const REQUIRED_SCOPES: Record<string, string[]> = {
   // Instagram API with Instagram Login (2024+ path, no Facebook Page required).
   // instagram_business_manage_insights covers account + media analytics.
+  // TEMP DIAGNOSTIC: narrowed to 1 scope to isolate "Insufficient Developer Role"
+  // error during Instagram OAuth authorize. Revert to full list after testing.
   instagram: [
     'instagram_business_basic',
-    'instagram_business_content_publish',
-    'instagram_business_manage_comments',
-    'instagram_business_manage_messages',
-    'instagram_business_manage_insights',
   ],
   linkedin: ['w_member_social', 'r_organization_social', 'w_organization_social'],
   telegram: [],
