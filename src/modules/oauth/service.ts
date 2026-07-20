@@ -228,6 +228,9 @@ export class OAuthService {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'token_exchange_failed'
+      // Previously silent — a failure here only reached the browser as an
+      // oauth_error query param, with nothing in the server logs to diagnose it.
+      console.error(`[oauth] connect failed for platformId=${platformId} type=${type}:`, msg)
       void track({
         event: 'channel_connect_failed',
         workspaceId,

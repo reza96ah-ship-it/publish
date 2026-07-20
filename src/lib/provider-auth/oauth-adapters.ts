@@ -159,13 +159,33 @@ export class InstagramAuthAdapter implements ProviderAuthAdapter {
     )
     const me = await meRes.json()
 
+    // Previously unchecked — a Graph API error here left accountId/accountName
+    // as undefined and the flow "succeeded" silently with empty values.
+    if (me.error || me.error_type || !me.id) {
+      const msg =
+        (typeof me.error === 'object' ? me.error?.message : me.error) ??
+        me.error_message ??
+        `unexpected /me response: ${JSON.stringify(me)}`
+      console.error('[instagram-oauth] /me call failed:', JSON.stringify(me))
+      throw new Error(`Instagram account info fetch failed: ${msg}`)
+    }
+
     // Get granted scopes
     const scopesRes = await fetch(
       `${IG_GRAPH_API}/me/permissions?access_token=${finalToken}`
     )
     const scopesData = await scopesRes.json()
+    if (scopesData.error) {
+      console.warn('[instagram-oauth] /me/permissions failed (non-fatal):', JSON.stringify(scopesData))
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const grantedScopes = (scopesData.data || []).map((s: any) => s.permission)
+
+    console.log('[instagram-oauth] connect succeeded:', {
+      accountId: me.id,
+      accountName: me.username,
+      scopes: grantedScopes,
+    })
 
     return {
       accessTokenEncrypted: encrypt(finalToken),
