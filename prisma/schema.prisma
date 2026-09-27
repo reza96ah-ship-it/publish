@@ -107,6 +107,8 @@ model Workspace {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  // One Zernio profile per workspace; account IDs are verified against it.
+  zernioProfileId String? @unique
   category  String   @default("")
   phone     String   @default("")
   description String @default("")

@@ -311,10 +311,12 @@ function StepConnect({ platforms }: { platforms: Platform[] }) {
                 </div>
                 {!isConnected && (
                   <a
-                    href={`/api/platforms/oauth/start?type=${type}&returnTo=/onboarding`}
+                    href={type === 'instagram'
+                      ? '/channels'
+                      : `/api/platforms/oauth/start?type=${type}&returnTo=/onboarding`}
                     className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent/90 transition-colors shrink-0"
                   >
-                    اتصال
+                    {type === 'instagram' ? 'اتصال آزمایشی' : 'اتصال'}
                     <ExternalLink className="size-3.5" />
                   </a>
                 )}
