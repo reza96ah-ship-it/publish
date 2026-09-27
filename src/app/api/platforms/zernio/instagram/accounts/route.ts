@@ -7,7 +7,7 @@ import { listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const guard = await requirePermissionApi('platform.manage')
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
 
   const workspace = await db.workspace.findUnique({

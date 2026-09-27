@@ -17,7 +17,7 @@ export async function GET(
     return NextResponse.json({ error: 'invalid_account_id' }, { status: 400 })
   }
 
-  const guard = await requirePermissionApi('platform.manage')
+  const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
 
   const proxyUrl = process.env.INSTAGRAM_IMAGE_PROXY_URL

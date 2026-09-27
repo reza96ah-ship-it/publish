@@ -36,6 +36,10 @@ const PlatformsPanel = dynamic(
   () => import('@/components/dashboard/platforms-panel').then((m) => m.PlatformsPanel),
   { loading: () => <SkeletonCard /> }
 )
+const InstagramSummaryPanel = dynamic(
+  () => import('@/components/dashboard/instagram-summary-panel').then((m) => m.InstagramSummaryPanel),
+  { loading: () => <SkeletonCard /> }
+)
 
 export function DashboardView() {
   return (
@@ -60,6 +64,11 @@ export function DashboardView() {
         {/* B — four strategic KPIs (2-col on mobile) */}
         <motion.div variants={listItem}>
           <ExecutiveMetrics />
+        </motion.div>
+
+        {/* Instagram account data has its own fixed 30-day window. */}
+        <motion.div variants={listItem}>
+          <InstagramSummaryPanel />
         </motion.div>
 
         {/* C — action panel first on mobile, chart 8/4 split at lg */}
