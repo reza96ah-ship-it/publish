@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramRecentPosts, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -102,5 +102,31 @@ describe('Zernio API boundary', () => {
     await expect(getInstagramRecentPosts(accountId)).resolves.toMatchObject([{
       id: 'ig-post-1', caption: 'New arrival', likeCount: 12, commentCount: 3,
     }])
+  })
+
+  it('keeps period totals separate from daily reach and empty follower history', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ metrics: {
+        reach: { total: 120 }, views: { total: 150 }, accounts_engaged: { total: 12 },
+        total_interactions: { total: 25 }, profile_links_taps: { total: 0 },
+      } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ metrics: { reach: {
+        values: [{ date: '2026-09-25', value: 80 }, { date: '2026-09-26', value: 70 }],
+      } } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ metrics: { follower_count: {
+        total: 0, values: [],
+      } } })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getInstagramRangeInsights(accountId, '2026-09-25', '2026-09-26')).resolves.toEqual({
+      reach: 120, views: 150, accountsEngaged: 12, totalInteractions: 25, profileLinksTaps: 0,
+    })
+    await expect(getInstagramDailyReach(accountId, '2026-09-25', '2026-09-26')).resolves.toEqual([
+      { date: '2026-09-25', value: 80 }, { date: '2026-09-26', value: 70 },
+    ])
+    await expect(getInstagramFollowerHistory(accountId, '2026-09-25', '2026-09-26')).resolves.toEqual([])
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('metricType')).toBe('total_value')
+    expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('metricType')).toBe('time_series')
   })
 })

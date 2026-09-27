@@ -20,6 +20,15 @@ export interface ZernioInstagramInsights {
   totalInteractions: number | null
 }
 
+export interface ZernioDailyMetric {
+  date: string
+  value: number
+}
+
+export interface ZernioInstagramRangeInsights extends ZernioInstagramInsights {
+  profileLinksTaps: number | null
+}
+
 export interface ZernioInstagramPost {
   id: string
   caption: string | null
@@ -186,6 +195,73 @@ export async function getInstagramAccountInsights(accountId: string): Promise<Ze
     accountsEngaged: total('accounts_engaged'),
     totalInteractions: total('total_interactions'),
   }
+}
+
+function validateAnalyticsRange(accountId: string, fromDate: string, toDate: string): URLSearchParams {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate) || fromDate > toDate) {
+    throw new ZernioApiError(400, 'invalid_date_range')
+  }
+  return new URLSearchParams({ accountId, fromDate, toDate })
+}
+
+function metricValues(metrics: Record<string, unknown>, name: string): ZernioDailyMetric[] {
+  const metric = objectValue(metrics[name])
+  if (!Array.isArray(metric?.values)) return []
+  return metric.values.flatMap((entry): ZernioDailyMetric[] => {
+    const row = objectValue(entry)
+    const value = nonnegativeNumber(row?.value)
+    if (typeof row?.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || value === null) return []
+    return [{ date: row.date, value }]
+  }).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export async function getInstagramRangeInsights(
+  accountId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<ZernioInstagramRangeInsights> {
+  const query = validateAnalyticsRange(accountId, fromDate, toDate)
+  query.set('metricType', 'total_value')
+  query.set('metrics', 'reach,views,accounts_engaged,total_interactions,profile_links_taps')
+  const body = await zernioRequest(`/analytics/instagram/account-insights?${query}`)
+  const metrics = objectValue(body.metrics)
+  if (!metrics) throw new ZernioApiError(502, 'invalid_insights_response')
+  const total = (name: string) => nonnegativeNumber(objectValue(metrics[name])?.total)
+  return {
+    reach: total('reach'),
+    views: total('views'),
+    accountsEngaged: total('accounts_engaged'),
+    totalInteractions: total('total_interactions'),
+    profileLinksTaps: total('profile_links_taps'),
+  }
+}
+
+export async function getInstagramDailyReach(
+  accountId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<ZernioDailyMetric[]> {
+  const query = validateAnalyticsRange(accountId, fromDate, toDate)
+  query.set('metricType', 'time_series')
+  query.set('metrics', 'reach')
+  const body = await zernioRequest(`/analytics/instagram/account-insights?${query}`)
+  const metrics = objectValue(body.metrics)
+  if (!metrics) throw new ZernioApiError(502, 'invalid_reach_response')
+  return metricValues(metrics, 'reach')
+}
+
+export async function getInstagramFollowerHistory(
+  accountId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<ZernioDailyMetric[]> {
+  const query = validateAnalyticsRange(accountId, fromDate, toDate)
+  query.set('metricType', 'time_series')
+  const body = await zernioRequest(`/analytics/instagram/follower-history?${query}`)
+  const metrics = objectValue(body.metrics)
+  if (!metrics) throw new ZernioApiError(502, 'invalid_follower_history_response')
+  return metricValues(metrics, 'follower_count')
 }
 
 export async function getInstagramRecentPosts(accountId: string): Promise<ZernioInstagramPost[]> {

@@ -32,7 +32,7 @@ export interface ReportSeriesPoint {
 
 export interface ReportTotals {
   /** Per-metric totals across the whole date range. */
-  [metric: string]: number
+  [metric: string]: number | null
 }
 
 export interface ReportData {
@@ -42,6 +42,8 @@ export interface ReportData {
   series: ReportSeriesPoint[]
   totals: ReportTotals
   generatedAt: string
+  source?: 'zernio'
+  note?: string
 }
 
 export interface ExportResult {
