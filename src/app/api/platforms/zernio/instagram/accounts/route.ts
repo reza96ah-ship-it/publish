@@ -3,6 +3,7 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { syncWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export async function GET() {
   if (!workspace?.zernioProfileId) return NextResponse.json({ accounts: [] })
 
   try {
-    const accounts = await listInstagramAccounts(workspace.zernioProfileId)
+    const accounts = await syncWorkspaceZernioInstagram(guard.workspaceId)
     // Keep Instagram's CDN URL server-side; browsers in filtered regions use
     // our authenticated, same-origin photo route instead.
     return NextResponse.json({

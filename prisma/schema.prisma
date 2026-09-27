@@ -297,6 +297,8 @@ model Platform {
   id          String   @id @default(cuid())
   workspaceId String
   type        String   // instagram, telegram, linkedin, rubika, eitaa, bale
+  provider    String   @default("direct") // direct or zernio
+  providerAccountId String?
   name        String
   username    String   @default("")
   avatarUrl   String?
@@ -332,6 +334,7 @@ model Platform {
 
   @@index([workspaceId])
   @@index([workspaceId, type])
+  @@unique([provider, providerAccountId])
   @@index([workspaceId, status])
   @@index([status])
   @@index([tokenExpiresAt])
@@ -811,6 +814,7 @@ model ProviderWebhookEvent {
   receivedAt        DateTime @default(now())
   lastReceivedAt    DateTime @default(now())
   processedAt       DateTime?
+  automationScannedAt DateTime?
   lastError         String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

@@ -38,3 +38,12 @@ jobs:
           tags: ghcr.io/${{ github.repository }}-migrate:zernio-test-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Build publish worker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: worker
+          push: true
+          tags: ghcr.io/${{ github.repository }}-worker:zernio-test-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

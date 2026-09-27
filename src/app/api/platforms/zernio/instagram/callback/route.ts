@@ -3,6 +3,7 @@ import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { syncWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -66,6 +67,8 @@ export async function GET(request: NextRequest) {
     const accounts = await listInstagramAccounts(profileId)
     const account = accounts.find((item) => item.id === accountId && item.isActive)
     if (!account) return finish('zernio_error=account_not_verified', cookieName)
+
+    await syncWorkspaceZernioInstagram(guard.workspaceId)
 
     await db.auditLog.create({
       data: {

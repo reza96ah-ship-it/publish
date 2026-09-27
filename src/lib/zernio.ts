@@ -39,9 +39,32 @@ export interface ZernioInstagramPost {
   commentCount: number | null
 }
 
+export interface ZernioInstagramStory {
+  id: string
+  mediaType: string | null
+  permalink: string | null
+  timestamp: string | null
+  insights: {
+    source: 'live' | 'cached' | 'unavailable'
+    views: number | null
+    reach: number | null
+    replies: number | null
+    shares: number | null
+  } | null
+}
+
+export interface ZernioDemographicPoint { dimension: string; value: number }
+export interface ZernioInstagramDemographics {
+  age: ZernioDemographicPoint[]
+  gender: ZernioDemographicPoint[]
+  country: ZernioDemographicPoint[]
+  city: ZernioDemographicPoint[]
+}
+
 export interface ZernioInboxConversation {
   id: string
   accountId: string
+  participantId: string | null
   accountUsername: string
   participantName: string
   participantPicture: string | null
@@ -66,6 +89,23 @@ export interface ZernioInboxPage<T> {
   nextCursor: string | null
 }
 
+export interface ZernioCommentedPost {
+  id: string
+  accountId: string
+  content: string
+  commentCount: number
+}
+
+export interface ZernioPostComment {
+  id: string
+  parentId: string | null
+  message: string
+  createdTime: string | null
+  authorId: string | null
+  authorName: string
+  isOwner: boolean
+}
+
 export class ZernioApiError extends Error {
   constructor(
     public readonly status: number,
@@ -79,13 +119,14 @@ async function zernioRequest(path: string, init?: RequestInit): Promise<Record<s
   const apiKey = process.env.ZERNIO_API_KEY
   if (!apiKey) throw new ZernioApiError(503, 'not_configured')
 
+  const headers = new Headers(init?.headers)
+  headers.set('Authorization', `Bearer ${apiKey}`)
+  headers.set('Accept', 'application/json')
+  if (init?.body) headers.set('Content-Type', 'application/json')
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-    },
+    headers,
     cache: 'no-store',
     signal: AbortSignal.timeout(15_000),
   })
@@ -209,6 +250,16 @@ export async function listInstagramAccounts(profileId: string): Promise<ZernioIn
   })
 }
 
+export async function disconnectZernioAccount(accountId: string): Promise<void> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  try {
+    await zernioRequest(`/accounts/${accountId}`, { method: 'DELETE' })
+  } catch (error) {
+    if (error instanceof ZernioApiError && error.status === 404) return
+    throw error
+  }
+}
+
 export async function getInstagramAccountInsights(accountId: string): Promise<ZernioInstagramInsights> {
   if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
   const query = new URLSearchParams({ accountId })
@@ -312,6 +363,55 @@ export async function getInstagramRecentPosts(accountId: string): Promise<Zernio
   })
 }
 
+export async function getInstagramActiveStories(accountId: string): Promise<ZernioInstagramStory[]> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const body = await zernioRequest(`/accounts/${accountId}/instagram/stories`)
+  if (!Array.isArray(body.data)) throw new ZernioApiError(502, 'invalid_stories_response')
+  return body.data.slice(0, 6).flatMap((value): ZernioInstagramStory[] => {
+    const row = objectValue(value)
+    if (!row || typeof row.id !== 'string') return []
+    return [{
+      id: validOpaque(row.id, 'story_id'),
+      mediaType: typeof row.mediaType === 'string' ? row.mediaType : null,
+      permalink: httpsUrl(row.permalink),
+      timestamp: typeof row.timestamp === 'string' ? row.timestamp : null,
+      insights: null,
+    }]
+  })
+}
+
+export async function getInstagramStoryInsights(accountId: string, storyId: string): Promise<NonNullable<ZernioInstagramStory['insights']>> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(storyId, 'story_id')
+  const body = await zernioRequest(`/accounts/${accountId}/instagram/stories/${encodeURIComponent(id)}/insights`)
+  const data = objectValue(body.data)
+  const metrics = objectValue(data?.metrics)
+  if (!data || !['live', 'cached', 'unavailable'].includes(String(data.source))) throw new ZernioApiError(502, 'invalid_story_insights_response')
+  return {
+    source: data.source as 'live' | 'cached' | 'unavailable',
+    views: nonnegativeNumber(metrics?.views),
+    reach: nonnegativeNumber(metrics?.reach),
+    replies: nonnegativeNumber(metrics?.replies),
+    shares: nonnegativeNumber(metrics?.shares),
+  }
+}
+
+export async function getInstagramDemographics(accountId: string): Promise<ZernioInstagramDemographics> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const body = await zernioRequest(`/analytics/instagram/demographics?${new URLSearchParams({ accountId, metric: 'follower_demographics', timeframe: 'this_month' })}`)
+  const demographics = objectValue(body.demographics)
+  if (!demographics) throw new ZernioApiError(502, 'invalid_demographics_response')
+  const points = (dimension: string): ZernioDemographicPoint[] =>
+    (Array.isArray(demographics[dimension]) ? demographics[dimension] : [])
+      .flatMap((value): ZernioDemographicPoint[] => {
+        const row = objectValue(value)
+        const amount = nonnegativeNumber(row?.value)
+        return typeof row?.dimension === 'string' && amount !== null
+          ? [{ dimension: row.dimension.slice(0, 100), value: amount }] : []
+      }).sort((a, b) => b.value - a.value).slice(0, 5)
+  return { age: points('age'), gender: points('gender'), country: points('country'), city: points('city') }
+}
+
 function validOpaque(value: string, name: string): string {
   if (!value || value.length > 500 || /[\u0000-\u001f]/.test(value)) {
     throw new ZernioApiError(400, `invalid_${name}`)
@@ -326,6 +426,7 @@ function inboxConversation(value: unknown): ZernioInboxConversation | null {
   return {
     id: validOpaque(row.id, 'conversation_id'),
     accountId: row.accountId,
+    participantId: typeof row.participantId === 'string' ? row.participantId.slice(0, 500) : null,
     accountUsername: typeof row.accountUsername === 'string' ? row.accountUsername.slice(0, 100) : '',
     participantName: typeof row.participantName === 'string' ? row.participantName.slice(0, 200) : 'Instagram user',
     participantPicture: httpsUrl(row.participantPicture),
@@ -401,4 +502,96 @@ export async function listZernioInboxMessages(
     }),
     nextCursor: typeof pagination?.nextCursor === 'string' ? pagination.nextCursor : null,
   }
+}
+
+export async function sendZernioInboxMessage(
+  accountId: string,
+  conversationId: string,
+  message: string,
+  idempotencyKey: string,
+): Promise<string | null> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(conversationId, 'conversation_id')
+  const body = await zernioRequest(`/inbox/conversations/${encodeURIComponent(id)}/messages`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': validOpaque(idempotencyKey, 'idempotency_key') },
+    body: JSON.stringify({ accountId, message: message.trim() }),
+  })
+  const data = objectValue(body.data)
+  if (body.success !== true || !data || data.conversationId !== id) {
+    throw new ZernioApiError(502, 'invalid_send_response')
+  }
+  return typeof data.messageId === 'string' ? data.messageId : null
+}
+
+export async function listZernioCommentedPosts(profileId: string): Promise<ZernioCommentedPost[]> {
+  if (!OBJECT_ID.test(profileId)) throw new ZernioApiError(400, 'invalid_profile_id')
+  const query = new URLSearchParams({ profileId, platform: 'instagram', minComments: '1', limit: '25' })
+  const body = await zernioRequest(`/inbox/comments?${query}`)
+  if (!Array.isArray(body.data)) throw new ZernioApiError(502, 'invalid_commented_posts_response')
+  return body.data.flatMap((value): ZernioCommentedPost[] => {
+    const row = objectValue(value)
+    if (!row || row.platform !== 'instagram' || typeof row.id !== 'string' || typeof row.accountId !== 'string' || !OBJECT_ID.test(row.accountId)) return []
+    return [{
+      id: validOpaque(row.id, 'post_id'),
+      accountId: row.accountId,
+      content: typeof row.content === 'string' ? row.content.slice(0, 300) : '',
+      commentCount: nonnegativeNumber(row.commentCount) ?? 0,
+    }]
+  })
+}
+
+function zernioComment(value: unknown): ZernioPostComment | null {
+  const row = objectValue(value)
+  if (!row || typeof row.id !== 'string') return null
+  const from = objectValue(row.from)
+  return {
+    id: validOpaque(row.id, 'comment_id'),
+    parentId: typeof row.parentId === 'string' ? validOpaque(row.parentId, 'parent_id') : null,
+    message: typeof row.message === 'string' ? row.message.slice(0, 10_000) : '',
+    createdTime: typeof row.createdTime === 'string' ? row.createdTime : null,
+    authorId: typeof from?.id === 'string' ? from.id.slice(0, 500) : null,
+    authorName: typeof from?.name === 'string' ? from.name.slice(0, 200) : 'Instagram user',
+    isOwner: from?.isOwner === true,
+  }
+}
+
+export async function listZernioPostComments(accountId: string, postId: string): Promise<ZernioPostComment[]> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(postId, 'post_id')
+  const query = new URLSearchParams({ accountId, limit: '50' })
+  const body = await zernioRequest(`/inbox/comments/${encodeURIComponent(id)}?${query}`)
+  if (!Array.isArray(body.comments)) throw new ZernioApiError(502, 'invalid_comments_response')
+  return body.comments.flatMap((value): ZernioPostComment[] => {
+    const comment = zernioComment(value)
+    if (!comment) return []
+    const row = objectValue(value)
+    const replies = Array.isArray(row?.replies) ? row.replies.flatMap((reply) => {
+      const parsed = zernioComment(reply)
+      return parsed ? [parsed] : []
+    }) : []
+    return [comment, ...replies]
+  })
+}
+
+export async function sendZernioCommentReply(
+  accountId: string,
+  postId: string,
+  commentId: string,
+  message: string,
+  idempotencyKey: string,
+): Promise<string> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(postId, 'post_id')
+  const parentId = validOpaque(commentId, 'comment_id')
+  const body = await zernioRequest(`/inbox/comments/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': validOpaque(idempotencyKey, 'idempotency_key') },
+    body: JSON.stringify({ accountId, message: message.trim(), commentId: parentId }),
+  })
+  const data = objectValue(body.data)
+  if (body.success !== true || !data || typeof data.commentId !== 'string') {
+    throw new ZernioApiError(502, 'invalid_comment_reply_response')
+  }
+  return data.commentId
 }

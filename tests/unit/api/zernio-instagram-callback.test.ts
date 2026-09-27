@@ -6,6 +6,7 @@ vi.mock('@/lib/db', () => ({
   db: { workspace: { findUnique: vi.fn() }, auditLog: { create: vi.fn() } },
 }))
 vi.mock('@/lib/zernio', () => ({ listInstagramAccounts: vi.fn(), ZernioApiError: class extends Error {} }))
+vi.mock('@/modules/channels/zernio-sync', () => ({ syncWorkspaceZernioInstagram: vi.fn().mockResolvedValue([]) }))
 
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'

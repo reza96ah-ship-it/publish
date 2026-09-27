@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // object exists before the factory runs.
 const { dbMock } = vi.hoisted(() => ({
   dbMock: {
+    platform: { findMany: vi.fn() },
     commentDmRule: { findMany: vi.fn() },
     commentDmLog: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     publication: { findUnique: vi.fn(), findMany: vi.fn() },
@@ -70,6 +71,7 @@ async function runScan(opts: {
   const replyComment = opts.replyComment ?? vi.fn(async () => ({ id: 'r1' }))
 
   dbMock.commentDmRule.findMany.mockResolvedValue(rules)
+  dbMock.platform.findMany.mockResolvedValue([])
   dbMock.commentDmLog.findUnique.mockImplementation((args: { where: { ruleId_commentId: { ruleId: string; commentId: string } } }) => {
     const key = `${args.where.ruleId_commentId.ruleId}:${args.where.ruleId_commentId.commentId}`
     return Promise.resolve(opts.existingLogs?.[key] ?? null)

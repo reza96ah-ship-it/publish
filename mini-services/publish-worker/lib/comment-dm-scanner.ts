@@ -37,6 +37,7 @@ import {
   replyToComment,
   type IgComment,
 } from './instagram-messaging'
+import { sendZernioPrivateCommentReply, sendZernioPublicCommentReply } from './zernio-comment-reply'
 
 const SCAN_INTERVAL_MS = 60 * 1000 // 60 seconds — fast enough for good UX, gentle on IG rate limits
 /** Only scan publications from the last N days (avoids re-scanning very old posts). */
@@ -149,6 +150,7 @@ async function scanCommentDmsInner(
       status: 'active',
       platform: {
         type: 'instagram',
+        provider: 'direct',
         status: 'active',
         tokenSecret: { not: null },
         targetId: { not: null },
@@ -198,6 +200,8 @@ async function scanCommentDmsInner(
     }
   }
 
+  if (!envDisabled) await scanZernioCommentDmEvents(now, stats)
+
   if (stats.commentsChecked > 0) {
     console.log(
       `[comment-dm-scanner] cycle complete — rules:${stats.rulesScanned} media:${stats.mediaScanned} comments:${stats.commentsChecked} sent:${stats.dmsSent} skipped:${stats.dmsSkipped} failed:${stats.dmsFailed}`
@@ -205,6 +209,101 @@ async function scanCommentDmsInner(
   }
 
   return stats
+}
+
+async function scanZernioCommentDmEvents(now: Date, stats: ScanStats): Promise<void> {
+  const platforms = await db.platform.findMany({
+    where: { type: 'instagram', provider: 'zernio', status: 'active', providerAccountId: { not: null } },
+    select: { id: true, providerAccountId: true },
+  })
+  const accountIds = platforms.map((platform) => platform.providerAccountId).filter((id): id is string => Boolean(id))
+  if (!accountIds.length) return
+  const events = await db.providerWebhookEvent.findMany({
+    where: {
+      provider: 'zernio', providerObject: 'comment.received',
+      providerAccountId: { in: accountIds }, status: 'processed', automationScannedAt: null,
+    },
+    orderBy: { receivedAt: 'asc' }, take: 100,
+  })
+  for (const event of events) {
+    try {
+      const payload = event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload)
+        ? event.payload as Record<string, unknown> : null
+      const comment = payload?.comment && typeof payload.comment === 'object' && !Array.isArray(payload.comment)
+        ? payload.comment as Record<string, unknown> : null
+      const author = comment?.author && typeof comment.author === 'object' && !Array.isArray(comment.author)
+        ? comment.author as Record<string, unknown> : null
+      const accountId = event.providerAccountId
+      const postId = comment?.platformPostId
+      const commentId = comment?.id
+      if (!comment || comment.platform !== 'instagram' || comment.isReply === true || author?.isOwnAccount !== false ||
+          typeof accountId !== 'string' || typeof postId !== 'string' || typeof commentId !== 'string' ||
+          typeof comment.text !== 'string' || typeof author.id !== 'string' ||
+          !Number.isFinite(new Date(String(comment.createdAt)).getTime()) ||
+          now.getTime() - new Date(String(comment.createdAt)).getTime() >= 7 * 24 * 60 * 60 * 1000) {
+        await db.providerWebhookEvent.update({ where: { id: event.id }, data: { automationScannedAt: now } })
+        continue
+      }
+      const rules = await db.commentDmRule.findMany({
+        where: {
+          isActive: true, status: 'active', createdAt: { lte: event.receivedAt },
+          platform: { provider: 'zernio', providerAccountId: accountId, status: 'active' },
+          workspace: { featureFlags: { some: { flag: 'comment_dm_beta', enabled: true } } },
+        },
+        select: {
+          id: true, workspaceId: true, platformId: true, publicationId: true, igPostId: true,
+          keyword: true, keywords: true, excludeKeywords: true, dmTemplate: true,
+          buttonText: true, buttonUrl: true, publicReply: true, optOutKeyword: true, freqCapHours: true,
+          platform: { select: { tokenSecret: true, targetId: true, name: true } },
+          publication: { select: { providerPostId: true } },
+        },
+        orderBy: { createdAt: 'desc' }, take: 50,
+      })
+      const applicable = rules.filter((rule) => {
+        if (rule.igPostId && rule.igPostId !== postId) return false
+        if (rule.publicationId && rule.publication?.providerPostId !== postId) return false
+        const keywords = toStringArray(rule.keywords) ?? [rule.keyword]
+        const excludes = toStringArray(rule.excludeKeywords) ?? []
+        return matchComment(comment.text as string, keywords, excludes).matched
+      }).sort((a, b) => Number(Boolean(b.publicationId || b.igPostId)) - Number(Boolean(a.publicationId || a.igPostId)))
+      const selected = applicable[0]
+      if (selected) {
+        stats.rulesScanned++
+        stats.commentsChecked++
+        const igComment: IgComment = {
+          id: commentId, text: comment.text, username: typeof author.username === 'string' ? author.username : '',
+          from: { id: author.id, username: typeof author.username === 'string' ? author.username : undefined },
+          timestamp: String(comment.createdAt),
+        }
+        const outcome = await processComment({
+          rule: selected,
+          comment: igComment,
+          keywords: toStringArray(selected.keywords) ?? [selected.keyword],
+          excludeKeywords: toStringArray(selected.excludeKeywords) ?? [],
+          accessToken: '', igUserId: accountId, now,
+          deps: {
+            listCommentsFn: listComments,
+            sendDmFn: async (_token, id, commentIdToReply, text, buttonText, buttonUrl) => {
+              // Instagram now rejects interactive private replies to non-followers,
+              // consuming their one allowed reply. Always send plain text and
+              // preserve a configured CTA as a normal link instead.
+              const safeText = buttonUrl && !text.includes(buttonUrl)
+                ? `${text}\n${buttonText ?? 'Link'}: ${buttonUrl}` : text
+              return sendZernioPrivateCommentReply(id, postId, commentIdToReply, safeText)
+            },
+            replyCommentFn: (_token, parentId, text) =>
+              sendZernioPublicCommentReply(accountId, postId, parentId, text, `${selected.id}:${commentId}`),
+          },
+        })
+        if (outcome === 'sent') { stats.dmsSent++; if (selected.publicReply) stats.publicReplies++ }
+        else if (outcome === 'skipped') stats.dmsSkipped++
+        else stats.dmsFailed++
+      }
+      await db.providerWebhookEvent.update({ where: { id: event.id }, data: { automationScannedAt: now } })
+    } catch (error) {
+      console.error('[comment-dm-scanner] Zernio event failed:', error instanceof Error ? error.name : 'internal_error')
+    }
+  }
 }
 
 interface RuleRow {

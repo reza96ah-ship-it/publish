@@ -414,7 +414,7 @@ export class InboxRepository {
       where: { id, workspaceId },
       include: {
         platform: {
-          select: { id: true, type: true, tokenSecret: true, targetId: true },
+          select: { id: true, type: true, provider: true, providerAccountId: true, tokenSecret: true, targetId: true },
         },
         messages: {
           where: { direction: 'inbound' },
@@ -425,6 +425,7 @@ export class InboxRepository {
             providerMessageId: true,
             messageType: true,
             senderExternalId: true,
+            payload: true,
           },
         },
       },

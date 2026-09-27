@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioInboxConversation, listInstagramAccounts, listZernioInboxConversations, listZernioInboxMessages, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioInboxConversation, listInstagramAccounts, listZernioCommentedPosts, listZernioInboxConversations, listZernioInboxMessages, listZernioPostComments, sendZernioCommentReply, sendZernioInboxMessage, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -28,7 +28,7 @@ describe('Zernio API boundary', () => {
     const [url, options] = fetchMock.mock.calls[0]
     expect(url).toBe('https://zernio.com/api/v1/profiles')
     expect(JSON.parse(options.body)).toEqual({ name: 'workspace_workspace1' })
-    expect(options.headers.Authorization).toBe('Bearer sk_test')
+    expect(options.headers.get('Authorization')).toBe('Bearer sk_test')
   })
 
   it('accepts only expected HTTPS authorization hosts', async () => {
@@ -161,7 +161,25 @@ describe('Zernio API boundary', () => {
     const listUrl = new URL(fetchMock.mock.calls[0][0])
     expect(listUrl.searchParams.get('profileId')).toBe(profileId)
     expect(listUrl.searchParams.get('platform')).toBe('instagram')
-    expect(fetchMock.mock.calls.every((call) => call[1].headers.Authorization === 'Bearer sk_test')).toBe(true)
+    expect(fetchMock.mock.calls.every((call) => call[1].headers.get('Authorization') === 'Bearer sk_test')).toBe(true)
+  })
+
+  it('sends a DM with a stable idempotency key and verifies the provider receipt', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const conversationId = '3297393773983978'
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      data: { messageId: 'provider-message-1', conversationId },
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(sendZernioInboxMessage(accountId, conversationId, ' Hello ', 'reply-123'))
+      .resolves.toBe('provider-message-1')
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(url).toBe(`https://zernio.com/api/v1/inbox/conversations/${conversationId}/messages`)
+    expect(options.method).toBe('POST')
+    expect(options.headers.get('Authorization')).toBe('Bearer sk_test')
+    expect(options.headers.get('Idempotency-Key')).toBe('reply-123')
+    expect(JSON.parse(options.body)).toEqual({ accountId, message: 'Hello' })
   })
 
   it('rejects a conversation assigned to a different account', async () => {
@@ -171,5 +189,32 @@ describe('Zernio API boundary', () => {
     } }))))
     await expect(getZernioInboxConversation(accountId, 'thread'))
       .rejects.toMatchObject({ status: 404, code: 'conversation_not_found' })
+  })
+
+  it('reads only Instagram comments and sends replies with the documented commentId field', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [
+        { id: '1800000000', accountId, platform: 'instagram', content: 'Post', commentCount: 2 },
+        { id: 'other', accountId, platform: 'facebook', commentCount: 1 },
+      ] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ comments: [{
+        id: 'comment-1', message: 'Price?', createdTime: '2026-09-27T15:00:00Z',
+        from: { id: 'customer-1', name: 'Customer', isOwner: false },
+        replies: [{ id: 'reply-1', parentId: 'comment-1', message: 'DM sent', from: { isOwner: true, name: 'Shop' } }],
+      }] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, data: { commentId: 'reply-2', isReply: true } })))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(listZernioCommentedPosts(profileId)).resolves.toMatchObject([{ id: '1800000000', accountId }])
+    await expect(listZernioPostComments(accountId, '1800000000')).resolves.toMatchObject([
+      { id: 'comment-1', authorName: 'Customer', isOwner: false },
+      { id: 'reply-1', isOwner: true },
+    ])
+    await expect(sendZernioCommentReply(accountId, '1800000000', 'comment-1', 'Thanks', 'stable-key'))
+      .resolves.toBe('reply-2')
+    const [url, options] = fetchMock.mock.calls[2]
+    expect(url).toBe('https://zernio.com/api/v1/inbox/comments/1800000000')
+    expect(options.headers.get('Idempotency-Key')).toBe('stable-key')
+    expect(JSON.parse(options.body)).toEqual({ accountId, message: 'Thanks', commentId: 'comment-1' })
   })
 })

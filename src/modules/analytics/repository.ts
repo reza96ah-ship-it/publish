@@ -55,7 +55,7 @@ export class AnalyticsRepository {
 
   async findConnectedPlatforms(workspaceId: string) {
     return db.platform.findMany({
-      where: { workspaceId, tokenSecret: { not: null } },
+      where: { workspaceId, provider: 'direct', tokenSecret: { not: null } },
       select: {
         id: true,
         type: true,

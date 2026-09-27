@@ -100,6 +100,26 @@ interface AnalyticsData {
   }
 }
 
+interface ZernioExtraData {
+  accounts: Array<{
+    id: string
+    username: string
+    stories: Array<{
+      id: string
+      mediaType: string | null
+      permalink: string | null
+      timestamp: string | null
+      insights: { source: string; views: number | null; reach: number | null; replies: number | null } | null
+    }> | null
+    demographics: {
+      age: Array<{ dimension: string; value: number }>
+      gender: Array<{ dimension: string; value: number }>
+      country: Array<{ dimension: string; value: number }>
+    } | null
+    demographicsReason: 'available' | 'followers_below_100' | 'unavailable'
+  }>
+}
+
 interface PublishJob {
   id: string
   title: string
@@ -133,6 +153,13 @@ export function AnalyticsView() {
   const { data, isLoading, isError, refetch, dataUpdatedAt: analyticsUpdatedAt } = useQuery<AnalyticsData>({
     queryKey: ['analytics', 'all', period],
     queryFn: () => api.get<AnalyticsData>(`/api/analytics?platform=all&range=${period}d`),
+  })
+
+  const { data: zernioExtra } = useQuery<ZernioExtraData>({
+    queryKey: ['analytics', 'zernio-extra'],
+    queryFn: () => api.get<ZernioExtraData>('/api/analytics/zernio-extra'),
+    enabled: data?.source === 'zernio',
+    staleTime: 5 * 60_000,
   })
 
   const { data: publishJobs } = useQuery<PublishJob[]>({
@@ -576,6 +603,73 @@ export function AnalyticsView() {
 
       {/* Issue #215: per-post performance + campaign rollup */}
       <PostPerformanceSection />
+
+      {data?.source === 'zernio' && zernioExtra?.accounts.map((account) => (
+        <div key={account.id} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="n-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-sm font-semibold text-ink-primary">استوری‌های فعال @{account.username}</h2>
+              <span className="text-xs text-ink-tertiary">۲۴ ساعت اخیر</span>
+            </div>
+            {account.stories === null ? (
+              <p className="text-sm text-ink-tertiary">آمار استوری فعلاً از این حساب در دسترس نیست.</p>
+            ) : account.stories.length === 0 ? (
+              <p className="text-sm text-ink-tertiary">استوری فعالی وجود ندارد.</p>
+            ) : (
+              <div className="space-y-2">
+                {account.stories.map((story) => (
+                  <div key={story.id} className="n-card-compact p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-ink-primary">
+                        {story.mediaType === 'VIDEO' ? 'استوری ویدیویی' : 'استوری تصویری'}
+                        {story.timestamp ? ` · ${formatJalaliShort(new Date(story.timestamp))}` : ''}
+                      </div>
+                      <div className="text-xs text-ink-secondary mt-1">
+                        بازدید {story.insights?.views === null || story.insights?.views === undefined ? '—' : toPersianDigits(formatCompact(story.insights.views))}
+                        {' · '}دسترسی {story.insights?.reach === null || story.insights?.reach === undefined ? '—' : toPersianDigits(formatCompact(story.insights.reach))}
+                        {' · '}پاسخ {story.insights?.replies === null || story.insights?.replies === undefined ? '—' : toPersianDigits(formatCompact(story.insights.replies))}
+                      </div>
+                    </div>
+                    {story.permalink && <a href={story.permalink} target="_blank" rel="noopener noreferrer" className="text-xs text-accent shrink-0">دیدن</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="n-card p-5">
+            <h2 className="text-sm font-semibold text-ink-primary mb-4">ترکیب مخاطبان @{account.username}</h2>
+            {account.demographics ? (
+              <div className="space-y-4">
+                {([
+                  ['سن', account.demographics.age],
+                  ['جنسیت', account.demographics.gender],
+                  ['کشور', account.demographics.country],
+                ] as const).map(([label, points]) => (
+                  <div key={label}>
+                    <div className="text-xs font-semibold text-ink-secondary mb-2">{label}</div>
+                    {points.length === 0 ? <p className="text-xs text-ink-tertiary">داده‌ای موجود نیست</p> : points.slice(0, 4).map((point) => (
+                      <div key={point.dimension} className="flex items-center gap-2 text-xs mb-1.5">
+                        <span className="w-20 truncate text-ink-secondary">{point.dimension}</span>
+                        <div className="h-2 rounded-full bg-accent/20 flex-1 overflow-hidden">
+                          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, Math.round(100 * point.value / (points[0]?.value || 1)))}%` }} />
+                        </div>
+                        <span className="w-12 text-end num-tabular text-ink-primary">{toPersianDigits(formatCompact(point.value))}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <p className="text-2xs text-ink-tertiary">مقادیر، تعداد مخاطب هستند؛ داده‌های جمعیت‌شناختی ممکن است تا ۴۸ ساعت تأخیر داشته باشند.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-tertiary">
+                {account.demographicsReason === 'followers_below_100'
+                  ? 'این آمار از ۱۰۰ دنبال‌کننده به بالا در دسترس است.'
+                  : 'آمار جمعیت‌شناختی فعلاً در دسترس نیست؛ ممکن است به افزونه Analytics نیاز باشد.'}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
 
       {/* Logs section */}
       <div className="n-card p-0 overflow-hidden">

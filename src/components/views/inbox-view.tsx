@@ -48,7 +48,6 @@ import {
   DataFreshness,
 } from '@/components/dashboard/shared'
 import { useAnnounceValue } from '@/lib/aria-live'
-import { ZernioInstagramInbox } from '@/components/inbox/zernio-instagram-inbox'
 import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -415,6 +414,23 @@ export function InboxView() {
     () => threadPages?.pages.flatMap((page) => page.data) ?? [],
     [threadPages]
   )
+
+  // Reconcile provider messages separately so opening the Inbox never waits
+  // on Instagram/Zernio network calls. The existing thread query remains the
+  // only message center and is refreshed after reconciliation.
+  useQuery({
+    queryKey: ['zernio-inbox-sync'],
+    queryFn: async () => {
+      const result = await api.get<{ synced: boolean }>('/api/inbox/zernio/sync')
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['inbox-threads'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] }),
+      ])
+      return result
+    },
+    retry: false,
+    refetchInterval: 60_000,
+  })
 
   // Queue-rail badge counts + own membership id (hides own presence lock).
   const { data: queueCounts } = useQuery<{
@@ -944,7 +960,6 @@ export function InboxView() {
         صندوق ورودی یکپارچه
       </SectionTitle>
       <DataFreshness dataUpdatedAt={threadsUpdatedAt} onRefresh={refetchThreads} className="mb-2" />
-      <ZernioInstagramInbox />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: List */}
