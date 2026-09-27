@@ -48,7 +48,7 @@ ENV PORT=3000
 # extraction and thumbnail generation (src/lib/video-probe.ts) — installed via apt
 # rather than an npm prebuilt-binary package (license/bundler issues, see that file).
 # curl fetches Instagram profile photos through the private V2ray HTTP proxy.
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
