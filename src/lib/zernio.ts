@@ -7,7 +7,27 @@ export interface ZernioInstagramAccount {
   displayName: string | null
   profileUrl: string | null
   avatarUrl: string | null
+  bio: string | null
+  websiteUrl: string | null
+  followersCount: number | null
   isActive: boolean
+}
+
+export interface ZernioInstagramInsights {
+  reach: number | null
+  views: number | null
+  accountsEngaged: number | null
+  totalInteractions: number | null
+}
+
+export interface ZernioInstagramPost {
+  id: string
+  caption: string | null
+  permalink: string | null
+  mediaType: string | null
+  createdTime: string | null
+  likeCount: number | null
+  commentCount: number | null
 }
 
 export class ZernioApiError extends Error {
@@ -64,6 +84,26 @@ function httpsUrl(value: unknown): string | null {
   }
 }
 
+function websiteUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
+function nonnegativeNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+}
+
 export async function createZernioProfile(workspaceId: string): Promise<string> {
   let body: Record<string, unknown>
   try {
@@ -118,13 +158,53 @@ export async function listInstagramAccounts(profileId: string): Promise<ZernioIn
     const id = readId(account._id)
     // Do not trust a provider-side filter alone for tenant isolation.
     if (!id || account.platform !== 'instagram' || readId(account.profileId) !== profileId) return []
+    const profileData = objectValue(objectValue(account.metadata)?.profileData)
     return [{
       id,
       username: typeof account.username === 'string' ? account.username : '',
       displayName: typeof account.displayName === 'string' ? account.displayName : null,
       profileUrl: httpsUrl(account.profileUrl),
       avatarUrl: httpsUrl(account.profilePicture ?? account.profileImage ?? account.avatarUrl),
+      bio: typeof profileData?.bio === 'string' ? profileData.bio.slice(0, 500) : null,
+      websiteUrl: websiteUrl(profileData?.website),
+      followersCount: nonnegativeNumber(account.followersCount ?? profileData?.followersCount),
       isActive: account.isActive === true,
+    }]
+  })
+}
+
+export async function getInstagramAccountInsights(accountId: string): Promise<ZernioInstagramInsights> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const query = new URLSearchParams({ accountId })
+  const body = await zernioRequest(`/analytics/instagram/account-insights?${query}`)
+  const metrics = objectValue(body.metrics)
+  if (!metrics) throw new ZernioApiError(502, 'invalid_insights_response')
+  const total = (name: string) => nonnegativeNumber(objectValue(metrics[name])?.total)
+  return {
+    reach: total('reach'),
+    views: total('views'),
+    accountsEngaged: total('accounts_engaged'),
+    totalInteractions: total('total_interactions'),
+  }
+}
+
+export async function getInstagramRecentPosts(accountId: string): Promise<ZernioInstagramPost[]> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const body = await zernioRequest(`/accounts/${accountId}/posts`)
+  if (!Array.isArray(body.posts)) throw new ZernioApiError(502, 'invalid_posts_response')
+
+  return body.posts.slice(0, 6).flatMap((row): ZernioInstagramPost[] => {
+    const post = objectValue(row)
+    if (!post || typeof post.id !== 'string') return []
+    const caption = typeof post.message === 'string' ? post.message : post.caption
+    return [{
+      id: post.id,
+      caption: typeof caption === 'string' ? caption.slice(0, 300) : null,
+      permalink: httpsUrl(post.permalink),
+      mediaType: typeof post.mediaType === 'string' ? post.mediaType : null,
+      createdTime: typeof post.createdTime === 'string' ? post.createdTime : null,
+      likeCount: nonnegativeNumber(post.likeCount),
+      commentCount: nonnegativeNumber(post.commentCount),
     }]
   })
 }

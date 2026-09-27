@@ -12,7 +12,137 @@ interface InstagramAccount {
   displayName: string | null
   profileUrl: string | null
   avatarUrl: string | null
+  bio: string | null
+  websiteUrl: string | null
+  followersCount: number | null
   isActive: boolean
+}
+
+interface InstagramPost {
+  id: string
+  caption: string | null
+  permalink: string | null
+  mediaType: string | null
+  likeCount: number | null
+  commentCount: number | null
+}
+
+interface InstagramOverview {
+  insights: {
+    reach: number | null
+    views: number | null
+    accountsEngaged: number | null
+    totalInteractions: number | null
+  } | null
+  insightsStatus: 'available' | 'upgrade_required' | 'unavailable'
+  recentPosts: InstagramPost[]
+  postsStatus: 'available' | 'unavailable'
+}
+
+const numberFormatter = new Intl.NumberFormat('fa-IR')
+
+function count(value: number | null | undefined): string {
+  return typeof value === 'number' ? numberFormatter.format(value) : '—'
+}
+
+function InstagramAccountCard({ account }: { account: InstagramAccount }) {
+  const { data: overview, isLoading, isError } = useQuery<InstagramOverview>({
+    queryKey: ['zernio-instagram-overview', account.id],
+    queryFn: () => api.get(`/api/platforms/zernio/instagram/accounts/${account.id}/overview`),
+    enabled: account.isActive,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const metrics = [
+    { label: 'دنبال‌کنندگان', value: account.followersCount },
+    { label: 'دسترسی ۳۰ روز', value: overview?.insights?.reach },
+    { label: 'بازدید ۳۰ روز', value: overview?.insights?.views },
+    { label: 'حساب‌های درگیر', value: overview?.insights?.accountsEngaged },
+    { label: 'کل تعاملات', value: overview?.insights?.totalInteractions },
+  ]
+
+  return (
+    <div className="rounded-xl border border-border p-4 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative size-12 shrink-0">
+            <PlatformIcon platform="instagram" className="size-12" />
+            {account.avatarUrl && (
+              <img
+                src={account.avatarUrl}
+                alt={`تصویر پروفایل ${account.username}`}
+                className="absolute inset-0 size-12 rounded-full object-cover"
+                onError={(event) => { event.currentTarget.style.display = 'none' }}
+              />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-ink-primary truncate">{account.displayName || account.username || 'Instagram'}</p>
+            <p className="text-xs text-ink-tertiary truncate" dir="ltr">@{account.username || '—'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span className={account.isActive ? 'text-success' : 'text-warning'}>
+            {account.isActive ? 'متصل و فعال' : 'نیازمند اتصال مجدد'}
+          </span>
+          {account.profileUrl && (
+            <a href={account.profileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent">
+              مشاهده پروفایل <ExternalLink className="size-3" />
+            </a>
+          )}
+        </div>
+      </div>
+
+      {account.bio && <p className="text-sm text-ink-secondary whitespace-pre-line">{account.bio}</p>}
+      {account.websiteUrl && (
+        <a href={account.websiteUrl} target="_blank" rel="noopener noreferrer" className="block text-xs text-accent break-all" dir="ltr">
+          {account.websiteUrl}
+        </a>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {metrics.map((metric, index) => (
+          <div key={metric.label} className="rounded-lg border border-border p-3">
+            <p className="text-xs text-ink-tertiary">{metric.label}</p>
+            <p className="mt-1 text-lg font-semibold text-ink-primary" dir="ltr">
+              {index > 0 && isLoading ? '…' : count(metric.value)}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {overview?.insightsStatus === 'upgrade_required' && (
+        <p className="text-xs text-warning">نمایش آمار به افزونه Analytics در Zernio نیاز دارد.</p>
+      )}
+      {(isError || overview?.insightsStatus === 'unavailable') && (
+        <p className="text-xs text-warning">آمار اینستاگرام فعلاً در دسترس نیست.</p>
+      )}
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-ink-primary">پست‌های اخیر</h3>
+        {isLoading && <p className="text-xs text-ink-tertiary">در حال دریافت پست‌ها...</p>}
+        {overview?.postsStatus === 'unavailable' && <p className="text-xs text-warning">دریافت پست‌ها فعلاً ممکن نیست.</p>}
+        {overview?.postsStatus === 'available' && overview.recentPosts.length === 0 && (
+          <p className="text-xs text-ink-tertiary">پستی برای نمایش یافت نشد.</p>
+        )}
+        {overview?.recentPosts.slice(0, 4).map((post) => (
+          <div key={post.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3 text-xs">
+            <div className="min-w-0">
+              <p className="text-ink-secondary line-clamp-2">{post.caption || post.mediaType || 'پست اینستاگرام'}</p>
+              <p className="mt-1 text-ink-tertiary">
+                {count(post.likeCount)} پسند · {count(post.commentCount)} نظر
+              </p>
+            </div>
+            {post.permalink && (
+              <a href={post.permalink} target="_blank" rel="noopener noreferrer" className="shrink-0 text-accent" aria-label="مشاهده پست در اینستاگرام">
+                <ExternalLink className="size-4" />
+              </a>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function ZernioInstagramPanel() {
@@ -47,32 +177,10 @@ export function ZernioInstagramPanel() {
       {!isLoading && !isError && data?.accounts.length === 0 && (
         <p className="text-sm text-ink-secondary">هنوز هیچ حساب اینستاگرامی از این مسیر به فضای کاری شما متصل نشده است.</p>
       )}
-      {data?.accounts.map((account) => (
-        <div key={account.id} className="rounded-xl border border-border p-3 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {account.avatarUrl ? (
-              <img src={account.avatarUrl} alt="" className="size-10 rounded-full object-cover" />
-            ) : <PlatformIcon platform="instagram" className="size-10 shrink-0" />}
-            <div className="min-w-0">
-              <p className="font-semibold text-ink-primary truncate">{account.displayName || account.username || 'Instagram'}</p>
-              <p className="text-xs text-ink-tertiary truncate" dir="ltr">@{account.username || '—'}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className={account.isActive ? 'text-success' : 'text-warning'}>
-              {account.isActive ? 'تأییدشده در Zernio' : 'نیازمند اتصال مجدد'}
-            </span>
-            {account.profileUrl && (
-              <a href={account.profileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent">
-                مشاهده پروفایل <ExternalLink className="size-3" />
-              </a>
-            )}
-          </div>
-        </div>
-      ))}
+      {data?.accounts.map((account) => <InstagramAccountCard key={account.id} account={account} />)}
 
       <p className="text-xs text-ink-tertiary">
-        این اتصال فعلاً برای تأیید حساب و نمایش پروفایل است؛ انتشار پست و پاسخ خودکار با Zernio هنوز به این بخش متصل نشده‌اند.
+        اطلاعات پروفایل، پست‌ها و آمار از Zernio خوانده می‌شوند. انتشار پست و پاسخ خودکار هنوز به این اتصال وصل نشده‌اند.
       </p>
     </section>
   )

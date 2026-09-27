@@ -18,7 +18,16 @@ export async function GET() {
 
   try {
     const accounts = await listInstagramAccounts(workspace.zernioProfileId)
-    return NextResponse.json({ accounts })
+    // Keep Instagram's CDN URL server-side; browsers in filtered regions use
+    // our authenticated, same-origin photo route instead.
+    return NextResponse.json({
+      accounts: accounts.map((account) => ({
+        ...account,
+        avatarUrl: account.avatarUrl
+          ? `/api/platforms/zernio/instagram/accounts/${account.id}/photo`
+          : null,
+      })),
+    })
   } catch (error) {
     logger.error({ msg: 'Zernio Instagram account list failed', code: error instanceof ZernioApiError ? error.code : 'internal_error' })
     return NextResponse.json({ error: 'zernio_unavailable' }, { status: 502 })

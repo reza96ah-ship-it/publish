@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramConnectUrl, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramRecentPosts, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -61,7 +61,46 @@ describe('Zernio API boundary', () => {
       displayName: 'My Shop',
       profileUrl: 'https://www.instagram.com/myshop/',
       avatarUrl: null,
+      bio: null,
+      websiteUrl: null,
+      followersCount: null,
       isActive: true,
+    }])
+  })
+
+  it('maps profile fields and account-level insights without leaking provider metadata', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ accounts: [{
+        _id: accountId,
+        profileId: { _id: profileId },
+        platform: 'instagram',
+        username: 'myshop',
+        displayName: 'My Shop',
+        profilePicture: 'https://scontent.example.cdninstagram.com/photo.jpg',
+        followersCount: 34,
+        metadata: { profileData: { bio: 'My bio', website: 'https://myshop.example/', privateToken: 'hidden' } },
+        isActive: true,
+      }] })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ metrics: {
+        reach: { total: 120 }, views: { total: 240 },
+        accounts_engaged: { total: 17 }, total_interactions: { total: 25 },
+      } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ posts: [{
+        id: 'ig-post-1', message: 'New arrival', permalink: 'https://www.instagram.com/p/abc/',
+        likeCount: 12, commentCount: 3,
+      }] })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(listInstagramAccounts(profileId)).resolves.toMatchObject([{
+      avatarUrl: 'https://scontent.example.cdninstagram.com/photo.jpg',
+      bio: 'My bio', websiteUrl: 'https://myshop.example/', followersCount: 34,
+    }])
+    await expect(getInstagramAccountInsights(accountId)).resolves.toEqual({
+      reach: 120, views: 240, accountsEngaged: 17, totalInteractions: 25,
+    })
+    await expect(getInstagramRecentPosts(accountId)).resolves.toMatchObject([{
+      id: 'ig-post-1', caption: 'New arrival', likeCount: 12, commentCount: 3,
     }])
   })
 })
