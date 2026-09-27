@@ -48,6 +48,7 @@ import {
   DataFreshness,
 } from '@/components/dashboard/shared'
 import { useAnnounceValue } from '@/lib/aria-live'
+import { ZernioInstagramInbox } from '@/components/inbox/zernio-instagram-inbox'
 import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -943,6 +944,7 @@ export function InboxView() {
         صندوق ورودی یکپارچه
       </SectionTitle>
       <DataFreshness dataUpdatedAt={threadsUpdatedAt} onRefresh={refetchThreads} className="mb-2" />
+      <ZernioInstagramInbox />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left: List */}

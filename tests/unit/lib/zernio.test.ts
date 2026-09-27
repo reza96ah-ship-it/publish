@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioInboxConversation, listInstagramAccounts, listZernioInboxConversations, listZernioInboxMessages, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -128,5 +128,48 @@ describe('Zernio API boundary', () => {
     await expect(getInstagramFollowerHistory(accountId, '2026-09-25', '2026-09-26')).resolves.toEqual([])
     expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('metricType')).toBe('total_value')
     expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('metricType')).toBe('time_series')
+  })
+
+  it('reads only Instagram inbox rows and validates conversation ownership', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const conversationId = '3297393773983978'
+    const base = { id: conversationId, accountId, platform: 'instagram', participantName: 'Customer', lastMessage: 'Hello' }
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: [
+        base,
+        { ...base, id: 'facebook-thread', platform: 'facebook' },
+      ], pagination: { nextCursor: 'next-page' }, meta: { accountsFailed: 0 } })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: base })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ messages: [{
+        id: 'message-1', conversationId, accountId, direction: 'incoming',
+        senderName: 'Customer', message: 'Hello', createdAt: '2026-09-27T15:00:00Z', attachments: [],
+      }, {
+        id: 'message-2', conversationId, accountId, direction: 'outgoing',
+        message: 'secret', isDeleted: true,
+      }, {
+        id: 'foreign', conversationId, accountId: otherProfileId, message: 'private',
+      }], pagination: { nextCursor: null } })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(listZernioInboxConversations(profileId)).resolves.toMatchObject({
+      data: [{ id: conversationId, accountId, participantName: 'Customer' }], nextCursor: 'next-page',
+    })
+    await expect(getZernioInboxConversation(accountId, conversationId)).resolves.toMatchObject({ id: conversationId, accountId })
+    await expect(listZernioInboxMessages(accountId, conversationId)).resolves.toMatchObject({
+      data: [{ id: 'message-1', message: 'Hello' }, { id: 'message-2', message: 'پیام حذف شده است' }],
+    })
+    const listUrl = new URL(fetchMock.mock.calls[0][0])
+    expect(listUrl.searchParams.get('profileId')).toBe(profileId)
+    expect(listUrl.searchParams.get('platform')).toBe('instagram')
+    expect(fetchMock.mock.calls.every((call) => call[1].headers.Authorization === 'Bearer sk_test')).toBe(true)
+  })
+
+  it('rejects a conversation assigned to a different account', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ data: {
+      id: 'thread', accountId: otherProfileId, platform: 'instagram',
+    } }))))
+    await expect(getZernioInboxConversation(accountId, 'thread'))
+      .rejects.toMatchObject({ status: 404, code: 'conversation_not_found' })
   })
 })

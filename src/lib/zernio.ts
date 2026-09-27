@@ -39,6 +39,33 @@ export interface ZernioInstagramPost {
   commentCount: number | null
 }
 
+export interface ZernioInboxConversation {
+  id: string
+  accountId: string
+  accountUsername: string
+  participantName: string
+  participantPicture: string | null
+  lastMessage: string | null
+  updatedTime: string | null
+  unreadCount: number | null
+  status: 'active' | 'archived' | 'unknown'
+}
+
+export interface ZernioInboxMessage {
+  id: string
+  direction: 'incoming' | 'outgoing' | 'unknown'
+  senderName: string
+  message: string
+  createdAt: string | null
+  attachmentCount: number
+  isDeleted: boolean
+}
+
+export interface ZernioInboxPage<T> {
+  data: T[]
+  nextCursor: string | null
+}
+
 export class ZernioApiError extends Error {
   constructor(
     public readonly status: number,
@@ -283,4 +310,95 @@ export async function getInstagramRecentPosts(accountId: string): Promise<Zernio
       commentCount: nonnegativeNumber(post.commentCount),
     }]
   })
+}
+
+function validOpaque(value: string, name: string): string {
+  if (!value || value.length > 500 || /[\u0000-\u001f]/.test(value)) {
+    throw new ZernioApiError(400, `invalid_${name}`)
+  }
+  return value
+}
+
+function inboxConversation(value: unknown): ZernioInboxConversation | null {
+  const row = objectValue(value)
+  if (!row || typeof row.id !== 'string' || typeof row.accountId !== 'string') return null
+  const status = row.status === 'active' || row.status === 'archived' ? row.status : 'unknown'
+  return {
+    id: validOpaque(row.id, 'conversation_id'),
+    accountId: row.accountId,
+    accountUsername: typeof row.accountUsername === 'string' ? row.accountUsername.slice(0, 100) : '',
+    participantName: typeof row.participantName === 'string' ? row.participantName.slice(0, 200) : 'Instagram user',
+    participantPicture: httpsUrl(row.participantPicture),
+    lastMessage: typeof row.lastMessage === 'string' ? row.lastMessage.slice(0, 500) : null,
+    updatedTime: typeof row.updatedTime === 'string' ? row.updatedTime : null,
+    unreadCount: nonnegativeNumber(row.unreadCount),
+    status,
+  }
+}
+
+export async function listZernioInboxConversations(
+  profileId: string,
+  cursor?: string,
+): Promise<ZernioInboxPage<ZernioInboxConversation> & { accountsFailed: number }> {
+  if (!OBJECT_ID.test(profileId)) throw new ZernioApiError(400, 'invalid_profile_id')
+  const query = new URLSearchParams({ profileId, platform: 'instagram', limit: '50' })
+  if (cursor) query.set('cursor', validOpaque(cursor, 'cursor'))
+  const body = await zernioRequest(`/inbox/conversations?${query}`)
+  if (!Array.isArray(body.data)) throw new ZernioApiError(502, 'invalid_conversations_response')
+  const pagination = objectValue(body.pagination)
+  const meta = objectValue(body.meta)
+  return {
+    data: body.data.flatMap((value): ZernioInboxConversation[] => {
+      const row = inboxConversation(value)
+      return row && row.accountId.match(OBJECT_ID) && objectValue(value)?.platform === 'instagram' ? [row] : []
+    }),
+    nextCursor: typeof pagination?.nextCursor === 'string' ? pagination.nextCursor : null,
+    accountsFailed: nonnegativeNumber(meta?.accountsFailed) ?? 0,
+  }
+}
+
+export async function getZernioInboxConversation(
+  accountId: string,
+  conversationId: string,
+): Promise<ZernioInboxConversation> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(conversationId, 'conversation_id')
+  const query = new URLSearchParams({ accountId })
+  const body = await zernioRequest(`/inbox/conversations/${encodeURIComponent(id)}?${query}`)
+  const row = inboxConversation(body.data)
+  if (!row || row.id !== id || row.accountId !== accountId || objectValue(body.data)?.platform !== 'instagram') {
+    throw new ZernioApiError(404, 'conversation_not_found')
+  }
+  return row
+}
+
+export async function listZernioInboxMessages(
+  accountId: string,
+  conversationId: string,
+  cursor?: string,
+): Promise<ZernioInboxPage<ZernioInboxMessage>> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const id = validOpaque(conversationId, 'conversation_id')
+  const query = new URLSearchParams({ accountId, limit: '50', sortOrder: 'desc' })
+  if (cursor) query.set('cursor', validOpaque(cursor, 'cursor'))
+  const body = await zernioRequest(`/inbox/conversations/${encodeURIComponent(id)}/messages?${query}`)
+  if (!Array.isArray(body.messages)) throw new ZernioApiError(502, 'invalid_messages_response')
+  const pagination = objectValue(body.pagination)
+  return {
+    data: body.messages.flatMap((value): ZernioInboxMessage[] => {
+      const row = objectValue(value)
+      if (!row || typeof row.id !== 'string' || row.conversationId !== id || row.accountId !== accountId) return []
+      const isDeleted = row.isDeleted === true
+      return [{
+        id: validOpaque(row.id, 'message_id'),
+        direction: row.direction === 'incoming' || row.direction === 'outgoing' ? row.direction : 'unknown',
+        senderName: typeof row.senderName === 'string' ? row.senderName.slice(0, 200) : '',
+        message: isDeleted ? 'پیام حذف شده است' : typeof row.message === 'string' ? row.message.slice(0, 10_000) : '',
+        createdAt: typeof row.createdAt === 'string' ? row.createdAt : null,
+        attachmentCount: !isDeleted && Array.isArray(row.attachments) ? row.attachments.length : 0,
+        isDeleted,
+      }]
+    }),
+    nextCursor: typeof pagination?.nextCursor === 'string' ? pagination.nextCursor : null,
+  }
 }
