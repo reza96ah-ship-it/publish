@@ -487,7 +487,7 @@ export function AnalyticsView() {
                 const avgReach = data.reach.length
                   ? data.reach.reduce((sum, value) => sum + value, 0) / data.reach.length : null
                 const formatted = (value: number | null, suffix = '') =>
-                  value === null ? '—' : `${toPersianDigits(formatCompact(value))}${suffix}`
+                  value === null ? '—' : `${toPersianDigits(formatCompact(Math.round(value)))}${suffix}`
                 return [
                   { label: 'نرخ تعامل بازه', value: summary.engagementRate === null ? '—' : `${toPersianDigits(summary.engagementRate.toFixed(1))}٪` },
                   { label: 'میانگین دسترسی روزانه', value: formatted(avgReach) },
