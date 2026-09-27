@@ -155,7 +155,7 @@ export function InstagramSummaryPanel() {
         <p className="text-sm text-ink-secondary">هنوز حساب حرفه‌ای اینستاگرام متصل نشده است. از بخش کانال‌ها آن را متصل کنید.</p>
       )}
       {data?.accounts && data.accounts.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div className={`grid grid-cols-1 gap-3 ${data.accounts.length > 1 ? 'xl:grid-cols-2' : ''}`}>
           {data.accounts.map((account) => <InstagramAccountSummary key={account.id} account={account} />)}
         </div>
       )}

@@ -38,6 +38,7 @@ describe('InstagramSummaryPanel', () => {
 
     expect(await screen.findByText('@couchlet')).toBeInTheDocument()
     expect(screen.getByAltText('تصویر پروفایل couchlet')).toHaveAttribute('src', '/api/platforms/zernio/instagram/accounts/507f1f77bcf86cd799439011/photo')
+    expect(screen.getByAltText('تصویر پروفایل couchlet').closest('.grid')).not.toHaveClass('xl:grid-cols-2')
     expect(await screen.findByText('۸٬۱۸۶')).toBeInTheDocument()
     expect(screen.getByText('Latest post')).toBeInTheDocument()
     expect(screen.getByText(/مستقل از فیلترهای داشبورد/)).toBeInTheDocument()
