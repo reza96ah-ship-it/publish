@@ -83,9 +83,9 @@ function InstagramAccountSummary({ account }: { account: InstagramAccount }) {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-lg bg-surface px-3 py-2.5">
-            <p className="text-xs text-ink-tertiary">{metric.label}</p>
-            <p className="mt-1 text-lg font-semibold text-ink-primary num-tabular" dir="ltr">
+          <div key={metric.label} className="flex min-h-20 flex-col items-center justify-center rounded-lg bg-surface px-2 py-2.5 text-center">
+            <p className="text-xs leading-5 text-ink-tertiary">{metric.label}</p>
+            <p className="mt-1 w-full text-center text-lg font-semibold text-ink-primary num-tabular" dir="ltr">
               {metric.available ? formatCount(metric.value) : '…'}
             </p>
           </div>

@@ -102,9 +102,9 @@ function InstagramAccountCard({ account }: { account: InstagramAccount }) {
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {metrics.map((metric, index) => (
-          <div key={metric.label} className="rounded-lg border border-border p-3">
-            <p className="text-xs text-ink-tertiary">{metric.label}</p>
-            <p className="mt-1 text-lg font-semibold text-ink-primary" dir="ltr">
+          <div key={metric.label} className="flex min-h-20 flex-col items-center justify-center rounded-lg border border-border p-3 text-center">
+            <p className="text-xs leading-5 text-ink-tertiary">{metric.label}</p>
+            <p className="mt-1 w-full text-center text-lg font-semibold text-ink-primary num-tabular" dir="ltr">
               {index > 0 && isLoading ? '…' : count(metric.value)}
             </p>
           </div>
@@ -180,7 +180,7 @@ export function ZernioInstagramPanel() {
       {data?.accounts.map((account) => <InstagramAccountCard key={account.id} account={account} />)}
 
       <p className="text-xs text-ink-tertiary">
-        اطلاعات پروفایل، پست‌ها و آمار از Zernio خوانده می‌شوند. انتشار پست و پاسخ خودکار هنوز به این اتصال وصل نشده‌اند.
+        اطلاعات پروفایل، پست‌ها و آمار از Zernio خوانده می‌شوند. قابلیت‌های انتشار و پاسخ خودکار به مجوزها و تنظیمات حساب متصل بستگی دارند.
       </p>
     </section>
   )
