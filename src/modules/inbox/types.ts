@@ -57,6 +57,7 @@ export interface InboxThreadSummary {
   providerThreadId: string
   providerUserId: string | null
   title: string
+  senderAvatar: string | null
   platform: string
   platformName: string
   messageType: string

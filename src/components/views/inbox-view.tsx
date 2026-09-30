@@ -117,6 +117,7 @@ interface InboxThreadSummary {
   providerThreadId: string
   providerUserId: string | null
   title: string
+  senderAvatar: string | null
   platform: string
   platformName: string
   messageType: string
@@ -178,7 +179,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
   return {
     id: thread.id,
     senderName: thread.title || thread.providerUserId || 'Instagram user',
-    senderAvatar: null,
+    senderAvatar: thread.senderAvatar,
     message: thread.lastMessage?.body ?? '',
     isRead: thread.unreadCount === 0,
     isReplied: Boolean(outbound),
