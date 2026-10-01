@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { authRateLimit } from '@/lib/ratelimit'
 import { hashToken } from '@/lib/invitations'
+import { isStrongAppPassword } from '@/lib/password-policy'
 import { acceptCustomerInvitation, CustomerInvitationError } from '@/lib/customer-invitations'
 
 export const dynamic = 'force-dynamic'
@@ -11,14 +12,7 @@ const schema = z.object({
   email: z.email().max(254),
   name: z.string().trim().min(2).max(100),
   password: z.string().min(12).max(128),
-}).strict().refine((value) => {
-  const password = value.password.toLowerCase()
-  const emailName = value.email.toLowerCase().split('@')[0]
-  return !password.includes(value.email.toLowerCase()) &&
-    !(emailName.length >= 4 && password.includes(emailName)) &&
-    !/^(.)\1+$/.test(password) &&
-    !['password', 'qwerty', '123456', 'adminadmin'].some((weak) => password.includes(weak))
-}, {
+}).strict().refine((value) => isStrongAppPassword(value.password, value.email), {
   message: 'رمز عبور بسیار ساده است',
 })
 
