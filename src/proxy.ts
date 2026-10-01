@@ -26,6 +26,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { db } from '@/lib/db'
 
 /**
  * Generate a cryptographically random nonce (base64, 18 bytes -> 24 chars).
@@ -113,7 +114,12 @@ export async function proxy(req: NextRequest) {
         // reads authOptions.cookies) finds the session → redirects back to /.
         cookieName: 'next-auth.session-token',
       })
-      if (!token) {
+      // getToken only verifies the JWT signature. A password change increments
+      // the DB version, so even a cryptographically valid old JWT must be denied.
+      const account = typeof token?.id === 'string'
+        ? await db.user.findUnique({ where: { id: token.id }, select: { sessionVersion: true } })
+        : null
+      if (!token || !account || account.sessionVersion !== (token.sessionVersion ?? 0)) {
         // API routes get a 401, not a redirect: redirecting fetch/beacon
         // calls (e.g. /api/vitals) to the signin page is useless to the
         // caller and used to leak "callbackUrl=/api/..." into the login flow.

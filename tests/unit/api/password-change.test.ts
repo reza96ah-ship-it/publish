@@ -87,7 +87,7 @@ describe('self-service app password change', () => {
     expect(response.headers.get('Cache-Control')).toBe('no-store')
     expect(db.user.updateMany).toHaveBeenCalledWith({
       where: { id: 'owner-1', passwordHash: 'old-hash' },
-      data: { passwordHash: 'new-hash', failedAttempts: 0, lockedUntil: null },
+      data: { passwordHash: 'new-hash', sessionVersion: { increment: 1 }, failedAttempts: 0, lockedUntil: null },
     })
     expect(db.auditLog.create).toHaveBeenCalledWith({
       data: { userId: 'owner-1', action: 'account.password_changed', resource: 'User' },

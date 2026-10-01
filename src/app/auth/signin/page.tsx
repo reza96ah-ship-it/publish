@@ -6,11 +6,11 @@ import { SignInForm } from './signin-form'
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>
+  searchParams: Promise<{ callbackUrl?: string; error?: string; passwordChanged?: string }>
 }) {
   // If already logged in, redirect to dashboard
   const session = await getServerSession(authOptions)
-  if (session) redirect('/')
+  if (session?.user?.id) redirect('/')
 
   const params = await searchParams
 
@@ -18,6 +18,7 @@ export default async function SignInPage({
     <SignInForm
       callbackUrl={params.callbackUrl || '/'}
       error={params.error}
+      passwordChanged={params.passwordChanged === '1'}
     />
   )
 }

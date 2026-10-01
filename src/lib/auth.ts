@@ -168,6 +168,7 @@ export const authOptions: NextAuthOptions = {
           role: primaryMembership?.role ?? 'viewer',
           activeWorkspaceId: primaryMembership?.workspaceId ?? null,
           mfaEnabled: !!user.mfaSecret,
+          sessionVersion: user.sessionVersion,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any
       },
@@ -200,6 +201,21 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role ?? 'viewer'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         token.activeWorkspaceId = (user as any).activeWorkspaceId ?? null
+        // Existing JWTs issued before this field was added implicitly use 0.
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
+      }
+
+      if (token.id) {
+        // A password change revokes every older JWT without rotating the
+        // signing secret, which also protects separately encrypted credentials.
+        const account = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { sessionVersion: true },
+        })
+        if (!account || account.sessionVersion !== (token.sessionVersion ?? 0)) {
+          token.sessionRevoked = true
+          return token
+        }
       }
 
       // On session update (e.g., workspace switch): refresh role + workspace
@@ -234,6 +250,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
+      if (token.sessionRevoked) return { ...session, user: undefined }
       // Expose token data to the client session
       if (session.user) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

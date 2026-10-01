@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const passwordHash = await hashPassword(parsed.data.newPassword)
   const updated = await db.user.updateMany({
     where: { id: user.id, passwordHash: user.passwordHash },
-    data: { passwordHash, failedAttempts: 0, lockedUntil: null },
+    data: { passwordHash, sessionVersion: { increment: 1 }, failedAttempts: 0, lockedUntil: null },
   })
   if (updated.count !== 1) return NextResponse.json({ error: 'حساب تغییر کرد؛ دوباره تلاش کنید' }, { status: 409 })
   await db.auditLog.create({

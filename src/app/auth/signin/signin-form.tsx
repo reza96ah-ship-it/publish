@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 interface SignInFormProps {
   callbackUrl: string
   error?: string
+  passwordChanged?: boolean
 }
 
 function mapAuthError(code?: string): string | null {
@@ -190,7 +191,7 @@ function DashboardMockup() {
   )
 }
 
-export function SignInForm({ callbackUrl, error }: SignInFormProps) {
+export function SignInForm({ callbackUrl, error, passwordChanged }: SignInFormProps) {
   const [email, setEmail]             = useState('')
   const [password, setPassword]       = useState('')
   const [totpCode, setTotpCode]       = useState('')
@@ -246,6 +247,11 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span className="leading-snug">{errorMessage}</span>
             </div>
+          )}
+          {passwordChanged && (
+            <p role="status" className="rounded-xl border border-success/20 bg-success/8 p-3 text-sm text-success mb-5">
+              رمز عبور تغییر کرد. برای ادامه با رمز جدید وارد شوید.
+            </p>
           )}
 
           {/* عنوان فرم */}

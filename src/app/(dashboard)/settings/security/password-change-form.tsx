@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { signOut } from 'next-auth/react'
 
 export function PasswordChangeForm() {
   const [currentPassword, setCurrentPassword] = useState('')
@@ -33,7 +34,8 @@ export function PasswordChangeForm() {
       setNewPassword('')
       setConfirmPassword('')
       setTotpCode('')
-      setMessage('رمز عبور اپلیکیشن تغییر کرد. آن را در محل امن ذخیره کنید.')
+      setMessage('رمز عبور تغییر کرد. نشست‌های قبلی بسته شدند؛ اکنون دوباره وارد شوید.')
+      void signOut({ callbackUrl: '/auth/signin?passwordChanged=1' })
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'تغییر رمز عبور انجام نشد')
     } finally {

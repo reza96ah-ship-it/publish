@@ -16,6 +16,7 @@ model User {
   name          String?
   image         String?
   passwordHash  String?
+  sessionVersion Int     @default(0)
   failedAttempts Int     @default(0)
   lockedUntil   DateTime?
   lastLoginAt   DateTime?
