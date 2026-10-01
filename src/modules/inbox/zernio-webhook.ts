@@ -108,7 +108,7 @@ async function ingestComment(payload: JsonObject, platformId: string, workspaceI
       senderExternalId: str(author?.id),
       senderName: str(author?.name, 200) ?? str(author?.username, 200) ?? '',
       body: str(comment.text, 10_000) ?? '',
-      payload: { source: 'zernio', postId, commentId },
+      payload: { source: 'zernio', postId, commentId, authorPicture: str(author?.picture, 2048) },
       createdAt,
     }],
     skipDuplicates: true,

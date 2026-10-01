@@ -200,14 +200,14 @@ describe('Zernio API boundary', () => {
       ] })))
       .mockResolvedValueOnce(new Response(JSON.stringify({ comments: [{
         id: 'comment-1', message: 'Price?', createdTime: '2026-09-27T15:00:00Z',
-        from: { id: 'customer-1', name: 'Customer', isOwner: false },
-        replies: [{ id: 'reply-1', parentId: 'comment-1', message: 'DM sent', from: { isOwner: true, name: 'Shop' } }],
+        from: { id: 'customer-1', name: 'Customer', picture: 'https://scontent-lhr6-1.cdninstagram.com/customer.jpg', isOwner: false },
+        replies: [{ id: 'reply-1', parentId: 'comment-1', message: 'DM sent', from: { isOwner: true, name: 'Shop', picture: 'https://scontent-lhr6-1.cdninstagram.com/shop.jpg' } }],
       }] })))
       .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, data: { commentId: 'reply-2', isReply: true } })))
     vi.stubGlobal('fetch', fetchMock)
     await expect(listZernioCommentedPosts(profileId)).resolves.toMatchObject([{ id: '1800000000', accountId }])
     await expect(listZernioPostComments(accountId, '1800000000')).resolves.toMatchObject([
-      { id: 'comment-1', authorName: 'Customer', isOwner: false },
+      { id: 'comment-1', authorName: 'Customer', authorPicture: 'https://scontent-lhr6-1.cdninstagram.com/customer.jpg', isOwner: false },
       { id: 'reply-1', isOwner: true },
     ])
     await expect(sendZernioCommentReply(accountId, '1800000000', 'comment-1', 'Thanks', 'stable-key'))

@@ -139,11 +139,20 @@ async function syncCommentThread(
     senderExternalId: row.isOwner ? null : row.authorId,
     senderName: row.authorName,
     body: row.message,
-    payload: { source: 'zernio', postId, commentId: row.id },
+    payload: { source: 'zernio', postId, commentId: row.id, authorPicture: row.authorPicture },
     createdAt: validDate(row.createdTime) ?? lastMessageAt,
   }))
   const inbound = await db.inboxThreadMessage.createMany({ data: rows.filter((row) => row.direction === 'inbound'), skipDuplicates: true })
   await db.inboxThreadMessage.createMany({ data: rows.filter((row) => row.direction === 'outbound'), skipDuplicates: true })
+  // A later provider read may include a photo that was absent when the comment arrived.
+  // Only update the same inbound author's message; never reuse a photo from an owner reply.
+  for (const row of messages) {
+    if (row.isOwner || !row.authorPicture || !row.authorId || row.authorId !== comment.authorId) continue
+    await db.inboxThreadMessage.updateMany({
+      where: { threadId: thread.id, providerMessageId: `comment:${row.id}`, direction: 'inbound', senderExternalId: row.authorId },
+      data: { payload: { source: 'zernio', postId, commentId: row.id, authorPicture: row.authorPicture } },
+    })
+  }
   if (existing && inbound.count > 0) {
     await db.inboxThread.update({ where: { id: thread.id }, data: { unreadCount: { increment: inbound.count } } })
   }

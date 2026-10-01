@@ -103,6 +103,7 @@ export interface ZernioPostComment {
   createdTime: string | null
   authorId: string | null
   authorName: string
+  authorPicture: string | null
   isOwner: boolean
 }
 
@@ -552,6 +553,7 @@ function zernioComment(value: unknown): ZernioPostComment | null {
     createdTime: typeof row.createdTime === 'string' ? row.createdTime : null,
     authorId: typeof from?.id === 'string' ? from.id.slice(0, 500) : null,
     authorName: typeof from?.name === 'string' ? from.name.slice(0, 200) : 'Instagram user',
+    authorPicture: httpsUrl(from?.picture),
     isOwner: from?.isOwner === true,
   }
 }

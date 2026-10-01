@@ -193,7 +193,7 @@ function toThreadSummary(
     senderAvatar:
       thread.platform?.type === 'instagram' &&
       thread.platform.provider === 'zernio' &&
-      thread.messageType === 'dm'
+      (thread.messageType === 'dm' || (thread.messageType === 'comment' && Boolean(thread.providerUserId)))
         ? `/api/inbox/threads/${encodeURIComponent(thread.id)}/photo`
         : null,
     platform: thread.platform?.type ?? 'instagram',
