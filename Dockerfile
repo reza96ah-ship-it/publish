@@ -51,6 +51,12 @@ ENV PORT=3000
 # rather than an npm prebuilt-binary package (license/bundler issues, see that file).
 # curl fetches Instagram profile photos through the private V2ray HTTP proxy.
 RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates adduser && rm -rf /var/lib/apt/lists/*
+# The official Node image includes the npm CLI dependency tree. Runtime uses
+# only `node server.js`; removing unused npm avoids shipping its CVE-bearing
+# pacote/sigstore/glob packages in the production app image.
+RUN test -d /usr/local/lib/node_modules/npm && \
+    rm -r /usr/local/lib/node_modules/npm && \
+    rm /usr/local/bin/npm /usr/local/bin/npx
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
