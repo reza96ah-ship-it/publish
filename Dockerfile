@@ -19,7 +19,9 @@ COPY prisma.config.ts ./
 RUN bun install --frozen-lockfile
 
 # ── Stage 2: builder (Next.js app only) ───────────────────────────────
-FROM oven/bun:1.3.14 AS builder
+# Build Next.js with Node: Bun can crash during page-data collection in Linux
+# Docker builds even when the same build passes on the CI host.
+FROM node:22-bookworm AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -27,7 +29,7 @@ ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=p
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 # OpenSSL is required by Prisma's Rust engine — the Bun Debian image ships without it
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
-RUN bun run db:generate
+RUN node node_modules/prisma/build/index.js generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Next.js build evaluates auth.ts which requires NEXTAUTH_SECRET in production.
 # Inline the dummy value in the RUN command so it's never declared as an
@@ -35,10 +37,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # The real secret is injected at runtime via .env.
 ENV NODE_ENV=production
 ENV NEXTAUTH_URL=http://localhost:3000
-RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime bun run build
+RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime node node_modules/next/dist/bin/next build
 
 # ── Stage 3a: app (Next.js standalone) ────────────────────────────────
-FROM oven/bun:1.3.14-slim AS app
+FROM node:22-bookworm-slim AS app
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -64,8 +66,8 @@ RUN mkdir -p ./public/uploads && chown -R nextjs:nodejs ./public/uploads
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD bun -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
-CMD ["bun", "server.js"]
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
+CMD ["node", "server.js"]
 
 # ── Stage 3d: migrate (dedicated — ships the pinned prisma CLI from deps) ─
 FROM oven/bun:1.3.14-slim AS migrate
