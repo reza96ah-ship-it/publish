@@ -11,7 +11,7 @@
 # ──────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: deps ─────────────────────────────────────────────────────
-FROM oven/bun:1.2 AS deps
+FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY prisma ./prisma
@@ -19,13 +19,13 @@ COPY prisma.config.ts ./
 RUN bun install --frozen-lockfile
 
 # ── Stage 2: builder (Next.js app only) ───────────────────────────────
-FROM oven/bun:1.2 AS builder
+FROM oven/bun:1.3.14 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
-# OpenSSL is required by Prisma's Rust engine — oven/bun:1.2 (Debian) ships without it
+# OpenSSL is required by Prisma's Rust engine — the Bun Debian image ships without it
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 RUN bun run db:generate
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -38,7 +38,7 @@ ENV NEXTAUTH_URL=http://localhost:3000
 RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime bun run build
 
 # ── Stage 3a: app (Next.js standalone) ────────────────────────────────
-FROM oven/bun:1.2-slim AS app
+FROM oven/bun:1.3.14-slim AS app
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -68,7 +68,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 CMD ["bun", "server.js"]
 
 # ── Stage 3d: migrate (dedicated — ships the pinned prisma CLI from deps) ─
-FROM oven/bun:1.2-slim AS migrate
+FROM oven/bun:1.3.14-slim AS migrate
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -83,7 +83,7 @@ COPY scripts ./scripts
 CMD ["sh", "-c", "bun run scripts/validate-migrate.ts && bunx prisma migrate deploy"]
 
 # ── Stage 3b: worker (no Next.js build needed) ────────────────────────
-FROM oven/bun:1.2-slim AS worker
+FROM oven/bun:1.3.14-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 # Issue #157: install OpenSSL for Prisma engine
@@ -115,7 +115,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 CMD ["bun", "run", "mini-services/publish-worker/index.ts"]
 
 # ── Stage 3c: realtime (no Next.js build needed) ──────────────────────
-FROM oven/bun:1.2-slim AS realtime
+FROM oven/bun:1.3.14-slim AS realtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV REALTIME_PORT=3003
