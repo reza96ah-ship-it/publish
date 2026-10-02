@@ -48,7 +48,7 @@ ENV PORT=3000
 # extraction and thumbnail generation (src/lib/video-probe.ts) — installed via apt
 # rather than an npm prebuilt-binary package (license/bundler issues, see that file).
 # curl fetches Instagram profile photos through the private V2ray HTTP proxy.
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates adduser && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
@@ -87,7 +87,7 @@ FROM oven/bun:1.3.14-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 # Issue #157: install OpenSSL for Prisma engine
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl adduser && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 # Copy deps from the deps stage (not builder — avoids running next build)
@@ -119,6 +119,7 @@ FROM oven/bun:1.3.14-slim AS realtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV REALTIME_PORT=3003
+RUN apt-get update -y && apt-get install -y --no-install-recommends adduser && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=deps /app/node_modules ./node_modules
