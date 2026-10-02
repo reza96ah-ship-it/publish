@@ -138,7 +138,7 @@ export function ZernioInstagramInbox() {
                         <div key={message.id} className={`max-w-[90%] rounded-xl px-3 py-2 text-sm ${message.direction === 'outgoing' ? 'mr-auto bg-accent-soft' : 'ml-auto bg-surface-hover'}`}>
                           <div className="whitespace-pre-wrap break-words text-ink-primary" dir="auto">{message.message || (message.attachmentCount > 0 ? 'پیوست' : 'پیام بدون متن')}</div>
                           {message.attachmentCount > 0 && <p className="mt-1 text-xs text-ink-secondary">{toPersianDigits(message.attachmentCount)} پیوست</p>}
-                          <p className="mt-1 text-[11px] text-ink-tertiary">{message.senderName} · {timeLabel(message.createdAt)}</p>
+                          <p className="mt-1 text-2xs text-ink-tertiary">{message.senderName} · {timeLabel(message.createdAt)}</p>
                         </div>
                       ))}
                     </div>
