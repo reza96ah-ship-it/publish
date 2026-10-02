@@ -10,8 +10,10 @@ vi.mock('@/lib/customer-invitations', () => ({
 import { acceptCustomerInvitation } from '@/lib/customer-invitations'
 import { POST } from '@/app/api/auth/customer-invite/route'
 
-function request(body: unknown, origin = 'https://odooshoping.ir') {
-  return new NextRequest('https://odooshoping.ir/api/auth/customer-invite', {
+const appOrigin = new URL(process.env.NEXTAUTH_URL ?? 'https://odooshoping.ir').origin
+
+function request(body: unknown, origin = appOrigin) {
+  return new NextRequest(`${appOrigin}/api/auth/customer-invite`, {
     method: 'POST',
     headers: { origin, 'content-type': 'application/json' },
     body: JSON.stringify(body),

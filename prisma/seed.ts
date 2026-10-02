@@ -68,11 +68,46 @@ async function main() {
   // $transaction intermittently hit the Prisma 7.8.0 query-compiler panic
   // (parser.rs:855 Option::unwrap on None), same as the analytics snapshots.
   const memberRows = [
-    { id: 'm1', userId: 'u1', name: 'علی احمدی', email: 'ali@nashrino.ir', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=1' },
-    { id: 'm2', userId: 'u2', name: 'سارا مرادی', email: 'sara@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=2' },
-    { id: 'm3', userId: 'u3', name: 'محمد رضایی', email: 'mohammad@nashrino.ir', role: 'approver', avatarUrl: 'https://i.pravatar.cc/150?u=3' },
-    { id: 'm4', userId: 'u4', name: 'فرناز اسدی', email: 'farnaz@nashrino.ir', role: 'editor', avatarUrl: 'https://i.pravatar.cc/150?u=4' },
-    { id: 'm5', userId: 'u5', name: 'حسین کریمی', email: 'hossein@nashrino.ir', role: 'viewer', avatarUrl: 'https://i.pravatar.cc/150?u=5' },
+    {
+      id: 'm1',
+      userId: 'u1',
+      name: 'علی احمدی',
+      email: 'ali@nashrino.ir',
+      role: 'admin',
+      avatarUrl: 'https://i.pravatar.cc/150?u=1',
+    },
+    {
+      id: 'm2',
+      userId: 'u2',
+      name: 'سارا مرادی',
+      email: 'sara@nashrino.ir',
+      role: 'editor',
+      avatarUrl: 'https://i.pravatar.cc/150?u=2',
+    },
+    {
+      id: 'm3',
+      userId: 'u3',
+      name: 'محمد رضایی',
+      email: 'mohammad@nashrino.ir',
+      role: 'approver',
+      avatarUrl: 'https://i.pravatar.cc/150?u=3',
+    },
+    {
+      id: 'm4',
+      userId: 'u4',
+      name: 'فرناز اسدی',
+      email: 'farnaz@nashrino.ir',
+      role: 'editor',
+      avatarUrl: 'https://i.pravatar.cc/150?u=4',
+    },
+    {
+      id: 'm5',
+      userId: 'u5',
+      name: 'حسین کریمی',
+      email: 'hossein@nashrino.ir',
+      role: 'viewer',
+      avatarUrl: 'https://i.pravatar.cc/150?u=5',
+    },
   ]
   await db.workspaceMember.createMany({
     data: memberRows.map((m) => ({ ...m, workspaceId: ws.id })),
@@ -80,71 +115,70 @@ async function main() {
   const members = memberRows
 
   // ─── Platforms ───
-  const platforms = await db.$transaction([
-    db.platform.create({
-      data: {
-        workspaceId: ws.id,
-        type: 'instagram',
-        name: 'اینستاگرام',
-        username: 'nashrino_official',
-        accountKind: 'professional',
-        status: 'active',
-        lastSuccessAt: hoursAgo(2),
-      },
-    }),
-    db.platform.create({
-      data: {
-        workspaceId: ws.id,
-        type: 'instagram',
-        name: 'اینستاگرام آکادمی',
-        username: 'nashrino_academy',
-        accountKind: 'professional',
-        status: 'expired',
-        lastSuccessAt: hoursAgo(48),
-        lastError: 'انقضای توکن حساب اصلی',
-        primaryIssue: 'انقضای توکن حساب اصلی',
-      },
-    }),
+  const platforms = [
+    {
+      id: 'demo-ig-main',
+      workspaceId: ws.id,
+      type: 'instagram',
+      name: 'اینستاگرام',
+      username: 'nashrino_official',
+      accountKind: 'professional',
+      status: 'active',
+      lastSuccessAt: hoursAgo(2),
+    },
+    {
+      id: 'demo-ig-academy',
+      workspaceId: ws.id,
+      type: 'instagram',
+      name: 'اینستاگرام آکادمی',
+      username: 'nashrino_academy',
+      accountKind: 'professional',
+      status: 'expired',
+      lastSuccessAt: hoursAgo(48),
+      lastError: 'انقضای توکن حساب اصلی',
+      primaryIssue: 'انقضای توکن حساب اصلی',
+    },
     // Only Instagram is enabled for now (ENABLED_PLATFORMS in
     // shared/provider-capabilities.ts) — the extra demo channels below are
     // additional Instagram accounts so downstream seed references still work.
-    db.platform.create({
-      data: {
-        workspaceId: ws.id,
-        type: 'instagram',
-        name: 'اینستاگرام کانال',
-        username: 'nashrino_channel',
-        accountKind: 'professional',
-        status: 'active',
-        lastSuccessAt: hoursAgo(0),
-      },
-    }),
-    db.platform.create({
-      data: {
-        workspaceId: ws.id,
-        type: 'instagram',
-        name: 'اینستاگرام شرکت',
-        username: 'nashrino_co',
-        accountKind: 'professional',
-        status: 'active',
-        lastSuccessAt: hoursAgo(0.1),
-      },
-    }),
-    db.platform.create({
-      data: {
-        workspaceId: ws.id,
-        type: 'instagram',
-        name: 'اینستاگرام فروشگاه',
-        username: 'nashrino_shop',
-        accountKind: 'professional',
-        status: 'error',
-        lastSuccessAt: hoursAgo(24),
-        lastError: 'خطای سرور ۵۰۰',
-        primaryIssue: 'اختلال API',
-        circuitState: 'open',
-      },
-    }),
-  ])
+    {
+      id: 'demo-ig-channel',
+      workspaceId: ws.id,
+      type: 'instagram',
+      name: 'اینستاگرام کانال',
+      username: 'nashrino_channel',
+      accountKind: 'professional',
+      status: 'active',
+      lastSuccessAt: hoursAgo(0),
+    },
+    {
+      id: 'demo-ig-company',
+      workspaceId: ws.id,
+      type: 'instagram',
+      name: 'اینستاگرام شرکت',
+      username: 'nashrino_co',
+      accountKind: 'professional',
+      status: 'active',
+      lastSuccessAt: hoursAgo(0.1),
+    },
+    {
+      id: 'demo-ig-shop',
+      workspaceId: ws.id,
+      type: 'instagram',
+      name: 'اینستاگرام فروشگاه',
+      username: 'nashrino_shop',
+      accountKind: 'professional',
+      status: 'error',
+      lastSuccessAt: hoursAgo(24),
+      lastError: 'خطای سرور ۵۰۰',
+      primaryIssue: 'اختلال API',
+      circuitState: 'open',
+    },
+  ]
+  // Prisma 7.8 can fail to decode batched create() results for these UTF-8
+  // demo rows. Bulk insert avoids that query-compiler path; only ids are used
+  // by the remaining fixture records.
+  await db.platform.createMany({ data: platforms })
   const [ig, igAcademy, tg, li, rubika] = platforms
 
   // ─── Campaigns ───
@@ -607,7 +641,9 @@ async function main() {
 
   // 7 days of growing IG metrics for the drill-down timeline
   const igMetricRows = Array.from({ length: 7 }).flatMap((_, i) => {
-    const date = daysAgo(6 - i).toISOString().split('T')[0]
+    const date = daysAgo(6 - i)
+      .toISOString()
+      .split('T')[0]
     const growth = i + 1
     return [
       { metricType: 'reach', value: 1800 * growth + 240 },
