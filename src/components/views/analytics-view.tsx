@@ -82,11 +82,42 @@ import {
 import { cn } from '@/lib/utils'
 
 interface AnalyticsData {
+  source?: 'zernio'
   dates: string[]
   reach: number[]
   engagement: number[]
   followers: number[]
   clicks: number[]
+  summary?: {
+    reach: number | null
+    views: number | null
+    accountsEngaged: number | null
+    totalInteractions: number | null
+    engagementRate: number | null
+    currentFollowers: number | null
+    followerGrowth: number | null
+    profileLinksTaps: number | null
+  }
+}
+
+interface ZernioExtraData {
+  accounts: Array<{
+    id: string
+    username: string
+    stories: Array<{
+      id: string
+      mediaType: string | null
+      permalink: string | null
+      timestamp: string | null
+      insights: { source: string; views: number | null; reach: number | null; replies: number | null } | null
+    }> | null
+    demographics: {
+      age: Array<{ dimension: string; value: number }>
+      gender: Array<{ dimension: string; value: number }>
+      country: Array<{ dimension: string; value: number }>
+    } | null
+    demographicsReason: 'available' | 'followers_below_100' | 'unavailable'
+  }>
 }
 
 interface PublishJob {
@@ -120,8 +151,15 @@ export function AnalyticsView() {
   const [reportOpen, setReportOpen] = useState(false)
 
   const { data, isLoading, isError, refetch, dataUpdatedAt: analyticsUpdatedAt } = useQuery<AnalyticsData>({
-    queryKey: ['analytics', 'all'],
-    queryFn: () => api.get<AnalyticsData>('/api/analytics?platform=all'),
+    queryKey: ['analytics', 'all', period],
+    queryFn: () => api.get<AnalyticsData>(`/api/analytics?platform=all&range=${period}d`),
+  })
+
+  const { data: zernioExtra } = useQuery<ZernioExtraData>({
+    queryKey: ['analytics', 'zernio-extra'],
+    queryFn: () => api.get<ZernioExtraData>('/api/analytics/zernio-extra'),
+    enabled: data?.source === 'zernio',
+    staleTime: 5 * 60_000,
   })
 
   const { data: publishJobs } = useQuery<PublishJob[]>({
@@ -132,8 +170,8 @@ export function AnalyticsView() {
   // Per-platform analytics (parallel)
   const platformQueries = useQueries({
     queries: PLATFORMS.map((p) => ({
-      queryKey: ['analytics', p.id],
-      queryFn: () => api.get<AnalyticsData>(`/api/analytics?platform=${p.id}`),
+      queryKey: ['analytics', p.id, period],
+      queryFn: () => api.get<AnalyticsData>(`/api/analytics?platform=${p.id}&range=${period}d`),
       staleTime: 60_000,
     })),
   })
@@ -180,6 +218,23 @@ export function AnalyticsView() {
       arr.length >= 2 && arr[0] > 0 ? ((arr[arr.length - 1] - arr[0]) / arr[0]) * 100 : 0
     const prev = (arr: number[]) => (arr.length >= 2 ? arr[0] : undefined)
     const labelFor = (i: number) => (dates[i] ? formatJalaliShort(new Date(dates[i])) : '')
+    if (data?.source === 'zernio' && data.summary) {
+      return [
+        { key: 'reach', label: 'دسترسی بازه', value: data.summary.reach, icon: Eye,
+          iconColor: 'text-accent', sparkColor: 'var(--color-accent)', spark: reach,
+          trend: undefined, prev: undefined, labelFor },
+        { key: 'engagement', label: 'نرخ تعامل', value: data.summary.engagementRate, icon: Heart,
+          iconColor: 'text-[var(--color-platform-instagram)]', sparkColor: 'var(--color-platform-instagram)', spark: [],
+          trend: undefined, prev: undefined, labelFor,
+          formatValue: (v: number) => `${toPersianDigits(v.toFixed(1))}٪` },
+        { key: 'followers', label: 'دنبال‌کنندگان', value: data.summary.currentFollowers, icon: Users,
+          iconColor: 'text-success', sparkColor: 'var(--color-success)', spark: followers,
+          trend: undefined, prev: undefined, labelFor },
+        { key: 'clicks', label: 'کلیک لینک پروفایل', value: data.summary.profileLinksTaps, icon: MousePointerClick,
+          iconColor: 'text-warning', sparkColor: 'var(--color-warning)', spark: [],
+          trend: undefined, prev: undefined, labelFor },
+      ]
+    }
     return [
       {
         key: 'reach',
@@ -289,12 +344,19 @@ export function AnalyticsView() {
             spark={k.spark}
             trend={k.trend}
             previousValue={k.prev}
+            formatValue={'formatValue' in k ? k.formatValue : undefined}
             formatSparkLabel={k.labelFor}
             loading={isLoading}
             timeLabel={period === '7' ? '۷ روز پیش' : '۳۰ روز پیش'}
           />
         ))}
       </div>
+      {data?.source === 'zernio' && (
+        <p className="mt-2 text-xs text-ink-tertiary">
+          آمار اینستاگرام از حساب متصل دریافت می‌شود. نرخ تعامل از تعاملات ÷ دسترسی بازه محاسبه شده است.
+          {data.summary?.followerGrowth === null && ' تاریخچه فالوورها هنوز موجود نیست؛ رشد مخاطب نمایش داده نمی‌شود.'}
+        </p>
+      )}
 
       {/* Reach area chart */}
       <ChartPanel
@@ -350,7 +412,7 @@ export function AnalyticsView() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-        <p className="text-2xs text-ink-tertiary mt-2">منبع: داده‌های آنالتیکس</p>
+        <p className="text-2xs text-ink-tertiary mt-2">منبع: {data?.source === 'zernio' ? 'آمار حساب متصل اینستاگرام' : 'داده‌های آنالتیکس'}</p>
       </ChartPanel>
 
       {/* Platform breakdown */}
@@ -368,7 +430,7 @@ export function AnalyticsView() {
                 <BarChart
                   data={PLATFORMS.map((p, i) => {
                     const pd = platformQueries[i]?.data
-                    const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
+                    const total = pd?.summary?.reach ?? (pd ? pd.reach.reduce((s, v) => s + v, 0) : 0)
                     return { name: p.label, value: total, platformId: p.id }
                   })}
                   margin={{ top: 22, right: 8, left: 0, bottom: 0 }}
@@ -419,7 +481,7 @@ export function AnalyticsView() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 mt-4 pt-3 border-t border-border/60">
               {PLATFORMS.map((p, i) => {
                 const pd = platformQueries[i]?.data
-                const total = pd ? pd.reach.reduce((s, v) => s + v, 0) : 0
+                const total = pd?.summary?.reach ?? (pd ? pd.reach.reduce((s, v) => s + v, 0) : 0)
                 return (
                   <div key={p.id} className="flex items-center gap-2 min-w-0">
                     <span
@@ -447,6 +509,27 @@ export function AnalyticsView() {
           </div>
           <div className="space-y-3">
             {(() => {
+              if (data?.source === 'zernio' && data.summary) {
+                const summary = data.summary
+                const avgReach = data.reach.length
+                  ? data.reach.reduce((sum, value) => sum + value, 0) / data.reach.length : null
+                const formatted = (value: number | null, suffix = '') =>
+                  value === null ? '—' : `${toPersianDigits(formatCompact(Math.round(value)))}${suffix}`
+                return [
+                  { label: 'نرخ تعامل بازه', value: summary.engagementRate === null ? '—' : `${toPersianDigits(summary.engagementRate.toFixed(1))}٪` },
+                  { label: 'میانگین دسترسی روزانه', value: formatted(avgReach) },
+                  { label: 'نمایش محتوا', value: formatted(summary.views) },
+                  { label: 'حساب‌های تعامل‌کرده', value: formatted(summary.accountsEngaged) },
+                  { label: 'کل تعاملات', value: formatted(summary.totalInteractions) },
+                  { label: 'تغییر فالوور (تاریخچه)', value: formatted(summary.followerGrowth) },
+                  { label: 'کلیک لینک پروفایل', value: formatted(summary.profileLinksTaps) },
+                ].map((row) => (
+                  <div key={row.label} className="n-card-compact flex items-center justify-between p-3">
+                    <span className="text-sm text-ink-secondary">{row.label}</span>
+                    <span className="text-sm font-bold text-ink-primary num-tabular">{row.value}</span>
+                  </div>
+                ))
+              }
               // P1-12: Compute real values from the analytics data instead of
               // showing hardcoded fake metrics (4.8% engagement, +12%, +8%, +3%).
               const reachArr = (data?.reach ?? []).slice(period === '7' ? -7 : -30)
@@ -521,12 +604,79 @@ export function AnalyticsView() {
       {/* Issue #215: per-post performance + campaign rollup */}
       <PostPerformanceSection />
 
+      {data?.source === 'zernio' && zernioExtra?.accounts.map((account) => (
+        <div key={account.id} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="n-card p-5">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-sm font-semibold text-ink-primary">استوری‌های فعال @{account.username}</h2>
+              <span className="text-xs text-ink-tertiary">۲۴ ساعت اخیر</span>
+            </div>
+            {account.stories === null ? (
+              <p className="text-sm text-ink-tertiary">آمار استوری فعلاً از این حساب در دسترس نیست.</p>
+            ) : account.stories.length === 0 ? (
+              <p className="text-sm text-ink-tertiary">استوری فعالی وجود ندارد.</p>
+            ) : (
+              <div className="space-y-2">
+                {account.stories.map((story) => (
+                  <div key={story.id} className="n-card-compact p-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-ink-primary">
+                        {story.mediaType === 'VIDEO' ? 'استوری ویدیویی' : 'استوری تصویری'}
+                        {story.timestamp ? ` · ${formatJalaliShort(new Date(story.timestamp))}` : ''}
+                      </div>
+                      <div className="text-xs text-ink-secondary mt-1">
+                        بازدید {story.insights?.views === null || story.insights?.views === undefined ? '—' : toPersianDigits(formatCompact(story.insights.views))}
+                        {' · '}دسترسی {story.insights?.reach === null || story.insights?.reach === undefined ? '—' : toPersianDigits(formatCompact(story.insights.reach))}
+                        {' · '}پاسخ {story.insights?.replies === null || story.insights?.replies === undefined ? '—' : toPersianDigits(formatCompact(story.insights.replies))}
+                      </div>
+                    </div>
+                    {story.permalink && <a href={story.permalink} target="_blank" rel="noopener noreferrer" className="text-xs text-accent shrink-0">دیدن</a>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="n-card p-5">
+            <h2 className="text-sm font-semibold text-ink-primary mb-4">ترکیب مخاطبان @{account.username}</h2>
+            {account.demographics ? (
+              <div className="space-y-4">
+                {([
+                  ['سن', account.demographics.age],
+                  ['جنسیت', account.demographics.gender],
+                  ['کشور', account.demographics.country],
+                ] as const).map(([label, points]) => (
+                  <div key={label}>
+                    <div className="text-xs font-semibold text-ink-secondary mb-2">{label}</div>
+                    {points.length === 0 ? <p className="text-xs text-ink-tertiary">داده‌ای موجود نیست</p> : points.slice(0, 4).map((point) => (
+                      <div key={point.dimension} className="flex items-center gap-2 text-xs mb-1.5">
+                        <span className="w-20 truncate text-ink-secondary">{point.dimension}</span>
+                        <div className="h-2 rounded-full bg-accent/20 flex-1 overflow-hidden">
+                          <div className="h-full rounded-full bg-accent" style={{ width: `${Math.max(3, Math.round(100 * point.value / (points[0]?.value || 1)))}%` }} />
+                        </div>
+                        <span className="w-12 text-end num-tabular text-ink-primary">{toPersianDigits(formatCompact(point.value))}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <p className="text-2xs text-ink-tertiary">مقادیر، تعداد مخاطب هستند؛ داده‌های جمعیت‌شناختی ممکن است تا ۴۸ ساعت تأخیر داشته باشند.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-tertiary">
+                {account.demographicsReason === 'followers_below_100'
+                  ? 'این آمار از ۱۰۰ دنبال‌کننده به بالا در دسترس است.'
+                  : 'آمار جمعیت‌شناختی فعلاً در دسترس نیست؛ ممکن است به افزونه Analytics نیاز باشد.'}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+
       {/* Logs section */}
       <div className="n-card p-0 overflow-hidden">
         <div className="p-4 flex flex-wrap items-center justify-between gap-3 border-b border-border">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-accent" />
-            <h2 className="text-sm font-semibold text-ink-primary">گزارش‌ها و لاگ‌ها</h2>
+            <h2 className="text-sm font-semibold text-ink-primary">لاگ‌های انتشار از نشرینو</h2>
             <span className="text-2xs text-ink-tertiary num-tabular">
               {toPersianDigits(filteredJobs.length)} رکورد
             </span>
@@ -691,7 +841,7 @@ const REPORT_CHANNELS = [
 const REPORT_METRICS: Array<{ id: ReportMetricKey; label: string }> = [
   { id: 'reach', label: 'دسترسی' },
   { id: 'engagement', label: 'تعامل' },
-  { id: 'followers', label: 'رشد مخاطبان' },
+  { id: 'followers', label: 'دنبال‌کنندگان' },
   { id: 'clicks', label: 'کلیک' },
 ]
 

@@ -17,6 +17,8 @@ export interface AdapterAccount {
   token?: string
   /** Platform-specific: chat_id for Telegram/Bale, ig-user-id for Instagram, author-urn for LinkedIn */
   targetId?: string
+  /** Zernio account id when this Instagram connection uses the hosted OAuth gateway. */
+  providerAccountId?: string
 }
 
 export interface AdapterMediaItem {

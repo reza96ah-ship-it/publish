@@ -10,6 +10,7 @@
 import { ReportsRepository } from './repository'
 import { ValidationError, NoDataError } from './errors'
 import { formatJalali } from '@/lib/jalali'
+import { getWorkspaceZernioAnalytics } from '@/modules/analytics/zernio-workspace'
 import type {
   AuthContext,
   ReportConfig,
@@ -42,6 +43,13 @@ const CHANNEL_LABELS: Record<string, string> = {
 export class ReportsService {
   constructor(private readonly repo: ReportsRepository = new ReportsRepository()) {}
 
+  private metricLabel(data: ReportData, metric: ReportMetric): string {
+    if (data.source !== 'zernio') return METRIC_LABELS[metric]
+    return {
+      reach: 'دسترسی', engagement: 'تعاملات', followers: 'دنبال‌کنندگان', clicks: 'کلیک لینک پروفایل',
+    }[metric]
+  }
+
   /** Validate the report config + return a normalized copy. */
   private validateConfig(config: ReportConfig): ReportConfig {
     if (!config.startDate || !config.endDate) {
@@ -62,6 +70,38 @@ export class ReportsService {
   /** Generate the report data (no export) — used by POST /api/reports. */
   async generateReport(auth: AuthContext, config: ReportConfig): Promise<ReportData> {
     const valid = this.validateConfig(config)
+    if (valid.channels.some((channel) => channel === 'all' || channel === 'instagram')) {
+      const dayCount = Math.round((Date.parse(`${valid.endDate}T00:00:00Z`) - Date.parse(`${valid.startDate}T00:00:00Z`)) / 86400_000) + 1
+      if (dayCount > 90) throw new ValidationError('بازه گزارش اینستاگرام حداکثر ۹۰ روز است')
+      const zernio = await getWorkspaceZernioAnalytics(auth.workspaceId, valid.startDate, valid.endDate)
+      if (zernio) {
+        const workspaceName = await this.repo.getWorkspaceName(auth.workspaceId)
+        const followerByDate = new Map(zernio.followerHistory.map((point) => [point.date, point.value]))
+        const instagramChannels = valid.channels.filter((channel) => channel === 'all' || channel === 'instagram')
+        const series: ReportSeriesPoint[] = zernio.dailyReach.map((point) => {
+          const values: Record<string, number> = {}
+          for (const channel of instagramChannels) {
+            if (valid.metrics.includes('reach')) values[`${channel}:reach`] = point.value
+            const followerCount = followerByDate.get(point.date)
+            if (valid.metrics.includes('followers') && followerCount !== undefined) {
+              values[`${channel}:followers`] = followerCount
+            }
+          }
+          return { date: point.date, jalaliDate: formatJalali(new Date(point.date)), values }
+        })
+        const totals: ReportTotals = {
+          reach: zernio.reach,
+          engagement: zernio.totalInteractions,
+          followers: zernio.currentFollowers,
+          clicks: zernio.profileLinksTaps,
+        }
+        return {
+          workspaceId: auth.workspaceId, workspaceName, config: valid, series, totals,
+          generatedAt: new Date().toISOString(), source: 'zernio',
+          note: 'دسترسی روزانه و تاریخچه فالوور فقط در روزهای دارای داده نمایش داده می‌شوند. تعاملات و کلیک‌ها فقط برای کل بازه در دسترس‌اند؛ ردیف جمع دسترسی، مقدار یکتای بازه است و لزوماً جمع روزها نیست. «دنبال‌کنندگان» در ردیف جمع، تعداد فعلی است.',
+        }
+      }
+    }
     const [snapshots, workspaceName] = await Promise.all([
       this.repo.findSnapshots(
         auth.workspaceId,
@@ -130,7 +170,7 @@ export class ReportsService {
     const headerCols: string[] = ['تاریخ']
     for (const ch of channels) {
       for (const m of metrics) {
-        headerCols.push(`${CHANNEL_LABELS[ch] ?? ch}: ${METRIC_LABELS[m]}`)
+        headerCols.push(`${CHANNEL_LABELS[ch] ?? ch}: ${this.metricLabel(data, m)}`)
       }
     }
     const rows: string[] = [headerCols.join(',')]
@@ -139,7 +179,7 @@ export class ReportsService {
       for (const ch of channels) {
         for (const m of metrics) {
           const key = `${ch}:${m}`
-          cols.push(String(point.values[key] ?? 0))
+          cols.push(point.values[key] === undefined ? '' : String(point.values[key]))
         }
       }
       rows.push(cols.join(','))
@@ -148,10 +188,11 @@ export class ReportsService {
     const totalsCols: string[] = ['جمع کل']
     for (const _ch of channels) {
       for (const m of metrics) {
-        totalsCols.push(String(data.totals[m] ?? 0))
+        totalsCols.push(data.totals[m] == null ? '' : String(data.totals[m]))
       }
     }
     rows.push(totalsCols.join(','))
+    if (data.note) rows.push(`"${data.note.replace(/"/g, '""')}"`)
 
     const csv = rows.join('\n')
     // UTF-8 BOM so Excel/Sheets render Persian correctly.
@@ -174,7 +215,7 @@ export class ReportsService {
     for (const ch of channels) {
       for (const m of metrics) {
         headerCells.push(
-          `<th>${escapeHtml(CHANNEL_LABELS[ch] ?? ch)}<br><span class="metric">${escapeHtml(METRIC_LABELS[m])}</span></th>`
+          `<th>${escapeHtml(CHANNEL_LABELS[ch] ?? ch)}<br><span class="metric">${escapeHtml(this.metricLabel(data, m))}</span></th>`
         )
       }
     }
@@ -184,8 +225,8 @@ export class ReportsService {
         const cells = [`<td>${escapeHtml(point.jalaliDate)}</td>`]
         for (const ch of channels) {
           for (const m of metrics) {
-            const v = point.values[`${ch}:${m}`] ?? 0
-            cells.push(`<td class="num">${v.toLocaleString('en-US')}</td>`)
+            const v = point.values[`${ch}:${m}`]
+            cells.push(`<td class="num">${v === undefined ? '—' : v.toLocaleString('en-US')}</td>`)
           }
         }
         return `<tr>${cells.join('')}</tr>`
@@ -195,8 +236,8 @@ export class ReportsService {
     const totalsCells = ['<td><strong>جمع کل</strong></td>']
     for (const m of metrics) {
       const count = channels.length
-      const total = data.totals[m] ?? 0
-      totalsCells.push(`<td class="num" colspan="${count}"><strong>${total.toLocaleString('en-US')}</strong></td>`)
+      const total = data.totals[m]
+      totalsCells.push(`<td class="num" colspan="${count}"><strong>${total == null ? '—' : total.toLocaleString('en-US')}</strong></td>`)
     }
 
     const html = `<!doctype html>
@@ -225,6 +266,7 @@ export class ReportsService {
     فضای کار: ${escapeHtml(data.workspaceName)}<br>
     بازه: ${escapeHtml(jalaliRange)}<br>
     تولید شده در: ${escapeHtml(new Date(data.generatedAt).toLocaleString('fa-IR'))}
+    ${data.note ? `<br>${escapeHtml(data.note)}` : ''}
   </div>
   <table>
     <thead><tr>${headerCells.join('')}</tr></thead>

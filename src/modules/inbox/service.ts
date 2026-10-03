@@ -17,6 +17,7 @@ import {
 } from './instagram-reply'
 import { emitInboxThreadEvent } from './realtime-emit'
 import { getReplyWindowExpiry } from '../../../shared/instagram-graph'
+import { getZernioInboxConversation, sendZernioCommentReply, sendZernioInboxMessage } from '@/lib/zernio'
 import type {
   AuthContext,
   InboxListQuery,
@@ -269,7 +270,10 @@ export class InboxService {
     if (platform?.type !== 'instagram') {
       throw new ProviderReplyError('ارسال پاسخ برای این کانال پشتیبانی نمی‌شود')
     }
-    if (!platform.tokenSecret) {
+    if (platform.provider === 'zernio' && !platform.providerAccountId) {
+      throw new ProviderReplyError('شناسه حساب متصل Zernio در دسترس نیست')
+    }
+    if (platform.provider !== 'zernio' && !platform.tokenSecret) {
       throw new ProviderReplyError(
         'اتصال اینستاگرام معتبر نیست — کانال را دوباره متصل کنید و سپس پاسخ را ارسال کنید'
       )
@@ -282,7 +286,7 @@ export class InboxService {
           'پنجره ۲۴ ساعته پاسخ دایرکت به پایان رسیده است — طبق سیاست متا امکان ارسال نیست'
         )
       }
-      if (!platform.targetId) {
+      if (platform.provider !== 'zernio' && !platform.targetId) {
         throw new ProviderReplyError(
           'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
         )
@@ -300,9 +304,40 @@ export class InboxService {
       messageType: 'presence',
     })
 
-    const accessToken = decrypt(platform.tokenSecret)
     let providerMessageId: string | null = null
-    if (inbound.messageType === 'dm') {
+    if (platform.provider === 'zernio') {
+      if (!platform.providerAccountId) throw new ProviderReplyError('شناسه حساب Zernio در دسترس نیست')
+      try {
+        if (inbound.messageType === 'dm') {
+          await getZernioInboxConversation(platform.providerAccountId, thread.providerThreadId)
+          providerMessageId = await sendZernioInboxMessage(
+            platform.providerAccountId,
+            thread.providerThreadId,
+            input.reply,
+            crypto.randomUUID(),
+          )
+        } else if (inbound.messageType === 'comment') {
+          const payload = typeof inbound.payload === 'object' && inbound.payload !== null && !Array.isArray(inbound.payload)
+            ? inbound.payload as Record<string, unknown> : null
+          const postId = payload?.postId
+          if (typeof postId !== 'string' || !inbound.providerMessageId.startsWith('comment:')) {
+            throw new ProviderReplyError('شناسه پست یا کامنت در دسترس نیست')
+          }
+          providerMessageId = `comment:${await sendZernioCommentReply(
+            platform.providerAccountId,
+            postId,
+            inbound.providerMessageId.slice('comment:'.length),
+            input.reply,
+            crypto.randomUUID(),
+          )}`
+        } else {
+          throw new ProviderReplyError('پاسخ این نوع پیام از طریق Zernio پشتیبانی نمی‌شود')
+        }
+      } catch {
+        throw new ProviderReplyError('پاسخ از طریق Zernio تأیید نشد؛ پیش از تلاش دوباره، گفتگو را تازه‌سازی کنید')
+      }
+    } else if (inbound.messageType === 'dm') {
+      const accessToken = decrypt(platform.tokenSecret!)
       if (!platform.targetId) {
         throw new ProviderReplyError(
           'شناسه حساب اینستاگرام تنظیم نشده است — کانال را دوباره متصل کنید'
@@ -322,6 +357,7 @@ export class InboxService {
       )
       providerMessageId = receipt?.providerMessageId ?? null
     } else {
+      const accessToken = decrypt(platform.tokenSecret!)
       const receipt = await sendCommentReply(accessToken, inbound.providerMessageId, input.reply)
       providerMessageId = receipt?.providerMessageId ?? null
     }

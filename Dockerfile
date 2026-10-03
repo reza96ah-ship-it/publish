@@ -11,7 +11,7 @@
 # ──────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: deps ─────────────────────────────────────────────────────
-FROM oven/bun:1.2 AS deps
+FROM oven/bun:1.3.14 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
 COPY prisma ./prisma
@@ -19,15 +19,17 @@ COPY prisma.config.ts ./
 RUN bun install --frozen-lockfile
 
 # ── Stage 2: builder (Next.js app only) ───────────────────────────────
-FROM oven/bun:1.2 AS builder
+# Build Next.js with Node: Bun can crash during page-data collection in Linux
+# Docker builds even when the same build passes on the CI host.
+FROM node:22-bookworm AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
 ENV DIRECT_DATABASE_URL=postgresql://nashrino:password@localhost:5432/nashrino?schema=public
-# OpenSSL is required by Prisma's Rust engine — oven/bun:1.2 (Debian) ships without it
+# OpenSSL is required by Prisma's Rust engine — the Bun Debian image ships without it
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
-RUN bun run db:generate
+RUN node node_modules/prisma/build/index.js generate
 ENV NEXT_TELEMETRY_DISABLED=1
 # Next.js build evaluates auth.ts which requires NEXTAUTH_SECRET in production.
 # Inline the dummy value in the RUN command so it's never declared as an
@@ -35,10 +37,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # The real secret is injected at runtime via .env.
 ENV NODE_ENV=production
 ENV NEXTAUTH_URL=http://localhost:3000
-RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime bun run build
+RUN NEXTAUTH_SECRET=build-time-dummy-not-used-at-runtime node node_modules/next/dist/bin/next build
 
 # ── Stage 3a: app (Next.js standalone) ────────────────────────────────
-FROM oven/bun:1.2-slim AS app
+FROM node:22-bookworm-slim AS app
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -47,7 +49,14 @@ ENV PORT=3000
 # Issue #146 follow-up: ffmpeg provides ffprobe+ffmpeg for video duration/codec
 # extraction and thumbnail generation (src/lib/video-probe.ts) — installed via apt
 # rather than an npm prebuilt-binary package (license/bundler issues, see that file).
-RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+# curl fetches Instagram profile photos through the private V2ray HTTP proxy.
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends ffmpeg curl ca-certificates adduser && rm -rf /var/lib/apt/lists/*
+# The official Node image includes the npm CLI dependency tree. Runtime uses
+# only `node server.js`; removing unused npm avoids shipping its CVE-bearing
+# pacote/sigstore/glob packages in the production app image.
+RUN test -d /usr/local/lib/node_modules/npm && \
+    rm -r /usr/local/lib/node_modules/npm && \
+    rm /usr/local/bin/npm /usr/local/bin/npx
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=builder /app/.next/standalone ./
@@ -63,11 +72,11 @@ RUN mkdir -p ./public/uploads && chown -R nextjs:nodejs ./public/uploads
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD bun -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
-CMD ["bun", "server.js"]
+  CMD node -e "fetch('http://localhost:3000/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"
+CMD ["node", "server.js"]
 
 # ── Stage 3d: migrate (dedicated — ships the pinned prisma CLI from deps) ─
-FROM oven/bun:1.2-slim AS migrate
+FROM oven/bun:1.3.14-slim AS migrate
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
@@ -82,11 +91,11 @@ COPY scripts ./scripts
 CMD ["sh", "-c", "bun run scripts/validate-migrate.ts && bunx prisma migrate deploy"]
 
 # ── Stage 3b: worker (no Next.js build needed) ────────────────────────
-FROM oven/bun:1.2-slim AS worker
+FROM oven/bun:1.3.14-slim AS worker
 WORKDIR /app
 ENV NODE_ENV=production
 # Issue #157: install OpenSSL for Prisma engine
-RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl adduser && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 # Copy deps from the deps stage (not builder — avoids running next build)
@@ -114,10 +123,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 CMD ["bun", "run", "mini-services/publish-worker/index.ts"]
 
 # ── Stage 3c: realtime (no Next.js build needed) ──────────────────────
-FROM oven/bun:1.2-slim AS realtime
+FROM oven/bun:1.3.14-slim AS realtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV REALTIME_PORT=3003
+RUN apt-get update -y && apt-get install -y --no-install-recommends adduser && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 COPY --from=deps /app/node_modules ./node_modules

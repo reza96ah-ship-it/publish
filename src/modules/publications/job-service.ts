@@ -24,6 +24,7 @@ import {
   InvalidActionError,
   ValidationError,
   ReconciliationRequiredError,
+  JobNotRetryableError,
 } from './job-errors'
 import type {
   JobAction,
@@ -47,6 +48,7 @@ export {
   InvalidActionError,
   ValidationError,
   ReconciliationRequiredError,
+  JobNotRetryableError,
 }
 
 export interface JobAuthContext {
@@ -146,14 +148,22 @@ export class PublishJobService {
   ): Promise<RetryJobResult> {
     // Issue #149: Prevent blind retry if previous attempt outcome is unknown
     const publication = await db.publication.findFirst({
-      where: { publishJobId: job.id },
-      select: { id: true, reconciliationStatus: true },
+      where: { publishJobId: job.id, workspaceId: job.workspaceId },
+      select: { id: true, reconciliationStatus: true, status: true, providerAcknowledgedAt: true },
     })
     if (publication?.reconciliationStatus === 'still_unknown') {
       throw new ReconciliationRequiredError(
         'وضعیت انتشار قبلی نامشخص است و هنوز حل نشده — تلاش مجدد خودکار مجاز نیست. لطفاً از بخش «حل دستی» استفاده کنید.',
         publication.id
       )
+    }
+    if (job.externalId || publication?.providerAcknowledgedAt ||
+        publication?.reconciliationStatus === 'confirmed_success' ||
+        publication?.status === 'success' || publication?.status === 'published') {
+      throw new JobNotRetryableError('این پست قبلاً منتشر شده است؛ تلاش مجدد می‌تواند نسخه تکراری بسازد')
+    }
+    if (job.status !== 'failed' && !(job.status === 'action' && publication?.reconciliationStatus === 'confirmed_failure')) {
+      throw new JobNotRetryableError()
     }
 
     const oldKey = job.idempotencyKey

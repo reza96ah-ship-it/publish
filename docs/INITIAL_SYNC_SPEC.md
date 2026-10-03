@@ -1,6 +1,6 @@
 # Initial Sync Specification — Nashrino
 
-**Status:** Stub (Day 0) — full spec due Week 2 Monday (2026-07-28)
+**Status:** Implemented in stages; Zernio first-data import is profile + up to 25 recent posts. Inbox and insights remain separate reads.
 **Related issue:** #346
 **Owner:** Reza / engineering
 
@@ -47,6 +47,24 @@ Account creation alone is not activation.
 
 ## Sync sequence (required order)
 
+The direct-Meta sequence below describes the legacy connection. The current
+customer route is Zernio: the OAuth callback verifies the account against its
+workspace-scoped Zernio profile, persists the Platform, queues a durable
+`InstagramSyncRun`, and imports up to 25 recent posts. The run stores a Zernio
+checkpoint after identity verification and after media import. A stopped run
+can be resumed from Channels after five minutes, or immediately after a
+recorded failure. Previously imported post IDs are skipped. The account's
+profile is saved by the existing Channels synchronization.
+
+Zernio's posts endpoint returns the 25 most recent live posts; it does not
+offer a pagination cursor. Thus the Zernio first-data run is intentionally
+bounded at 25 and must not be described as a complete historical import.
+Insights are queried by the existing overview/dashboard endpoints. Inbox
+history is fetched by the existing Inbox path and may arrive later because
+Zernio replays messages asynchronously. Neither is counted as complete by
+the first-data run. A completed run means only identity and recent posts
+succeeded. This is not yet an end-to-end activation claim.
+
 1. Validate token and account identity
 2. Save account identity and capabilities
 3. Subscribe account webhooks
@@ -61,7 +79,8 @@ Account creation alone is not activation.
 
 ## `InstagramSyncRun` data model
 
-_(Full schema to be defined in Week 2 — stub here for alignment)_
+The schema below was an early design sketch. The implemented model is in
+`prisma/schema.prisma` and is shared by direct-Meta and Zernio runs.
 
 ```prisma
 model InstagramSyncRun {
@@ -114,6 +133,10 @@ Every imported item must carry an origin field distinguishing:
 | No duplicate imports | Rerunning sync never creates duplicate records |
 | Honest about limitations | Conversation backfill window and insights availability disclosed to user |
 
+For Zernio specifically, the `lastProviderCursor` and cursor-based requirement
+do not apply to the live 25-post endpoint. The single-page fetch is resumed
+idempotently by re-fetching and skipping saved post IDs.
+
 ---
 
 ## First dashboard (post-connection)
@@ -139,13 +162,15 @@ Do not greet a new user with 14 equal navigation destinations.
 
 ## Implementation checklist
 
-_(To be completed in Week 2, issue #346)_
+Current Zernio first-data scope (issue #346):
 
-- [ ] `InstagramSyncRun` model in Prisma schema + migration
-- [ ] Sync idempotency test (duplicate run = same count)
-- [ ] Resume-after-interrupt test
-- [ ] Progress visible in UI during sync
+- [x] `InstagramSyncRun` model in Prisma schema + migration
+- [x] Sync idempotency test for previously imported posts
+- [x] Resume-after-interrupt test for stale/failed run claims
+- [x] Progress visible in Channels during sync
 - [ ] Partial success state shown honestly
-- [ ] Origin field enforced on all imported media
-- [ ] Checkpoint survives server restart
+- [x] Origin field set on imported media
+- [x] Checkpoint persists in the database across server restart
 - [ ] Time-to-first-data measured and within p50 target
+- [ ] Validate Business and Creator accounts outside the test team before release
+- [ ] Confirm Inbox replay completion and per-account analytics availability separately

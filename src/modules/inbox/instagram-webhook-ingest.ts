@@ -191,6 +191,7 @@ export async function ingestInstagramWebhookPayload(
       : await db.platform.findMany({
           where: {
             type: 'instagram',
+            provider: 'direct',
             targetId: { in: accountIds },
           },
           select: { id: true, workspaceId: true, targetId: true },

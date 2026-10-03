@@ -117,6 +117,7 @@ interface InboxThreadSummary {
   providerThreadId: string
   providerUserId: string | null
   title: string
+  senderAvatar: string | null
   platform: string
   platformName: string
   messageType: string
@@ -178,7 +179,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
   return {
     id: thread.id,
     senderName: thread.title || thread.providerUserId || 'Instagram user',
-    senderAvatar: null,
+    senderAvatar: thread.senderAvatar,
     message: thread.lastMessage?.body ?? '',
     isRead: thread.unreadCount === 0,
     isReplied: Boolean(outbound),
@@ -414,6 +415,23 @@ export function InboxView() {
     () => threadPages?.pages.flatMap((page) => page.data) ?? [],
     [threadPages]
   )
+
+  // Reconcile provider messages separately so opening the Inbox never waits
+  // on Instagram/Zernio network calls. The existing thread query remains the
+  // only message center and is refreshed after reconciliation.
+  useQuery({
+    queryKey: ['zernio-inbox-sync'],
+    queryFn: async () => {
+      const result = await api.get<{ synced: boolean }>('/api/inbox/zernio/sync')
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['inbox-threads'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] }),
+      ])
+      return result
+    },
+    retry: false,
+    refetchInterval: 60_000,
+  })
 
   // Queue-rail badge counts + own membership id (hides own presence lock).
   const { data: queueCounts } = useQuery<{

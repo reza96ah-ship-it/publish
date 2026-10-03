@@ -77,6 +77,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { JalaliDatePicker } from '@/components/ui/jalali-picker'
 import { IgGridDialog } from '@/components/editor/ig-grid-board'
 import { cn } from '@/lib/utils'
+import { PublicationRecovery } from '@/components/views/publication-recovery'
 
 interface CalendarJob {
   id: string
@@ -105,6 +106,10 @@ interface PublishJob {
   assignee: string
   assigneeAvatar: string
   campaign: string
+  publicationId: string | null
+  reconciliationStatus: string | null
+  publicationError: string | null
+  canResolve: boolean
 }
 
 const PLATFORM_CHIP: Record<string, string> = {
@@ -134,11 +139,8 @@ export function CalendarView() {
   // Issue #295: on small screens, default to agenda view (list of jobs per day)
   // instead of the cramped month grid. Runs once on mount — if the user later
   // picks another view, their choice sticks for the rest of the session.
-  // The setState-in-effect rule is silenced here because this is a one-shot
-  // client-only initial view detection (no external system to synchronize).
   useEffect(() => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setView('agenda')
     }
   }, [])
@@ -229,10 +231,24 @@ export function CalendarView() {
       ),
   })
 
-  const { data: queue } = useQuery<PublishJob[]>({
+  const { data: queue, isLoading: queueLoading } = useQuery<PublishJob[]>({
     queryKey: ['publish-jobs'],
     queryFn: () => api.getPaginated<PublishJob>('/api/publish-jobs'),
+    refetchInterval: 30_000,
   })
+  const { data: attentionJobs, isLoading: attentionLoading } = useQuery<PublishJob[]>({
+    queryKey: ['publish-jobs', 'attention'],
+    queryFn: () => api.getPaginated<PublishJob>('/api/publish-jobs?state=attention&limit=100'),
+    refetchInterval: 30_000,
+  })
+  const visibleQueue = useMemo(() => {
+    const seen = new Set<string>()
+    return [...(attentionJobs ?? []), ...(queue ?? [])].filter((job) => {
+      if (seen.has(job.id)) return false
+      seen.add(job.id)
+      return true
+    })
+  }, [attentionJobs, queue])
 
   const cells = useMemo(
     () => getJalaliMonthGrid(calendarCursor.year, calendarCursor.month),
@@ -731,10 +747,12 @@ export function CalendarView() {
           <Radio className="size-4 text-accent" />
           <h2 className="text-sm font-semibold text-ink-primary">صف انتشار</h2>
           <span className="text-2xs text-ink-tertiary ms-auto num-tabular">
-            {toPersianDigits(queue?.length ?? 0)} کار در صف
+            {toPersianDigits(visibleQueue.length)} کار در صف
           </span>
         </div>
-        {!queue || queue.length === 0 ? (
+        {queueLoading || attentionLoading ? (
+          <p className="text-sm text-ink-tertiary">در حال دریافت وضعیت انتشارها…</p>
+        ) : visibleQueue.length === 0 ? (
           <EmptyState
             icon={CalendarDays}
             title="صف انتشار خالی است"
@@ -743,7 +761,7 @@ export function CalendarView() {
           />
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto thin-scrollbar">
-            {queue.map((job) => (
+            {visibleQueue.map((job) => (
               <QueueRow key={job.id} job={job} />
             ))}
           </div>
@@ -1006,46 +1024,49 @@ function JobChip({
 
 function QueueRow({ job }: { job: PublishJob }) {
   return (
-    <div className="n-card-compact flex items-center gap-3 p-3">
-      <div className="relative shrink-0">
-        {job.thumbnail ? (
-          <Image
-            src={job.thumbnail}
-            alt=""
-            width={44}
-            height={44}
-            unoptimized={job.thumbnail.startsWith('http')}
-            className="size-11 rounded-xl object-cover"
-          />
-        ) : (
-          <div className="size-11 rounded-xl bg-border flex items-center justify-center">
-            <PlatformIcon platform={job.platform} className="size-5" />
-          </div>
-        )}
-        <span className="absolute -bottom-1 -end-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
-          <PlatformIcon platform={job.platform} className="size-3" />
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-ink-primary truncate">{job.title}</p>
-        <div className="flex items-center gap-2 mt-0.5 min-w-0">
-          <span className="text-2xs text-ink-tertiary truncate shrink-0">{job.platformName}</span>
-          <span className="text-ink-tertiary shrink-0">•</span>
-          <span className="text-2xs text-ink-tertiary truncate min-w-0">{job.campaign}</span>
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          <StatusBadge label={job.statusLabel} variant={job.status} />
-          <span className="text-2xs text-ink-tertiary">
-            {job.scheduledAt ? relativeTime(new Date(job.scheduledAt)) : job.processLabel}
+    <div className="n-card-compact p-3">
+      <div className="flex items-center gap-3">
+        <div className="relative shrink-0">
+          {job.thumbnail ? (
+            <Image
+              src={job.thumbnail}
+              alt=""
+              width={44}
+              height={44}
+              unoptimized={job.thumbnail.startsWith('http')}
+              className="size-11 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="size-11 rounded-xl bg-border flex items-center justify-center">
+              <PlatformIcon platform={job.platform} className="size-5" />
+            </div>
+          )}
+          <span className="absolute -bottom-1 -end-1 flex size-5 items-center justify-center rounded-full bg-background ring-1 ring-border">
+            <PlatformIcon platform={job.platform} className="size-3" />
           </span>
         </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-ink-primary truncate">{job.title}</p>
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            <span className="text-2xs text-ink-tertiary truncate shrink-0">{job.platformName}</span>
+            <span className="text-ink-tertiary shrink-0">•</span>
+            <span className="text-2xs text-ink-tertiary truncate min-w-0">{job.campaign}</span>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <StatusBadge label={job.reconciliationStatus === 'still_unknown' ? 'نیازمند بررسی دستی' : job.statusLabel} variant={job.status} />
+            <span className="text-2xs text-ink-tertiary">
+              {job.scheduledAt ? relativeTime(new Date(job.scheduledAt)) : job.processLabel}
+            </span>
+          </div>
+        </div>
+        <Avatar className="size-7 shrink-0 ring-2 ring-background">
+          {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
+          <AvatarFallback className="text-2xs">
+            {!job.assignee || job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
+          </AvatarFallback>
+        </Avatar>
       </div>
-      <Avatar className="size-7 shrink-0 ring-2 ring-background">
-        {job.assigneeAvatar ? <AvatarImage src={job.assigneeAvatar} alt={job.assignee} /> : null}
-        <AvatarFallback className="text-2xs">
-          {!job.assignee || job.assignee === '—' ? '؟' : job.assignee.slice(0, 1)}
-        </AvatarFallback>
-      </Avatar>
+      <PublicationRecovery job={job} />
     </div>
   )
 }

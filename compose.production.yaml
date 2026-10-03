@@ -12,6 +12,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10}
       REDIS_CACHE_URL: redis://redis-cache:6379
+      # Bun routes external HTTPS through Xray when configured on this host.
+      HTTPS_PROXY: ${OUTBOUND_HTTPS_PROXY:-}
+      NO_PROXY: ${OUTBOUND_NO_PROXY:-localhost,127.0.0.1,::1}
     depends_on:
       migrate: { condition: service_completed_successfully }
       pgbouncer: { condition: service_healthy }
@@ -47,6 +50,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://nashrino:${POSTGRES_PASSWORD}@pgbouncer:6432/nashrino?schema=public&pgbouncer=true&connection_limit=10}
       REDIS_QUEUE_URL: redis://redis-queue:6379
       REALTIME_EMIT_URL: http://realtime:3003/emit
+      HTTPS_PROXY: ${OUTBOUND_HTTPS_PROXY:-}
+      NO_PROXY: ${OUTBOUND_NO_PROXY:-localhost,127.0.0.1,::1}
     depends_on:
       migrate: { condition: service_completed_successfully }
       pgbouncer: { condition: service_healthy }

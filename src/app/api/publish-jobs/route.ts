@@ -15,10 +15,12 @@ export async function GET(req: NextRequest) {
   const queryCheck = validateParams(cursorPaginationSchema, query)
   if (!queryCheck.success) return NextResponse.json({ error: queryCheck.error }, { status: 400 })
   const { cursor, limit } = queryCheck.data
+  const attentionOnly = req.nextUrl.searchParams.get('state') === 'attention'
 
   const jobs = await db.publishJob.findMany({
     where: {
       workspaceId,
+      ...(attentionOnly ? { status: { in: ['action', 'failed'] } } : {}),
       ...(cursor ? { id: { lt: cursor } } : {}),
     },
     include: {
@@ -33,6 +35,15 @@ export async function GET(req: NextRequest) {
   const hasMore = jobs.length > limit
   const data = hasMore ? jobs.slice(0, limit) : jobs
   const nextCursor = hasMore ? data[data.length - 1]?.id : null
+  const publications = data.length ? await db.publication.findMany({
+    where: { workspaceId, publishJobId: { in: data.map((job) => job.id) } },
+    select: { id: true, publishJobId: true, reconciliationStatus: true, errorMessage: true },
+    orderBy: { createdAt: 'desc' },
+  }) : []
+  const publicationByJob = new Map<string | null, typeof publications[number]>()
+  for (const publication of publications) {
+    if (!publicationByJob.has(publication.publishJobId)) publicationByJob.set(publication.publishJobId, publication)
+  }
 
   return NextResponse.json({
     data: data.map((j) => ({
@@ -50,6 +61,10 @@ export async function GET(req: NextRequest) {
       error: j.error,
       retryCount: j.retryCount,
       campaign: j.campaign?.name ?? 'بدون کمپین',
+      publicationId: publicationByJob.get(j.id)?.id ?? null,
+      reconciliationStatus: publicationByJob.get(j.id)?.reconciliationStatus ?? null,
+      publicationError: publicationByJob.get(j.id)?.errorMessage ?? null,
+      canResolve: guard.role === 'admin',
     })),
     nextCursor,
   })

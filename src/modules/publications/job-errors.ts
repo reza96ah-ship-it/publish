@@ -50,3 +50,10 @@ export class ReconciliationRequiredError extends PublicationError {
     this.publicationId = publicationId
   }
 }
+
+export class JobNotRetryableError extends PublicationError {
+  constructor(message = 'این انتشار در وضعیت قابل تلاش مجدد نیست') {
+    super(message, 409, message)
+    this.name = 'JobNotRetryableError'
+  }
+}

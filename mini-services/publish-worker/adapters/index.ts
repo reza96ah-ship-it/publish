@@ -5,6 +5,7 @@ import { EitaaAdapter } from './eitaa'
 import { TelegramAdapter } from './telegram'
 import { LinkedInAdapter } from './linkedin'
 import { BaleAdapter } from './bale'
+import { ZernioInstagramAdapter } from './zernio-instagram'
 
 const adapters: Record<PlatformType, ChannelAdapter> = {
   instagram: new InstagramAdapter(),
@@ -15,7 +16,10 @@ const adapters: Record<PlatformType, ChannelAdapter> = {
   bale: new BaleAdapter(),
 }
 
-export function getAdapter(platform: string): ChannelAdapter | null {
+const zernioInstagram = new ZernioInstagramAdapter()
+
+export function getAdapter(platform: string, provider = 'direct'): ChannelAdapter | null {
+  if (platform === 'instagram' && provider === 'zernio') return zernioInstagram
   return adapters[platform as PlatformType] ?? null
 }
 

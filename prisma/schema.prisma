@@ -16,6 +16,7 @@ model User {
   name          String?
   image         String?
   passwordHash  String?
+  sessionVersion Int     @default(0)
   failedAttempts Int     @default(0)
   lockedUntil   DateTime?
   lastLoginAt   DateTime?
@@ -107,6 +108,8 @@ model Workspace {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
+  // One Zernio profile per workspace; account IDs are verified against it.
+  zernioProfileId String? @unique
   category  String   @default("")
   phone     String   @default("")
   description String @default("")
@@ -295,6 +298,8 @@ model Platform {
   id          String   @id @default(cuid())
   workspaceId String
   type        String   // instagram, telegram, linkedin, rubika, eitaa, bale
+  provider    String   @default("direct") // direct or zernio
+  providerAccountId String?
   name        String
   username    String   @default("")
   avatarUrl   String?
@@ -330,6 +335,7 @@ model Platform {
 
   @@index([workspaceId])
   @@index([workspaceId, type])
+  @@unique([provider, providerAccountId])
   @@index([workspaceId, status])
   @@index([status])
   @@index([tokenExpiresAt])
@@ -809,6 +815,7 @@ model ProviderWebhookEvent {
   receivedAt        DateTime @default(now())
   lastReceivedAt    DateTime @default(now())
   processedAt       DateTime?
+  automationScannedAt DateTime?
   lastError         String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

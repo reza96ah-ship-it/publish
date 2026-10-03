@@ -601,7 +601,7 @@ export function KpiCard({
   onNavigate,
 }: {
   label: string
-  value: number
+  value: number | null
   icon: LucideIcon
   iconColor?: string
   trend?: number
@@ -629,7 +629,7 @@ export function KpiCard({
     : undefined
   const sparkFmt = formatSparkValue ?? fmt
   const delta =
-    previousValue != null && previousValue > 0
+    value != null && previousValue != null && previousValue > 0
       ? ((value - previousValue) / previousValue) * 100
       : null
 
@@ -654,7 +654,7 @@ export function KpiCard({
             }
           : undefined
       }
-      aria-label={`${label}: ${fmt(value)}${trend != null ? `، ${trend >= 0 ? 'افزایش' : 'کاهش'} ${toPersianDigits(Math.abs(trend).toFixed(1))} درصد` : ''}`}
+      aria-label={`${label}: ${value === null ? 'داده کافی نیست' : fmt(value)}${trend != null ? `، ${trend >= 0 ? 'افزایش' : 'کاهش'} ${toPersianDigits(Math.abs(trend).toFixed(1))} درصد` : ''}`}
     >
       {/* Header: icon + label (right in RTL) · trend chip (left) */}
       <div className="flex items-center justify-between mb-2.5">
@@ -680,7 +680,7 @@ export function KpiCard({
           <Skeleton className="h-7 w-24 rounded" />
         ) : (
           <p className="text-2xl font-bold text-ink-primary num-tabular leading-none tracking-tight whitespace-nowrap">
-            {fmt(value)}
+            {value === null ? '—' : fmt(value)}
           </p>
         )}
       </div>

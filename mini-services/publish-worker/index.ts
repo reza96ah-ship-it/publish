@@ -323,6 +323,9 @@ const worker = new Worker(
           ? decrypt((job.platform as any).tokenSecret)
           : undefined,
         targetId: (job.platform as any).targetId ?? undefined,
+        providerAccountId: (job.platform as any).provider === 'zernio'
+          ? (job.platform as any).providerAccountId ?? undefined
+          : undefined,
       },
     }
 
@@ -423,7 +426,7 @@ const worker = new Worker(
     adapterJob.idempotencyKey = operationId
 
     // Publish via adapter
-    const result = await getAdapter(job.platform.type)?.publish(adapterJob)
+    const result = await getAdapter(job.platform.type, job.platform.provider)?.publish(adapterJob)
 
     if (!result) {
       await markFailure(attemptId, {

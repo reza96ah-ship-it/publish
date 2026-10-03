@@ -8,6 +8,8 @@ import type { PlatformRow } from './types'
 
 const PLATFORM_SELECT = {
   id: true,
+  provider: true,
+  providerAccountId: true,
   workspaceId: true,
   name: true,
   type: true,

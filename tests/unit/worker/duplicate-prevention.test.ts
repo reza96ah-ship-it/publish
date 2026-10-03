@@ -120,7 +120,7 @@ describe('Issue #149 — operationId wired to adapter', () => {
     // The worker code does:
     //   adapterJob.publicationOperationId = operationId
     //   adapterJob.idempotencyKey = operationId
-    //   const result = await getAdapter(job.platform.type)?.publish(adapterJob)
+    //   const result = await getAdapter(job.platform.type, job.platform.provider)?.publish(adapterJob)
     //
     // We verify by reading the source code (contract test).
     
@@ -133,7 +133,7 @@ describe('Issue #149 — operationId wired to adapter', () => {
     expect(workerSrc).toMatch(/adapterJob\.idempotencyKey\s*=\s*operationId/)
     // Verify it happens before adapter.publish()
     const wiringIndex = workerSrc.indexOf('adapterJob.publicationOperationId = operationId')
-    const publishIndex = workerSrc.indexOf("getAdapter(job.platform.type)?.publish(adapterJob)")
+    const publishIndex = workerSrc.indexOf("getAdapter(job.platform.type, job.platform.provider)?.publish(adapterJob)")
     expect(wiringIndex).toBeGreaterThan(-1)
     expect(publishIndex).toBeGreaterThan(-1)
     expect(publishIndex).toBeGreaterThan(wiringIndex)

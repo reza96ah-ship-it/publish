@@ -99,7 +99,7 @@ export async function scanUnresolvedPublications(now: Date = new Date()): Promis
 
   for (const publication of publications) {
     result.scanned++
-    const adapter = getAdapter(publication.platform.type)
+    const adapter = getAdapter(publication.platform.type, (publication.platform as any).provider)
 
     if (!adapter?.reconcile) {
       // Issue #149: providers without a reconciliation mechanism stay
