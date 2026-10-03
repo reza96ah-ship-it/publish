@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioInboxConversation, listInstagramAccounts, listZernioCommentedPosts, listZernioInboxConversations, listZernioInboxMessages, listZernioPostComments, sendZernioCommentReply, sendZernioInboxMessage, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioAccountHealth, getZernioInboxConversation, listInstagramAccounts, listZernioCommentedPosts, listZernioInboxConversations, listZernioInboxMessages, listZernioPostComments, sendZernioCommentReply, sendZernioInboxMessage, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -12,6 +12,33 @@ afterEach(() => {
 })
 
 describe('Zernio API boundary', () => {
+  it('reads account token and publishing capabilities without exposing provider metadata', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      accountId, platform: 'instagram', status: 'warning',
+      tokenStatus: { valid: true, expiresAt: '2026-12-01T00:00:00Z', needsRefresh: true, secret: 'hidden' },
+      permissions: { canPost: true, canFetchAnalytics: false, missingRequired: ['instagram_business_manage_insights'] },
+      accessToken: 'hidden',
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    const health = await getZernioAccountHealth(accountId)
+    expect(health).toMatchObject({
+      status: 'warning', tokenValid: true, needsRefresh: true,
+      canPost: true, canFetchAnalytics: false,
+      missingRequired: ['instagram_business_manage_insights'],
+    })
+    expect(JSON.stringify(health)).not.toContain('hidden')
+    expect(fetchMock.mock.calls[0][0]).toBe(`https://zernio.com/api/v1/accounts/${accountId}/health`)
+  })
+
+  it('rejects health data for another account or platform', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      accountId: otherProfileId, platform: 'facebook', status: 'healthy',
+    }))))
+    await expect(getZernioAccountHealth(accountId)).rejects.toMatchObject({ code: 'invalid_health_response' })
+  })
+
   it('never calls Zernio without a server-side key', async () => {
     vi.stubEnv('ZERNIO_API_KEY', '')
     const fetchMock = vi.fn()

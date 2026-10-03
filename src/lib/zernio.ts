@@ -1,3 +1,7 @@
+import { parseZernioAccountHealth, type ZernioAccountHealth } from '../../shared/zernio-health'
+
+export type { ZernioAccountHealth } from '../../shared/zernio-health'
+
 const API_BASE = 'https://zernio.com/api/v1'
 const OBJECT_ID = /^[a-f\d]{24}$/i
 
@@ -249,6 +253,14 @@ export async function listInstagramAccounts(profileId: string): Promise<ZernioIn
       isActive: account.isActive === true,
     }]
   })
+}
+
+export async function getZernioAccountHealth(accountId: string): Promise<ZernioAccountHealth> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const body = await zernioRequest(`/accounts/${accountId}/health`)
+  const health = parseZernioAccountHealth(body, accountId)
+  if (!health) throw new ZernioApiError(502, 'invalid_health_response')
+  return health
 }
 
 export async function disconnectZernioAccount(accountId: string): Promise<void> {

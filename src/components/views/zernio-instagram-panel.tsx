@@ -5,6 +5,7 @@ import { ExternalLink, PlugZap } from 'lucide-react'
 import { api } from '@/lib/api'
 import { PlatformIcon } from '@/components/dashboard/shared'
 import { Button } from '@/components/ui/button'
+import type { ZernioAccountHealth } from '../../../shared/zernio-health'
 
 interface InstagramAccount {
   id: string
@@ -45,6 +46,23 @@ function count(value: number | null | undefined): string {
   return typeof value === 'number' ? numberFormatter.format(value) : '—'
 }
 
+function connectionStatus(
+  isActive: boolean,
+  health: ZernioAccountHealth | undefined,
+  loading: boolean,
+  error: boolean,
+): { label: string; className: string } {
+  if (!isActive || health?.tokenValid === false) return { label: 'نیازمند اتصال مجدد', className: 'text-warning' }
+  if (error || (!loading && !health)) return { label: 'وضعیت اتصال نامشخص', className: 'text-warning' }
+  if (loading) return { label: 'در حال بررسی اتصال…', className: 'text-ink-tertiary' }
+  if (health?.status === 'error') return { label: 'اتصال نیازمند بررسی', className: 'text-warning' }
+  if (health?.tokenValid !== true) return { label: 'وضعیت مجوز نامشخص', className: 'text-warning' }
+  if (health.status === 'warning' || health.canPost !== true || health.canFetchAnalytics === false) {
+    return { label: 'اتصال محدود', className: 'text-warning' }
+  }
+  return { label: 'سلامت اتصال در Zernio تأیید شد', className: 'text-success' }
+}
+
 function InstagramAccountCard({ account }: { account: InstagramAccount }) {
   const { data: overview, isLoading, isError } = useQuery<InstagramOverview>({
     queryKey: ['zernio-instagram-overview', account.id],
@@ -52,6 +70,16 @@ function InstagramAccountCard({ account }: { account: InstagramAccount }) {
     enabled: account.isActive,
     staleTime: 5 * 60 * 1000,
   })
+
+  const { data: healthData, isPending: healthLoading, isError: healthError, refetch: refreshHealth } = useQuery<{ health: ZernioAccountHealth }>({
+    queryKey: ['zernio-instagram-health', account.id],
+    queryFn: () => api.get(`/api/platforms/zernio/instagram/accounts/${account.id}/health`),
+    enabled: account.isActive,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  })
+  const health = healthData?.health
+  const status = connectionStatus(account.isActive, health, healthLoading, healthError)
 
   const metrics = [
     { label: 'دنبال‌کنندگان', value: account.followersCount },
@@ -82,8 +110,8 @@ function InstagramAccountCard({ account }: { account: InstagramAccount }) {
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs">
-          <span className={account.isActive ? 'text-success' : 'text-warning'}>
-            {account.isActive ? 'متصل و فعال' : 'نیازمند اتصال مجدد'}
+          <span className={status.className}>
+            {status.label}
           </span>
           {account.profileUrl && (
             <a href={account.profileUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent">
@@ -92,6 +120,31 @@ function InstagramAccountCard({ account }: { account: InstagramAccount }) {
           )}
         </div>
       </div>
+
+      {account.isActive && (
+        <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink-secondary" aria-live="polite">
+          {healthError ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span>بررسی سلامت اتصال ممکن نشد؛ این به‌تنهایی به معنی قطع اتصال نیست.</span>
+              <Button variant="outline" size="sm" onClick={() => void refreshHealth()}>بررسی دوباره</Button>
+            </div>
+          ) : health ? (
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              <span>انتشار: {health.canPost === true ? 'مجاز' : health.canPost === false ? 'نیازمند مجوز' : 'نامشخص'}</span>
+              <span>آمار: {health.canFetchAnalytics === true ? 'مجاز' : health.canFetchAnalytics === false ? 'نیازمند مجوز' : 'نامشخص'}</span>
+              {health.missingRequired.length > 0 && <span className="text-warning">برخی مجوزهای لازم داده نشده‌اند.</span>}
+              {health.needsRefresh && <span className="text-warning">مجوز اتصال به‌زودی نیازمند نوسازی است.</span>}
+            </div>
+          ) : <span>در حال دریافت وضعیت مجوزها…</span>}
+          {isLoading ? (
+            <p className="mt-2">در حال دریافت نخستین داده‌های حساب…</p>
+          ) : overview ? (
+            <p className="mt-2">
+              پروفایل آماده است · پست‌های اخیر: {overview.postsStatus === 'available' ? 'بررسی شدند' : 'در دسترس نیستند'} · آمار: {overview.insightsStatus === 'available' ? 'دریافت شد' : 'در دسترس نیست'}
+            </p>
+          ) : null}
+        </div>
+      )}
 
       {account.bio && <p className="text-sm text-ink-secondary whitespace-pre-line">{account.bio}</p>}
       {account.websiteUrl && (

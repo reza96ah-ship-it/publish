@@ -9,6 +9,7 @@ import type {
   ReconcileInput,
   ReconcileOutcome,
 } from './types'
+import { parseZernioAccountHealth } from '../../../shared/zernio-health'
 
 const OBJECT_ID = /^[a-f\d]{24}$/i
 
@@ -17,11 +18,33 @@ export class ZernioInstagramAdapter implements ChannelAdapter {
   readonly platform = 'instagram' as const
 
   async healthCheck(account: AdapterAccount): Promise<HealthResult> {
-    const ready = Boolean(process.env.ZERNIO_API_KEY && account.providerAccountId && OBJECT_ID.test(account.providerAccountId))
-    return {
-      healthy: ready,
-      status: ready ? 'active' : 'disconnected',
-      lastError: ready ? null : 'حساب Zernio یا کلید API در سرویس انتشار تنظیم نشده است',
+    const apiKey = process.env.ZERNIO_API_KEY
+    const accountId = account.providerAccountId
+    if (!apiKey || !accountId || !OBJECT_ID.test(accountId)) {
+      return { healthy: false, status: 'disconnected', lastError: 'حساب Zernio یا کلید API در سرویس انتشار تنظیم نشده است' }
+    }
+    try {
+      const response = await fetch(`https://zernio.com/api/v1/accounts/${accountId}/health`, {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+      })
+      if (!response.ok) {
+        const status = response.status === 401 || response.status === 403 ? 'expired'
+          : response.status === 400 || response.status === 404 ? 'disconnected' : 'error'
+        return { healthy: false, status, lastError: 'بررسی سلامت اتصال Zernio ناموفق بود.' }
+      }
+      const health = parseZernioAccountHealth(await response.json().catch(() => null), accountId)
+      if (!health) return { healthy: false, status: 'error', lastError: 'پاسخ سلامت اتصال Zernio معتبر نبود.' }
+      if (health.tokenValid === false) return { healthy: false, status: 'expired', lastError: 'مجوز اتصال اینستاگرام منقضی شده است.' }
+      if (health.status === 'error' || health.canPost === false) {
+        return { healthy: false, status: 'disconnected', lastError: 'انتشار برای این حساب در Zernio مجاز نیست؛ اتصال و مجوزها را بررسی کنید.' }
+      }
+      if (health.tokenValid !== true || health.canPost !== true) {
+        return { healthy: false, status: 'error', lastError: 'امکان انتشار برای این حساب در Zernio تأیید نشد.' }
+      }
+      return { healthy: true, status: 'active', lastError: null }
+    } catch {
+      return { healthy: false, status: 'error', lastError: 'Zernio برای بررسی سلامت اتصال پاسخ نداد.' }
     }
   }
 
@@ -50,6 +73,14 @@ export class ZernioInstagramAdapter implements ChannelAdapter {
       url: media.url,
     }))
     if (mediaItems.length > 10) return this.failure('هر پست اینستاگرام حداکثر ۱۰ رسانه دارد.', 'unknown', false)
+
+    // A configured account is not necessarily authorized. Check Zernio's
+    // token and posting capability before the first external write.
+    const health = await this.healthCheck(job.account)
+    if (!health.healthy) {
+      const retryable = health.status === 'error'
+      return this.failure(health.lastError ?? 'اتصال اینستاگرام برای انتشار آماده نیست.', retryable ? 'network' : 'auth', retryable)
+    }
 
     try {
       const response = await fetch('https://zernio.com/api/v1/posts', {
