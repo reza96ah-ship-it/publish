@@ -10,6 +10,7 @@
 
 import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
+import { checkContentPublished } from '@/lib/content-aggregate'
 import { assertExhaustive } from '@/lib/api-contracts'
 import { publishJobsAccepted } from '@/lib/metrics'
 import { structuredLogger } from '@/lib/structured-logger'
@@ -209,7 +210,8 @@ export class PublicationsService {
    *   - mark_published: confirm externally published (requires providerPostId)
    *   - confirm_failure: confirm NOT published → allow retry
    *   - abandon: give up → mark as permanently failed
-   *   - duplicate_safe_retry: safe to retry (provider idempotency) → re-enqueue
+   *   - duplicate_safe_retry: legacy action rejected until a provider-safe
+   *     re-dispatch path is proved; use confirm_failure then explicit retry.
    *
    * Preserves the original ambiguous attempt via an audit log entry.
    *
@@ -235,90 +237,78 @@ export class PublicationsService {
     ) {
       throw new PublicationAlreadyResolvedError()
     }
+    if (publication.reconciliationStatus !== 'still_unknown') {
+      throw new PublicationAlreadyResolvedError('این انتشار در انتظار بررسی دستی نیست')
+    }
 
     const { action, providerPostId, reason } = input
     const now = new Date()
+    if (action === 'mark_published' && !providerPostId) throw new ProviderPostIdRequiredError()
+    if (action === 'duplicate_safe_retry') {
+      throw new ValidationError('تلاش مجدد مستقیم برای نتیجه نامشخص غیرفعال است؛ ابتدا منتشر نشدن پست را تأیید کنید')
+    }
 
-    // P1-1: Wrap all writes in a single transaction so the publication update,
-    // outbox event creation (for retry), and audit log are atomic. Previously
-    // if the outboxEvent.create or auditLog.create failed after the publication
-    // was updated, the publication would be in an inconsistent state (e.g.
-    // reset to 'pending' but never re-dispatched).
+    // Publication, legacy job, and audit must commit together. A follow-up
+    // retry is a separate explicit action after confirmed failure.
     await db.$transaction(async (tx) => {
+      let update: Parameters<typeof tx.publication.updateMany>[0]['data']
       switch (action) {
         case 'mark_published': {
-          if (!providerPostId) throw new ProviderPostIdRequiredError()
-          await tx.publication.update({
-            where: { id: publicationId },
-            data: {
-              status: 'success',
-              providerPostId,
-              providerAcknowledgedAt: now,
-              reconciliationStatus: 'confirmed_success',
-              completedAt: now,
-            },
-          })
+          update = {
+            status: 'success',
+            providerPostId,
+            providerAcknowledgedAt: now,
+            reconciliationStatus: 'confirmed_success',
+            completedAt: now,
+          }
           break
         }
         case 'confirm_failure': {
-          await tx.publication.update({
-            where: { id: publicationId },
-            data: {
-              status: 'failed',
-              reconciliationStatus: 'confirmed_failure',
-              errorCategory: 'unknown',
-              errorMessage: `تأیید شده توسط اپراتور: ${reason}`,
-              completedAt: now,
-            },
-          })
+          update = {
+            status: 'failed',
+            reconciliationStatus: 'confirmed_failure',
+            errorCategory: 'unknown',
+            errorMessage: `تأیید شده توسط اپراتور: ${reason}`,
+            completedAt: now,
+          }
           break
         }
         case 'abandon': {
-          await tx.publication.update({
-            where: { id: publicationId },
-            data: {
-              status: 'failed',
-              reconciliationStatus: 'confirmed_failure',
-              errorCategory: 'unknown',
-              errorMessage: `رها شده توسط اپراتور: ${reason}`,
-              completedAt: now,
-            },
-          })
-          break
-        }
-        case 'duplicate_safe_retry': {
-          // Reset to pending so the outbox dispatcher re-enqueues it
-          await tx.publication.update({
-            where: { id: publicationId },
-            data: {
-              status: 'pending',
-              reconciliationStatus: null,
-              errorMessage: null,
-              errorCategory: null,
-            },
-          })
-          await tx.outboxEvent.create({
-            data: {
-              workspaceId,
-              aggregateType: 'content',
-              aggregateId: publication.contentId,
-              eventType: 'publish_requested',
-              payload: {
-                jobId: publication.publishJobId,
-                contentId: publication.contentId,
-                platformId: publication.platformId,
-                workspaceId,
-                publicationId,
-                revisionId: publication.revisionId,
-              },
-              status: 'pending',
-              availableAt: now,
-            },
-          })
+          update = {
+            status: 'failed',
+            reconciliationStatus: 'confirmed_failure',
+            errorCategory: 'unknown',
+            errorMessage: `رها شده توسط اپراتور: ${reason}`,
+            completedAt: now,
+          }
           break
         }
         default:
-          assertExhaustive(action as never)
+          return assertExhaustive(action as never)
+      }
+
+      // A scanner or a second admin may resolve this while the dialog is
+      // open. Claim exactly one still-unknown record before changing the job.
+      const claimed = await tx.publication.updateMany({
+        where: { id: publicationId, workspaceId, reconciliationStatus: 'still_unknown' },
+        data: update,
+      })
+      if (claimed.count !== 1) throw new PublicationAlreadyResolvedError()
+
+      if (publication.publishJobId) {
+        if (action === 'mark_published') {
+          const synced = await tx.publishJob.updateMany({
+            where: { id: publication.publishJobId, workspaceId },
+            data: { status: 'success', progress: 100, processLabel: 'انتشار تأیید شد', error: null, externalId: providerPostId, completedAt: now },
+          })
+          if (synced.count !== 1) throw new PublicationNotFoundError('کار انتشار مرتبط یافت نشد')
+        } else if (action === 'confirm_failure' || action === 'abandon') {
+          const synced = await tx.publishJob.updateMany({
+            where: { id: publication.publishJobId, workspaceId },
+            data: { status: action === 'abandon' ? 'cancelled' : 'failed', processLabel: action === 'abandon' ? 'انتشار رها شد' : 'انتشار ناموفق تأیید شد', error: reason, completedAt: now },
+          })
+          if (synced.count !== 1) throw new PublicationNotFoundError('کار انتشار مرتبط یافت نشد')
+        }
       }
 
       // Preserve the original ambiguous attempt in the audit trail
@@ -339,6 +329,10 @@ export class PublicationsService {
         },
       })
     })
+
+    if (publication.publishJobId) {
+      await checkContentPublished(publication.contentId)
+    }
 
     return {
       ok: true,
