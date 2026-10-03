@@ -115,7 +115,7 @@ describe('Zernio API boundary', () => {
       } })))
       .mockResolvedValueOnce(new Response(JSON.stringify({ posts: [{
         id: 'ig-post-1', message: 'New arrival', permalink: 'https://www.instagram.com/p/abc/',
-        likeCount: 12, commentCount: 3,
+        likeCount: 12, commentCount: 3, picture: 'https://cdn.example.com/post.jpg',
       }] })))
     vi.stubGlobal('fetch', fetchMock)
 
@@ -128,6 +128,7 @@ describe('Zernio API boundary', () => {
     })
     await expect(getInstagramRecentPosts(accountId)).resolves.toMatchObject([{
       id: 'ig-post-1', caption: 'New arrival', likeCount: 12, commentCount: 3,
+      picture: 'https://cdn.example.com/post.jpg',
     }])
   })
 

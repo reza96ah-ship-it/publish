@@ -1,16 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
+vi.mock('next/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('next/server')>()),
+  after: vi.fn(),
+}))
 vi.mock('@/lib/auth-guards', () => ({ requirePermissionApi: vi.fn() }))
 vi.mock('@/lib/db', () => ({
-  db: { workspace: { findUnique: vi.fn() }, auditLog: { create: vi.fn() } },
+  db: { workspace: { findUnique: vi.fn() }, platform: { findFirst: vi.fn() }, auditLog: { create: vi.fn() } },
 }))
 vi.mock('@/lib/zernio', () => ({ listInstagramAccounts: vi.fn(), ZernioApiError: class extends Error {} }))
 vi.mock('@/modules/channels/zernio-sync', () => ({ syncWorkspaceZernioInstagram: vi.fn().mockResolvedValue([]) }))
+vi.mock('@/modules/instagram-sync/zernio-service', () => ({
+  queueZernioInitialSyncForAccount: vi.fn().mockResolvedValue('run1'),
+  runZernioInitialSync: vi.fn(),
+}))
 
+import { after } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { listInstagramAccounts } from '@/lib/zernio'
+import { queueZernioInitialSyncForAccount } from '@/modules/instagram-sync/zernio-service'
 import { GET } from '@/app/api/platforms/zernio/instagram/callback/route'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
@@ -31,6 +41,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requirePermissionApi).mockResolvedValue({ workspaceId: 'workspace1', userId: 'user1' } as never)
   vi.mocked(db.workspace.findUnique).mockResolvedValue({ zernioProfileId: profileId } as never)
+  vi.mocked(db.platform.findFirst).mockResolvedValue({ id: 'platform1' } as never)
   vi.mocked(db.auditLog.create).mockResolvedValue({} as never)
   vi.mocked(listInstagramAccounts).mockResolvedValue([{
     id: accountId,
@@ -47,6 +58,8 @@ describe('Zernio Instagram callback', () => {
     const response = await GET(callbackRequest())
     expect(response.headers.get('location')).toContain('zernio_success=1')
     expect(listInstagramAccounts).toHaveBeenCalledWith(profileId)
+    expect(queueZernioInitialSyncForAccount).toHaveBeenCalledWith(accountId, 'workspace1')
+    expect(after).toHaveBeenCalledOnce()
     expect(response.headers.get('set-cookie')).toContain('Max-Age=0')
   })
 
@@ -54,6 +67,7 @@ describe('Zernio Instagram callback', () => {
     const response = await GET(callbackRequest('workspace2'))
     expect(response.headers.get('location')).toContain('zernio_error=invalid_flow')
     expect(listInstagramAccounts).not.toHaveBeenCalled()
+    expect(queueZernioInitialSyncForAccount).not.toHaveBeenCalled()
   })
 
   it('rejects an account that Zernio does not list as active', async () => {

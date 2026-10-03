@@ -41,6 +41,7 @@ export interface ZernioInstagramPost {
   createdTime: string | null
   likeCount: number | null
   commentCount: number | null
+  picture: string | null
 }
 
 export interface ZernioInstagramStory {
@@ -355,23 +356,24 @@ export async function getInstagramFollowerHistory(
   return metricValues(metrics, 'follower_count')
 }
 
-export async function getInstagramRecentPosts(accountId: string): Promise<ZernioInstagramPost[]> {
+export async function getInstagramRecentPosts(accountId: string, limit = 6): Promise<ZernioInstagramPost[]> {
   if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
   const body = await zernioRequest(`/accounts/${accountId}/posts`)
   if (!Array.isArray(body.posts)) throw new ZernioApiError(502, 'invalid_posts_response')
 
-  return body.posts.slice(0, 6).flatMap((row): ZernioInstagramPost[] => {
+  return body.posts.slice(0, Math.min(Math.max(limit, 1), 25)).flatMap((row): ZernioInstagramPost[] => {
     const post = objectValue(row)
     if (!post || typeof post.id !== 'string') return []
     const caption = typeof post.message === 'string' ? post.message : post.caption
     return [{
       id: post.id,
-      caption: typeof caption === 'string' ? caption.slice(0, 300) : null,
+      caption: typeof caption === 'string' ? caption.slice(0, 2200) : null,
       permalink: httpsUrl(post.permalink),
       mediaType: typeof post.mediaType === 'string' ? post.mediaType : null,
       createdTime: typeof post.createdTime === 'string' ? post.createdTime : null,
       likeCount: nonnegativeNumber(post.likeCount),
       commentCount: nonnegativeNumber(post.commentCount),
+      picture: httpsUrl(post.picture),
     }]
   })
 }

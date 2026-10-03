@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
 import { syncWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
+import { queueZernioInitialSyncForAccount, runZernioInitialSync } from '@/modules/instagram-sync/zernio-service'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 const BASE_URL = process.env.NEXTAUTH_URL || 'http://localhost:3000'
 const OBJECT_ID = /^[a-f\d]{24}$/i
@@ -69,6 +71,14 @@ export async function GET(request: NextRequest) {
     if (!account) return finish('zernio_error=account_not_verified', cookieName)
 
     await syncWorkspaceZernioInstagram(guard.workspaceId)
+
+    try {
+      const runId = await queueZernioInitialSyncForAccount(accountId, guard.workspaceId)
+      if (runId) after(() => runZernioInitialSync(runId))
+    } catch (error) {
+      // The connection is valid even if its optional first-data import cannot start.
+      logger.error({ msg: 'Zernio initial sync could not be queued', code: error instanceof Error ? error.name : 'internal_error' })
+    }
 
     await db.auditLog.create({
       data: {

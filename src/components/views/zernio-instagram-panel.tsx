@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { ExternalLink, PlugZap } from 'lucide-react'
 import { api } from '@/lib/api'
 import { PlatformIcon } from '@/components/dashboard/shared'
@@ -9,6 +10,7 @@ import type { ZernioAccountHealth } from '../../../shared/zernio-health'
 
 interface InstagramAccount {
   id: string
+  platformId: string | null
   username: string
   displayName: string | null
   profileUrl: string | null
@@ -46,6 +48,13 @@ function count(value: number | null | undefined): string {
   return typeof value === 'number' ? numberFormatter.format(value) : '—'
 }
 
+interface InitialSyncRun {
+  status: string
+  currentStep: string | null
+  importedMediaCount: number
+  canResume: boolean
+}
+
 function connectionStatus(
   isActive: boolean,
   health: ZernioAccountHealth | undefined,
@@ -64,6 +73,28 @@ function connectionStatus(
 }
 
 function InstagramAccountCard({ account }: { account: InstagramAccount }) {
+  const [retryingSync, setRetryingSync] = useState(false)
+  const [syncActionError, setSyncActionError] = useState(false)
+  const { data: syncData, refetch: refreshSync } = useQuery<{ run: InitialSyncRun | null }>({
+    queryKey: ['instagram-initial-sync', account.platformId],
+    queryFn: () => api.get(`/api/platforms/sync-status?platformId=${encodeURIComponent(account.platformId ?? '')}&source=zernio`),
+    enabled: !!account.platformId,
+    refetchInterval: (query) => ['PENDING', 'RUNNING'].includes(query.state.data?.run?.status ?? '') ? 5_000 : false,
+  })
+  const syncRun = syncData?.run
+  async function resumeSync() {
+    if (!account.platformId || retryingSync) return
+    setRetryingSync(true)
+    setSyncActionError(false)
+    try {
+      await api.post('/api/platforms/sync-status', { platformId: account.platformId })
+      await refreshSync()
+    } catch {
+      setSyncActionError(true)
+    } finally {
+      setRetryingSync(false)
+    }
+  }
   const { data: overview, isLoading, isError } = useQuery<InstagramOverview>({
     queryKey: ['zernio-instagram-overview', account.id],
     queryFn: () => api.get(`/api/platforms/zernio/instagram/accounts/${account.id}/overview`),
@@ -143,6 +174,26 @@ function InstagramAccountCard({ account }: { account: InstagramAccount }) {
               پروفایل آماده است · پست‌های اخیر: {overview.postsStatus === 'available' ? 'بررسی شدند' : 'در دسترس نیستند'} · آمار: {overview.insightsStatus === 'available' ? 'دریافت شد' : 'در دسترس نیست'}
             </p>
           ) : null}
+        </div>
+      )}
+
+      {account.isActive && account.platformId && (
+        <div className="rounded-lg border border-border bg-surface-subtle p-3 text-xs text-ink-secondary" aria-live="polite">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {!syncRun ? 'همگام‌سازی اولیه هنوز شروع نشده است.' :
+                syncRun.status === 'COMPLETED' ? `همگام‌سازی اولیه کامل شد · ${count(syncRun.importedMediaCount)} پست بررسی شد` :
+                syncRun.status === 'FAILED' ? 'همگام‌سازی اولیه متوقف شد؛ می‌توانید ادامه دهید.' :
+                syncRun.currentStep || 'همگام‌سازی اولیه در جریان است…'}
+            </span>
+            {(!syncRun || syncRun.canResume) && (
+              <Button variant="outline" size="sm" disabled={retryingSync} onClick={() => void resumeSync()}>
+                {retryingSync ? 'در حال شروع…' : syncRun ? 'ادامه همگام‌سازی' : 'شروع همگام‌سازی'}
+              </Button>
+            )}
+          </div>
+          {syncActionError && <p className="mt-2 text-danger">شروع همگام‌سازی ممکن نشد. دوباره تلاش کنید.</p>}
+          <p className="mt-2 text-ink-tertiary">تاریخچه پیام‌ها جداگانه در صندوق ورودی بارگذاری می‌شود و ممکن است با تأخیر برسد.</p>
         </div>
       )}
 
