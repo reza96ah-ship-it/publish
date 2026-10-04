@@ -17,6 +17,9 @@ export function CustomerInviteForm() {
 
   useEffect(() => {
     const value = new URLSearchParams(window.location.hash.slice(1)).get('token') ?? ''
+    // React Strict Mode may rerun this effect after the hash is removed.
+    // Do not clear the token already captured from the invitation link.
+    if (!value) return
     setToken(value)
     window.history.replaceState(null, '', window.location.pathname)
   }, [])
