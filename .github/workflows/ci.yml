@@ -240,6 +240,13 @@ jobs:
                    any(.services.app.ports[]; .host_ip == "127.0.0.1" and .published == "3004") and
                    any(.services.realtime.ports[]; .host_ip == "127.0.0.1" and .published == "3005") and
                    (.services.caddy == null)'
+      - name: Validate staging rollback guard syntax
+        run: |
+          bash -n scripts/rollback-staging.sh
+          if bash scripts/rollback-staging.sh latest; then
+            echo '::error::Rollback accepted an unreviewed tag'
+            exit 1
+          fi
       - name: Build app image
         uses: docker/build-push-action@v7
         with:

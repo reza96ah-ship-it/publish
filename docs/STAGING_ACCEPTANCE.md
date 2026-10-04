@@ -80,8 +80,9 @@ Compose project for all validation and rollback drills.
 ## Rollback
 
 - [ ] Previous image tag is available in GHCR.
-- [ ] A rollback using the same isolated Compose project and staging overlay
-      works; do not use the base-only `scripts/rollback.sh` on the shared host.
+- [ ] `scripts/rollback-staging.sh staging-<previous-commit-sha>` works with a
+      schema-compatible prior image in disposable staging; do not use the
+      base-only `scripts/rollback.sh` on the shared host.
 
 ## Sign-Off
 

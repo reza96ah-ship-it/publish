@@ -45,8 +45,11 @@ then verify free memory and disk again before installing Docker.
    regressions to the hooks endpoint. Complete `docs/STAGING_ACCEPTANCE.md`,
    adapting its database backup/restore steps to the isolated staging database.
    Do not run `scripts/rollback.sh` on this shared host: it uses the base
-   Compose file, which would start a second Caddy on 80/443. Establish and test
-   a staging-overlay rollback procedure before inviting real customers.
+   Compose file, which would start a second Caddy on 80/443. Instead, rehearse
+   `scripts/rollback-staging.sh staging-<previous-commit-sha>` against a
+   disposable staging state before inviting real customers. It only reverts
+   app/worker/realtime images; database migrations are not reversed, so the
+   prior code must be schema-compatible.
    Only then rotate the staging owner app password, sign in again, enroll MFA,
    and issue private customer invitations.
 
