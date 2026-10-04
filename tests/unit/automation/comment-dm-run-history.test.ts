@@ -30,6 +30,7 @@ describe('comment-to-DM run history workspace isolation', () => {
     expect(await listRuleRuns('ws-1', 'rule-1')).toEqual([])
     expect(dbMock.commentDmLog.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { workspaceId: 'ws-1', ruleId: 'rule-1' },
+      select: expect.objectContaining({ postId: true, providerMessageId: true }),
       orderBy: { sentAt: 'desc' },
       take: 20,
     }))

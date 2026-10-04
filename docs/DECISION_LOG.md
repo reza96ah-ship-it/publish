@@ -257,3 +257,20 @@ A record of significant architecture and engineering decisions. Each entry shoul
 - Add observability "after launch when we have traffic" — rejected (you can't debug what you can't see; first users will hit bugs you can't diagnose).
 - Use only console.log + manual log review — rejected (doesn't scale, no search, no alerting).
   **Consequences:** Adds pino, @sentry/nextjs, prom-client, @opentelemetry/sdk-node dependencies. All `console.log` calls replaced with `logger.info` (pino). CI checks for structured log format.
+
+---
+
+## D-016: Account/post-level claims for Instagram comment private replies
+
+**Date:** 2026-10-04
+**Status:** Accepted for draft review; live certification pending
+**Context:** `CommentDmLog` was unique only on `(ruleId, commentId)`. Two matching rules could each claim and send a private reply for one comment. A second comment from the same person on the same post could also escape that constraint when the frequency cap was zero. Legacy `failed` rows may represent ambiguous sends.
+**Decision:** Use nullable `claimPlatformId` and `postId` on the existing log. Only a pending send sets `claimPlatformId`. PostgreSQL unique indexes on `(claimPlatformId, commentId)` and `(claimPlatformId, postId, senderUserId)` atomically block competing rules and workers for one connected platform. Before claiming, check older active/ambiguous logs by workspace and comment ID. Treat legacy `failed` outcomes as ambiguous, not safe to retry. Prefer post-specific rules, then newest rules.
+**Why:** A database constraint remains effective across worker processes and restarts. Nullable keys permit the migration to retain existing skipped and legacy logs without destructive backfill. A duplicate conflict is recorded as skipped and never calls Meta or Zernio.
+**Alternatives considered:**
+
+- In-memory per-scan deduplication — rejected because it does not cover concurrent workers or restarts.
+- A unique `(workspaceId, commentId)` index on all logs — rejected because legacy and skipped rows may already duplicate across rules.
+- A separate claim table — deferred because the existing log can hold the durable claim and provider receipt together.
+
+**Migration and rollback:** The migration adds two nullable columns and unique indexes; it does not rewrite existing rows. Before any rollback, stop the worker and preserve pending/unknown evidence. Dropping the indexes would remove duplicate protection, so the old worker must not resume automatically. The exact migration and rollback must be rehearsed in isolated staging before live deployment. A duplicate Instagram account represented by separate `Platform` IDs remains outside this constraint and needs an ownership audit. The 50-comment live certification is still pending.

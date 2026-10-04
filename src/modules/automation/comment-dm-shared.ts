@@ -27,6 +27,7 @@ export interface CommentDmRule {
 export interface CommentDmRun {
   id: string
   commentId: string
+  postId: string | null
   sentAt: Date | string
   status: string
   providerMessageId: string | null

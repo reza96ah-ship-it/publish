@@ -1034,9 +1034,11 @@ model CommentDmLog {
   workspaceId       String
   ruleId            String
   commentId         String   // external comment ID
+  postId            String?  // external Instagram post ID; null for legacy rows
   senderUserId      String   // Instagram user ID of commenter
   sentAt            DateTime @default(now())
   status            String   @default("pending") // pending, sent, partial, unknown, skipped, failed
+  claimPlatformId   String?  // only set on send claims; null on skipped/legacy rows
   providerMessageId String?
   publicReplyStatus String?  // pending, sent, unknown; null when not requested
   errorCode         String?  // safe internal category, not provider response text
@@ -1044,6 +1046,8 @@ model CommentDmLog {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([ruleId, commentId])
+  @@unique([claimPlatformId, commentId])
+  @@unique([claimPlatformId, postId, senderUserId])
   @@index([workspaceId])
   @@index([ruleId, senderUserId, sentAt])
 }

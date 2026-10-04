@@ -21,7 +21,7 @@ export async function listRuleRuns(workspaceId: string, ruleId: string): Promise
   return db.commentDmLog.findMany({
     where: { workspaceId, ruleId },
     select: {
-      id: true, commentId: true, sentAt: true, status: true,
+      id: true, commentId: true, postId: true, sentAt: true, status: true,
       providerMessageId: true, publicReplyStatus: true, errorCode: true,
     },
     orderBy: { sentAt: 'desc' },

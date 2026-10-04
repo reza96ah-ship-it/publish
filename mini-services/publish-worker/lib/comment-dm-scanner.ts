@@ -180,13 +180,17 @@ async function scanCommentDmsInner(
       freqCapHours: true,
       platform: { select: { tokenSecret: true, targetId: true, name: true } },
     },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
   })
 
   // Env-level fallback: if FEATURE_COMMENT_DM_BETA is set false globally, skip
   // all rules regardless of DB overrides (matches src/lib/flags.ts priority).
   const envBeta = process.env.FEATURE_COMMENT_DM_BETA
   const envDisabled = envBeta !== undefined && envBeta !== '1' && envBeta.toLowerCase() !== 'true'
-  const effectiveRules = envDisabled ? [] : rules
+  // The same precedence is used for Zernio webhook rules: post-specific wins,
+  // then the newest rule. Account-level claims enforce this across processes.
+  const effectiveRules = envDisabled ? [] : [...rules].sort((a, b) =>
+    Number(Boolean(b.publicationId || b.igPostId)) - Number(Boolean(a.publicationId || a.igPostId)))
 
   for (const rule of effectiveRules) {
     stats.rulesScanned++
@@ -238,9 +242,7 @@ async function scanZernioCommentDmEvents(now: Date, stats: ScanStats): Promise<v
       const commentId = comment?.id
       if (!comment || comment.platform !== 'instagram' || comment.isReply === true || author?.isOwnAccount !== false ||
           typeof accountId !== 'string' || typeof postId !== 'string' || typeof commentId !== 'string' ||
-          typeof comment.text !== 'string' || typeof author.id !== 'string' ||
-          !Number.isFinite(new Date(String(comment.createdAt)).getTime()) ||
-          now.getTime() - new Date(String(comment.createdAt)).getTime() >= 7 * 24 * 60 * 60 * 1000) {
+          typeof comment.text !== 'string' || typeof author.id !== 'string') {
         await db.providerWebhookEvent.update({ where: { id: event.id }, data: { automationScannedAt: now } })
         continue
       }
@@ -257,7 +259,7 @@ async function scanZernioCommentDmEvents(now: Date, stats: ScanStats): Promise<v
           platform: { select: { tokenSecret: true, targetId: true, name: true } },
           publication: { select: { providerPostId: true } },
         },
-        orderBy: { createdAt: 'desc' }, take: 50,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 50,
       })
       const applicable = rules.filter((rule) => {
         if (rule.igPostId && rule.igPostId !== postId) return false
@@ -278,6 +280,7 @@ async function scanZernioCommentDmEvents(now: Date, stats: ScanStats): Promise<v
         const outcome = await processComment({
           rule: selected,
           comment: igComment,
+          postId,
           keywords: toStringArray(selected.keywords) ?? [selected.keyword],
           excludeKeywords: toStringArray(selected.excludeKeywords) ?? [],
           accessToken: '', igUserId: accountId, now,
@@ -374,6 +377,7 @@ async function scanRule(
         const outcome = await processComment({
           rule,
           comment,
+          postId: mediaId,
           keywords,
           excludeKeywords,
           accessToken,
@@ -402,6 +406,7 @@ type CommentOutcome = 'sent' | 'partial' | 'skipped' | 'unknown'
 async function processComment(args: {
   rule: RuleRow
   comment: IgComment
+  postId: string
   keywords: string[]
   excludeKeywords: string[]
   accessToken: string
@@ -409,7 +414,7 @@ async function processComment(args: {
   now: Date
   deps: { listCommentsFn: typeof listComments; sendDmFn: typeof sendDmForComment; replyCommentFn: typeof replyToComment }
 }): Promise<CommentOutcome> {
-  const { rule, comment, keywords, excludeKeywords, accessToken, igUserId, now, deps } = args
+  const { rule, comment, postId, keywords, excludeKeywords, accessToken, igUserId, now, deps } = args
 
   // Idempotency: skip if we already logged this (ruleId, commentId).
   const existing = await db.commentDmLog.findUnique({
@@ -421,7 +426,7 @@ async function processComment(args: {
   // Match against keywords/excludes.
   const match = matchComment(comment.text ?? '', keywords, excludeKeywords)
   if (!match.matched) {
-    await logCommentDm(rule, comment, 'skipped')
+    await logCommentDm(rule, comment, postId, 'skipped')
     return 'skipped'
   }
 
@@ -429,7 +434,30 @@ async function processComment(args: {
   const normalizedComment = normalizePersian(comment.text ?? '')
   const normalizedOptOut = normalizePersian(rule.optOutKeyword || 'نه')
   if (normalizedOptOut && normalizedComment.includes(normalizedOptOut)) {
-    await logCommentDm(rule, comment, 'skipped')
+    await logCommentDm(rule, comment, postId, 'skipped')
+    return 'skipped'
+  }
+
+  // Meta private replies must be made within seven days of the comment. Never
+  // call the provider when the timestamp is missing, stale, or implausibly future.
+  const commentTime = Date.parse(comment.timestamp)
+  if (!Number.isFinite(commentTime) || now.getTime() - commentTime >= 7 * 24 * 60 * 60 * 1000 ||
+      commentTime > now.getTime() + 5 * 60 * 1000) {
+    await logCommentDm(rule, comment, postId, 'skipped', 'comment_window_unavailable')
+    return 'skipped'
+  }
+
+  // Legacy rows predate the account-level unique claim. Respect a prior
+  // attempt by another rule before trying to reserve this comment again.
+  const priorAttempt = await db.commentDmLog.findFirst({
+    where: {
+      workspaceId: rule.workspaceId, commentId: comment.id,
+      status: { in: ['pending', 'sent', 'partial', 'unknown', 'failed'] },
+    },
+    select: { id: true },
+  })
+  if (priorAttempt) {
+    await logCommentDm(rule, comment, postId, 'skipped', 'already_replied_to_comment')
     return 'skipped'
   }
 
@@ -441,20 +469,18 @@ async function processComment(args: {
     where: {
       ruleId: rule.id,
       senderUserId,
-      status: { in: ['pending', 'sent', 'partial', 'unknown'] },
+      status: { in: ['pending', 'sent', 'partial', 'unknown', 'failed'] },
       sentAt: { gte: since },
     },
   })
   if (recentSent > 0) {
-    await logCommentDm(rule, comment, 'skipped')
+    await logCommentDm(rule, comment, postId, 'skipped', 'frequency_cap')
     return 'skipped'
   }
 
-  // P1-2: Claim-first / reserve pattern — insert the log row with status='pending'
-  // BEFORE the external IG API call. The @@unique([ruleId, commentId]) constraint
-  // makes this atomic: if another worker instance (or an overlapping scan) already
-  // claimed this comment, the create throws P2002 and we skip. This prevents the
-  // duplicate-DM race where two workers both pass findUnique and both call sendDmFn.
+  // Claim before the external API call. The nullable account-level keys are
+  // unique across rules, so concurrent workers cannot send for the same comment
+  // or to the same commenter on one post even when different rules match.
   //
   // If the worker crashes between claim and acknowledgement, the row stays
   // pending (blocks reprocessing without falsely claiming a send succeeded).
@@ -464,16 +490,31 @@ async function processComment(args: {
         workspaceId: rule.workspaceId,
         ruleId: rule.id,
         commentId: comment.id,
+        postId,
+        claimPlatformId: rule.platformId,
         senderUserId: senderUserId ?? comment.from?.id ?? comment.username ?? 'unknown',
         status: 'pending',
       },
     })
   } catch (err: unknown) {
-    // P2002 = another worker already claimed this comment. Skip.
+    // P2002 = another rule/worker already claimed this comment or commenter/post.
     if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      await logCommentDm(rule, comment, postId, 'skipped', 'already_claimed')
       return 'skipped'
     }
     throw err
+  }
+
+  // A rule can be disabled or deleted while a scan is in progress. Recheck
+  // after the claim and immediately before the provider call. Retain the claim
+  // even if skipped so a concurrent scan cannot race into a private reply.
+  const currentRule = await db.commentDmRule.findFirst({
+    where: { id: rule.id, workspaceId: rule.workspaceId },
+    select: { isActive: true, status: true },
+  })
+  if (!currentRule?.isActive || currentRule.status !== 'active') {
+    await updateLogStatus(rule.id, comment.id, { status: 'skipped', errorCode: 'rule_disabled_before_send' })
+    return 'skipped'
   }
 
   // Confirm the DM before posting a public "sent you a DM" reply. A timeout
@@ -527,7 +568,7 @@ async function updateLogStatus(
   ruleId: string,
   commentId: string,
   data: {
-    status?: 'sent' | 'partial' | 'unknown'
+    status?: 'sent' | 'partial' | 'unknown' | 'skipped'
     providerMessageId?: string
     publicReplyStatus?: 'pending' | 'sent' | 'unknown'
     errorCode?: string
@@ -544,8 +585,9 @@ async function updateLogStatus(
 async function logCommentDm(
   rule: RuleRow,
   comment: IgComment,
-  status: 'sent' | 'skipped' | 'failed',
-  senderUserId?: string
+  postId: string,
+  status: 'skipped',
+  errorCode?: string,
 ): Promise<void> {
   try {
     await db.commentDmLog.create({
@@ -553,8 +595,10 @@ async function logCommentDm(
         workspaceId: rule.workspaceId,
         ruleId: rule.id,
         commentId: comment.id,
-        senderUserId: senderUserId ?? comment.from?.id ?? comment.username ?? 'unknown',
+        postId,
+        senderUserId: comment.from?.id ?? comment.username ?? 'unknown',
         status,
+        errorCode,
       },
     })
   } catch (err: unknown) {

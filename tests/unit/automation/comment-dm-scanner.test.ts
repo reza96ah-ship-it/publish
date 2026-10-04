@@ -5,8 +5,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 const { dbMock, zernioMock } = vi.hoisted(() => ({
   dbMock: {
     platform: { findMany: vi.fn() },
-    commentDmRule: { findMany: vi.fn() },
-    commentDmLog: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
+    commentDmRule: { findMany: vi.fn(), findFirst: vi.fn() },
+    commentDmLog: { findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     providerWebhookEvent: { findMany: vi.fn(), update: vi.fn() },
     publication: { findUnique: vi.fn(), findMany: vi.fn() },
   },
@@ -67,6 +67,8 @@ async function runScan(opts: {
   commentsPerMedia?: Record<string, IgComment[]>
   existingLogs?: Record<string, { status: string }>
   recentSentCount?: number
+  priorAttempt?: { id: string } | null
+  currentRule?: { isActive: boolean; status: string } | null
   createImpl?: (args: { data: { status: string } }) => Promise<unknown>
   sendDm?: (token: string, igUserId: string, commentId: string, text: string) => Promise<unknown>
   replyComment?: (token: string, commentId: string, text: string) => Promise<unknown>
@@ -77,12 +79,16 @@ async function runScan(opts: {
   const replyComment = opts.replyComment ?? vi.fn(async () => ({ id: 'r1' }))
 
   dbMock.commentDmRule.findMany.mockResolvedValue(rules)
+  dbMock.commentDmRule.findFirst.mockResolvedValue(
+    opts.currentRule === undefined ? { isActive: true, status: 'active' } : opts.currentRule
+  )
   dbMock.platform.findMany.mockResolvedValue([])
   dbMock.commentDmLog.findUnique.mockImplementation((args: { where: { ruleId_commentId: { ruleId: string; commentId: string } } }) => {
     const key = `${args.where.ruleId_commentId.ruleId}:${args.where.ruleId_commentId.commentId}`
     return Promise.resolve(opts.existingLogs?.[key] ?? null)
   })
   dbMock.commentDmLog.count.mockResolvedValue(opts.recentSentCount ?? 0)
+  dbMock.commentDmLog.findFirst.mockResolvedValue(opts.priorAttempt ?? null)
   if (opts.createImpl) {
     dbMock.commentDmLog.create.mockImplementation(opts.createImpl)
   } else {
@@ -103,6 +109,8 @@ describe('comment-dm-scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     dbMock.platform.findMany.mockResolvedValue([])
+    dbMock.publication.findMany.mockResolvedValue([])
+    dbMock.commentDmRule.findFirst.mockResolvedValue({ isActive: true, status: 'active' })
   })
 
   it('scans a rule, matches a comment, sends a DM, logs as sent', async () => {
@@ -118,7 +126,9 @@ describe('comment-dm-scanner', () => {
     expect(callArgs?.[3]).toContain('reza')
     // Claim is pending until a provider receipt is recorded.
     expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'pending' }) })
+      expect.objectContaining({ data: expect.objectContaining({
+        status: 'pending', claimPlatformId: 'plat_1', postId: 'ig_media_123',
+      }) })
     )
     expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'sent', providerMessageId: 'm1' }) })
@@ -174,6 +184,9 @@ describe('comment-dm-scanner', () => {
     })
     expect(stats.dmsSkipped).toBe(1)
     expect(stats.dmsSent).toBe(0)
+    expect(dbMock.commentDmLog.count).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ['pending', 'sent', 'partial', 'unknown', 'failed'] } }),
+    }))
   })
 
   it('posts a public reply only after the DM receipt is recorded', async () => {
@@ -214,6 +227,104 @@ describe('comment-dm-scanner', () => {
     )
   })
 
+  it('blocks comments outside the seven-day private-reply window before calling Instagram', async () => {
+    const stale = new Date(NOW.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString()
+    const { stats, sendDm } = await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ timestamp: stale, text: 'قیمت' })] },
+    })
+    expect(stats.dmsSkipped).toBe(1)
+    expect(sendDm).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'skipped', errorCode: 'comment_window_unavailable' }),
+    }))
+  })
+
+  it('blocks comments with an invalid timestamp before calling Instagram', async () => {
+    const { sendDm } = await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ timestamp: 'unknown', text: 'قیمت' })] },
+    })
+    expect(sendDm).not.toHaveBeenCalled()
+  })
+
+  it('respects a previous send claim from another rule, including legacy rows', async () => {
+    const { stats, sendDm } = await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      priorAttempt: { id: 'older-log' },
+    })
+    expect(stats.dmsSkipped).toBe(1)
+    expect(sendDm).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ status: { in: ['pending', 'sent', 'partial', 'unknown', 'failed'] } }),
+    }))
+    expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'skipped', errorCode: 'already_replied_to_comment' }),
+    }))
+  })
+
+  it('does not send when the rule is disabled after the scan begins', async () => {
+    const sendDm = vi.fn(async () => ({ messageId: 'message_1', recipientId: 'recipient_1' }))
+    const { stats } = await runScan({
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      sendDm,
+      currentRule: { isActive: false, status: 'paused' },
+    })
+    expect(stats.dmsSkipped).toBe(1)
+    expect(sendDm).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { status: 'skipped', errorCode: 'rule_disabled_before_send' },
+    }))
+  })
+
+  it('allows only one claim for the same commenter and post across matching rules', async () => {
+    const claimed = new Set<string>()
+    const secondRule = { ...baseRule, id: 'rule_2' }
+    const sendDm = vi.fn(async () => ({ messageId: 'message_1', recipientId: 'recipient_1' }))
+    const comments = [
+      makeComment({ id: 'comment_1', text: 'قیمت' }),
+      makeComment({ id: 'comment_2', text: 'قیمت' }),
+    ]
+    const { stats } = await runScan({
+      rules: [baseRule, secondRule],
+      commentsPerMedia: { ig_media_123: comments },
+      sendDm,
+      createImpl: async ({ data }: { data: { status: string; claimPlatformId?: string; postId?: string; senderUserId?: string } }) => {
+        if (data.status !== 'pending') return { id: 'skipped-log' }
+        const key = `${data.claimPlatformId}:${data.postId}:${data.senderUserId}`
+        if (claimed.has(key)) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+        claimed.add(key)
+        return { id: 'claimed-log' }
+      },
+    })
+    expect(stats.dmsSent).toBe(1)
+    expect(sendDm).toHaveBeenCalledOnce()
+    expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'skipped', errorCode: 'already_claimed' }),
+    }))
+  })
+
+  it('gives a post-specific rule priority over a workspace-wide rule', async () => {
+    const broadRule = { ...baseRule, id: 'broad', igPostId: null, publicationId: null, dmTemplate: 'BROAD' }
+    const specificRule = { ...baseRule, id: 'specific', dmTemplate: 'SPECIFIC' }
+    dbMock.publication.findMany.mockResolvedValue([{ providerPostId: 'ig_media_123' }])
+    const claimed = new Set<string>()
+    const sendDm = vi.fn(async () => ({ messageId: 'message_1', recipientId: 'recipient_1' }))
+    const { stats } = await runScan({
+      rules: [broadRule, specificRule],
+      commentsPerMedia: { ig_media_123: [makeComment({ id: 'comment_1', text: 'قیمت' })] },
+      sendDm,
+      createImpl: async ({ data }: { data: { status: string; claimPlatformId?: string; commentId?: string } }) => {
+        if (data.status !== 'pending') return { id: 'skipped-log' }
+        const key = `${data.claimPlatformId}:${data.commentId}`
+        if (claimed.has(key)) throw Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+        claimed.add(key)
+        return { id: 'claimed-log' }
+      },
+    })
+    expect(stats.dmsSent).toBe(1)
+    expect(sendDm).toHaveBeenCalledOnce()
+    expect(sendDm.mock.calls[0]?.[3]).toBe('SPECIFIC')
+  })
+
   it('does not claim a public reply succeeded without its provider receipt', async () => {
     const ruleWithReply = { ...baseRule, publicReply: 'دایرکت شد' }
     const replyComment = vi.fn(async () => ({ id: null }))
@@ -245,6 +356,7 @@ describe('comment-dm-scanner', () => {
       } },
     }])
     dbMock.commentDmLog.findUnique.mockResolvedValue(null)
+    dbMock.commentDmLog.findFirst.mockResolvedValue(null)
     dbMock.commentDmLog.count.mockResolvedValue(0)
     dbMock.commentDmLog.create.mockResolvedValue({ id: 'log_1' })
     dbMock.commentDmLog.update.mockResolvedValue({ id: 'log_1' })
@@ -262,6 +374,35 @@ describe('comment-dm-scanner', () => {
     }))
     expect(dbMock.providerWebhookEvent.update).toHaveBeenCalledWith({
       where: { id: 'event_1' }, data: { automationScannedAt: NOW },
+    })
+  })
+
+  it('records a matching stale Zernio comment as skipped without calling the provider', async () => {
+    dbMock.platform.findMany.mockResolvedValue([{ id: 'plat_1', providerAccountId: 'acct_1' }])
+    dbMock.commentDmRule.findMany.mockImplementation((args: { where: { platform: { provider: string } } }) =>
+      Promise.resolve(args.where.platform.provider === 'zernio' ? [{ ...baseRule, publication: null }] : []))
+    dbMock.providerWebhookEvent.findMany.mockResolvedValue([{
+      id: 'event_stale', providerAccountId: 'acct_1', receivedAt: NOW,
+      payload: { comment: {
+        id: 'comment_stale', platform: 'instagram', platformPostId: 'ig_media_123',
+        text: 'قیمت', isReply: false,
+        createdAt: new Date(NOW.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+        author: { id: 'author_1', username: 'reza', isOwnAccount: false },
+      } },
+    }])
+    dbMock.commentDmLog.findUnique.mockResolvedValue(null)
+    dbMock.commentDmLog.findFirst.mockResolvedValue(null)
+    dbMock.commentDmLog.create.mockResolvedValue({ id: 'log_stale' })
+    dbMock.providerWebhookEvent.update.mockResolvedValue({ id: 'event_stale' })
+
+    const stats = await scanCommentDms(NOW)
+    expect(stats.dmsSkipped).toBe(1)
+    expect(zernioMock.privateReply).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'skipped', errorCode: 'comment_window_unavailable' }),
+    }))
+    expect(dbMock.providerWebhookEvent.update).toHaveBeenCalledWith({
+      where: { id: 'event_stale' }, data: { automationScannedAt: NOW },
     })
   })
 

@@ -62,7 +62,15 @@ const RUN_STATUS_LABELS: Record<string, string> = {
   partial: 'دایرکت ارسال شد؛ پاسخ عمومی نامشخص',
   unknown: 'نتیجهٔ دایرکت نامشخص',
   skipped: 'ارسال نشد',
-  failed: 'ارسال ناموفق',
+  failed: 'نتیجهٔ قدیمی نامشخص',
+}
+
+const RUN_REASON_LABELS: Record<string, string> = {
+  comment_window_unavailable: 'مهلت پاسخ خصوصی این کامنت گذشته یا زمان آن نامعتبر است.',
+  already_replied_to_comment: 'این کامنت قبلاً با قانون دیگری بررسی شده است.',
+  already_claimed: 'کامنت یا فرستندهٔ این پست قبلاً برای دایرکت رزرو شده است.',
+  frequency_cap: 'فاصلهٔ زمانی مجاز بین دایرکت‌ها رعایت نشده است.',
+  rule_disabled_before_send: 'قانون پیش از ارسال غیرفعال شد؛ دایرکتی ارسال نشد.',
 }
 
 function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
@@ -81,7 +89,7 @@ function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
         <div key={run.id} className="rounded-lg border border-border bg-surface-subtle p-2 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className={cn('font-medium',
-              run.status === 'unknown' || run.status === 'partial' ? 'text-warning' :
+              run.status === 'unknown' || run.status === 'partial' || run.status === 'failed' || run.status === 'pending' ? 'text-warning' :
                 run.status === 'sent' ? 'text-success' : 'text-ink-secondary')}
             >{RUN_STATUS_LABELS[run.status] ?? run.status}</span>
             <time dateTime={new Date(run.sentAt).toISOString()} className="text-ink-tertiary">
@@ -89,14 +97,16 @@ function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
             </time>
           </div>
           <div className="mt-1 text-ink-tertiary" dir="ltr">Comment: {run.commentId}</div>
+          {run.postId && <div className="mt-1 text-ink-tertiary" dir="ltr">Post: {run.postId}</div>}
           {run.providerMessageId ? (
             <div className="mt-1 break-all text-ink-tertiary" dir="ltr">DM receipt: {run.providerMessageId}</div>
           ) : run.status === 'sent' ? (
             <p className="mt-1 text-warning">ثبت قدیمی؛ رسید ارائه‌دهنده ذخیره نشده است.</p>
           ) : null}
-          {(run.status === 'unknown' || run.status === 'pending') && <p className="mt-1 text-warning">برای جلوگیری از دایرکت تکراری، نتیجه را در اینستاگرام بررسی کنید.</p>}
+          {(run.status === 'unknown' || run.status === 'pending' || run.status === 'failed') && <p className="mt-1 text-warning">برای جلوگیری از دایرکت تکراری، نتیجه را در اینستاگرام بررسی کنید.</p>}
           {run.publicReplyStatus === 'pending' && <p className="mt-1 text-warning">وضعیت پاسخ عمومی هنوز تأیید نشده است.</p>}
           {run.errorCode === 'public_reply_unconfirmed' && <p className="mt-1 text-warning">پاسخ عمومی تأیید نشد؛ دایرکت دارای رسید است.</p>}
+          {run.errorCode && RUN_REASON_LABELS[run.errorCode] && <p className="mt-1 text-ink-tertiary">{RUN_REASON_LABELS[run.errorCode]}</p>}
         </div>
       ))}
     </div>

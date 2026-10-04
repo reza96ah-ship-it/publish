@@ -12,12 +12,12 @@ describe('comment-to-DM run history in the existing rule list', () => {
     apiMock.get.mockImplementation(async (url: string) => {
       if (url.endsWith('/logs')) return { runs: [
         {
-          id: 'log-1', commentId: 'comment-1',
+          id: 'log-1', commentId: 'comment-1', postId: 'post-1',
           sentAt: '2026-10-04T12:00:00.000Z', status: 'sent',
           providerMessageId: 'message-1', publicReplyStatus: 'sent', errorCode: null,
         },
         {
-          id: 'log-2', commentId: 'comment-2',
+          id: 'log-2', commentId: 'comment-2', postId: null,
           sentAt: '2026-10-04T11:00:00.000Z', status: 'unknown',
           providerMessageId: null, publicReplyStatus: null, errorCode: 'missing_dm_receipt',
         },
@@ -37,6 +37,7 @@ describe('comment-to-DM run history in the existing rule list', () => {
     />)
     fireEvent.click(await screen.findByRole('button', { name: 'گزارش اجرا' }))
     expect(await screen.findByText('DM receipt: message-1')).toBeInTheDocument()
+    expect(screen.getByText('Post: post-1')).toBeInTheDocument()
     expect(screen.getByText('نتیجهٔ دایرکت نامشخص')).toBeInTheDocument()
     expect(screen.getByText('برای جلوگیری از دایرکت تکراری، نتیجه را در اینستاگرام بررسی کنید.')).toBeInTheDocument()
   })
