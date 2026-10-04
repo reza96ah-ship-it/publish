@@ -1,5 +1,5 @@
 ALTER TABLE "InboxThreadMessage" ADD COLUMN "ingestedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
-CREATE INDEX "InboxThreadMessage_workspaceId_messageType_direction_ingestedAt_idx"
+CREATE INDEX "InboxThreadMessage_workspaceId_messageType_direction_ingest_idx"
   ON "InboxThreadMessage"("workspaceId", "messageType", "direction", "ingestedAt");
 
 ALTER TABLE "Notification" ADD COLUMN "recipientMemberId" TEXT;
