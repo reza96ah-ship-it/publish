@@ -98,6 +98,10 @@ describe('worker/persian-match: matchComment', () => {
 })
 
 describe('worker/persian-match: renderDmTemplate', () => {
+  it('substitutes the configured link in the message sent to the provider', () => {
+    expect(renderDmTemplate('لینک: {لینک}', 'آرش', 'https://example.com/guide'))
+      .toBe('لینک: https://example.com/guide')
+  })
   it('interpolates the {نام} variable', () => {
     expect(renderDmTemplate('سلام {نام} عزیز', 'آرش')).toBe('سلام آرش عزیز')
   })

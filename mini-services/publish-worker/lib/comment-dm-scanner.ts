@@ -430,6 +430,13 @@ async function processComment(args: {
     return 'skipped'
   }
 
+  // Older presets could contain {لینک} without a configured URL. Never send
+  // that literal (or an empty substituted link) to a customer.
+  if (rule.dmTemplate.includes('{لینک}') && !rule.buttonUrl?.trim()) {
+    await logCommentDm(rule, comment, postId, 'skipped', 'missing_template_link')
+    return 'skipped'
+  }
+
   // Opt-out keyword check (normalizePersian both sides).
   const normalizedComment = normalizePersian(comment.text ?? '')
   const normalizedOptOut = normalizePersian(rule.optOutKeyword || 'نه')
@@ -520,10 +527,11 @@ async function processComment(args: {
   // Confirm the DM before posting a public "sent you a DM" reply. A timeout
   // or missing receipt is ambiguous and must never trigger an automatic retry.
   const senderName = comment.from?.username ?? comment.username ?? ''
-  const dmText = renderDmTemplate(rule.dmTemplate, senderName)
+  const dmLink = rule.buttonUrl?.trim() ?? null
+  const dmText = renderDmTemplate(rule.dmTemplate, senderName, dmLink ?? '')
   let providerMessageId: string | null
   try {
-    const receipt = await deps.sendDmFn(accessToken, igUserId, comment.id, dmText, rule.buttonText, rule.buttonUrl)
+    const receipt = await deps.sendDmFn(accessToken, igUserId, comment.id, dmText, rule.buttonText, dmLink)
     providerMessageId = typeof receipt.messageId === 'string' && receipt.messageId.trim()
       ? receipt.messageId : null
   } catch (err) {

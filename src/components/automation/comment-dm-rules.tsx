@@ -33,20 +33,16 @@ interface Props {
 }
 
 interface DmPreset {
-  id: string
+  id: 'link' | 'resource'
   label: string
+  description: string
   keyword: string
   dmTemplate: string
-  publicReply: string
-  buttonText: string
 }
 
 const DM_PRESETS: DmPreset[] = [
-  { id: 'price', label: 'لیست قیمت', keyword: 'قیمت', dmTemplate: 'سلام {نام} عزیز 🌿\nلیست قیمت و جزئیات این محصول اینجاست:\n{لینک}', publicReply: 'دایرکت شد ✉️', buttonText: 'دیدن قیمت' },
-  { id: 'catalog', label: 'کاتالوگ', keyword: 'کاتالوگ', dmTemplate: 'سلام {نام} عزیز 👋\nکاتالوگ کامل محصولات را از این لینک ببینید:\n{لینک}', publicReply: 'کاتالوگ را دایرکت کردیم ✉️', buttonText: 'دریافت کاتالوگ' },
-  { id: 'discount', label: 'کد تخفیف', keyword: 'تخفیف', dmTemplate: 'سلام {نام} عزیز 🎁\nکد تخفیف اختصاصی شما: NASHRINO10', publicReply: 'کد تخفیف دایرکت شد 🎁', buttonText: 'استفاده از تخفیف' },
-  { id: 'booking', label: 'لینک رزرو', keyword: 'رزرو', dmTemplate: 'سلام {نام} عزیز 🗓\nبرای رزرو نوبت از این لینک استفاده کنید:\n{لینک}', publicReply: 'لینک رزرو را دایرکت کردیم ✉️', buttonText: 'رزرو وقت' },
-  { id: 'signup', label: 'ثبت‌نام', keyword: 'ثبت‌نام', dmTemplate: 'سلام {نام} عزیز ✨\nبرای ثبت‌نام در دوره از این لینک اقدام کنید:\n{لینک}', publicReply: 'لینک ثبت‌نام دایرکت شد ✉️', buttonText: 'ثبت‌نام' },
+  { id: 'link', label: 'ارسال لینک', description: 'بعد از کامنتِ کلمهٔ مشخص، یک لینک واقعی در دایرکت بفرستید.', keyword: 'لینک', dmTemplate: 'سلام {نام} عزیز، لینک درخواستی شما:\n{لینک}' },
+  { id: 'resource', label: 'ارسال منبع', description: 'آدرس دانلود فایل یا راهنما را همراه توضیح در دایرکت بفرستید.', keyword: 'راهنما', dmTemplate: 'سلام {نام} عزیز، راهنمای درخواستی را از این لینک دریافت کنید:\n{لینک}' },
 ]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -71,6 +67,7 @@ const RUN_REASON_LABELS: Record<string, string> = {
   already_claimed: 'کامنت یا فرستندهٔ این پست قبلاً برای دایرکت رزرو شده است.',
   frequency_cap: 'فاصلهٔ زمانی مجاز بین دایرکت‌ها رعایت نشده است.',
   rule_disabled_before_send: 'قانون پیش از ارسال غیرفعال شد؛ دایرکتی ارسال نشد.',
+  missing_template_link: 'لینک مقصد در قانون تنظیم نشده است؛ دایرکتی ارسال نشد.',
 }
 
 function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
@@ -119,6 +116,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const isPerPost = publicationId != null
 
   const [showForm, setShowForm] = useState(!readOnly && !!suggestedKeyword)
+  const [selectedTemplate, setSelectedTemplate] = useState<'link' | 'resource' | 'advanced' | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [platformId, setPlatformId] = useState(igPlatforms[0]?.id ?? '')
@@ -155,6 +153,13 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const hasDirtyForm = Boolean(
     keywordsRaw.trim() || dmTemplate.trim() || buttonText.trim() || buttonUrl.trim() || excludeRaw.trim()
   )
+  const linkPlaceholderNeedsUrl = dmTemplate.includes('{لینک}') && !buttonUrl.trim()
+  const templateNeedsUrl = selectedTemplate !== 'advanced' && !buttonUrl.trim()
+  const templateMissingLink = selectedTemplate !== 'advanced' && !!buttonUrl.trim() &&
+    !dmTemplate.includes('{لینک}') && !dmTemplate.includes(buttonUrl.trim())
+  const linkUrlValid = !buttonUrl.trim() || (() => {
+    try { return new URL(buttonUrl.trim()).protocol === 'https:' } catch { return false }
+  })()
 
   const resetForm = () => {
     setEditingRuleId(null)
@@ -168,6 +173,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
     setFreqCapHours(24)
     setTestComment('')
     setShowAdvanced(false)
+    setSelectedTemplate(null)
   }
 
   const closeBuilder = () => {
@@ -191,6 +197,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
     setTestComment('')
     setShowForm(true)
     setShowAdvanced(true)
+    setSelectedTemplate('advanced')
     // Scroll the form into view
     requestAnimationFrame(() => {
       document.getElementById('comment-dm-builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -198,10 +205,12 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   }
 
   const applyPreset = (preset: DmPreset) => {
-    setKeywordsRaw(preset.keyword)
+    setSelectedTemplate(preset.id)
+    setKeywordsRaw(suggestedKeyword || preset.keyword)
     setDmTemplate(preset.dmTemplate)
-    setPublicReply(preset.publicReply)
-    setButtonText(preset.buttonText)
+    setPublicReply('')
+    setButtonText('')
+    setButtonUrl('')
   }
 
   const createMutation = useMutation({
@@ -328,27 +337,32 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
         )}
       </div>
 
-      {/* Create/Edit form — two fields by default, everything else under Advanced */}
+      {/* Start with real, executable templates; keep the generic rule form under Advanced. */}
       {!readOnly && showForm && (
         <div id="comment-dm-builder" className="n-card p-4 space-y-4">
-          {/* Presets */}
           <div className="space-y-2">
-            <p className="text-xs text-ink-tertiary">برای چه چیزی دایرکت می‌فرستید؟</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="text-sm font-medium text-ink-primary">چه کاری می‌خواهید انجام دهید؟</p>
+            <div className="grid gap-2 sm:grid-cols-2">
               {DM_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset)}
-                  className="n-focus-ring inline-flex items-center gap-1 rounded-full border border-border bg-surface-subtle px-3 py-1.5 text-xs text-ink-secondary hover:border-accent hover:text-accent"
+                  aria-pressed={selectedTemplate === preset.id}
+                  className={cn('n-focus-ring rounded-xl border p-3 text-start hover:border-accent', selectedTemplate === preset.id ? 'border-accent bg-accent/5' : 'border-border bg-surface-subtle')}
                 >
-                  <Sparkles className="size-3" />
-                  {preset.label}
+                  <span className="flex items-center gap-1 text-sm font-medium text-ink-primary"><Sparkles className="size-4 text-accent" />{preset.label}</span>
+                  <span className="mt-1 block text-xs text-ink-secondary">{preset.description}</span>
                 </button>
               ))}
             </div>
+            <button type="button" onClick={() => { setSelectedTemplate('advanced'); setShowAdvanced(true) }} className="n-focus-ring text-xs font-medium text-accent hover:underline">
+              ساخت قانون سفارشی (پیشرفته)
+            </button>
+            <p className="text-xs text-ink-tertiary">برچسب‌گذاری و یادآوری تیمی هنوز در این بخش فعال نیستند.</p>
           </div>
 
+          {selectedTemplate && <>
           {/* Account selector — only when the workspace has more than one IG account */}
           {igPlatforms.length > 1 && (
             <div className="space-y-1.5">
@@ -389,15 +403,26 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
               value={dmTemplate}
               onChange={(e) => setDmTemplate(e.target.value)}
             />
-            <p className="text-xs text-ink-tertiary">متغیر: &#x7B;نام&#x7D; با نام کاربر جایگزین می‌شود</p>
+            <p className="text-xs text-ink-tertiary">&#x7B;نام&#x7D; با نام کاربر و &#x7B;لینک&#x7D; با لینک واردشده جایگزین می‌شود.</p>
           </div>
+
+          {selectedTemplate !== 'advanced' && (
+            <div className="space-y-1.5">
+              <Label>۳. لینک مقصد (HTTPS)</Label>
+              <Input dir="ltr" type="url" placeholder="https://example.com/resource" value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} />
+              <p className="text-xs text-ink-tertiary">لینک واقعی صفحه یا فایل را وارد کنید؛ متن نمونه بدون آن ارسال نمی‌شود.</p>
+            </div>
+          )}
+          {(linkPlaceholderNeedsUrl || templateNeedsUrl) && <p role="alert" className="text-xs text-danger">برای ارسال لینک، آدرس مقصد را وارد کنید.</p>}
+          {templateMissingLink && <p role="alert" className="text-xs text-danger">برای اینکه لینک در پیام نمایش داده شود، &#x7B;لینک&#x7D; یا آدرس کامل را در متن پیام نگه دارید.</p>}
+          {!linkUrlValid && <p role="alert" className="text-xs text-danger">لینک باید یک آدرس HTTPS معتبر باشد.</p>}
 
           {/* Instagram-style preview */}
           {dmTemplate && (
             <div className="rounded-2xl border border-border bg-background p-3">
               <div className="mb-2 text-2xs text-ink-tertiary">مخاطب این پیام را می‌بیند</div>
               <div className="max-w-[85%] rounded-2xl rounded-ee-sm bg-accent text-white px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
-                {previewTemplate(dmTemplate, previewName || 'آرش')}
+                {previewTemplate(dmTemplate, previewName || 'آرش', buttonUrl.trim())}
               </div>
               {buttonText && (
                 <div className="mt-2 inline-flex rounded-full border border-accent/30 px-3 py-1 text-xs text-accent">
@@ -417,7 +442,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
             )}
             <Button
               onClick={handleSave}
-              disabled={keywords.length === 0 || !dmTemplate || saveMutation.isPending}
+              disabled={keywords.length === 0 || !dmTemplate || linkPlaceholderNeedsUrl || templateNeedsUrl || templateMissingLink || !linkUrlValid || saveMutation.isPending}
             >
               {isEditing ? 'ذخیره تغییرات' : 'فعال‌سازی دایرکت خودکار'}
             </Button>
@@ -446,10 +471,10 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                   <Label>دکمه داخل دایرکت</Label>
                   <Input dir="rtl" placeholder="مثال: دریافت لینک 🔗" value={buttonText} onChange={(e) => setButtonText(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
+                {selectedTemplate === 'advanced' && <div className="space-y-1.5">
                   <Label>لینک دکمه</Label>
                   <Input dir="ltr" placeholder="https://…" value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} />
-                </div>
+                </div>}
               </div>
 
               <div className="space-y-1.5">
@@ -514,6 +539,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
           <p className="text-2xs text-ink-tertiary leading-relaxed">
             نکته اینستاگرام: برای هر کامنت فقط یک دایرکت خودکار می‌توان فرستاد. اگر مخاطب پاسخ بدهد، گفت‌وگو ادامه پیدا می‌کند.
           </p>
+          </>}
         </div>
       )}
 
@@ -552,7 +578,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                   </div>
                   <p className="text-xs text-ink-secondary truncate mt-0.5">{rule.dmTemplate}</p>
                 </div>
-                <button
+                {!readOnly && <><button
                   onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
                   className="n-focus-ring shrink-0 text-ink-tertiary hover:text-ink-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
                   aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
@@ -572,7 +598,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                   aria-label="حذف"
                 >
                   <Trash2 className="size-4" />
-                </button>
+                </button></>}
               </div>
               <button
                 type="button"

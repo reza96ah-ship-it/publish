@@ -141,9 +141,11 @@ export function matchComment(
   return { matched: false, reason: 'no_match', hit: null }
 }
 
-/** Preview: interpolate {نام} variable in DM template. */
-export function previewTemplate(template: string, senderName: string): string {
-  return template.replace(/\{نام\}/g, senderName || 'کاربر')
+/** Preview the same placeholders that the worker will send. */
+export function previewTemplate(template: string, senderName: string, link = ''): string {
+  return template
+    .replace(/\{نام\}/g, senderName || 'کاربر')
+    .replace(/\{لینک\}/g, link || 'لینک وارد نشده')
 }
 
 /**

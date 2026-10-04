@@ -227,6 +227,27 @@ describe('comment-dm-scanner', () => {
     )
   })
 
+  it('does not send a legacy link template when its URL is missing', async () => {
+    const { stats, sendDm } = await runScan({
+      rules: [{ ...baseRule, dmTemplate: 'لینک: {لینک}', buttonUrl: null }],
+    })
+    expect(stats.dmsSkipped).toBe(1)
+    expect(sendDm).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'skipped', errorCode: 'missing_template_link' }) })
+    )
+  })
+
+  it('replaces the link placeholder before the provider call', async () => {
+    const { sendDm } = await runScan({
+      rules: [{ ...baseRule, dmTemplate: 'لینک: {لینک}', buttonUrl: 'https://example.com/guide' }],
+    })
+    expect(sendDm).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.anything(), 'لینک: https://example.com/guide',
+      null, 'https://example.com/guide'
+    )
+  })
+
   it('blocks comments outside the seven-day private-reply window before calling Instagram', async () => {
     const stale = new Date(NOW.getTime() - 8 * 24 * 60 * 60 * 1000).toISOString()
     const { stats, sendDm } = await runScan({
