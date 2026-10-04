@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { db } from '../src/lib/db'
 
 const WORKSPACE_SLUG = 'nashrino-demo'
@@ -950,9 +949,7 @@ async function main() {
   })
 
   // ─── Analytics snapshots (last 7 days) ───
-  // Prisma 7.8.0's query compiler can panic on both create and createMany
-  // when this model includes a nullable platform. Keep this small demo seed
-  // parameterized and bypass the affected model-write compiler path.
+  // The database stores integer snapshot values; round the generated trend.
   const metricTypes = ['reach', 'engagement', 'followers', 'clicks']
   // Instagram-only (see ENABLED_PLATFORMS); null = workspace-level aggregate.
   const platformsForAn = ['instagram', null]
@@ -975,17 +972,12 @@ async function main() {
           date,
           platform: p,
           metricType: m,
-          value: Math.max(0, base + noise + (6 - d) * (base * 0.02)),
+          value: Math.round(Math.max(0, base + noise + (6 - d) * (base * 0.02))),
         })
       }
     }
   }
-  for (const snapshot of analyticsData) {
-    await db.$executeRaw`
-      INSERT INTO "AnalyticsSnapshot" ("id", "workspaceId", "date", "platform", "metricType", "value", "createdAt")
-      VALUES (${randomUUID()}, ${snapshot.workspaceId}, ${snapshot.date}, ${snapshot.platform}, ${snapshot.metricType}, ${snapshot.value}, NOW())
-    `
-  }
+  await db.analyticsSnapshot.createMany({ data: analyticsData })
 
   // ─── Notifications ───
   await db.$transaction([
