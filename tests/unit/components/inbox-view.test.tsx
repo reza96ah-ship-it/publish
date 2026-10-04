@@ -85,6 +85,7 @@ describe('Component: InboxView', () => {
     })
     apiMock.get.mockImplementation(async (url: string) => {
       if (url === '/api/workspace') return { id: 'workspace-1' }
+      if (/^\/api\/inbox\/threads\/[^/]+\/reply-attempt$/.test(url)) return { attempt: null, canResolve: true }
       if (url === '/api/automation/comment-dm-rules') return []
       if (url === '/api/inbox/saved-replies') return []
       if (url === '/api/inbox/threads/counts') {
@@ -148,5 +149,40 @@ describe('Component: InboxView', () => {
     expect(first).not.toHaveAttribute('aria-current')
     expect(document.querySelectorAll('[aria-current="true"]')).toHaveLength(1)
     expect(window.location.search).toBe('?thread=thread-2')
+  })
+
+  it('blocks a second send when the first thread reply outcome is uncertain', async () => {
+    const replies: Array<{ reply: string; idempotencyKey: string }> = []
+    apiMock.post.mockImplementation(async (url: string, body: { reply: string; idempotencyKey: string }) => {
+      if (url === '/api/inbox/threads/thread-1/reply') {
+        replies.push(body)
+        if (replies.length === 1) {
+          throw new Error(JSON.stringify({ code: 'reply_outcome_unknown', error: 'نتیجهٔ ارسال نامشخص است' }))
+        }
+      }
+      return { ok: true }
+    })
+    renderWithProviders(<InboxView />)
+    fireEvent.click(await screen.findByRole('button', { name: /مریم حسینی/ }))
+    fireEvent.change(screen.getByPlaceholderText(/پاسخ خود را بنویسید/), { target: { value: 'یک پاسخ آزمایشی' } })
+    fireEvent.click(screen.getByRole('button', { name: 'ارسال پاسخ' }))
+    expect(await screen.findByText(/پاسخ دوباره غیرفعال شده است/)).toBeVisible()
+    expect(screen.getByPlaceholderText(/پاسخ خود را بنویسید/)).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'ارسال پاسخ' })).toBeDisabled()
+    expect(replies).toHaveLength(1)
+  })
+
+  it('shows a failed provider delivery status on an outbound message', async () => {
+    const original = apiMock.getPage.getMockImplementation()!
+    apiMock.getPage.mockImplementation((url: string) => {
+      if (url.startsWith('/api/inbox/threads/thread-1/messages?')) {
+        return Promise.resolve({ data: [{ ...threads[0].lastMessage, id: 'out-failed',
+          direction: 'outbound', deliveryStatus: 'failed' }], nextCursor: null })
+      }
+      return original(url)
+    })
+    renderWithProviders(<InboxView />)
+    fireEvent.click(await screen.findByRole('button', { name: /مریم حسینی/ }))
+    expect(await screen.findByText('ارسال ناموفق')).toBeVisible()
   })
 })

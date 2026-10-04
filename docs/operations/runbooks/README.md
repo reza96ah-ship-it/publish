@@ -176,3 +176,7 @@ docker compose -f compose.production.yaml logs migrate
 3. Check audit logs: `SELECT * FROM "AuditLog" WHERE action LIKE 'security.%' ORDER BY "createdAt" DESC`
 4. Notify affected users
 5. File incident report
+
+## Zernio Inbox reply with unknown outcome
+
+See [zernio-ambiguous-reply.md](zernio-ambiguous-reply.md). Never blindly retry a timeout or 500; verify the Instagram conversation and use the audited admin resolution action.

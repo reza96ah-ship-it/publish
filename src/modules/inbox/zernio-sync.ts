@@ -78,11 +78,28 @@ async function syncConversation(
       senderExternalId: direction === 'incoming' ? conversation.participantId : null,
       senderName: message.senderName,
       body: message.message,
-      payload: { source: 'zernio', attachmentCount: message.attachmentCount, isDeleted: message.isDeleted },
+      payload: { source: 'zernio', attachmentCount: message.attachmentCount, isDeleted: message.isDeleted,
+        deliveryStatus: message.deliveryStatus },
       createdAt: validDate(message.createdAt) ?? updatedTime,
     }))
   const incoming = await db.inboxThreadMessage.createMany({ data: rows('incoming'), skipDuplicates: true })
   await db.inboxThreadMessage.createMany({ data: rows('outgoing'), skipDuplicates: true })
+  const outboundStatuses = messages.filter((message) => message.direction === 'outgoing' && message.deliveryStatus)
+  const storedOutbound = outboundStatuses.length ? await db.inboxThreadMessage.findMany({
+    where: { threadId: thread.id, platformId, providerMessageId: { in: outboundStatuses.map((message) => message.id) } },
+    select: { providerMessageId: true, payload: true },
+  }) : []
+  const storedStatus = new Map(storedOutbound.map((row) => [row.providerMessageId,
+    typeof row.payload === 'object' && row.payload !== null && !Array.isArray(row.payload)
+      ? (row.payload as Record<string, unknown>).deliveryStatus : null]))
+  for (const message of outboundStatuses) {
+    if (storedStatus.get(message.id) === message.deliveryStatus) continue
+    await db.inboxThreadMessage.updateMany({
+      where: { threadId: thread.id, platformId, providerMessageId: message.id, direction: 'outbound' },
+      data: { payload: { source: 'zernio', attachmentCount: message.attachmentCount,
+        isDeleted: message.isDeleted, deliveryStatus: message.deliveryStatus } },
+    })
+  }
   if (existing && incoming.count > 0) {
     await db.inboxThread.update({
       where: { id: thread.id },

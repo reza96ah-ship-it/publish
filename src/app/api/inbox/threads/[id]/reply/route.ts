@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
-import { inboxReplySchema, validateBody, validateId } from '@/lib/validations'
+import { inboxThreadReplySchema, validateBody, validateId } from '@/lib/validations'
+import { ReplyAttemptError } from '@/modules/inbox/zernio-reply-attempt'
 import {
   inboxService,
   AssigneeMemberNotFoundError,
@@ -22,14 +23,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const raw = await req.json().catch(() => null)
   if (!raw) return NextResponse.json({ error: 'بدنه نامعتبر' }, { status: 400 })
 
-  const validation = validateBody(inboxReplySchema, raw)
+  const validation = validateBody(inboxThreadReplySchema, raw)
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
 
   try {
     const result = await inboxService.replyToThread(
       { workspaceId: guard.workspaceId, userId: guard.userId },
       idCheck.data,
-      { reply: validation.data.reply }
+      { reply: validation.data.reply, idempotencyKey: validation.data.idempotencyKey }
     )
     return NextResponse.json(result)
   } catch (err) {
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: err.message }, { status: 404 })
     if (err instanceof InboxThreadClaimConflictError)
       return NextResponse.json({ error: err.message }, { status: 409 })
+    if (err instanceof ReplyAttemptError)
+      return NextResponse.json({ error: err.message, code: err.code }, {
+        status: ['reply_in_progress', 'reply_outcome_unknown', 'reply_previous_unresolved', 'reply_key_conflict'].includes(err.code)
+          ? 409 : 502,
+      })
     if (err instanceof ProviderReplyError)
       return NextResponse.json({ error: err.message }, { status: 502 })
     throw err

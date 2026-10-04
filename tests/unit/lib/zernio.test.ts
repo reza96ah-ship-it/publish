@@ -175,6 +175,9 @@ describe('Zernio API boundary', () => {
         id: 'message-2', conversationId, accountId, direction: 'outgoing',
         message: 'secret', isDeleted: true,
       }, {
+        id: 'message-3', conversationId, accountId, direction: 'outgoing',
+        message: 'Did not deliver', deliveryStatus: 'failed',
+      }, {
         id: 'foreign', conversationId, accountId: otherProfileId, message: 'private',
       }], pagination: { nextCursor: null } })))
     vi.stubGlobal('fetch', fetchMock)
@@ -184,7 +187,8 @@ describe('Zernio API boundary', () => {
     })
     await expect(getZernioInboxConversation(accountId, conversationId)).resolves.toMatchObject({ id: conversationId, accountId })
     await expect(listZernioInboxMessages(accountId, conversationId)).resolves.toMatchObject({
-      data: [{ id: 'message-1', message: 'Hello' }, { id: 'message-2', message: 'پیام حذف شده است' }],
+      data: [{ id: 'message-1', message: 'Hello' }, { id: 'message-2', message: 'پیام حذف شده است' },
+        { id: 'message-3', deliveryStatus: 'failed' }],
     })
     const listUrl = new URL(fetchMock.mock.calls[0][0])
     expect(listUrl.searchParams.get('profileId')).toBe(profileId)

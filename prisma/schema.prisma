@@ -767,6 +767,7 @@ model InboxThread {
   assignee  WorkspaceMember? @relation("InboxThreadAssignee", fields: [assigneeId], references: [id])
   lockedBy  WorkspaceMember? @relation("InboxThreadLock", fields: [lockedById], references: [id])
   messages  InboxThreadMessage[]
+  replyAttempts InboxReplyAttempt[]
 
   @@unique([platformId, providerThreadId])
   @@index([workspaceId, lastMessageAt])
@@ -798,6 +799,24 @@ model InboxThreadMessage {
   @@index([threadId, createdAt])
   @@index([workspaceId, createdAt])
   @@index([platformId, createdAt])
+}
+
+model InboxReplyAttempt {
+  id                String   @id @default(cuid())
+  threadId          String
+  activeThreadId    String?  @unique // occupied only while pending/unknown
+  workspaceId       String
+  idempotencyKey    String   @unique
+  replyHash         String
+  status            String   @default("pending") // pending, unknown, sent, rejected, resolved_sent, resolved_not_sent
+  providerMessageId String?
+  threadMessageId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  thread InboxThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, threadId, status])
 }
 
 model ProviderWebhookEvent {

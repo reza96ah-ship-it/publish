@@ -165,6 +165,11 @@ function toThreadAttachments(payload: Prisma.JsonValue): InboxThreadAttachment[]
 }
 
 function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
+  const payload = asJsonRecord(message.payload)
+  const rawStatus = stringFromJson(payload?.deliveryStatus)
+  const deliveryStatus = rawStatus && ['sent', 'delivered', 'read', 'failed', 'deleted'].includes(rawStatus)
+    ? rawStatus as InboxThreadMessage['deliveryStatus']
+    : payload?.providerAcknowledged === true ? 'accepted' : null
   return {
     id: message.id,
     providerMessageId: message.providerMessageId,
@@ -174,6 +179,7 @@ function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
     senderName: message.senderName,
     body: message.body,
     attachments: toThreadAttachments(message.payload),
+    deliveryStatus,
     createdAt: message.createdAt,
   }
 }

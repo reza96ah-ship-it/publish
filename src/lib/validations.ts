@@ -174,6 +174,10 @@ export const inboxReplySchema = z.object({
   reply: z.string().trim().min(1, 'متن پاسخ خالی است').max(2000, 'پاسخ خیلی طولانی است'),
 })
 
+export const inboxThreadReplySchema = inboxReplySchema.extend({
+  idempotencyKey: z.uuid(),
+})
+
 export const inboxAssignSchema = z.object({
   assigneeId: z.string().nullable(),
 })

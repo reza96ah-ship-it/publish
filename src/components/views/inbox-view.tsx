@@ -109,6 +109,7 @@ interface InboxThreadTimelineMessage {
   senderName: string
   body: string
   attachments: InboxThreadAttachment[]
+  deliveryStatus?: 'accepted' | 'sent' | 'delivered' | 'read' | 'failed' | 'deleted' | null
   createdAt: string
 }
 
@@ -322,6 +323,8 @@ export function InboxView() {
     initialSelection.kind
   )
   const [replyText, setReplyText] = useState('')
+  const replyAttemptRef = useRef<{ id: string; reply: string; kind: ConversationKind; key: string } | null>(null)
+  const [uncertainReply, setUncertainReply] = useState<{ id: string } | null>(null)
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [showSnippets, setShowSnippets] = useState(false)
   const [tagDraft, setTagDraft] = useState('')
@@ -465,6 +468,15 @@ export function InboxView() {
       ? (messages.find((message) => message.id === selectedId) ?? null)
       : null
   const selectedThreadId = selectedKindHint === 'thread' ? selectedId : null
+  const openReplyAttemptQuery = useQuery<{
+    attempt: { idempotencyKey: string | null; status: string; createdAt: string } | null
+    canResolve: boolean
+  }>({
+    queryKey: ['inbox-reply-attempt', selectedThreadId],
+    queryFn: () => api.get(`/api/inbox/threads/${selectedThreadId}/reply-attempt`),
+    enabled: Boolean(selectedThreadId),
+    refetchInterval: 15_000,
+  })
 
   const { data: selectedThreadDetail, isLoading: isThreadDetailLoading } =
     useQuery<InboxThreadDetail>({
@@ -575,9 +587,8 @@ export function InboxView() {
   // no window). Drives the countdown chip and the disabled composer state.
   const replyWindowExpiresAt =
     selectedThread?.messageType === 'dm' ? selectedThread.replyWindowExpiresAt : null
-  const replyWindowClosed = Boolean(
-    replyWindowExpiresAt && new Date(replyWindowExpiresAt).getTime() < Date.now()
-  )
+  const replyWindowClosed = selectedThread?.messageType === 'dm'
+    && (!replyWindowExpiresAt || new Date(replyWindowExpiresAt).getTime() <= Date.now())
   const lockActive = Boolean(
     selectedThread?.lockedById &&
       selectedThread.lockExpiresAt &&
@@ -586,6 +597,8 @@ export function InboxView() {
   const claimedByMe = Boolean(lockActive && selectedThread?.lockedById === myMembershipId)
   const claimedByOther = Boolean(lockActive && selectedThread?.lockedById !== myMembershipId)
   const composerBlocked = replyWindowClosed || claimedByOther
+  const uncertainForSelected = uncertainReply?.id === selected?.id || (selectedThreadId && openReplyAttemptQuery.data?.attempt)
+    ? { id: selected?.id } : null
   const unreadCount =
     (queueCounts?.counts.unread ?? threads.reduce((count, thread) => count + thread.unreadCount, 0)) +
     (queueCounts?.legacyUnread ?? messages.filter((message) => !message.isRead).length)
@@ -611,32 +624,64 @@ export function InboxView() {
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
-    mutationFn: ({ id, reply, kind }: { id: string; reply: string; kind: ConversationKind }) =>
+    mutationFn: ({ id, reply, kind, idempotencyKey }: { id: string; reply: string; kind: ConversationKind; idempotencyKey: string }) =>
       api.post(kind === 'thread' ? `/api/inbox/threads/${id}/reply` : `/api/inbox/${id}/reply`, {
         reply,
+        ...(kind === 'thread' ? { idempotencyKey } : {}),
       }),
     onSuccess: (_data, vars) => {
-      toast.success('پاسخ ارسال شد ✓')
+      toast.success('پاسخ توسط سرویس پذیرفته شد ✓')
+      if (replyAttemptRef.current?.key === vars.idempotencyKey) replyAttemptRef.current = null
+      setUncertainReply(null)
       setReplyText('')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
-    onError: (err) => {
+    onError: (err, vars) => {
       // Surface the server's actionable message (e.g. the Meta 24h-window
       // rejection) instead of a generic failure — the body is JSON {error}.
       let message = 'خطا در ارسال پاسخ'
+      let code: string | null = null
       try {
-        const parsed = JSON.parse((err as Error).message) as { error?: string }
+        const parsed = JSON.parse((err as Error).message) as { error?: string; code?: string }
         if (parsed?.error) message = parsed.error
+        code = parsed?.code ?? null
       } catch {
         /* non-JSON body → keep the generic message */
       }
+      if (vars.kind === 'thread') {
+        if (code === 'reply_outcome_unknown' || code === 'reply_in_progress' || code === 'reply_previous_unresolved' || code === null) {
+          setUncertainReply({ id: vars.id })
+        } else {
+          replyAttemptRef.current = null
+          setUncertainReply(null)
+        }
+      }
       toast.error(message)
+      if (vars.kind === 'thread') queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
     },
+  })
+
+  const resolveReplyAttemptMutation = useMutation({
+    mutationFn: ({ id, idempotencyKey, resolution }: {
+      id: string; idempotencyKey: string; resolution: 'sent' | 'not_sent'
+    }) => api.post(`/api/inbox/threads/${id}/reply-attempt`, {
+      idempotencyKey, resolution, confirmation: 'checked_instagram_conversation',
+    }),
+    onSuccess: (_data, vars) => {
+      replyAttemptRef.current = null
+      setUncertainReply(null)
+      if (vars.resolution === 'sent') setReplyText('')
+      void queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      toast.success('نتیجهٔ بررسی ثبت شد')
+    },
+    onError: () => toast.error('ثبت نتیجه ممکن نشد؛ گفتگو را تازه‌سازی کنید'),
   })
 
   const assignMutation = useMutation({
@@ -874,6 +919,7 @@ export function InboxView() {
   }, [])
 
   const handleReply = () => {
+    if (replyMutation.isPending || uncertainForSelected) return
     if (composerBlocked) {
       toast.error(
         claimedByOther
@@ -888,7 +934,21 @@ export function InboxView() {
     }
     if (!selected) return
     if (!selectedKind) return
-    replyMutation.mutate({ id: selected.id, reply: replyText, kind: selectedKind })
+    const prior = replyAttemptRef.current
+    const idempotencyKey = prior?.id === selected.id && prior.reply === replyText && prior.kind === selectedKind
+      ? prior.key : crypto.randomUUID()
+    replyAttemptRef.current = { id: selected.id, reply: replyText, kind: selectedKind, key: idempotencyKey }
+    replyMutation.mutate({ id: selected.id, reply: replyText, kind: selectedKind, idempotencyKey })
+  }
+
+  const handleResolveReplyAttempt = (resolution: 'sent' | 'not_sent') => {
+    const attempt = openReplyAttemptQuery.data?.attempt
+    if (!selectedThreadId || !attempt?.idempotencyKey || !openReplyAttemptQuery.data?.canResolve) return
+    const prompt = resolution === 'sent'
+      ? 'آیا گفتگو را در خود اینستاگرام بررسی کرده‌اید و مطمئن هستید این پاسخ ارسال شده است؟'
+      : 'آیا گفتگو را در خود اینستاگرام بررسی کرده‌اید و مطمئن هستید این پاسخ ارسال نشده است؟ انتخاب اشتباه می‌تواند پیام تکراری بسازد.'
+    if (!window.confirm(prompt)) return
+    resolveReplyAttemptMutation.mutate({ id: selectedThreadId, idempotencyKey: attempt.idempotencyKey, resolution })
   }
 
   const handleSmartReply = async () => {
@@ -1436,6 +1496,12 @@ export function InboxView() {
                                 {message.body}
                               </p>
                               <AttachmentChips attachments={message.attachments} />
+                              {outbound && message.deliveryStatus && (
+                                <p className={cn('mt-1 text-2xs', message.deliveryStatus === 'failed' ? 'text-danger' : 'text-ink-tertiary')}>
+                                  {({ accepted: 'پذیرفته‌شده توسط سرویس', sent: 'ارسال‌شده', delivered: 'تحویل‌شده',
+                                    read: 'خوانده‌شده', failed: 'ارسال ناموفق', deleted: 'حذف‌شده' } as const)[message.deliveryStatus]}
+                                </p>
+                              )}
                             </div>
                           </div>
                         )
@@ -1509,6 +1575,19 @@ export function InboxView() {
                     </span>
                   </div>
                 )}
+                {uncertainForSelected && (
+                  <div role="status" className="mb-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+                    نتیجهٔ ارسال نامشخص است. برای جلوگیری از پیام تکراری، پاسخ دوباره غیرفعال شده است؛ گفتگو را در اینستاگرام بررسی کنید.
+                    {openReplyAttemptQuery.data?.canResolve && openReplyAttemptQuery.data.attempt && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending}
+                          onClick={() => handleResolveReplyAttempt('sent')}>در اینستاگرام ارسال شده بود</Button>
+                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending}
+                          onClick={() => handleResolveReplyAttempt('not_sent')}>در اینستاگرام ارسال نشده بود</Button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Quick replies — one tap inserts the rendered template */}
                 {!composerBlocked && !replyText && (savedReplies ?? []).length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
@@ -1536,7 +1615,7 @@ export function InboxView() {
                       ? 'پنجره پاسخ بسته شده است'
                       : 'پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)'
                   }
-                  disabled={composerBlocked}
+                  disabled={composerBlocked || Boolean(uncertainForSelected)}
                   value={replyText}
                   onChange={(e) => {
                     setReplyText(e.target.value)
@@ -1598,7 +1677,7 @@ export function InboxView() {
                       size="sm"
                       className="min-h-[44px] sm:min-h-0"
                       onClick={handleReply}
-                      disabled={replyMutation.isPending || !replyText.trim() || composerBlocked}
+                      disabled={replyMutation.isPending || !replyText.trim() || composerBlocked || Boolean(uncertainForSelected)}
                     >
                       {replyMutation.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />

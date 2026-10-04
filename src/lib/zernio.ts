@@ -87,6 +87,7 @@ export interface ZernioInboxMessage {
   createdAt: string | null
   attachmentCount: number
   isDeleted: boolean
+  deliveryStatus: 'sent' | 'delivered' | 'read' | 'failed' | 'deleted' | null
 }
 
 export interface ZernioInboxPage<T> {
@@ -513,6 +514,8 @@ export async function listZernioInboxMessages(
         createdAt: typeof row.createdAt === 'string' ? row.createdAt : null,
         attachmentCount: !isDeleted && Array.isArray(row.attachments) ? row.attachments.length : 0,
         isDeleted,
+        deliveryStatus: ['sent', 'delivered', 'read', 'failed', 'deleted'].includes(String(row.deliveryStatus))
+          ? row.deliveryStatus as ZernioInboxMessage['deliveryStatus'] : null,
       }]
     }),
     nextCursor: typeof pagination?.nextCursor === 'string' ? pagination.nextCursor : null,
@@ -524,7 +527,7 @@ export async function sendZernioInboxMessage(
   conversationId: string,
   message: string,
   idempotencyKey: string,
-): Promise<string | null> {
+): Promise<string> {
   if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
   const id = validOpaque(conversationId, 'conversation_id')
   const body = await zernioRequest(`/inbox/conversations/${encodeURIComponent(id)}/messages`, {
@@ -536,7 +539,10 @@ export async function sendZernioInboxMessage(
   if (body.success !== true || !data || data.conversationId !== id) {
     throw new ZernioApiError(502, 'invalid_send_response')
   }
-  return typeof data.messageId === 'string' ? data.messageId : null
+  if (typeof data.messageId !== 'string' || !data.messageId) {
+    throw new ZernioApiError(502, 'invalid_send_receipt')
+  }
+  return validOpaque(data.messageId, 'message_id')
 }
 
 export async function listZernioCommentedPosts(profileId: string): Promise<ZernioCommentedPost[]> {
