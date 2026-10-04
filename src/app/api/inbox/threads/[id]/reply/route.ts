@@ -42,8 +42,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: err.message }, { status: 409 })
     if (err instanceof ReplyAttemptError)
       return NextResponse.json({ error: err.message, code: err.code }, {
-        status: ['reply_in_progress', 'reply_outcome_unknown', 'reply_previous_unresolved', 'reply_key_conflict'].includes(err.code)
-          ? 409 : 502,
+        status: err.code === 'reply_key_required' ? 400
+          : ['reply_in_progress', 'reply_outcome_unknown', 'reply_previous_unresolved', 'reply_key_conflict'].includes(err.code)
+            ? 409 : 502,
       })
     if (err instanceof ProviderReplyError)
       return NextResponse.json({ error: err.message }, { status: 502 })

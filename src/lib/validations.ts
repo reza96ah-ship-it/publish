@@ -175,7 +175,9 @@ export const inboxReplySchema = z.object({
 })
 
 export const inboxThreadReplySchema = inboxReplySchema.extend({
-  idempotencyKey: z.uuid(),
+  // Direct Meta threads predate the Zernio ledger and do not require a key.
+  // The service requires one only when it is about to send through Zernio.
+  idempotencyKey: z.uuid().optional(),
 })
 
 export const inboxAssignSchema = z.object({
