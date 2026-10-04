@@ -7,6 +7,7 @@
  */
 
 import { db } from '@/lib/db'
+import { parseInboxTemplate } from '../../../shared/inbox-automation-templates'
 import type { Prisma } from '@prisma/client'
 import type {
   AutomationItem,
@@ -106,6 +107,14 @@ function toRunItem(row: {
 }
 
 export class AutomationsRepository {
+  async hasReplyCapableMember(workspaceId: string, memberId: string): Promise<boolean> {
+    const member = await db.workspaceMember.findFirst({
+      where: { id: memberId, workspaceId, role: { in: ['admin', 'editor'] } },
+      select: { id: true },
+    })
+    return member !== null
+  }
+
   /** List automations in a workspace, cursor-paginated by createdAt desc. */
   async list(workspaceId: string, query: AutomationListQuery): Promise<AutomationItem[]> {
     const limit = query.limit ?? 20
@@ -135,6 +144,7 @@ export class AutomationsRepository {
     const row = await db.automation.create({
       data: {
         workspaceId,
+        templateId: parseInboxTemplate(data.definition)?.id ?? null,
         name: data.name,
         description: data.description ?? null,
         definition: data.definition as unknown as Prisma.InputJsonValue,
@@ -166,6 +176,7 @@ export class AutomationsRepository {
         ...(data.maxRunsPerHour !== undefined ? { maxRunsPerHour: data.maxRunsPerHour } : {}),
         ...(data.requireApproval !== undefined ? { requireApproval: data.requireApproval } : {}),
         ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+        ...(data.isActive === true ? { activatedAt: new Date() } : {}),
         ...(data.isPaused !== undefined ? { isPaused: data.isPaused } : {}),
         ...(data.killSwitch !== undefined ? { killSwitch: data.killSwitch } : {}),
       },
@@ -200,10 +211,12 @@ export class AutomationsRepository {
     if (patch.maxRunsPerHour !== undefined) data.maxRunsPerHour = patch.maxRunsPerHour
     if (patch.requireApproval !== undefined) data.requireApproval = patch.requireApproval
     if (patch.isActive !== undefined) data.isActive = patch.isActive
+    if (patch.isActive === true) data.activatedAt = new Date()
     if (patch.isPaused !== undefined) data.isPaused = patch.isPaused
     if (patch.killSwitch !== undefined) data.killSwitch = patch.killSwitch
 
     if (hasDefinitionChange) {
+      data.templateId = parseInboxTemplate(patch.definition)?.id ?? null
       data.previousDefinition = existing.definition as unknown as Prisma.InputJsonValue
       data.definition = patch.definition as unknown as Prisma.InputJsonValue
       data.version = { increment: 1 }

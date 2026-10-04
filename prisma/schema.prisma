@@ -260,6 +260,7 @@ model WorkspaceMember {
   assignedMessages InboxMessage[]
   assignedThreads InboxThread[] @relation("InboxThreadAssignee")
   lockedInboxThreads InboxThread[] @relation("InboxThreadLock")
+  notifications Notification[] @relation("NotificationRecipient")
 
   @@unique([workspaceId, userId])
   @@index([workspaceId])
@@ -792,6 +793,7 @@ model InboxThreadMessage {
   body              String
   payload           Json
   createdAt         DateTime @default(now())
+  ingestedAt        DateTime @default(now()) // independent of provider timestamp
 
   thread InboxThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
@@ -799,6 +801,7 @@ model InboxThreadMessage {
   @@index([threadId, createdAt])
   @@index([workspaceId, createdAt])
   @@index([platformId, createdAt])
+  @@index([workspaceId, messageType, direction, ingestedAt])
 }
 
 model InboxReplyAttempt {
@@ -890,16 +893,20 @@ model PostMetricSnapshot {
 model Notification {
   id          String   @id @default(cuid())
   workspaceId String
+  recipientMemberId String? // null = workspace-wide
   type        String   // publish_success, publish_failed, approval_requested, inbox_new, token_expiring, channel_disconnected
   title       String
   body        String?
+  href        String?
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  recipientMember WorkspaceMember? @relation("NotificationRecipient", fields: [recipientMemberId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, isRead])
   @@index([workspaceId, createdAt])
+  @@index([workspaceId, recipientMemberId, isRead])
 }
 
 /* ─── Settings ─── */
@@ -1310,6 +1317,7 @@ model CaseParticipant {
 model Automation {
   id          String   @id @default(cuid())
   workspaceId String
+  templateId  String? // unique executable Inbox template per workspace
   name        String
   description String?
   // Current version number (increments on each save)
@@ -1324,6 +1332,7 @@ model Automation {
   previousDefinition Json?
   isActive    Boolean  @default(false)
   isPaused    Boolean  @default(false)
+  activatedAt DateTime? // comment templates only process events ingested after activation
   // Dry run mode: log what would happen but don't execute actions
   dryRunMode  Boolean  @default(false)
   // Kill switch: when true, all runs are immediately cancelled
@@ -1342,12 +1351,14 @@ model Automation {
   @@index([workspaceId])
   @@index([workspaceId, isActive])
   @@index([killSwitch])
+  @@unique([workspaceId, templateId])
 }
 
 model AutomationRun {
   id            String   @id @default(cuid())
   automationId  String
   workspaceId   String
+  eventKey      String? // one claim per automation + Inbox event/window
   // The version of the automation definition that was used
   version       Int
   // Trigger that fired: { type, config, matchedData }
@@ -1372,6 +1383,7 @@ model AutomationRun {
   @@index([automationId, createdAt])
   @@index([workspaceId])
   @@index([status])
+  @@unique([automationId, eventKey])
 }
 
 /* ─── #251: Social listening + spike alerts ─── */

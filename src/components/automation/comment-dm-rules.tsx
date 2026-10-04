@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -359,7 +360,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
             <button type="button" onClick={() => { setSelectedTemplate('advanced'); setShowAdvanced(true) }} className="n-focus-ring text-xs font-medium text-accent hover:underline">
               ساخت قانون سفارشی (پیشرفته)
             </button>
-            <p className="text-xs text-ink-tertiary">برچسب‌گذاری و یادآوری تیمی هنوز در این بخش فعال نیستند.</p>
+            <p className="text-xs text-ink-tertiary">برچسب‌گذاری و یادآوری تیمی را در <Link href="/automations" className="text-accent underline">اتوماسیون‌ها</Link> تنظیم کنید.</p>
           </div>
 
           {selectedTemplate && <>

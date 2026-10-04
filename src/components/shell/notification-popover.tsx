@@ -24,6 +24,7 @@ interface Notification {
   type: string
   title: string
   body: string | null
+  href: string | null
   isRead: boolean
   createdAt: string
 }
@@ -35,6 +36,8 @@ const iconMap: Record<string, { icon: typeof Bell; tint: string }> = {
   comment: { icon: MessageCircle, tint: 'bg-info-soft text-info' },
   mention: { icon: Sparkles, tint: 'bg-accent-soft text-accent' },
   new_follower: { icon: UserPlus, tint: 'bg-surface-hover text-ink-secondary' },
+  inbox_priority: { icon: AlertTriangle, tint: 'bg-warning-soft text-warning' },
+  inbox_reply_window: { icon: Clock, tint: 'bg-warning-soft text-warning' },
 }
 
 const defaultIcon = { icon: Bell, tint: 'bg-surface-hover text-ink-secondary' }
@@ -102,8 +105,13 @@ export function NotificationPopover() {
     queryClient.setQueryData<Notification[]>(['notifications'], (old) =>
       old?.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
     )
+    if (!notif.isRead) {
+      void api.post(`/api/notifications/${notif.id}/read`, {}).catch(() =>
+        queryClient.invalidateQueries({ queryKey: ['notifications'] }))
+    }
     // Navigate based on type
-    if (notif.type === 'approval_requested') navigateTo('/inbox')
+    if (notif.href?.startsWith('/inbox?thread=')) navigateTo(notif.href)
+    else if (notif.type === 'approval_requested') navigateTo('/inbox')
     else if (notif.type === 'publish_failed' || notif.type === 'publish_success')
       navigateTo('/calendar')
     setOpen(false)

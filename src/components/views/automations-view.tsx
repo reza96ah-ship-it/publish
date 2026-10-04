@@ -84,6 +84,11 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import {
+  notifyTeamDefinition, parseInboxTemplate, replyWindowReminderDefinition,
+  tagUnansweredDefinition, type InboxTemplateId,
+} from '../../../shared/inbox-automation-templates'
+import type { MemberListItem } from '@/modules/membership/types'
 import type {
   AutomationItem,
   AutomationRunItem,
@@ -130,6 +135,8 @@ const RUN_STATUS_LABEL: Record<string, string> = {
   pending: 'در انتظار',
   running: 'در حال اجرا',
   completed: 'تکمیل‌شده',
+  partial: 'بخشی انجام شد',
+  skipped: 'رد شد',
   failed: 'ناموفق',
   cancelled: 'لغوشده',
   approval_required: 'نیازمند تأیید',
@@ -139,6 +146,8 @@ const RUN_STATUS_VARIANT: Record<string, string> = {
   pending: 'pending',
   running: 'pending',
   completed: 'published',
+  partial: 'pending',
+  skipped: 'draft',
   failed: 'high',
   cancelled: 'draft',
   approval_required: 'review',
@@ -170,6 +179,11 @@ export function AutomationsView() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [historyId, setHistoryId] = useState<string | null>(null)
   const [showKillDialog, setShowKillDialog] = useState(false)
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<InboxTemplateId | null>(null)
+  const [priorityKeyword, setPriorityKeyword] = useState('فوری')
+  const [defaultAssigneeId, setDefaultAssigneeId] = useState('')
+  const [leadMinutes, setLeadMinutes] = useState(60)
   const queryClient = useQueryClient()
 
   const { data: automations, isLoading, isError, refetch } = useQuery<AutomationItem[]>({
@@ -179,9 +193,18 @@ export function AutomationsView() {
 
   const editing = automations?.find((a) => a.id === editingId) ?? null
 
+  const { data: members } = useQuery<MemberListItem[]>({
+    queryKey: ['automation-members'],
+    queryFn: () => api.getPaginated<MemberListItem>('/api/members?limit=100'),
+    enabled: showTemplatePicker && selectedTemplate === 'notify_team',
+  })
+  const replyMembers = members?.filter((member) => member.role === 'admin' || member.role === 'editor') ?? []
+
   const stats = useMemo(() => {
     const total = automations?.length ?? 0
-    const active = automations?.filter((a) => a.isActive && !a.isPaused).length ?? 0
+    const active = automations?.filter((a) =>
+      a.isActive && !a.isPaused && !a.killSwitch && !a.requireApproval &&
+      parseInboxTemplate(a.definition) !== null).length ?? 0
     const paused = automations?.filter((a) => a.isPaused).length ?? 0
     const killSwitchOn = automations?.some((a) => a.killSwitch) ?? false
     return { total, active, paused, killSwitchOn }
@@ -199,15 +222,48 @@ export function AutomationsView() {
         requireApproval: input.requireApproval ?? false,
         maxRunsPerHour: input.maxRunsPerHour ?? 10,
       }),
-    onSuccess: () => {
-      toast.success('اتوماسیون جدید ایجاد شد.')
-      announce('اتوماسیون جدید ایجاد شد')
+    onSuccess: (item) => {
+      toast.success('پیش‌نویس قانون سفارشی ساخته شد؛ هنوز اجراکننده ندارد.')
+      announce('پیش‌نویس قانون سفارشی ایجاد شد')
+      setShowTemplatePicker(false)
+      setEditingId(item.id)
     },
     onError: (err) => {
       toast.error(err.message || 'ایجاد اتوماسیون ناموفق بود.')
       announce('خطا در ایجاد اتوماسیون', 'assertive')
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['automations'] }),
+  })
+
+  const templateCreateMutation = useMutation({
+    mutationFn: async (templateId: InboxTemplateId) => {
+      const options = templateId === 'notify_team'
+        ? { name: 'اعلان کامنت مهم', description: `کامنت‌های شامل «${priorityKeyword.trim()}» را برچسب‌گذاری و به مسئول اطلاع بده`,
+            definition: notifyTeamDefinition(priorityKeyword, defaultAssigneeId) }
+        : templateId === 'tag_unanswered'
+          ? { name: 'برچسب کامنت بی‌پاسخ', description: 'کامنت جدید را تا زمان پاسخ‌گویی با برچسب بی‌پاسخ مشخص کن',
+              definition: tagUnansweredDefinition() }
+          : { name: 'یادآوری مهلت پاسخ کامنت', description: `به مسئول، ${leadMinutes} دقیقه پیش از پایان مهلت پاسخ اطلاع بده`,
+              definition: replyWindowReminderDefinition(leadMinutes) }
+      const created = await api.post<AutomationItem>('/api/automations', {
+        ...options, maxRunsPerHour: 1000, requireApproval: false,
+      })
+      try {
+        await api.post(`/api/automations/${created.id}/toggle`, { isActive: true })
+        return { active: true }
+      } catch {
+        return { active: false }
+      }
+    },
+    onSuccess: ({ active }) => {
+      toast[active ? 'success' : 'warning'](active
+        ? 'قالب صندوق ورودی فعال شد.'
+        : 'قالب ساخته شد اما فعال‌سازی انجام نشد؛ وضعیت آن را بررسی کنید.')
+      setShowTemplatePicker(false)
+      setSelectedTemplate(null)
+      queryClient.invalidateQueries({ queryKey: ['automations'] })
+    },
+    onError: (error: Error) => toast.error(error.message || 'ساخت قالب ناموفق بود.'),
   })
 
   const updateMutation = useMutation<
@@ -349,11 +405,11 @@ export function AutomationsView() {
             <Button
               size="sm"
               className="n-focus-ring"
-              onClick={handleCreate}
+              onClick={() => setShowTemplatePicker(true)}
               disabled={createMutation.isPending}
             >
               <Plus className="size-4" />
-              ساخت اتوماسیون
+              انتخاب قالب
             </Button>
           </div>
         }
@@ -418,16 +474,15 @@ export function AutomationsView() {
             <EmptyState
               icon={Workflow}
               title="هنوز اتوماسیونی نساخته‌اید"
-              message="با ساخت اتوماسیون می‌توانید فرآیندهای تکراری را خودکار کنید — راه‌انداز، شرط و اقدام را تعریف کنید."
+              message="با یکی از قالب‌های قابل اجرا، مدیریت کامنت‌های اینستاگرام را شروع کنید."
               action={
                 <Button
                   size="sm"
                   className="n-focus-ring"
-                  onClick={handleCreate}
-                  disabled={createMutation.isPending}
+                  onClick={() => setShowTemplatePicker(true)}
                 >
                   <Plus className="size-4" />
-                  ساخت اتوماسیون
+                  انتخاب قالب
                 </Button>
               }
             />
@@ -462,6 +517,62 @@ export function AutomationsView() {
           </div>
         )}
       </LoadingState>
+
+      <Sheet open={showTemplatePicker} onOpenChange={(open) => { setShowTemplatePicker(open); if (!open) setSelectedTemplate(null) }}>
+        <SheetContent side="left" className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="text-start">قالب اتوماسیون صندوق ورودی</SheetTitle>
+            <SheetDescription className="text-start">فقط این سه قالب اجرا می‌شوند. ارسال لینک و منبع را هنگام ساخت پست در بخش دایرکت خودکار تنظیم کنید.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-5 space-y-4 px-4 pb-6">
+            {([
+              { id: 'notify_team', title: 'اعلان به تیم', detail: 'کامنت مهم را برچسب‌گذاری کن و به مسئول گفت‌وگو اطلاع بده.' },
+              { id: 'tag_unanswered', title: 'برچسب بی‌پاسخ', detail: 'هر کامنت تازه را تا زمان پاسخ‌گویی با برچسب «unanswered» مشخص کن.' },
+              { id: 'reply_window_reminder', title: 'یادآوری مهلت پاسخ', detail: 'پیش از پایان مهلت هفت‌روزهٔ پاسخ خصوصی، به مسئول گفت‌وگو اطلاع بده.' },
+            ] as const).map((template) => {
+              const exists = automations?.some((item) => parseInboxTemplate(item.definition)?.id === template.id)
+              return <button key={template.id} type="button"
+                disabled={exists}
+                aria-pressed={selectedTemplate === template.id}
+                onClick={() => setSelectedTemplate(template.id)}
+                className={cn('n-focus-ring w-full rounded-xl border p-3 text-start disabled:opacity-50', selectedTemplate === template.id ? 'border-accent bg-accent/5' : 'border-border bg-surface-subtle')}
+              >
+                <span className="block text-sm font-semibold text-ink-primary">{template.title}{exists ? ' — ساخته شده' : ''}</span>
+                <span className="mt-1 block text-xs text-ink-secondary">{template.detail}</span>
+              </button>
+            })}
+
+            {selectedTemplate === 'notify_team' && <div className="space-y-3 rounded-xl border border-border p-3">
+              <div><Label>کلمهٔ مهم در کامنت</Label><Input value={priorityKeyword} onChange={(event) => setPriorityKeyword(event.target.value)} placeholder="مثلاً: فوری" /></div>
+              <div><Label>مسئول پیش‌فرض برای گفت‌وگوهای بدون مسئول</Label>
+                <select className="n-control mt-1 h-10 w-full rounded-lg px-3 text-sm" value={defaultAssigneeId} onChange={(event) => setDefaultAssigneeId(event.target.value)}>
+                  <option value="">یک عضو انتخاب کنید</option>
+                  {replyMembers.map((member) => <option key={member.id} value={member.id}>{member.name} ({member.email})</option>)}
+                </select>
+                {replyMembers.length === 0 && <p className="mt-1 text-xs text-warning">ابتدا یک مدیر یا ویرایشگر به این فضای کار اضافه کنید.</p>}
+              </div>
+              <p className="text-xs text-ink-tertiary">اگر گفت‌وگو از قبل مسئول داشته باشد، همان مسئول اعلان را دریافت می‌کند.</p>
+            </div>}
+            {selectedTemplate === 'reply_window_reminder' && <div className="space-y-1 rounded-xl border border-border p-3">
+              <Label>چند دقیقه پیش از پایان مهلت؟</Label>
+              <select className="n-control mt-1 h-10 w-full rounded-lg px-3 text-sm" value={leadMinutes} onChange={(event) => setLeadMinutes(Number(event.target.value))}>
+                <option value={60}>۶۰ دقیقه</option><option value={180}>۳ ساعت</option><option value={720}>۱۲ ساعت</option><option value={1440}>۲۴ ساعت</option>
+              </select>
+              <p className="text-xs text-ink-tertiary">فقط کامنت‌های بی‌پاسخ که مسئول مدیر یا ویرایشگر دارند یادآوری می‌شوند.</p>
+            </div>}
+            <Button onClick={() => selectedTemplate && templateCreateMutation.mutate(selectedTemplate)}
+              disabled={!selectedTemplate || templateCreateMutation.isPending ||
+                (selectedTemplate === 'notify_team' && (!priorityKeyword.trim() || !defaultAssigneeId))}>
+              ساخت و فعال‌سازی قالب
+            </Button>
+            <div className="border-t border-border pt-3">
+              <button type="button" className="n-focus-ring text-xs text-accent hover:underline" onClick={handleCreate} disabled={createMutation.isPending}>
+                قانون سفارشی (پیشرفته — فعلاً فقط پیش‌نویس)
+              </button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Edit sheet */}
       <Sheet open={!!editingId} onOpenChange={(o) => !o && setEditingId(null)}>
@@ -590,8 +701,11 @@ function AutomationCard({
   deleting: boolean
 }) {
   const a = automation
+  const executable = parseInboxTemplate(a.definition) !== null && !a.requireApproval
   const statusBadge = a.killSwitch ? (
     <StatusBadge label="کلید توقف" variant="high" />
+  ) : !executable ? (
+    <StatusBadge label="بدون اجراکننده" variant="pending" />
   ) : a.isPaused ? (
     <StatusBadge label="متوقف" variant="pending" />
   ) : a.isActive ? (
@@ -646,6 +760,7 @@ function AutomationCard({
               نیازمند تأیید
             </span>
           )}
+          {!executable && <span className="text-warning">این قانون سفارشی فقط پیش‌نویس است.</span>}
           <span className="ms-auto">
             {formatJalali(new Date(a.updatedAt), true)}
           </span>
@@ -660,7 +775,7 @@ function AutomationCard({
           variant="outline"
           className="n-focus-ring"
           onClick={() => onToggleActive(!a.isActive)}
-          disabled={toggling || a.killSwitch}
+          disabled={toggling || a.killSwitch || (!a.isActive && !executable)}
         >
           {a.isActive ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
           {a.isActive ? 'توقف' : 'فعال‌سازی'}

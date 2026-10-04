@@ -17,6 +17,7 @@
 
 import { AutomationsRepository } from './repository'
 import { AutomationNotFoundError, ValidationError } from './errors'
+import { parseInboxTemplate } from '../../../shared/inbox-automation-templates'
 import type {
   AuthContext,
   AutomationItem,
@@ -68,10 +69,20 @@ export class AutomationsService {
     input: CreateAutomationInput
   ): Promise<AutomationItem> {
     this.validateDefinition(input.definition)
+    const template = parseInboxTemplate(input.definition)
+    if (template?.id === 'notify_team' &&
+        !(await this.repo.hasReplyCapableMember(auth.workspaceId, template.defaultAssigneeId))) {
+      throw new ValidationError('عضو انتخاب‌شده برای اعلان باید مدیر یا ویرایشگر همین فضای کار باشد')
+    }
     if (input.maxRunsPerHour !== undefined) {
       this.validateMaxRuns(input.maxRunsPerHour)
     }
-    return this.repo.create(auth.workspaceId, auth.userId, input)
+    try {
+      return await this.repo.create(auth.workspaceId, auth.userId, input)
+    } catch (error) {
+      this.rethrowTemplateConflict(error, template !== null)
+      throw error
+    }
   }
 
   /**
@@ -92,11 +103,19 @@ export class AutomationsService {
     if (input.definition !== undefined) {
       this.validateDefinition(input.definition)
     }
+    if (input.isActive || (existing.isActive && input.definition !== undefined)) {
+      await this.validateExecutable(auth.workspaceId, input.definition ?? existing.definition, input.requireApproval ?? existing.requireApproval)
+    }
     if (input.maxRunsPerHour !== undefined) {
       this.validateMaxRuns(input.maxRunsPerHour)
     }
 
-    return this.repo.updateWithVersion(id, existing, input)
+    try {
+      return await this.repo.updateWithVersion(id, existing, input)
+    } catch (error) {
+      this.rethrowTemplateConflict(error, input.definition !== undefined && parseInboxTemplate(input.definition) !== null)
+      throw error
+    }
   }
 
   /** Delete an automation. Verifies ownership first. */
@@ -112,6 +131,7 @@ export class AutomationsService {
   async toggleActive(auth: AuthContext, id: string, isActive: boolean): Promise<AutomationItem> {
     const existing = await this.repo.findByIdInWorkspace(id, auth.workspaceId)
     if (!existing) throw new AutomationNotFoundError()
+    if (isActive) await this.validateExecutable(auth.workspaceId, existing.definition, existing.requireApproval)
     return this.repo.update(id, { isActive })
   }
 
@@ -199,6 +219,22 @@ export class AutomationsService {
       throw new ValidationError(
         `حداکثر اجرا در ساعت باید عدد صحیح بین ۱ و ${MAX_RUNS_PER_HOUR} باشد`
       )
+    }
+  }
+
+  private async validateExecutable(workspaceId: string, definition: AutomationDefinition, requireApproval: boolean): Promise<void> {
+    const template = parseInboxTemplate(definition)
+    if (!template) throw new ValidationError('این قانون هنوز اجراکننده ندارد؛ یکی از سه قالب صندوق ورودی را انتخاب کنید')
+    if (requireApproval) throw new ValidationError('تأیید دستی برای این قالب‌ها هنوز پشتیبانی نمی‌شود')
+    if (template.id === 'notify_team' &&
+        !(await this.repo.hasReplyCapableMember(workspaceId, template.defaultAssigneeId))) {
+      throw new ValidationError('عضو انتخاب‌شده برای اعلان باید مدیر یا ویرایشگر همین فضای کار باشد')
+    }
+  }
+
+  private rethrowTemplateConflict(error: unknown, isTemplate: boolean): void {
+    if (isTemplate && error !== null && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      throw new ValidationError('این قالب قبلاً در فضای کار ساخته شده است؛ قانون موجود را ویرایش کنید')
     }
   }
 }
