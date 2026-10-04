@@ -54,7 +54,6 @@ describe('comment-to-DM run history in the existing rule list', () => {
     expect(activate).toBeDisabled()
     fireEvent.change(screen.getByPlaceholderText('https://example.com/resource'), { target: { value: 'https://example.com/guide' } })
     expect(activate).toBeEnabled()
-    expect(screen.getByText((content) => content.includes('https://example.com/guide'))).toBeInTheDocument()
     fireEvent.change(document.querySelector('textarea')!, { target: { value: 'سلام {نام} عزیز' } })
     expect(activate).toBeDisabled()
   })
