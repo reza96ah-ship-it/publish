@@ -527,7 +527,9 @@ jobs:
           VISUAL_EMPTY=$(ls -A tests/e2e/visual.spec.ts-snapshots/ 2>/dev/null || echo "")
           CHARTS_EMPTY=$(ls -A tests/e2e/visual-charts.spec.ts-snapshots/ 2>/dev/null || echo "")
           STATES_EMPTY=$(ls -A tests/e2e/visual-states.spec.ts-snapshots/ 2>/dev/null || echo "")
-          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ] || [ -z "$STATES_EMPTY" ]; then
+          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ] || [ -z "$STATES_EMPTY" ] || \
+             [ ! -f tests/e2e/visual-states.spec.ts-snapshots/state-loading-analytics-visual-linux.png ] || \
+             [ ! -f tests/e2e/visual-states.spec.ts-snapshots/state-error-analytics-visual-linux.png ]; then
             echo "Some baselines missing — generating them for review"
             bun run test:visual:update
             echo "::error::New baselines need review and a second strict visual run before merge"
