@@ -298,8 +298,22 @@ jobs:
           target: migrate
           push: false
           tags: nashrino:ci-migrate
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Smoke staging bootstrap in migrate image
+        run: |
+          if output=$(docker run --rm \
+            -e NEXTAUTH_URL=https://odooshoping.ir \
+            -e STAGING_OWNER_BOOTSTRAP_CONFIRM=create-on-empty-staging-only \
+            nashrino:ci-migrate bun run scripts/bootstrap-staging-owner.ts 2>&1); then
+            echo '::error::Owner bootstrap accepted the production URL inside the migrate image'
+            exit 1
+          fi
+          case "$output" in
+            *'Owner bootstrap is restricted to https://staging.odooshoping.ir'*) ;;
+            *) echo '::error::Owner bootstrap could not start inside the migrate image'; exit 1 ;;
+          esac
 
   load-gate:
     name: Load Gate (k6 smoke)
