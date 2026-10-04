@@ -229,6 +229,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v4
+      - name: Validate shared-host staging isolation
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          DOMAIN: staging.example.test
+        run: |
+          docker compose -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml config --format json |
+            jq -e '.services.app.healthcheck.test[1] == "node" and
+                   .services.app.deploy.replicas == 1 and
+                   any(.services.app.ports[]; .host_ip == "127.0.0.1" and .published == "3004") and
+                   any(.services.realtime.ports[]; .host_ip == "127.0.0.1" and .published == "3005") and
+                   (.services.caddy == null)'
       - name: Build app image
         uses: docker/build-push-action@v7
         with:

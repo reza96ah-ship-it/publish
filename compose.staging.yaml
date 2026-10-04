@@ -1,0 +1,17 @@
+# Shared-host staging: keep the existing host Caddy/Xray/webhook services intact.
+# Use with compose.production.yaml and an isolated Compose project name.
+services:
+  app:
+    ports:
+      - '127.0.0.1:3004:3000'
+    deploy:
+      replicas: 1
+
+  realtime:
+    ports:
+      - '127.0.0.1:3005:3003'
+
+  # The host already owns ports 80/443. Never start the Compose Caddy service
+  # for this shared-host staging deployment.
+  caddy:
+    profiles: [standalone-caddy]
