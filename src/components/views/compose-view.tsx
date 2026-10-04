@@ -64,8 +64,24 @@ interface MediaItem {
   id: string
   name: string
   thumbnail: string
-  fileType: string
-  fileSize: number
+  fileType?: string
+  fileSize?: number
+  verified?: boolean
+}
+
+interface ComposeDraftData {
+  content?: Record<string, unknown>
+  channelIds?: string[]
+  scheduledAt?: string | null
+  mediaRefs?: { id: string; name: string; thumbnail: string }[]
+  version?: number | null
+}
+
+function draftMediaIds(draft: ComposeDraftData | null): string[] {
+  const ids = draft?.content?.mediaIds
+  return Array.isArray(ids)
+    ? ids.filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 100).slice(0, 20)
+    : []
 }
 interface Platform {
   id: string
@@ -140,16 +156,17 @@ export function ComposeView() {
   const [, startTransition] = useTransition()
 
   // MISS-04: debounced autosave state
-  type SaveState = 'idle' | 'saving' | 'saved' | 'error' | 'conflict'
+  type SaveState = 'idle' | 'saving' | 'saved' | 'local' | 'error' | 'conflict'
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Issue #152: draft versioning & conflict resolution state
   const draftVersion = useRef<number | null>(null)
+  const resolvedDraftMedia = useRef<Map<string, MediaItem>>(new Map())
   const [readyDraftKey, setReadyDraftKey] = useState<string | null>(null)
   const [showConflictModal, setShowConflictModal] = useState(false)
-  const [pendingLocalDraft, setPendingLocalDraft] = useState<Record<string, unknown> | null>(null)
-  const [pendingServerDraft, setPendingServerDraft] = useState<Record<string, unknown> | null>(null)
+  const [pendingLocalDraft, setPendingLocalDraft] = useState<ComposeDraftData | null>(null)
+  const [pendingServerDraft, setPendingServerDraft] = useState<ComposeDraftData | null>(null)
 
   useEffect(() => {
     if (!readyDraftKey || readyDraftKey === draftStorageKey) return
@@ -165,13 +182,14 @@ export function ComposeView() {
     setScheduleMode('now')
     setScheduledAt(null)
     draftVersion.current = null
+    resolvedDraftMedia.current.clear()
     setShowConflictModal(false)
     setPendingLocalDraft(null)
     setPendingServerDraft(null)
     setReadyDraftKey(null)
   }, [draftStorageKey, readyDraftKey])
 
-  const applyDraft = useCallback((draft: Record<string, unknown>) => {
+  const applyDraft = useCallback((draft: ComposeDraftData, availableMedia = new Map<string, MediaItem>()) => {
     const c = draft.content as Record<string, unknown> | undefined
     setTitle(typeof c?.title === 'string' ? c.title : '')
     setCaption(typeof c?.caption === 'string' ? c.caption : '')
@@ -180,6 +198,15 @@ export function ComposeView() {
     setCampaignId(typeof c?.campaignId === 'string' ? c.campaignId : '')
     setScheduleMode(c?.scheduleMode === 'schedule' || c?.scheduleMode === 'queue' ? c.scheduleMode : 'now')
     setSelectedPlatforms(Array.isArray(draft.channelIds) ? draft.channelIds as string[] : [])
+    const localRefs = new Map((Array.isArray(draft.mediaRefs) ? draft.mediaRefs : [])
+      .filter((ref) => ref && typeof ref.id === 'string' && typeof ref.name === 'string' && typeof ref.thumbnail === 'string')
+      .map((ref) => [ref.id, ref]))
+    setSelectedMedia(draftMediaIds(draft).map((id) => {
+      const canonical = availableMedia.get(id)
+      if (canonical) return { ...canonical, verified: true }
+      const local = localRefs.get(id)
+      return { id, name: local?.name ?? 'رسانه نیازمند بررسی', thumbnail: local?.thumbnail ?? '', verified: false }
+    }))
     const date = draft.scheduledAt ? new Date(draft.scheduledAt as string) : null
     setScheduledAt(date && !isNaN(date.getTime()) ? date : null)
     draftVersion.current = typeof draft.version === 'number' ? draft.version : null
@@ -188,7 +215,7 @@ export function ComposeView() {
   const handleSelectDraft = (type: 'local' | 'server') => {
     const draft = type === 'local' ? pendingLocalDraft : pendingServerDraft
     if (draft) {
-      applyDraft(draft)
+      applyDraft(draft, resolvedDraftMedia.current)
       // Choosing the local text is an explicit decision to replace the server
       // draft, so the next conditional save must use the server's latest version.
       if (type === 'local' && typeof pendingServerDraft?.version === 'number') {
@@ -225,8 +252,7 @@ export function ComposeView() {
     let cancelled = false
 
     // 1. Read local storage draft
-    type DraftData = { content?: Record<string, unknown>; channelIds?: string[]; scheduledAt?: string | null }
-    let localDraft: DraftData | null = null
+    let localDraft: ComposeDraftData | null = null
     try {
       const rawLocal = localStorage.getItem(draftStorageKey)
       if (rawLocal) {
@@ -238,17 +264,28 @@ export function ComposeView() {
     }
 
     // 2. Fetch server draft
-    fetch('/api/compose-draft')
-      .then((res) => (res.ok ? res.json() : null))
+    const localMediaIds = draftMediaIds(localDraft)
+    const mediaQuery = new URLSearchParams()
+    localMediaIds.forEach((id) => mediaQuery.append('mediaId', id))
+    const draftUrl = mediaQuery.size ? `/api/compose-draft?${mediaQuery}` : '/api/compose-draft'
+    fetch(draftUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('Server draft unavailable')
+        return res.json()
+      })
       .then((data) => {
         if (cancelled) return
         const serverDraftRaw = data?.draft
-        const serverDraft: DraftData | null = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
+        const serverDraft: ComposeDraftData | null = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
+        const canonicalMedia: MediaItem[] = Array.isArray(data?.media) ? data.media.filter((item: unknown): item is MediaItem =>
+          !!item && typeof item === 'object' && 'id' in item && typeof item.id === 'string' &&
+          'name' in item && typeof item.name === 'string' && 'thumbnail' in item && typeof item.thumbnail === 'string') : []
+        resolvedDraftMedia.current = new Map(canonicalMedia.map((item) => [item.id, item]))
 
-        const hasContent = (draft: DraftData | null) => Boolean(draft && (
+        const hasContent = (draft: ComposeDraftData | null) => Boolean(draft && (
           ['title', 'caption', 'hashtags', 'note', 'campaignId'].some((field) =>
             typeof draft.content?.[field] === 'string' && Boolean(draft.content[field])) ||
-          draft.channelIds?.length || draft.scheduledAt
+          draft.channelIds?.length || draft.scheduledAt || draftMediaIds(draft).length
         ))
         const hasServer = hasContent(serverDraft)
         const hasLocal = hasContent(localDraft)
@@ -260,8 +297,9 @@ export function ComposeView() {
             (serverDraft.content?.[field] ?? '') !== (localDraft.content?.[field] ?? ''))
           const platformsDiff = JSON.stringify(serverDraft.channelIds || []) !== JSON.stringify(localDraft.channelIds || [])
           const scheduleDiff = (serverDraft.scheduledAt ?? null) !== (localDraft.scheduledAt ?? null)
+          const mediaDiff = JSON.stringify(draftMediaIds(serverDraft)) !== JSON.stringify(draftMediaIds(localDraft))
 
-          if (contentDiff || platformsDiff || scheduleDiff) {
+          if (contentDiff || platformsDiff || scheduleDiff || mediaDiff) {
             setPendingLocalDraft(localDraft)
             setPendingServerDraft(serverDraft)
             setShowConflictModal(true)
@@ -270,9 +308,9 @@ export function ComposeView() {
         }
 
         if (hasServer && serverDraft) {
-          applyDraft(serverDraft)
+          applyDraft(serverDraft, resolvedDraftMedia.current)
         } else if (hasLocal && localDraft) {
-          applyDraft(localDraft)
+          applyDraft(localDraft, resolvedDraftMedia.current)
           // The server row no longer exists; this local copy is a new draft.
           draftVersion.current = null
         }
@@ -286,9 +324,9 @@ export function ComposeView() {
       .catch(() => {
         if (cancelled) return
         if (localDraft) {
+          resolvedDraftMedia.current.clear()
           applyDraft(localDraft)
-          setSaveState('saved')
-          setTimeout(() => setSaveState('idle'), 3000)
+          setSaveState('local')
         }
         setReadyDraftKey(draftStorageKey)
       })
@@ -298,7 +336,7 @@ export function ComposeView() {
   // Save unsaved changes to localStorage on any edit
   useEffect(() => {
     if (!draftStorageKey || readyDraftKey !== draftStorageKey) return
-    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0) {
+    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0 && selectedMedia.length === 0) {
       localStorage.removeItem(draftStorageKey)
       return
     }
@@ -306,19 +344,20 @@ export function ComposeView() {
     localStorage.setItem(
       draftStorageKey,
       JSON.stringify({
-        content: { title, caption, hashtags, note, campaignId, scheduleMode },
+        content: { title, caption, hashtags, note, campaignId, scheduleMode, mediaIds: selectedMedia.map((m) => m.id) },
         channelIds: selectedPlatforms,
+        mediaRefs: selectedMedia.map(({ id, name, thumbnail }) => ({ id, name, thumbnail })),
         scheduledAt: scheduledAt?.toISOString() ?? null,
         version: draftVersion.current,
         updatedAt: new Date().toISOString(),
       })
     )
-  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, selectedPlatforms, scheduledAt])
+  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, selectedPlatforms, selectedMedia, scheduledAt])
 
   // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
   useEffect(() => {
     if (!draftStorageKey || readyDraftKey !== draftStorageKey) return
-    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0) return
+    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0 && selectedMedia.length === 0) return
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(async () => {
       setSaveState('saving')
@@ -327,7 +366,7 @@ export function ComposeView() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            content: { title, caption, hashtags, note, campaignId, scheduleMode },
+            content: { title, caption, hashtags, note, campaignId, scheduleMode, mediaIds: selectedMedia.map((m) => m.id) },
             channelIds: selectedPlatforms,
             scheduledAt: scheduleMode === 'schedule' ? (scheduledAt?.toISOString() ?? null) : null,
             version: draftVersion.current,
@@ -353,13 +392,13 @@ export function ComposeView() {
         setSaveState('saved')
         setTimeout(() => setSaveState('idle'), 3000)
       } catch {
-        setSaveState('error')
+        setSaveState('local')
       }
     }, 3000)
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
-  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms])
+  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms, selectedMedia])
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
@@ -385,7 +424,7 @@ export function ComposeView() {
 
   const toggleMedia = (m: MediaItem) => {
     setSelectedMedia((cur) =>
-      cur.some((x) => x.id === m.id) ? cur.filter((x) => x.id !== m.id) : [...cur, m]
+      cur.some((x) => x.id === m.id) ? cur.filter((x) => x.id !== m.id) : [...cur, { ...m, verified: true }]
     )
   }
 
@@ -444,6 +483,7 @@ export function ComposeView() {
   }, [platforms, selectedPlatforms, selectedMedia])
 
   const hasCapabilityViolations = capabilityViolations.length > 0
+  const hasUnverifiedMedia = selectedMedia.some((item) => item.verified === false)
 
   const detectedKeyword = useMemo(() => detectCommentKeyword(caption), [caption])
   const hasIgSelected = (platforms ?? []).some((p) => selectedPlatforms.includes(p.id) && p.type === 'instagram')
@@ -492,6 +532,7 @@ export function ComposeView() {
     title.trim().length > 0 &&
     selectedPlatforms.length > 0 &&
     (!anyChannelRequiresMedia || selectedMedia.length > 0) &&
+    !hasUnverifiedMedia &&
     !hasCapabilityViolations
 
   // Optimistic publish: append the new content to the ["content"] cache before the
@@ -544,6 +585,10 @@ export function ComposeView() {
   })
 
   const submit = (action: 'draft' | 'review' | 'publish') => {
+    if (hasUnverifiedMedia) {
+      toast.error('رسانه‌های بازیابی‌شده هنوز تأیید نشده‌اند. پس از اتصال، صفحه را بازنشانی و آن‌ها را بررسی کنید.')
+      return
+    }
     if (action === 'publish' && !canPublish) {
       // Issue #117: show capability-specific violation messages if present
       if (hasCapabilityViolations) {
@@ -818,6 +863,8 @@ export function ComposeView() {
                   ? 'text-success'
                   : saveState === 'error'
                     ? 'text-danger'
+                    : saveState === 'local'
+                      ? 'text-warning'
                     : saveState === 'conflict'
                       ? 'text-warning font-semibold'
                       : 'text-ink-tertiary'
@@ -829,6 +876,8 @@ export function ComposeView() {
                   ? '✓ ذخیره شد'
                   : saveState === 'error'
                     ? '⚠ خطا در ذخیره'
+                    : saveState === 'local'
+                      ? 'فقط روی این دستگاه ذخیره شد'
                     : saveState === 'conflict'
                       ? '⚠️ تداخل همزمانی'
                       : 'ذخیره خودکار'}
@@ -1017,19 +1066,27 @@ export function ComposeView() {
                 </span>
               </Label>
               <MediaUploader
-                onUploaded={() => {}}
+                onUploaded={(item) => setSelectedMedia((current) => current.some((m) => m.id === item.id)
+                  ? current
+                  : [...current, { id: item.id, name: item.name, thumbnail: item.thumbnail, verified: true }])}
                 selectedMedia={selectedMedia.map((m) => ({
                   id: m.id,
                   name: m.name,
                   thumbnail: m.thumbnail,
+                  verified: m.verified,
                 }))}
                 onToggle={(m) => toggleMedia(m as MediaItem)}
-                existingMedia={(media ?? []).map((m) => ({
-                  id: m.id,
-                  name: m.name,
-                  thumbnail: m.thumbnail,
-                }))}
+                existingMedia={[
+                  ...selectedMedia.map(({ id, name, thumbnail }) => ({ id, name, thumbnail })),
+                  ...(media ?? []).filter((item) => !selectedMedia.some((selected) => selected.id === item.id))
+                    .map(({ id, name, thumbnail }) => ({ id, name, thumbnail })),
+                ]}
               />
+              {hasUnverifiedMedia && (
+                <div className="mt-2 rounded-lg border border-warning/40 bg-warning/10 p-2.5 text-xs text-ink-secondary" role="alert">
+                  بعضی رسانه‌های پیش‌نویس هنوز با سرور بررسی نشده‌اند. انتشار غیرفعال است؛ پس از اتصال صفحه را بازنشانی کنید یا رسانه نامعتبر را بردارید.
+                </div>
+              )}
             </div>
 
             {/* Campaign + Internal note */}

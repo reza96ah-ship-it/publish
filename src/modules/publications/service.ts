@@ -71,6 +71,12 @@ export class PublicationsService {
       ? await this.repo.findMedia(workspaceId, body.mediaIds)
       : []
 
+    // Never silently publish a post with a deleted, foreign, or pending asset.
+    if ((body.mediaIds?.length ?? 0) !== rawMedia.length ||
+        new Set(body.mediaIds ?? []).size !== (body.mediaIds?.length ?? 0)) {
+      throw new ValidationError('رسانه انتخاب‌شده در این فضای کاری موجود نیست یا آماده انتشار نیست')
+    }
+
     // Preserve user-selected order: findMany with IN clause doesn't guarantee order
     const mediaIdOrder = body.mediaIds ?? []
     const mediaRecords = mediaIdOrder

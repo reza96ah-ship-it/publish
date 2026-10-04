@@ -23,12 +23,17 @@ vi.mock('next/navigation', () => ({
 }))
 
 let serverDraft: unknown = null
+let resolvedMedia: unknown[] = []
+let draftFetchFails = false
 const mockFetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input)
+  if (url.includes('/api/compose-draft') && init?.method !== 'POST' && draftFetchFails) {
+    throw new Error('server unavailable')
+  }
   const payload = url.includes('/api/compose-draft')
     ? init?.method === 'POST'
       ? { id: 'draft-1', version: 3 }
-      : { draft: serverDraft }
+      : { draft: serverDraft, media: resolvedMedia }
     : url.includes('/api/workspace')
       ? {}
       : { data: [] }
@@ -45,6 +50,8 @@ beforeEach(() => {
   activeSession.userId = 'user-b'
   activeSession.workspaceId = 'workspace-b'
   serverDraft = null
+  resolvedMedia = []
+  draftFetchFails = false
 })
 
 describe('composer browser draft isolation', () => {
@@ -136,5 +143,62 @@ describe('composer browser draft isolation', () => {
     renderWithProviders(<ComposeView />)
 
     expect(await screen.findByDisplayValue('Planning note')).toBeInTheDocument()
+  })
+
+  it('restores a selected server media reference from the canonical workspace asset', async () => {
+    serverDraft = { content: { title: 'Post', mediaIds: ['media-1'] }, version: 1 }
+    resolvedMedia = [{ id: 'media-1', name: 'Verified photo', thumbnail: '/thumb/photo.jpg' }]
+
+    renderWithProviders(<ComposeView />)
+
+    expect(await screen.findByAltText('Verified photo')).toBeInTheDocument()
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('nashrino_unsaved_draft:workspace-b:user-b') ?? '{}').content?.mediaIds)
+      .toEqual(['media-1']))
+    expect(screen.queryByText(/رسانه‌های پیش‌نویس هنوز با سرور بررسی نشده‌اند/)).not.toBeInTheDocument()
+  })
+
+  it('does not treat a deleted attachment as publishable media', async () => {
+    serverDraft = { content: { title: 'Post', mediaIds: ['deleted-media'] }, version: 1 }
+    resolvedMedia = []
+
+    renderWithProviders(<ComposeView />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('انتشار غیرفعال است')
+    expect(screen.getByLabelText('رسانه نیازمند بررسی')).toBeInTheDocument()
+  })
+
+  it('keeps an offline media reference but marks it unverified', async () => {
+    draftFetchFails = true
+    localStorage.setItem('nashrino_unsaved_draft:workspace-b:user-b', JSON.stringify({
+      content: { title: 'Offline post', mediaIds: ['media-1'] },
+      mediaRefs: [{ id: 'media-1', name: 'Offline photo', thumbnail: '/thumb/offline.jpg' }],
+    }))
+
+    renderWithProviders(<ComposeView />)
+
+    expect(await screen.findByAltText('Offline photo')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('انتشار غیرفعال است')
+    expect(screen.getByText('فقط روی این دستگاه ذخیره شد')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('nashrino_unsaved_draft:workspace-b:user-b') ?? '{}').content.mediaIds)
+      .toEqual(['media-1'])
+    fireEvent.click(screen.getByRole('button', { name: 'ذخیره پیش‌نویس' }))
+    expect(mockFetch.mock.calls.some(([input]) => String(input).includes('/api/publish'))).toBe(false)
+  })
+
+  it('offers a choice when only the selected media differs', async () => {
+    localStorage.setItem('nashrino_unsaved_draft:workspace-b:user-b', JSON.stringify({
+      content: { title: 'Same post', mediaIds: ['media-1'] },
+      mediaRefs: [{ id: 'media-1', name: 'Local photo', thumbnail: '/thumb/local.jpg' }],
+    }))
+    serverDraft = { content: { title: 'Same post', mediaIds: ['media-2'] }, version: 2 }
+    resolvedMedia = [
+      { id: 'media-1', name: 'Local photo', thumbnail: '/thumb/local.jpg' },
+      { id: 'media-2', name: 'Server photo', thumbnail: '/thumb/server.jpg' },
+    ]
+
+    renderWithProviders(<ComposeView />)
+
+    expect(await screen.findByRole('button', { name: 'بازیابی تغییرات محلی' })).toBeInTheDocument()
+    expect(mockFetch.mock.calls.some(([input]) => String(input).includes('mediaId=media-1'))).toBe(true)
   })
 })

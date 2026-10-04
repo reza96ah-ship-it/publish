@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { UploadCloud, Loader2, Check, Image as ImageIcon } from 'lucide-react'
+import { UploadCloud, Loader2, Check, AlertTriangle, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { toPersianDigits } from '@/lib/jalali'
@@ -28,6 +28,7 @@ interface SelectedMedia {
   id: string
   name: string
   thumbnail: string
+  verified?: boolean
 }
 
 interface ExistingMedia {
@@ -249,7 +250,9 @@ export function MediaUploader({
       {allMedia.length > 0 && (
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[200px] overflow-y-auto thin-scrollbar p-1">
           {allMedia.map((m) => {
-            const isSelected = selectedMedia.some((s) => s.id === m.id)
+            const selection = selectedMedia.find((s) => s.id === m.id)
+            const isSelected = !!selection
+            const needsVerification = selection?.verified === false
             return (
               <button
                 key={m.id}
@@ -262,25 +265,33 @@ export function MediaUploader({
                 }
                 className={cn(
                   'relative aspect-square rounded-lg overflow-hidden border-2 transition-all group',
-                  isSelected
+                  needsVerification
+                    ? 'border-warning ring-2 ring-warning/20'
+                    : isSelected
                     ? 'border-accent ring-2 ring-accent/20'
                     : 'border-transparent hover:border-border'
                 )}
               >
-                <img
-                  src={m.thumbnail}
-                  alt={m.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                {m.thumbnail ? (
+                  <img
+                    src={m.thumbnail}
+                    alt={m.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="flex h-full items-center justify-center bg-surface-subtle" aria-label={m.name}>
+                    <ImageIcon className="size-5 text-ink-tertiary" />
+                  </span>
+                )}
                 {isSelected && (
-                  <div className="absolute inset-0 bg-accent/20 flex items-center justify-center">
+                  <div className={cn('absolute inset-0 flex items-center justify-center', needsVerification ? 'bg-warning/20' : 'bg-accent/20')}>
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="flex size-5 items-center justify-center rounded-full bg-accent"
+                      className={cn('flex size-5 items-center justify-center rounded-full', needsVerification ? 'bg-warning' : 'bg-accent')}
                     >
-                      <Check className="size-3 text-white" strokeWidth={3} />
+                      {needsVerification ? <AlertTriangle className="size-3 text-white" /> : <Check className="size-3 text-white" strokeWidth={3} />}
                     </motion.div>
                   </div>
                 )}

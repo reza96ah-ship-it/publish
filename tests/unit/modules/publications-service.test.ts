@@ -7,6 +7,7 @@ import {
 import {
   NoChannelsError,
   ChannelsNotFoundError,
+  ValidationError,
 } from '../../../src/modules/publications/errors'
 import type { AuthContext, PublishRequest } from '../../../src/modules/publications/types'
 
@@ -21,6 +22,7 @@ import type { AuthContext, PublishRequest } from '../../../src/modules/publicati
 function makeMockRepo(): PublicationsRepository {
   return {
     findChannels: vi.fn(async (_ws: string, _ids: string[]): Promise<ChannelRow[]> => []),
+    findMedia: vi.fn(async () => []),
     findMediaThumbnail: vi.fn(async (_ws: string, _ids: string[]): Promise<string | null> => null),
     createPublicationTx: vi.fn(async (_tx: any, params: any) => ({
       content: {
@@ -66,6 +68,39 @@ describe('Issue #124/#125 — PublicationsService (service-layer unit tests, no 
   })
 
   describe('publish mode', () => {
+    it('refuses to publish when a selected asset is missing or not validated', async () => {
+      vi.mocked(repo.findChannels).mockResolvedValue([{ id: 'ch-1', type: 'instagram', name: 'Instagram' }])
+      vi.mocked(repo.findMedia).mockResolvedValue([
+        { id: 'media-1', url: '/uploads/one.jpg', thumbnailUrl: null, fileType: 'image/jpeg' },
+      ])
+
+      await expect(service.create(auth, {
+        title: 'Post', scheduleMode: 'now', mode: 'publish', channelIds: ['ch-1'],
+        mediaIds: ['media-1', 'missing-media'],
+      })).rejects.toThrow(ValidationError)
+      expect(repo.transaction).not.toHaveBeenCalled()
+    })
+
+    it('keeps the selected media order after all assets are validated', async () => {
+      vi.mocked(repo.findChannels).mockResolvedValue([{ id: 'ch-1', type: 'instagram', name: 'Instagram' }])
+      vi.mocked(repo.findMedia).mockResolvedValue([
+        { id: 'media-2', url: '/uploads/two.jpg', thumbnailUrl: null, fileType: 'image/jpeg' },
+        { id: 'media-1', url: '/uploads/one.jpg', thumbnailUrl: null, fileType: 'image/jpeg' },
+      ])
+
+      await service.create(auth, {
+        title: 'Post', scheduleMode: 'now', mode: 'publish', channelIds: ['ch-1'],
+        mediaIds: ['media-1', 'media-2'],
+      })
+
+      expect(repo.createPublicationTx).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        mediaItems: [
+          { id: 'media-1', position: 0, role: 'photo' },
+          { id: 'media-2', position: 1, role: 'photo' },
+        ],
+      }))
+    })
+
     it('creates content + jobs for each channel', async () => {
       vi.mocked(repo.findChannels).mockResolvedValue([
         { id: 'ch-1', type: 'telegram', name: 'کانال تلگرام' },

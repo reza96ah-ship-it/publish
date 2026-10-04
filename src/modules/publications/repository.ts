@@ -65,7 +65,7 @@ export class PublicationsRepository {
   ): Promise<{ id: string; url: string; thumbnailUrl: string | null; fileType: string }[]> {
     if (mediaIds.length === 0) return []
     const media = await db.media.findMany({
-      where: { id: { in: mediaIds }, workspaceId },
+      where: { id: { in: mediaIds }, workspaceId, status: 'validated' },
       select: { id: true, url: true, thumbnailUrl: true, fileType: true },
     })
     return media

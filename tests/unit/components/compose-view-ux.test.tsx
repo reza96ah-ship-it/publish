@@ -61,7 +61,8 @@ describe('Issue #152 — Composer UX truthfulness', () => {
         path.resolve(__dirname, '../../../src/components/views/compose-view.tsx'),
         'utf8'
       )
-      expect(src).toMatch(/fetch\('\/api\/compose-draft'\)/)
+      expect(src).toMatch(/fetch\(draftUrl\)/)
+      expect(src).toMatch(/'\/api\/compose-draft'/)
       expect(src).toMatch(/draftRestored/)
     })
   })
