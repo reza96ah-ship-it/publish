@@ -38,6 +38,13 @@ function callbackRequest(cookieWorkspaceId = 'workspace1') {
   return new NextRequest(url, { headers: { cookie: `zernio_ig_${flow}=${cookie}` } })
 }
 
+function alteredCallback(change: (url: URL) => void, keepCookie = true) {
+  const original = callbackRequest()
+  const url = new URL(original.url)
+  change(url)
+  return new NextRequest(url, { headers: keepCookie ? original.headers : undefined })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requirePermissionApi).mockResolvedValue({ workspaceId: 'workspace1', userId: 'user1' } as never)
@@ -79,6 +86,27 @@ describe('Zernio Instagram callback', () => {
     vi.mocked(listInstagramAccounts).mockResolvedValue([])
     const response = await GET(callbackRequest())
     expect(response.headers.get('location')).toContain('zernio_error=account_not_verified')
+  })
+
+  it('rejects an invalid flow and a browser replay without its cleared cookie', async () => {
+    const invalid = await GET(alteredCallback((url) => url.searchParams.set('flow', 'invalid')))
+    expect(invalid.headers.get('location')).toContain('zernio_error=invalid_flow')
+    const replay = await GET(alteredCallback(() => undefined, false))
+    expect(replay.headers.get('location')).toContain('zernio_error=expired_flow')
+    expect(listInstagramAccounts).not.toHaveBeenCalled()
+  })
+
+  it('rejects a changed profile ID before calling Zernio', async () => {
+    const response = await GET(alteredCallback((url) => url.searchParams.set('profileId', '66a1f0c2a4b9d3e8f1a2b3c5')))
+    expect(response.headers.get('location')).toContain('zernio_error=invalid_callback')
+    expect(listInstagramAccounts).not.toHaveBeenCalled()
+    expect(queueZernioInitialSyncForAccount).not.toHaveBeenCalled()
+  })
+
+  it('rejects an account ID absent from the verified profile', async () => {
+    const response = await GET(alteredCallback((url) => url.searchParams.set('accountId', '66b2e19d8c3f5a7e9d0b1c2e')))
+    expect(response.headers.get('location')).toContain('zernio_error=account_not_verified')
+    expect(queueZernioInitialSyncForAccount).not.toHaveBeenCalled()
   })
 
   it('rejects an account already owned by another workspace without queuing an import', async () => {
