@@ -520,19 +520,23 @@ jobs:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
       - run: bunx playwright install --with-deps chromium
-      - name: Run visual regression tests (update baselines if missing)
+      - name: Run visual regression tests (bootstrap missing baselines once)
         run: |
-          # Check both visual.spec.ts and visual-charts.spec.ts snapshots
+          # A missing directory needs a one-time reviewed baseline commit.
+          # Never turn a test failure into a green check with `|| true`.
           VISUAL_EMPTY=$(ls -A tests/e2e/visual.spec.ts-snapshots/ 2>/dev/null || echo "")
           CHARTS_EMPTY=$(ls -A tests/e2e/visual-charts.spec.ts-snapshots/ 2>/dev/null || echo "")
-          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ]; then
-            echo "Some baselines missing — generating initial baselines"
-            bun run test:visual:update || true
+          STATES_EMPTY=$(ls -A tests/e2e/visual-states.spec.ts-snapshots/ 2>/dev/null || echo "")
+          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ] || [ -z "$STATES_EMPTY" ]; then
+            echo "Some baselines missing — generating them for review"
+            bun run test:visual:update
+            echo "::error::New baselines need review and a second strict visual run before merge"
+            exit 1
           else
             echo "All baselines exist — running strict visual regression"
             bun run test:visual
           fi
-      - name: Commit generated snapshots (if any new)
+      - name: Commit generated snapshots for review (if any new)
         if: always()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -546,12 +550,12 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload new snapshots (if missing)
+      - name: Upload visual snapshots (if missing)
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: visual-snapshots
-          path: tests/e2e/visual.spec.ts-snapshots/
+          path: tests/e2e/visual*.spec.ts-snapshots/
           retention-days: 30
           if-no-files-found: ignore
 

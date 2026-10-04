@@ -90,4 +90,6 @@ verify-*.jpg
 !src/**/*.png
 !public/**/*.png
 !tests/e2e/visual.spec.ts-snapshots/**/*.png
+!tests/e2e/visual-charts.spec.ts-snapshots/**/*.png
+!tests/e2e/visual-states.spec.ts-snapshots/**/*.png
 tests/e2e/.auth/user.json
