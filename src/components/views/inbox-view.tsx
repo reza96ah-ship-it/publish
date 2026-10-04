@@ -599,6 +599,8 @@ export function InboxView() {
   const composerBlocked = replyWindowClosed || claimedByOther
   const uncertainForSelected = uncertainReply?.id === selected?.id || (selectedThreadId && openReplyAttemptQuery.data?.attempt)
     ? { id: selected?.id } : null
+  const canMarkNotSent = Boolean(openReplyAttemptQuery.data?.attempt
+    && Date.now() - new Date(openReplyAttemptQuery.data.attempt.createdAt).getTime() >= 5 * 60_000)
   const unreadCount =
     (queueCounts?.counts.unread ?? threads.reduce((count, thread) => count + thread.unreadCount, 0)) +
     (queueCounts?.legacyUnread ?? messages.filter((message) => !message.isRead).length)
@@ -1582,8 +1584,9 @@ export function InboxView() {
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending}
                           onClick={() => handleResolveReplyAttempt('sent')}>در اینستاگرام ارسال شده بود</Button>
-                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending}
+                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending || !canMarkNotSent}
                           onClick={() => handleResolveReplyAttempt('not_sent')}>در اینستاگرام ارسال نشده بود</Button>
+                        {!canMarkNotSent && <span className="self-center text-2xs">ثبت «ارسال نشده» پس از پنج دقیقه و بررسی دوباره ممکن است.</span>}
                       </div>
                     )}
                   </div>

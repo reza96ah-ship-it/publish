@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 
 const STALE_PENDING_MS = 30_000
+const NOT_SENT_REVIEW_WAIT_MS = 5 * 60_000
 
 export class ReplyAttemptError extends Error {
   constructor(public readonly code: string, message: string) {
@@ -119,6 +120,9 @@ export async function resolveZernioReplyAttempt(input: {
     }
     if (attempt.status === 'pending' && Date.now() - attempt.updatedAt.getTime() < STALE_PENDING_MS) {
       throw new ReplyAttemptError('reply_in_progress', 'ارسال هنوز در حال انجام است؛ کمی بعد وضعیت را بررسی کنید')
+    }
+    if (input.resolution === 'not_sent' && Date.now() - attempt.createdAt.getTime() < NOT_SENT_REVIEW_WAIT_MS) {
+      throw new ReplyAttemptError('reply_review_wait', 'برای اطمینان از ارسال نشدن، حداقل پنج دقیقه صبر کنید و دوباره اینستاگرام را بررسی کنید')
     }
     const changed = await tx.inboxReplyAttempt.updateMany({
       where: { id: attempt.id, status: attempt.status },

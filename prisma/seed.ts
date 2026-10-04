@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { db } from '../src/lib/db'
 
 const WORKSPACE_SLUG = 'nashrino-demo'
@@ -949,8 +950,9 @@ async function main() {
   })
 
   // ─── Analytics snapshots (last 7 days) ───
-  // Use createMany to avoid Prisma 7.8.0 query compiler panic on individual
-  // create calls with nullable fields (Rust panic at parser.rs:855).
+  // Prisma 7.8.0's query compiler can panic on both create and createMany
+  // when this model includes a nullable platform. Keep this small demo seed
+  // parameterized and bypass the affected model-write compiler path.
   const metricTypes = ['reach', 'engagement', 'followers', 'clicks']
   // Instagram-only (see ENABLED_PLATFORMS); null = workspace-level aggregate.
   const platformsForAn = ['instagram', null]
@@ -978,7 +980,12 @@ async function main() {
       }
     }
   }
-  await db.analyticsSnapshot.createMany({ data: analyticsData })
+  for (const snapshot of analyticsData) {
+    await db.$executeRaw`
+      INSERT INTO "AnalyticsSnapshot" ("id", "workspaceId", "date", "platform", "metricType", "value", "createdAt")
+      VALUES (${randomUUID()}, ${snapshot.workspaceId}, ${snapshot.date}, ${snapshot.platform}, ${snapshot.metricType}, ${snapshot.value}, NOW())
+    `
+  }
 
   // ─── Notifications ───
   await db.$transaction([

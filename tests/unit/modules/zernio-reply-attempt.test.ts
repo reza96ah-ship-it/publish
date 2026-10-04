@@ -119,7 +119,7 @@ describe('Zernio reply attempt ledger', () => {
   it('requires a deliberate admin resolution and audits it atomically', async () => {
     const tx = {
       inboxReplyAttempt: {
-        findUnique: vi.fn().mockResolvedValue({ ...pending, status: 'unknown' }),
+        findUnique: vi.fn().mockResolvedValue({ ...pending, status: 'unknown', createdAt: new Date(Date.now() - 6 * 60_000) }),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
       auditLog: { create: vi.fn().mockResolvedValue({}) },
@@ -153,5 +153,21 @@ describe('Zernio reply attempt ledger', () => {
     })).rejects.toMatchObject({ code: 'reply_attempt_not_found' })
     expect(tx.inboxReplyAttempt.updateMany).not.toHaveBeenCalled()
     expect(tx.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  it('does not let an admin mark a fresh ambiguous send as not sent', async () => {
+    const tx = {
+      inboxReplyAttempt: {
+        findUnique: vi.fn().mockResolvedValue({ ...pending, status: 'unknown' }),
+        updateMany: vi.fn(),
+      },
+      auditLog: { create: vi.fn() },
+    }
+    mocks.transaction.mockImplementation((fn: (value: typeof tx) => Promise<void>) => fn(tx))
+    await expect(resolveZernioReplyAttempt({
+      workspaceId: 'ws-1', threadId: 'thread-1', idempotencyKey: KEY,
+      resolution: 'not_sent', userId: 'admin-1',
+    })).rejects.toMatchObject({ code: 'reply_review_wait' })
+    expect(tx.inboxReplyAttempt.updateMany).not.toHaveBeenCalled()
   })
 })
