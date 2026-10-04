@@ -52,6 +52,10 @@ import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -111,6 +115,13 @@ interface InboxThreadTimelineMessage {
   attachments: InboxThreadAttachment[]
   deliveryStatus?: 'accepted' | 'sent' | 'delivered' | 'read' | 'failed' | 'deleted' | null
   createdAt: string
+}
+
+interface PrivateCommentReplyState {
+  available: boolean
+  status: string | null
+  expiresAt: string | null
+  reason: 'unsupported' | 'missing_comment' | 'window_closed' | 'already_attempted' | 'resolved' | null
 }
 
 interface InboxThreadSummary {
@@ -210,6 +221,11 @@ const STATUS_LABEL: Record<string, string> = {
   assigned: 'ارجاع شده',
   in_progress: 'در حال بررسی',
   resolved: 'حل شده',
+}
+
+const PRIVATE_REPLY_STATUS_LABEL: Record<string, string> = {
+  pending: 'در حال ارسال', sent: 'ارسال‌شده', partial: 'ارسال ناقص',
+  unknown: 'نتیجه نامشخص', failed: 'ناموفق',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -323,6 +339,8 @@ export function InboxView() {
     initialSelection.kind
   )
   const [replyText, setReplyText] = useState('')
+  const [privateReplyText, setPrivateReplyText] = useState('')
+  const [privateReplyThreadId, setPrivateReplyThreadId] = useState<string | null>(null)
   const replyAttemptRef = useRef<{ id: string; reply: string; kind: ConversationKind; key: string } | null>(null)
   const [uncertainReply, setUncertainReply] = useState<{ id: string } | null>(null)
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
@@ -487,6 +505,12 @@ export function InboxView() {
   const selectedThread =
     selectedThreadFromList ??
     (selectedThreadDetail?.id === selectedThreadId ? selectedThreadDetail : null)
+  const privateReplyQuery = useQuery<PrivateCommentReplyState>({
+    queryKey: ['inbox-private-comment-reply', selectedThreadId],
+    queryFn: () => api.get<PrivateCommentReplyState>(`/api/inbox/threads/${selectedThreadId}/private-reply`),
+    enabled: Boolean(selectedThreadId && selectedThread?.messageType === 'comment'),
+    refetchInterval: 30_000,
+  })
 
   const {
     data: timelinePages,
@@ -666,6 +690,31 @@ export function InboxView() {
       }
       toast.error(message)
       if (vars.kind === 'thread') queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
+    },
+  })
+
+  const privateReplyMutation = useMutation({
+    mutationFn: ({ id, message }: { id: string; message: string }) =>
+      api.post(`/api/inbox/threads/${id}/private-reply`, { message }),
+    onSuccess: (_data, vars) => {
+      setPrivateReplyThreadId(null)
+      setPrivateReplyText('')
+      toast.success('پاسخ خصوصی توسط سرویس پذیرفته شد')
+      void queryClient.invalidateQueries({ queryKey: ['inbox-private-comment-reply', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
+    },
+    onError: (error, vars) => {
+      let message = 'نتیجهٔ پاسخ خصوصی مشخص نیست؛ پیش از تلاش دوباره اینستاگرام را بررسی کنید'
+      try {
+        const body = JSON.parse((error as Error).message) as { error?: string }
+        if (body.error) message = body.error
+      } catch { /* transport/unknown outcome remains blocked server-side */ }
+      toast.error(message)
+      setPrivateReplyThreadId(null)
+      void queryClient.invalidateQueries({ queryKey: ['inbox-private-comment-reply', vars.id] })
     },
   })
 
@@ -1492,6 +1541,9 @@ export function InboxView() {
                                 <span className="font-semibold">
                                   {outbound ? 'شما' : message.senderName}
                                 </span>
+                                {outbound && selectedThread?.messageType === 'comment' && (
+                                  <span>{message.messageType === 'dm' ? 'پاسخ خصوصی' : 'پاسخ عمومی'}</span>
+                                )}
                                 <span>{relativeTime(new Date(message.createdAt))}</span>
                               </div>
                               <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
@@ -1543,6 +1595,34 @@ export function InboxView() {
 
               {/* Reply box */}
               <div className="p-3 border-t border-border bg-surface-subtle">
+                {selectedThread?.messageType === 'comment' && (
+                  <div className="mb-3 rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-ink-secondary">
+                    <p>کادر پایین پاسخ عمومی زیر کامنت می‌فرستد. پاسخ خصوصی، یک پیام جداگانه در دایرکت است.</p>
+                    {privateReplyQuery.data?.available ? (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <span>برای هر کامنت فقط یک پاسخ خصوصی، تا ۷ روز پس از ثبت آن، ممکن است.</span>
+                        <Button type="button" variant="outline" size="sm"
+                          disabled={claimedByOther || privateReplyMutation.isPending}
+                          onClick={() => {
+                            setPrivateReplyText('')
+                            setPrivateReplyThreadId(selectedThread.id)
+                          }}>
+                          <Mail className="size-3.5" /> پاسخ خصوصی در دایرکت
+                        </Button>
+                      </div>
+                    ) : privateReplyQuery.isPending ? (
+                      <p className="mt-1">در حال بررسی امکان پاسخ خصوصی…</p>
+                    ) : privateReplyQuery.isError ? (
+                      <p className="mt-1">امکان پاسخ خصوصی بررسی نشد؛ صفحه را دوباره بارگذاری کنید.</p>
+                    ) : privateReplyQuery.data?.reason === 'already_attempted' ? (
+                      <p className="mt-1">پاسخ خصوصی برای این کامنت یا مخاطب قبلاً اقدام شده است ({PRIVATE_REPLY_STATUS_LABEL[privateReplyQuery.data.status ?? ''] ?? 'نیازمند بررسی'}). پیش از هر اقدام دیگری، اینستاگرام را بررسی کنید.</p>
+                    ) : privateReplyQuery.data?.reason === 'window_closed' ? (
+                      <p className="mt-1">مهلت هفت‌روزهٔ پاسخ خصوصی پایان یافته است.</p>
+                    ) : (
+                      <p className="mt-1">پاسخ خصوصی برای این کامنت در دسترس نیست.</p>
+                    )}
+                  </div>
+                )}
                 {/* Snippet picker */}
                 {showSnippets && savedReplies && savedReplies.length > 0 && (
                   <div className="mb-2 rounded-xl border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
@@ -1687,11 +1767,38 @@ export function InboxView() {
                       ) : (
                         <Send className="size-3.5" />
                       )}
-                      ارسال پاسخ
+                      {selectedThread?.messageType === 'comment' ? 'ارسال پاسخ عمومی' : 'ارسال پاسخ'}
                     </Button>
                   </div>
                 </div>
               </div>
+              <AlertDialog open={Boolean(privateReplyThreadId)} onOpenChange={(open) => {
+                if (!open && !privateReplyMutation.isPending) setPrivateReplyThreadId(null)
+              }}>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ارسال یک پاسخ خصوصی به کامنت</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      این متن در دایرکت مخاطب ارسال می‌شود، نه زیر پست. اینستاگرام فقط یک پاسخ خصوصی برای این کامنت می‌پذیرد؛ حتی اگر نتیجهٔ ارسال نامشخص شود، از تلاش دوبارهٔ خودکار جلوگیری می‌کنیم.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea dir="rtl" rows={4} maxLength={1000} value={privateReplyText}
+                    disabled={privateReplyMutation.isPending} placeholder="متن پیام خصوصی…"
+                    onChange={(event) => setPrivateReplyText(event.target.value)} />
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={privateReplyMutation.isPending}>انصراف</AlertDialogCancel>
+                    <Button type="button" disabled={!privateReplyText.trim() || privateReplyMutation.isPending}
+                      onClick={() => {
+                        if (privateReplyThreadId) privateReplyMutation.mutate({
+                          id: privateReplyThreadId, message: privateReplyText.trim(),
+                        })
+                      }}>
+                      {privateReplyMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                      تأیید و ارسال خصوصی
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
         </div>

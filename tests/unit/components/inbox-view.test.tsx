@@ -86,6 +86,9 @@ describe('Component: InboxView', () => {
     apiMock.get.mockImplementation(async (url: string) => {
       if (url === '/api/workspace') return { id: 'workspace-1' }
       if (/^\/api\/inbox\/threads\/[^/]+\/reply-attempt$/.test(url)) return { attempt: null, canResolve: true }
+      if (/^\/api\/inbox\/threads\/[^/]+\/private-reply$/.test(url)) {
+        return { available: false, status: null, expiresAt: null, reason: 'unsupported' }
+      }
       if (url === '/api/automation/comment-dm-rules') return []
       if (url === '/api/inbox/saved-replies') return []
       if (url === '/api/inbox/threads/counts') {
@@ -165,11 +168,32 @@ describe('Component: InboxView', () => {
     renderWithProviders(<InboxView />)
     fireEvent.click(await screen.findByRole('button', { name: /مریم حسینی/ }))
     fireEvent.change(screen.getByPlaceholderText(/پاسخ خود را بنویسید/), { target: { value: 'یک پاسخ آزمایشی' } })
-    fireEvent.click(screen.getByRole('button', { name: 'ارسال پاسخ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'ارسال پاسخ عمومی' }))
     expect(await screen.findByText(/پاسخ دوباره غیرفعال شده است/)).toBeVisible()
     expect(screen.getByPlaceholderText(/پاسخ خود را بنویسید/)).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'ارسال پاسخ' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'ارسال پاسخ عمومی' })).toBeDisabled()
     expect(replies).toHaveLength(1)
+  })
+
+  it('keeps the one-time private DM separate from the public comment composer', async () => {
+    const original = apiMock.get.getMockImplementation()!
+    apiMock.get.mockImplementation((url: string) => {
+      if (url === '/api/inbox/threads/thread-1/private-reply') {
+        return Promise.resolve({ available: true, status: null, expiresAt: null, reason: null })
+      }
+      return original(url)
+    })
+    renderWithProviders(<InboxView />)
+    fireEvent.click(await screen.findByRole('button', { name: /مریم حسینی/ }))
+    expect(await screen.findByRole('button', { name: 'پاسخ خصوصی در دایرکت' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'ارسال پاسخ عمومی' })).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'پاسخ خصوصی در دایرکت' }))
+    fireEvent.change(screen.getByPlaceholderText('متن پیام خصوصی…'), { target: { value: 'سلام خصوصی' } })
+    fireEvent.click(screen.getByRole('button', { name: 'تأیید و ارسال خصوصی' }))
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith(
+      '/api/inbox/threads/thread-1/private-reply', { message: 'سلام خصوصی' },
+    ))
+    expect(apiMock.post).not.toHaveBeenCalledWith('/api/inbox/threads/thread-1/reply', expect.anything())
   })
 
   it('shows a failed provider delivery status on an outbound message', async () => {

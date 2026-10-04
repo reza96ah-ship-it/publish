@@ -617,3 +617,22 @@ export async function sendZernioCommentReply(
   }
   return data.commentId
 }
+
+/** The first, one-per-comment Instagram DM. This endpoint has no documented
+ * idempotency key, so callers must reserve a durable local claim before use. */
+export async function sendZernioPrivateCommentReply(
+  accountId: string,
+  postId: string,
+  commentId: string,
+  message: string,
+): Promise<string | null> {
+  if (!OBJECT_ID.test(accountId)) throw new ZernioApiError(400, 'invalid_account_id')
+  const post = validOpaque(postId, 'post_id')
+  const comment = validOpaque(commentId, 'comment_id')
+  const body = await zernioRequest(
+    `/inbox/comments/${encodeURIComponent(post)}/${encodeURIComponent(comment)}/private-reply`,
+    { method: 'POST', body: JSON.stringify({ accountId, message: message.trim() }) },
+  )
+  if (body.platform !== 'instagram') throw new ZernioApiError(502, 'invalid_private_reply_response')
+  return typeof body.messageId === 'string' && body.messageId.trim() ? body.messageId : null
+}

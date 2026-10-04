@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioAccountHealth, getZernioInboxConversation, listInstagramAccounts, listZernioCommentedPosts, listZernioInboxConversations, listZernioInboxMessages, listZernioPostComments, sendZernioCommentReply, sendZernioInboxMessage, ZernioApiError } from '@/lib/zernio'
+import { createZernioProfile, getInstagramAccountInsights, getInstagramConnectUrl, getInstagramDailyReach, getInstagramFollowerHistory, getInstagramRangeInsights, getInstagramRecentPosts, getZernioAccountHealth, getZernioInboxConversation, listInstagramAccounts, listZernioCommentedPosts, listZernioInboxConversations, listZernioInboxMessages, listZernioPostComments, sendZernioCommentReply, sendZernioInboxMessage, sendZernioPrivateCommentReply, ZernioApiError } from '@/lib/zernio'
 
 const profileId = '66a1f0c2a4b9d3e8f1a2b3c4'
 const otherProfileId = '66a1f0c2a4b9d3e8f1a2b3c5'
@@ -212,6 +212,28 @@ describe('Zernio API boundary', () => {
     expect(options.headers.get('Authorization')).toBe('Bearer sk_test')
     expect(options.headers.get('Idempotency-Key')).toBe('reply-123')
     expect(JSON.parse(options.body)).toEqual({ accountId, message: 'Hello' })
+  })
+
+  it('uses Zernio’s separate private-comment-reply route and requires an Instagram receipt', async () => {
+    vi.stubEnv('ZERNIO_API_KEY', 'sk_test')
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({
+      platform: 'instagram', messageId: 'private-dm-1',
+    })))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(sendZernioPrivateCommentReply(accountId, 'post-1', 'comment-1', ' Hello '))
+      .resolves.toBe('private-dm-1')
+    const [url, options] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://zernio.com/api/v1/inbox/comments/post-1/comment-1/private-reply')
+    expect(options.method).toBe('POST')
+    expect(options.headers.get('Authorization')).toBe('Bearer sk_test')
+    expect(options.headers.get('Idempotency-Key')).toBeNull()
+    expect(JSON.parse(options.body)).toEqual({ accountId, message: 'Hello' })
+
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      platform: 'facebook', messageId: 'wrong-platform',
+    })))
+    await expect(sendZernioPrivateCommentReply(accountId, 'post-1', 'comment-1', 'Hello'))
+      .rejects.toMatchObject({ code: 'invalid_private_reply_response' })
   })
 
   it('rejects a conversation assigned to a different account', async () => {
