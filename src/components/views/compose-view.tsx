@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, useTransition } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import { useShouldAnimate, ease, duration } from '@/lib/motion'
 import { toast } from 'sonner'
@@ -114,6 +115,11 @@ const IG_LIMIT = PROVIDER_CAPABILITIES.instagram.maxCaptionLength
 
 export function ComposeView() {
   const shouldAnimate = useShouldAnimate()
+  const { data: session } = useSession()
+  // Never restore another customer's local draft on a shared browser.
+  const draftStorageKey = session?.user?.id && session.activeWorkspaceId
+    ? `nashrino_unsaved_draft:${session.activeWorkspaceId}:${session.user.id}`
+    : null
   const [title, setTitle] = useState('')
   const [caption, setCaption] = useState('')
   const [hashtags, setHashtags] = useState('')
@@ -140,36 +146,59 @@ export function ComposeView() {
 
   // Issue #152: draft versioning & conflict resolution state
   const draftVersion = useRef<number | null>(null)
+  const [readyDraftKey, setReadyDraftKey] = useState<string | null>(null)
   const [showConflictModal, setShowConflictModal] = useState(false)
   const [pendingLocalDraft, setPendingLocalDraft] = useState<Record<string, unknown> | null>(null)
   const [pendingServerDraft, setPendingServerDraft] = useState<Record<string, unknown> | null>(null)
 
+  useEffect(() => {
+    if (!readyDraftKey || readyDraftKey === draftStorageKey) return
+    // A workspace/account switch must not leave the previous draft in the form.
+    setTitle('')
+    setCaption('')
+    setHashtags('')
+    setNote('')
+    setCampaignId('')
+    setSelectedMedia([])
+    setSelectedPlatforms([])
+    setPlatformCaptions({})
+    setScheduleMode('now')
+    setScheduledAt(null)
+    draftVersion.current = null
+    setShowConflictModal(false)
+    setPendingLocalDraft(null)
+    setPendingServerDraft(null)
+    setReadyDraftKey(null)
+  }, [draftStorageKey, readyDraftKey])
+
   const applyDraft = useCallback((draft: Record<string, unknown>) => {
     const c = draft.content as Record<string, unknown> | undefined
-    if (c?.title) setTitle(c.title as string)
-    if (c?.caption) setCaption(c.caption as string)
-    if (c?.hashtags) setHashtags(c.hashtags as string)
-    if (c?.note) setNote(c.note as string)
-    if (c?.campaignId) setCampaignId(c.campaignId as string)
-    if (c?.scheduleMode) setScheduleMode(c.scheduleMode as 'now' | 'schedule' | 'queue')
-    if ((draft.channelIds as string[] | undefined)?.length) setSelectedPlatforms(draft.channelIds as string[])
-    if (draft.scheduledAt) {
-      const d = new Date(draft.scheduledAt as string)
-      if (!isNaN(d.getTime())) setScheduledAt(d)
-    }
-    if (typeof draft.version === 'number') {
-      draftVersion.current = draft.version
-    }
+    setTitle(typeof c?.title === 'string' ? c.title : '')
+    setCaption(typeof c?.caption === 'string' ? c.caption : '')
+    setHashtags(typeof c?.hashtags === 'string' ? c.hashtags : '')
+    setNote(typeof c?.note === 'string' ? c.note : '')
+    setCampaignId(typeof c?.campaignId === 'string' ? c.campaignId : '')
+    setScheduleMode(c?.scheduleMode === 'schedule' || c?.scheduleMode === 'queue' ? c.scheduleMode : 'now')
+    setSelectedPlatforms(Array.isArray(draft.channelIds) ? draft.channelIds as string[] : [])
+    const date = draft.scheduledAt ? new Date(draft.scheduledAt as string) : null
+    setScheduledAt(date && !isNaN(date.getTime()) ? date : null)
+    draftVersion.current = typeof draft.version === 'number' ? draft.version : null
   }, [])
 
   const handleSelectDraft = (type: 'local' | 'server') => {
     const draft = type === 'local' ? pendingLocalDraft : pendingServerDraft
     if (draft) {
       applyDraft(draft)
+      // Choosing the local text is an explicit decision to replace the server
+      // draft, so the next conditional save must use the server's latest version.
+      if (type === 'local' && typeof pendingServerDraft?.version === 'number') {
+        draftVersion.current = pendingServerDraft.version
+      }
     }
     setShowConflictModal(false)
+    if (draftStorageKey) setReadyDraftKey(draftStorageKey)
     if (type === 'server') {
-      localStorage.removeItem('nashrino_unsaved_draft')
+      if (draftStorageKey) localStorage.removeItem(draftStorageKey)
     }
   }
 
@@ -189,16 +218,17 @@ export function ComposeView() {
   }, [])
 
   // Issue #152: restore saved draft on composer entry with local storage conflict detection
-  const draftRestored = useRef(false)
+  const draftRestored = useRef<string | null>(null)
   useEffect(() => {
-    if (draftRestored.current) return
-    draftRestored.current = true
+    if (!draftStorageKey || draftRestored.current === draftStorageKey) return
+    draftRestored.current = draftStorageKey
+    let cancelled = false
 
     // 1. Read local storage draft
-    type DraftData = { content?: { title?: string; caption?: string }; channelIds?: string[] }
+    type DraftData = { content?: Record<string, unknown>; channelIds?: string[]; scheduledAt?: string | null }
     let localDraft: DraftData | null = null
     try {
-      const rawLocal = localStorage.getItem('nashrino_unsaved_draft')
+      const rawLocal = localStorage.getItem(draftStorageKey)
       if (rawLocal) {
         localDraft = JSON.parse(rawLocal)
       }
@@ -211,19 +241,27 @@ export function ComposeView() {
     fetch('/api/compose-draft')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
+        if (cancelled) return
         const serverDraftRaw = data?.draft
         const serverDraft: DraftData | null = typeof serverDraftRaw === 'string' ? JSON.parse(serverDraftRaw) : serverDraftRaw
 
-        const hasServer = serverDraft && (serverDraft.content?.title || serverDraft.content?.caption || serverDraft.channelIds?.length)
-        const hasLocal = localDraft && (localDraft.content?.title || localDraft.content?.caption || localDraft.channelIds?.length)
+        const hasContent = (draft: DraftData | null) => Boolean(draft && (
+          ['title', 'caption', 'hashtags', 'note', 'campaignId'].some((field) =>
+            typeof draft.content?.[field] === 'string' && Boolean(draft.content[field])) ||
+          draft.channelIds?.length || draft.scheduledAt
+        ))
+        const hasServer = hasContent(serverDraft)
+        const hasLocal = hasContent(localDraft)
 
-        if (hasServer && hasLocal && localDraft) {
-          // Check for meaningful differences to prompt a conflict resolution
-          const titleDiff = (serverDraft.content?.title || '') !== (localDraft.content?.title || '')
-          const captionDiff = (serverDraft.content?.caption || '') !== (localDraft.content?.caption || '')
+        if (hasServer && serverDraft && hasLocal && localDraft) {
+          // Compare every persisted editor field, not only title and caption.
+          const contentFields = ['title', 'caption', 'hashtags', 'note', 'campaignId', 'scheduleMode'] as const
+          const contentDiff = contentFields.some((field) =>
+            (serverDraft.content?.[field] ?? '') !== (localDraft.content?.[field] ?? ''))
           const platformsDiff = JSON.stringify(serverDraft.channelIds || []) !== JSON.stringify(localDraft.channelIds || [])
+          const scheduleDiff = (serverDraft.scheduledAt ?? null) !== (localDraft.scheduledAt ?? null)
 
-          if (titleDiff || captionDiff || platformsDiff) {
+          if (contentDiff || platformsDiff || scheduleDiff) {
             setPendingLocalDraft(localDraft)
             setPendingServerDraft(serverDraft)
             setShowConflictModal(true)
@@ -231,11 +269,14 @@ export function ComposeView() {
           }
         }
 
-        if (hasServer) {
+        if (hasServer && serverDraft) {
           applyDraft(serverDraft)
         } else if (hasLocal && localDraft) {
           applyDraft(localDraft)
+          // The server row no longer exists; this local copy is a new draft.
+          draftVersion.current = null
         }
+        setReadyDraftKey(draftStorageKey)
 
         if (hasServer || hasLocal) {
           setSaveState('saved')
@@ -243,23 +284,27 @@ export function ComposeView() {
         }
       })
       .catch(() => {
+        if (cancelled) return
         if (localDraft) {
           applyDraft(localDraft)
           setSaveState('saved')
           setTimeout(() => setSaveState('idle'), 3000)
         }
+        setReadyDraftKey(draftStorageKey)
       })
-  }, [applyDraft])
+    return () => { cancelled = true }
+  }, [applyDraft, draftStorageKey])
 
   // Save unsaved changes to localStorage on any edit
   useEffect(() => {
-    if (!title && !caption && selectedPlatforms.length === 0) {
-      localStorage.removeItem('nashrino_unsaved_draft')
+    if (!draftStorageKey || readyDraftKey !== draftStorageKey) return
+    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0) {
+      localStorage.removeItem(draftStorageKey)
       return
     }
 
     localStorage.setItem(
-      'nashrino_unsaved_draft',
+      draftStorageKey,
       JSON.stringify({
         content: { title, caption, hashtags, note, campaignId, scheduleMode },
         channelIds: selectedPlatforms,
@@ -268,11 +313,12 @@ export function ComposeView() {
         updatedAt: new Date().toISOString(),
       })
     )
-  }, [title, caption, hashtags, note, campaignId, scheduleMode, selectedPlatforms, scheduledAt])
+  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, selectedPlatforms, scheduledAt])
 
   // MISS-04: debounce autosave — fires 3s after last keystroke if form has content
   useEffect(() => {
-    if (!title && !caption && selectedPlatforms.length === 0) return
+    if (!draftStorageKey || readyDraftKey !== draftStorageKey) return
+    if (!title && !caption && !hashtags && !note && !campaignId && !scheduledAt && selectedPlatforms.length === 0) return
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     autosaveTimer.current = setTimeout(async () => {
       setSaveState('saving')
@@ -313,7 +359,7 @@ export function ComposeView() {
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current)
     }
-  }, [title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms])
+  }, [draftStorageKey, readyDraftKey, title, caption, hashtags, note, campaignId, scheduleMode, scheduledAt, selectedPlatforms])
 
   const { data: campaigns } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
@@ -652,6 +698,10 @@ export function ComposeView() {
         announce('خطا در انتشار', 'assertive')
       },
     })
+  }
+
+  if (readyDraftKey !== draftStorageKey && (readyDraftKey !== null || (draftStorageKey !== null && !showConflictModal))) {
+    return <div className="n-card p-6 text-sm text-ink-secondary" role="status">در حال بازیابی پیش‌نویس…</div>
   }
 
   return (

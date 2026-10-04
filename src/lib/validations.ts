@@ -290,7 +290,8 @@ export const composeDraftSchema = z.object({
   }),
   channelIds: z.array(z.string().max(100)).max(20).optional().default([]),
   scheduledAt: z.string().datetime().nullable().optional(),
-  version: z.number().int().min(0).optional(),
+  // A new editor has no server version yet; JSON.stringify sends its null ref.
+  version: z.number().int().min(0).nullable().optional(),
 })
 
 // ── Query-string schemas (GET params) ───────────────────────────────────────

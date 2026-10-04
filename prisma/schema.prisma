@@ -920,7 +920,7 @@ model AppSetting {
 
 /* ─── Draft Persistence (MISS-04) ─── */
 
-// One draft row per user per workspace — upserted on every autosave tick.
+// One draft row per user per workspace — saved with an atomic version check.
 model ContentDraft {
   id          String   @id @default(cuid())
   workspaceId String

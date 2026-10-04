@@ -33,15 +33,23 @@ export async function POST(req: Request) {
   if (!validation.success) return NextResponse.json({ error: validation.error }, { status: 400 })
   const { content, channelIds, scheduledAt, version } = validation.data
 
-  const existing = await db.contentDraft.findUnique({ where: { workspaceId_authorId: { workspaceId: guard.workspaceId, authorId } }, select: { version: true } })
-  if (existing && typeof version === 'number' && version < existing.version)
-    return NextResponse.json({ error: 'conflict', message: 'پیش‌نویس توسط پنجره دیگری ویرایش شده است.', version: existing.version }, { status: 409 })
-
   const contentJson = content as Parameters<typeof db.contentDraft.create>[0]['data']['content']
-  const draft = await db.contentDraft.upsert({
-    where: { workspaceId_authorId: { workspaceId: guard.workspaceId, authorId } },
-    create: { workspaceId: guard.workspaceId, authorId, content: contentJson, channelIds: channelIds ?? [], scheduledAt: scheduledAt ?? null, version: 1 },
-    update: { content: contentJson, channelIds: channelIds ?? [], scheduledAt: scheduledAt ?? null, version: (existing?.version ?? 0) + 1 },
-  })
+  const key = { workspaceId: guard.workspaceId, authorId }
+  const changes = { content: contentJson, channelIds, scheduledAt: scheduledAt ?? null }
+  let draft
+  try {
+    draft = version == null
+      ? await db.contentDraft.create({ data: { ...key, ...changes, version: 1 } })
+      : await db.contentDraft.update({
+          where: { workspaceId_authorId: key, version },
+          data: { ...changes, version: { increment: 1 } },
+        })
+  } catch (error) {
+    // Unique-create and stale-version races both mean another tab saved first.
+    const expectedCode = version == null ? 'P2002' : 'P2025'
+    if (!error || typeof error !== 'object' || !('code' in error) || error.code !== expectedCode) throw error
+    const latest = await db.contentDraft.findUnique({ where: { workspaceId_authorId: key }, select: { version: true } })
+    return NextResponse.json({ error: 'conflict', message: 'پیش‌نویس توسط پنجره دیگری ویرایش شده است.', version: latest?.version ?? null }, { status: 409 })
+  }
   return NextResponse.json({ id: draft.id, version: draft.version, savedAt: draft.updatedAt })
 }
