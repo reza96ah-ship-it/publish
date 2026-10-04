@@ -80,3 +80,31 @@ test.describe('Publish flow', () => {
     }
   })
 })
+
+test.describe('Composer media draft restoration', () => {
+  test.use({ storageState: 'tests/e2e/.auth/user.json' })
+
+  test('keeps the selected media reference after a browser refresh', async ({ page }) => {
+    await page.route('**/api/compose-draft*', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'draft-1', version: 2 }) })
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          draft: { content: { title: 'Media draft', scheduleMode: 'now', mediaIds: ['media-1'] }, version: 1 },
+          media: [{ id: 'media-1', name: 'Restored photo', thumbnail: 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=' }],
+        }),
+      })
+    })
+
+    await page.goto('/compose')
+    await expect(page.getByAltText('Restored photo')).toBeVisible()
+    await expect(page.getByText(/رسانه‌های پیش‌نویس هنوز با سرور بررسی نشده‌اند/)).toHaveCount(0)
+
+    await page.reload()
+    await expect(page.getByAltText('Restored photo')).toBeVisible()
+  })
+})

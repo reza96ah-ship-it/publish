@@ -42,6 +42,7 @@ import { startMediaCleanup, stopMediaCleanup } from './lib/media-cleanup'
 import { startReconciliationScanner, stopReconciliationScanner } from './lib/reconciliation-scanner'
 import { startCommentDmScanner, stopCommentDmScanner } from './lib/comment-dm-scanner'
 import { startInboxIngestScanner, stopInboxIngestScanner } from './lib/inbox-ingest-scanner'
+import { startInboxAutomationScanner, stopInboxAutomationScanner } from './lib/inbox-automation-scanner'
 import { startAnalyticsCollector, stopAnalyticsCollector } from './lib/analytics-collector'
 import {
   unknownOutcomesCounter,
@@ -323,6 +324,9 @@ const worker = new Worker(
           ? decrypt((job.platform as any).tokenSecret)
           : undefined,
         targetId: (job.platform as any).targetId ?? undefined,
+        providerAccountId: (job.platform as any).provider === 'zernio'
+          ? (job.platform as any).providerAccountId ?? undefined
+          : undefined,
       },
     }
 
@@ -423,7 +427,7 @@ const worker = new Worker(
     adapterJob.idempotencyKey = operationId
 
     // Publish via adapter
-    const result = await getAdapter(job.platform.type)?.publish(adapterJob)
+    const result = await getAdapter(job.platform.type, job.platform.provider)?.publish(adapterJob)
 
     if (!result) {
       await markFailure(attemptId, {
@@ -1016,6 +1020,7 @@ async function shutdown(signal: string) {
   stopReconciliationScanner()
   stopCommentDmScanner()
   stopInboxIngestScanner()
+  stopInboxAutomationScanner()
   stopAnalyticsCollector()
   await worker.close() // waits up to stopTimeout for in-progress jobs
   await publishQueue.close() // close queue's Redis connection
@@ -1055,6 +1060,8 @@ startCommentDmScanner()
 // Inbox ingest scanner: pulls real IG comments on published posts into the
 // unified inbox (InboxMessage rows) so the inbox reflects actual customers.
 startInboxIngestScanner()
+// Executes only the three validated, DB-only Inbox templates.
+startInboxAutomationScanner()
 // Analytics collector: refreshes AnalyticsSnapshot (account level) and
 // PostMetricSnapshot (per post) from the IG Graph API every 6 hours, so the
 // dashboards show real numbers instead of frozen seed data.

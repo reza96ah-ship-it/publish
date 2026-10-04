@@ -1,10 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
-const { igMock } = vi.hoisted(() => ({
+const { igMock, zernioMock, attemptMock } = vi.hoisted(() => ({
   igMock: {
     sendCommentReply: vi.fn(),
     sendPrivateReply: vi.fn(),
     sendDirectMessage: vi.fn(),
+  },
+  zernioMock: {
+    getZernioInboxConversation: vi.fn(),
+    sendZernioInboxMessage: vi.fn(),
+    sendZernioCommentReply: vi.fn(),
+  },
+  attemptMock: {
+    beginZernioReplyAttempt: vi.fn(),
+    completeZernioReplyAttempt: vi.fn(),
+    markZernioReplyAttempt: vi.fn(),
   },
 }))
 
@@ -20,6 +30,14 @@ vi.mock('@/modules/inbox/instagram-reply', async (importOriginal) => {
 })
 vi.mock('@/modules/inbox/realtime-emit', () => ({
   emitInboxThreadEvent: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('@/lib/zernio', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/zernio')>()),
+  ...zernioMock,
+}))
+vi.mock('@/modules/inbox/zernio-reply-attempt', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/modules/inbox/zernio-reply-attempt')>()),
+  ...attemptMock,
 }))
 
 import { InboxService } from '@/modules/inbox/service'
@@ -378,5 +396,79 @@ describe('inboxService.replyToThread — DM recipient addressing', () => {
       /دوباره متصل/
     )
     expect(repo.appendThreadReply).not.toHaveBeenCalled()
+  })
+})
+
+describe('inboxService.replyToThread — Zernio safety', () => {
+  const key = '7b8e1250-4205-4c6e-9270-cba566e716cb'
+  const zernioThread = () => ({
+    id: 'thr_z', providerThreadId: 'conversation-1',
+    lastInboundAt: new Date(Date.now() - 60_000),
+    platform: { id: 'plat_z', type: 'instagram', provider: 'zernio', providerAccountId: '0123456789abcdef01234567' },
+    messages: [{ id: 'msg_z', providerMessageId: 'incoming-1', messageType: 'dm', senderExternalId: 'sender-1' }],
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    attemptMock.beginZernioReplyAttempt.mockResolvedValue({ kind: 'send', id: 'attempt-1' })
+    attemptMock.completeZernioReplyAttempt.mockResolvedValue('out-1')
+    attemptMock.markZernioReplyAttempt.mockResolvedValue(undefined)
+    zernioMock.getZernioInboxConversation.mockResolvedValue({ id: 'conversation-1' })
+    zernioMock.sendZernioInboxMessage.mockResolvedValue('provider-message-1')
+  })
+
+  it('sends and records a DM with the caller-provided stable key', async () => {
+    const repo = makeThreadRepo(zernioThread())
+    const result = await new InboxService(repo).replyToThread(AUTH, 'thr_z', { reply: 'Hello', idempotencyKey: key })
+    expect(attemptMock.beginZernioReplyAttempt).toHaveBeenCalledWith('ws_1', 'thr_z', key, 'Hello')
+    expect(zernioMock.sendZernioInboxMessage).toHaveBeenCalledWith(
+      '0123456789abcdef01234567', 'conversation-1', 'Hello', key,
+    )
+    expect(attemptMock.completeZernioReplyAttempt).toHaveBeenCalledWith(expect.objectContaining({
+      attemptId: 'attempt-1', providerMessageId: 'provider-message-1',
+    }))
+    expect(repo.appendThreadReply).not.toHaveBeenCalled()
+    expect(result.threadMessageId).toBe('out-1')
+  })
+
+  it('replays a completed attempt without sending a second DM', async () => {
+    attemptMock.beginZernioReplyAttempt.mockResolvedValue({ kind: 'sent', threadMessageId: 'out-1' })
+    const result = await new InboxService(makeThreadRepo(zernioThread())).replyToThread(
+      AUTH, 'thr_z', { reply: 'Hello', idempotencyKey: key },
+    )
+    expect(result.threadMessageId).toBe('out-1')
+    expect(zernioMock.sendZernioInboxMessage).not.toHaveBeenCalled()
+  })
+
+  it('blocks a DM when the inbound timestamp is unavailable', async () => {
+    const repo = makeThreadRepo({ ...zernioThread(), lastInboundAt: null })
+    await expect(new InboxService(repo).replyToThread(
+      AUTH, 'thr_z', { reply: 'Hello', idempotencyKey: key },
+    )).rejects.toMatchObject({ code: 'reply_window_closed' })
+    expect(attemptMock.markZernioReplyAttempt).toHaveBeenCalledWith('attempt-1', 'rejected')
+    expect(zernioMock.sendZernioInboxMessage).not.toHaveBeenCalled()
+  })
+
+  it('marks a timeout as uncertain and never records it as delivered', async () => {
+    zernioMock.sendZernioInboxMessage.mockRejectedValue(new Error('timeout'))
+    const repo = makeThreadRepo(zernioThread())
+    await expect(new InboxService(repo).replyToThread(
+      AUTH, 'thr_z', { reply: 'Hello', idempotencyKey: key },
+    )).rejects.toMatchObject({ code: 'reply_outcome_unknown' })
+    expect(attemptMock.markZernioReplyAttempt).toHaveBeenCalledWith('attempt-1', 'unknown')
+    expect(attemptMock.completeZernioReplyAttempt).not.toHaveBeenCalled()
+    expect(repo.appendThreadReply).not.toHaveBeenCalled()
+  })
+
+  it('releases a local validation failure without treating it as an ambiguous send', async () => {
+    const thread = { ...zernioThread(), messages: [{
+      id: 'comment-1', providerMessageId: 'comment:123', messageType: 'comment',
+      senderExternalId: 'sender-1', payload: {},
+    }] }
+    await expect(new InboxService(makeThreadRepo(thread)).replyToThread(
+      AUTH, 'thr_z', { reply: 'Hello', idempotencyKey: key },
+    )).rejects.toMatchObject({ code: 'reply_rejected' })
+    expect(attemptMock.markZernioReplyAttempt).toHaveBeenCalledWith('attempt-1', 'rejected')
+    expect(zernioMock.sendZernioCommentReply).not.toHaveBeenCalled()
   })
 })

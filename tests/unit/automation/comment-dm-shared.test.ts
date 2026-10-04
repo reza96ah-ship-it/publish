@@ -103,6 +103,11 @@ describe('previewTemplate', () => {
   it('falls back to کاربر when name is empty', () => {
     expect(previewTemplate('سلام {نام}', '')).toBe('سلام کاربر')
   })
+
+  it('previews the actual configured link, not a literal placeholder', () => {
+    expect(previewTemplate('سلام {نام}: {لینک}', 'آرش', 'https://example.com/guide'))
+      .toBe('سلام آرش: https://example.com/guide')
+  })
 })
 
 describe('multi-word keywords', () => {

@@ -18,12 +18,13 @@ import { Badge } from '@/components/ui/badge'
 interface SignInFormProps {
   callbackUrl: string
   error?: string
+  passwordChanged?: boolean
 }
 
 function mapAuthError(code?: string): string | null {
   if (!code) return null
   switch (code) {
-    case 'CredentialsSignin': return 'نشانی ایمیل یا رمز عبور اشتباه است'
+    case 'CredentialsSignin': return 'نشانی ایمیل، رمز عبور یا کد ورود دومرحله‌ای اشتباه است'
     case 'Callback':          return 'خطا در ورود — لطفاً دوباره تلاش کنید'
     case 'Configuration':     return 'خطای پیکربندی سرور'
     case 'AccessDenied':      return 'دسترسی رد شد'
@@ -190,9 +191,10 @@ function DashboardMockup() {
   )
 }
 
-export function SignInForm({ callbackUrl, error }: SignInFormProps) {
+export function SignInForm({ callbackUrl, error, passwordChanged }: SignInFormProps) {
   const [email, setEmail]             = useState('')
   const [password, setPassword]       = useState('')
+  const [totpCode, setTotpCode]       = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [csrfToken, setCsrfToken]     = useState('')
   const [pending, setPending]         = useState(false)
@@ -245,6 +247,11 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
               <AlertCircle className="size-4 shrink-0 mt-0.5" />
               <span className="leading-snug">{errorMessage}</span>
             </div>
+          )}
+          {passwordChanged && (
+            <p role="status" className="rounded-xl border border-success/20 bg-success/8 p-3 text-sm text-success mb-5">
+              رمز عبور تغییر کرد. برای ادامه با رمز جدید وارد شوید.
+            </p>
           )}
 
           {/* عنوان فرم */}
@@ -310,6 +317,22 @@ export function SignInForm({ callbackUrl, error }: SignInFormProps) {
                     : <Eye className="size-4" />}
                 </button>
               </div>
+            </div>
+
+            {/* Optional TOTP/backup code for MFA-enrolled accounts. */}
+            <div className="space-y-1.5">
+              <Label htmlFor="totpCode" className="text-sm font-semibold text-ink-secondary">کد ورود دومرحله‌ای (در صورت فعال بودن)</Label>
+              <Input
+                id="totpCode"
+                name="totpCode"
+                type="text"
+                dir="ltr"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                placeholder="کد برنامه یا کد پشتیبان"
+                className="h-11 rounded-xl"
+                autoComplete="one-time-code"
+              />
             </div>
 
             {/* یادآوری و فراموشی */}

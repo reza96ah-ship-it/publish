@@ -22,8 +22,8 @@ export const dynamic = 'force-dynamic'
 
 const resolveSchema = z.object({
   action: z.enum(['mark_published', 'confirm_failure', 'abandon', 'duplicate_safe_retry']),
-  providerPostId: z.string().optional(),
-  reason: z.string().min(10, 'دلیل الزامی است (حداقل ۱۰ کاراکتر)'),
+  providerPostId: z.string().trim().min(1).max(200).optional(),
+  reason: z.string().trim().min(10, 'دلیل الزامی است (حداقل ۱۰ کاراکتر)').max(1000),
 })
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

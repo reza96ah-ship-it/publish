@@ -88,7 +88,7 @@ export class PublicationNotFoundError extends PublicationError {
 
 export class PublicationAlreadyResolvedError extends PublicationError {
   constructor(message = 'این انتشار قبلاً حل شده است') {
-    super(message, 400, message)
+    super(message, 409, message)
     this.name = 'PublicationAlreadyResolvedError'
   }
 }

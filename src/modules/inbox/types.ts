@@ -57,6 +57,7 @@ export interface InboxThreadSummary {
   providerThreadId: string
   providerUserId: string | null
   title: string
+  senderAvatar: string | null
   platform: string
   platformName: string
   messageType: string
@@ -98,6 +99,7 @@ export interface InboxThreadMessage {
   senderName: string
   body: string
   attachments: InboxThreadAttachment[]
+  deliveryStatus: 'accepted' | 'sent' | 'delivered' | 'read' | 'failed' | 'deleted' | null
   createdAt: Date
 }
 
@@ -126,6 +128,7 @@ export interface ThreadPriorityInput {
 }
 export interface ReplyInput {
   reply: string
+  idempotencyKey?: string
 }
 
 export interface ReplyResult {

@@ -111,14 +111,14 @@ curl http://localhost:3000/api/outbox/dead-letter
 ```sql
 SELECT id, "providerPostId", "reconciliationStatus", "errorMessage"
 FROM "Publication"
-WHERE status = 'outcome_unknown'
+WHERE "reconciliationStatus" = 'still_unknown'
   AND "updatedAt" < now() - interval '1 hour';
 ```
 **Safe Actions:**
-1. Check if provider API is responsive
-2. Attempt reconciliation via `POST /api/publications/{id}/resolve`
-3. If still unknown after 24h: mark as `confirm_failure` or `abandon`
-4. Contact provider support if needed
+1. Check the exact account and post in Instagram and Zernio; a timeout does not prove failure.
+2. In Calendar → publishing queue, an admin opens **manual review** for the affected job.
+3. If the exact post exists, record its provider post ID with `mark_published`. If it definitely does not exist, use `confirm_failure`, then retry separately if appropriate.
+4. If neither result can be proven, leave it unknown and contact provider support. Never retry an unknown outcome blindly.
 
 ## Expired Credentials
 **Alert:** `TokenExpiryWarning`
@@ -176,3 +176,7 @@ docker compose -f compose.production.yaml logs migrate
 3. Check audit logs: `SELECT * FROM "AuditLog" WHERE action LIKE 'security.%' ORDER BY "createdAt" DESC`
 4. Notify affected users
 5. File incident report
+
+## Zernio Inbox reply with unknown outcome
+
+See [zernio-ambiguous-reply.md](zernio-ambiguous-reply.md). Never blindly retry a timeout or 500; verify the Instagram conversation and use the audited admin resolution action.

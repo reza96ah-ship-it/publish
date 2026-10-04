@@ -51,6 +51,8 @@ interface PerPostItem {
   campaign: string | null
   metrics: Partial<Record<PostMetricType, number>>
   metricsSupported: boolean
+  source?: 'zernio'
+  permalink?: string | null
 }
 
 interface CampaignRollup {
@@ -260,7 +262,7 @@ export function PostPerformanceSection() {
               {toPersianDigits(posts.length)} پست منتشرشده
             </span>
           </div>
-          <Button
+          {posts.some((post) => post.source !== 'zernio') && <Button
             variant="outline"
             size="sm"
             onClick={() => collectMutation.mutate()}
@@ -268,7 +270,7 @@ export function PostPerformanceSection() {
           >
             <RefreshCw className={collectMutation.isPending ? 'size-3.5 animate-spin' : 'size-3.5'} />
             به‌روزرسانی آمار
-          </Button>
+          </Button>}
         </div>
         <div className="overflow-x-auto thin-scrollbar">
           <Table>
@@ -306,8 +308,12 @@ export function PostPerformanceSection() {
                 posts.slice(0, 20).map((p) => (
                   <TableRow
                     key={p.id}
-                    className="border-border cursor-pointer"
-                    onClick={() => setSelectedId(p.id)}
+                    className={p.permalink || p.source !== 'zernio' ? 'border-border cursor-pointer' : 'border-border'}
+                    onClick={() => {
+                      if (p.source === 'zernio') {
+                        if (p.permalink) window.open(p.permalink, '_blank', 'noopener,noreferrer')
+                      } else setSelectedId(p.id)
+                    }}
                   >
                     <TableCell className="max-w-48">
                       <span className="text-sm text-ink-primary truncate block">{p.title}</span>
@@ -325,13 +331,13 @@ export function PostPerformanceSection() {
                       {p.publishedAt ? formatJalali(new Date(p.publishedAt)) : '—'}
                     </TableCell>
                     <TableCell className="text-xs">
-                      <MetricCell value={p.metrics.reach} supported={p.metricsSupported} />
+                      <MetricCell value={p.metrics.reach} supported={p.source !== 'zernio' && p.metricsSupported} />
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-xs">
-                      <MetricCell value={p.metrics.likes} supported={p.metricsSupported} />
+                      <MetricCell value={p.metrics.likes} supported={p.source === 'zernio' ? p.metrics.likes !== undefined : p.metricsSupported} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-xs">
-                      <MetricCell value={p.metrics.comments} supported={p.metricsSupported} />
+                      <MetricCell value={p.metrics.comments} supported={p.source === 'zernio' ? p.metrics.comments !== undefined : p.metricsSupported} />
                     </TableCell>
                   </TableRow>
                 ))

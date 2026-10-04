@@ -85,9 +85,23 @@ describe('worker/persian-match: matchComment', () => {
     expect(matchComment('قيمت چنده', ['قیمت'], []).matched).toBe(true)
     expect(matchComment('كاتالوگ', ['کاتالوگ'], []).matched).toBe(true)
   })
+
+  it('uses substring matching with punctuation, emoji, and Persian half-spaces', () => {
+    expect(matchComment('🔥قیمت🔥', ['قیمت'], []).matched).toBe(true)
+    expect(matchComment('قیمت‌گذاری؟', ['قیمت'], []).matched).toBe(true)
+    expect(matchComment('  قیمت  ', ['قیمت'], []).matched).toBe(true)
+  })
+
+  it('reports the first configured hit when multiple keywords match', () => {
+    expect(matchComment('قیمت و ارسال چقدره؟', ['ارسال', 'قیمت'], []).hit).toBe('ارسال')
+  })
 })
 
 describe('worker/persian-match: renderDmTemplate', () => {
+  it('substitutes the configured link in the message sent to the provider', () => {
+    expect(renderDmTemplate('لینک: {لینک}', 'آرش', 'https://example.com/guide'))
+      .toBe('لینک: https://example.com/guide')
+  })
   it('interpolates the {نام} variable', () => {
     expect(renderDmTemplate('سلام {نام} عزیز', 'آرش')).toBe('سلام آرش عزیز')
   })

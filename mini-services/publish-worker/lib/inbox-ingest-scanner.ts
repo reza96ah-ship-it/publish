@@ -99,6 +99,7 @@ async function scanInboxInner(deps: IngestDeps, stats: IngestStats): Promise<Ing
   const platforms = await database.platform.findMany({
     where: {
       type: 'instagram',
+      provider: 'direct',
       status: 'active',
       tokenSecret: { not: null },
       targetId: { not: null },

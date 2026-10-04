@@ -70,6 +70,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { IgGridDialog } from '@/components/editor/ig-grid-board'
+import { ZernioInstagramPanel } from '@/components/views/zernio-instagram-panel'
 import { cn } from '@/lib/utils'
 
 interface Platform {
@@ -106,7 +107,24 @@ export function ChannelsView() {
   useEffect(() => {
     const success = searchParams.get('oauth_success')
     const error = searchParams.get('oauth_error')
-    if (success) {
+    const zernioSuccess = searchParams.get('zernio_success')
+    const zernioError = searchParams.get('zernio_error')
+    if (zernioSuccess) {
+      toast.success('حساب اینستاگرام در Zernio تأیید شد')
+      queryClient.invalidateQueries({ queryKey: ['zernio-instagram-accounts'] })
+      window.history.replaceState({}, '', '/channels')
+    } else if (zernioError) {
+      const messages: Record<string, string> = {
+        not_configured: 'کلید Zernio روی سرور تنظیم نشده است.',
+        payment_required: 'اتصال حساب جدید به تنظیمات پرداخت Zernio نیاز دارد.',
+        authorization_failed: 'مجوز اتصال اینستاگرام تأیید نشد.',
+        expired_flow: 'زمان اتصال تمام شد. دوباره تلاش کنید.',
+        account_not_verified: 'Zernio حساب اینستاگرام را تأیید نکرد.',
+        account_already_connected: 'این حساب اینستاگرام قبلاً به فضای کاری دیگری متصل شده است.',
+      }
+      toast.error(messages[zernioError] ?? 'اتصال اینستاگرام کامل نشد. دوباره تلاش کنید.')
+      window.history.replaceState({}, '', '/channels')
+    } else if (success) {
       toast.success('پلتفرم با موفقیت متصل شد')
       queryClient.invalidateQueries({ queryKey: ['platforms'] })
       // Clean URL without reload
@@ -193,6 +211,8 @@ export function ChannelsView() {
         </BreadcrumbList>
       </Breadcrumb>
 
+      <ZernioInstagramPanel />
+
       <LoadingState
         isLoading={isLoading}
         isError={isError}
@@ -210,8 +230,8 @@ export function ChannelsView() {
           <div className="n-card p-12">
             <EmptyState
               icon={Plug}
-              title="پلتفرمی متصل نیست"
-              message="با اتصال اولین پلتفرم، انتشار محتوا را آغاز کنید."
+              title="کانال عملیاتی متصل نیست"
+              message="اتصال آزمایشی اینستاگرام از طریق Zernio در بخش بالا نمایش داده می‌شود؛ انتشار و پیام‌ها هنوز به آن متصل نیستند."
               illustration="channels"
               action={
                 <Button onClick={() => setConnectOpen(true)}>
@@ -612,17 +632,19 @@ function ConnectDialog({
                 <p className="text-sm font-semibold text-ink-primary">اتصال با OAuth</p>
                 <p className="text-xs text-ink-tertiary mt-1">
                   با کلیک روی دکمه به صفحه تأیید{' '}
-                  {selectedType === 'instagram' ? 'اینستاگرام' : 'لینکدین'} هدایت می‌شوید.
+                  {selectedType === 'instagram' ? 'اینستاگرام از طریق Zernio' : 'لینکدین'} هدایت می‌شوید.
                 </p>
               </div>
               <Button
                 className="w-full"
                 onClick={() => {
-                  window.location.href = `/api/platforms/oauth/start?type=${selectedType}`
+                  window.location.href = selectedType === 'instagram'
+                    ? '/api/platforms/zernio/instagram/start'
+                    : `/api/platforms/oauth/start?type=${selectedType}`
                 }}
               >
                 <PlugZap className="size-4" />
-                اتصال با OAuth
+                {selectedType === 'instagram' ? 'اتصال با Zernio' : 'اتصال با OAuth'}
               </Button>
             </div>
           ) : (

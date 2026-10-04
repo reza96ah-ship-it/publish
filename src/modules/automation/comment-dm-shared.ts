@@ -24,6 +24,17 @@ export interface CommentDmRule {
   createdAt: Date | string
 }
 
+export interface CommentDmRun {
+  id: string
+  commentId: string
+  postId: string | null
+  sentAt: Date | string
+  status: string
+  providerMessageId: string | null
+  publicReplyStatus: string | null
+  errorCode: string | null
+}
+
 /**
  * Normalize Persian text for robust keyword matching:
  * unify Arabic/Persian letter variants, strip diacritics, collapse ZWNJ and
@@ -130,9 +141,11 @@ export function matchComment(
   return { matched: false, reason: 'no_match', hit: null }
 }
 
-/** Preview: interpolate {نام} variable in DM template. */
-export function previewTemplate(template: string, senderName: string): string {
-  return template.replace(/\{نام\}/g, senderName || 'کاربر')
+/** Preview the same placeholders that the worker will send. */
+export function previewTemplate(template: string, senderName: string, link = ''): string {
+  return template
+    .replace(/\{نام\}/g, senderName || 'کاربر')
+    .replace(/\{لینک\}/g, link || 'لینک وارد نشده')
 }
 
 /**

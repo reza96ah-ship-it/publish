@@ -7,6 +7,7 @@ export interface NotificationItem {
   type: string
   title: string
   body: string | null
+  href: string | null
   isRead: boolean
   createdAt: Date
 }

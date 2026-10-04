@@ -11,10 +11,11 @@ import { Users, Eye, Heart, Flag } from 'lucide-react'
 interface Metric {
   id: string
   title: string
-  value: number
-  trend: number
+  value: number | null
+  trend: number | null
   context: string
   chartData: number[]
+  source?: 'zernio'
 }
 
 /** Where each KPI drills into (plan §2B: click → filtered analytics view). */
@@ -54,8 +55,10 @@ export function ExecutiveMetrics() {
         : id === 'audience'
           ? 'var(--color-accent)'
           : 'var(--color-success)'
-  const fmtFor = (id: string) =>
-    id === 'campaigns'
+  const fmtFor = (metric: Metric) =>
+    metric.id === 'engagement' && metric.source === 'zernio'
+      ? (v: number) => `${toPersianDigits(v.toFixed(1))}٪`
+      : metric.id === 'campaigns'
       ? (v: number) => toPersianDigits(v.toLocaleString('en-US'))
       : (v: number) => toPersianDigits(formatCompact(v))
 
@@ -78,9 +81,9 @@ export function ExecutiveMetrics() {
             iconColor={iconColorFor(m.id)}
             sparkColor={sparkColorFor(m.id)}
             spark={m.chartData}
-            trend={m.trend}
-            previousValue={prev}
-            formatValue={fmtFor(m.id)}
+            trend={m.trend ?? undefined}
+            previousValue={m.source === 'zernio' ? undefined : prev}
+            formatValue={fmtFor(m)}
             loading={isLoading}
             timeLabel={rangeLabel}
             href={KPI_HREFS[m.id]}

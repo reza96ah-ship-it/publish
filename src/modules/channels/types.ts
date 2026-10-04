@@ -6,6 +6,8 @@ export interface AuthContext {
 
 export interface PlatformRow {
   id: string
+  provider: string
+  providerAccountId: string | null
   workspaceId: string
   name: string
   type: string

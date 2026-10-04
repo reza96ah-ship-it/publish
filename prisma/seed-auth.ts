@@ -31,7 +31,7 @@ async function main() {
     // Update password in case it changed
     user = await db.user.update({
       where: { id: user.id },
-      data: { passwordHash: await hashPassword(password), emailVerified: new Date() },
+      data: { passwordHash: await hashPassword(password), sessionVersion: { increment: 1 }, emailVerified: new Date() },
     })
     console.log(`✓ Updated user password: ${email}`)
   }

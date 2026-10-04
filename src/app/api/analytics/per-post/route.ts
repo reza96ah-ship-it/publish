@@ -1,11 +1,8 @@
-/**
- * GET /api/analytics/per-post — per-post performance drill-down.
- * Issue #215: Returns published posts with platform + campaign info.
- */
 import { NextRequest, NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { getLatestPostMetrics, getPostMetricsSupport } from '@/modules/analytics/post-metrics'
+import { getZernioRecentPostRows, type PostRow } from '@/modules/analytics/zernio-posts'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,10 +32,9 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  // Bulk fetch related data
   const platformIds = [...new Set(publications.map(p => p.platformId))]
   const contentIds = [...new Set(publications.map(p => p.contentId))]
-  const campaignIds = [...new Set(publications.filter(p => p.campaignId).map(p => p.campaignId!))]
+  const campaignIds = [...new Set(publications.flatMap(p => p.campaignId ? [p.campaignId] : []))]
 
   const [platforms, contents, campaigns] = await Promise.all([
     db.platform.findMany({ where: { id: { in: platformIds } }, select: { id: true, type: true, name: true } }),
@@ -50,10 +46,9 @@ export async function GET(req: NextRequest) {
   const contentMap = new Map(contents.map(c => [c.id, c]))
   const campaignMap = new Map(campaigns.map(c => [c.id, c]))
 
-  // Issue #215: latest collected metric values per publication
   const metricsMap = await getLatestPostMetrics(guard.workspaceId, publications.map(p => p.id))
 
-  const posts = publications.map((p) => {
+  const posts: PostRow[] = publications.map((p) => {
     const platformType = platformMap.get(p.platformId)?.type ?? 'unknown'
     return {
       id: p.id,
@@ -69,7 +64,10 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  // Campaign ROI rollup: post count + summed metrics + top posts by reach
+  if (!campaignId) {
+    posts.push(...await getZernioRecentPostRows(guard.workspaceId, new Set(posts.map((post) => post.providerPostId))))
+  }
+
   const byCampaign: Record<
     string,
     { name: string; count: number; reach: number; engagement: number; topPosts: { id: string; title: string; reach: number }[] }

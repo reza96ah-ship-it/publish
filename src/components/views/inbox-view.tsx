@@ -52,6 +52,10 @@ import { useInboxStream } from '@/hooks/use-inbox-stream'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -109,7 +113,15 @@ interface InboxThreadTimelineMessage {
   senderName: string
   body: string
   attachments: InboxThreadAttachment[]
+  deliveryStatus?: 'accepted' | 'sent' | 'delivered' | 'read' | 'failed' | 'deleted' | null
   createdAt: string
+}
+
+interface PrivateCommentReplyState {
+  available: boolean
+  status: string | null
+  expiresAt: string | null
+  reason: 'unsupported' | 'missing_comment' | 'window_closed' | 'already_attempted' | 'resolved' | null
 }
 
 interface InboxThreadSummary {
@@ -117,6 +129,7 @@ interface InboxThreadSummary {
   providerThreadId: string
   providerUserId: string | null
   title: string
+  senderAvatar: string | null
   platform: string
   platformName: string
   messageType: string
@@ -178,7 +191,7 @@ function threadToMessage(thread: InboxThreadSummary, detail?: InboxThreadDetail)
   return {
     id: thread.id,
     senderName: thread.title || thread.providerUserId || 'Instagram user',
-    senderAvatar: null,
+    senderAvatar: thread.senderAvatar,
     message: thread.lastMessage?.body ?? '',
     isRead: thread.unreadCount === 0,
     isReplied: Boolean(outbound),
@@ -208,6 +221,11 @@ const STATUS_LABEL: Record<string, string> = {
   assigned: 'ارجاع شده',
   in_progress: 'در حال بررسی',
   resolved: 'حل شده',
+}
+
+const PRIVATE_REPLY_STATUS_LABEL: Record<string, string> = {
+  pending: 'در حال ارسال', sent: 'ارسال‌شده', partial: 'ارسال ناقص',
+  unknown: 'نتیجه نامشخص', failed: 'ناموفق',
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -321,6 +339,10 @@ export function InboxView() {
     initialSelection.kind
   )
   const [replyText, setReplyText] = useState('')
+  const [privateReplyText, setPrivateReplyText] = useState('')
+  const [privateReplyThreadId, setPrivateReplyThreadId] = useState<string | null>(null)
+  const replyAttemptRef = useRef<{ id: string; reply: string; kind: ConversationKind; key: string } | null>(null)
+  const [uncertainReply, setUncertainReply] = useState<{ id: string } | null>(null)
   const [isGeneratingReply, setIsGeneratingReply] = useState(false)
   const [showSnippets, setShowSnippets] = useState(false)
   const [tagDraft, setTagDraft] = useState('')
@@ -415,6 +437,23 @@ export function InboxView() {
     [threadPages]
   )
 
+  // Reconcile provider messages separately so opening the Inbox never waits
+  // on Instagram/Zernio network calls. The existing thread query remains the
+  // only message center and is refreshed after reconciliation.
+  useQuery({
+    queryKey: ['zernio-inbox-sync'],
+    queryFn: async () => {
+      const result = await api.get<{ synced: boolean }>('/api/inbox/zernio/sync')
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['inbox-threads'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] }),
+      ])
+      return result
+    },
+    retry: false,
+    refetchInterval: 60_000,
+  })
+
   // Queue-rail badge counts + own membership id (hides own presence lock).
   const { data: queueCounts } = useQuery<{
     counts: Record<string, number>
@@ -447,6 +486,15 @@ export function InboxView() {
       ? (messages.find((message) => message.id === selectedId) ?? null)
       : null
   const selectedThreadId = selectedKindHint === 'thread' ? selectedId : null
+  const openReplyAttemptQuery = useQuery<{
+    attempt: { idempotencyKey: string | null; status: string; createdAt: string } | null
+    canResolve: boolean
+  }>({
+    queryKey: ['inbox-reply-attempt', selectedThreadId],
+    queryFn: () => api.get(`/api/inbox/threads/${selectedThreadId}/reply-attempt`),
+    enabled: Boolean(selectedThreadId),
+    refetchInterval: 15_000,
+  })
 
   const { data: selectedThreadDetail, isLoading: isThreadDetailLoading } =
     useQuery<InboxThreadDetail>({
@@ -457,6 +505,12 @@ export function InboxView() {
   const selectedThread =
     selectedThreadFromList ??
     (selectedThreadDetail?.id === selectedThreadId ? selectedThreadDetail : null)
+  const privateReplyQuery = useQuery<PrivateCommentReplyState>({
+    queryKey: ['inbox-private-comment-reply', selectedThreadId],
+    queryFn: () => api.get<PrivateCommentReplyState>(`/api/inbox/threads/${selectedThreadId}/private-reply`),
+    enabled: Boolean(selectedThreadId && selectedThread?.messageType === 'comment'),
+    refetchInterval: 30_000,
+  })
 
   const {
     data: timelinePages,
@@ -557,9 +611,8 @@ export function InboxView() {
   // no window). Drives the countdown chip and the disabled composer state.
   const replyWindowExpiresAt =
     selectedThread?.messageType === 'dm' ? selectedThread.replyWindowExpiresAt : null
-  const replyWindowClosed = Boolean(
-    replyWindowExpiresAt && new Date(replyWindowExpiresAt).getTime() < Date.now()
-  )
+  const replyWindowClosed = selectedThread?.messageType === 'dm'
+    && (!replyWindowExpiresAt || new Date(replyWindowExpiresAt).getTime() <= Date.now())
   const lockActive = Boolean(
     selectedThread?.lockedById &&
       selectedThread.lockExpiresAt &&
@@ -568,6 +621,10 @@ export function InboxView() {
   const claimedByMe = Boolean(lockActive && selectedThread?.lockedById === myMembershipId)
   const claimedByOther = Boolean(lockActive && selectedThread?.lockedById !== myMembershipId)
   const composerBlocked = replyWindowClosed || claimedByOther
+  const uncertainForSelected = uncertainReply?.id === selected?.id || (selectedThreadId && openReplyAttemptQuery.data?.attempt)
+    ? { id: selected?.id } : null
+  const canMarkNotSent = Boolean(openReplyAttemptQuery.data?.attempt
+    && Date.now() - new Date(openReplyAttemptQuery.data.attempt.createdAt).getTime() >= 5 * 60_000)
   const unreadCount =
     (queueCounts?.counts.unread ?? threads.reduce((count, thread) => count + thread.unreadCount, 0)) +
     (queueCounts?.legacyUnread ?? messages.filter((message) => !message.isRead).length)
@@ -593,32 +650,89 @@ export function InboxView() {
 
   // ── Mutations ──────────────────────────────────────────────────────
   const replyMutation = useMutation({
-    mutationFn: ({ id, reply, kind }: { id: string; reply: string; kind: ConversationKind }) =>
+    mutationFn: ({ id, reply, kind, idempotencyKey }: { id: string; reply: string; kind: ConversationKind; idempotencyKey: string }) =>
       api.post(kind === 'thread' ? `/api/inbox/threads/${id}/reply` : `/api/inbox/${id}/reply`, {
         reply,
+        ...(kind === 'thread' ? { idempotencyKey } : {}),
       }),
     onSuccess: (_data, vars) => {
-      toast.success('پاسخ ارسال شد ✓')
+      toast.success('پاسخ توسط سرویس پذیرفته شد ✓')
+      if (replyAttemptRef.current?.key === vars.idempotencyKey) replyAttemptRef.current = null
+      setUncertainReply(null)
       setReplyText('')
       queryClient.invalidateQueries({ queryKey: ['inbox'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
+      queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
-    onError: (err) => {
+    onError: (err, vars) => {
       // Surface the server's actionable message (e.g. the Meta 24h-window
       // rejection) instead of a generic failure — the body is JSON {error}.
       let message = 'خطا در ارسال پاسخ'
+      let code: string | null = null
       try {
-        const parsed = JSON.parse((err as Error).message) as { error?: string }
+        const parsed = JSON.parse((err as Error).message) as { error?: string; code?: string }
         if (parsed?.error) message = parsed.error
+        code = parsed?.code ?? null
       } catch {
         /* non-JSON body → keep the generic message */
       }
+      if (vars.kind === 'thread') {
+        if (code === 'reply_outcome_unknown' || code === 'reply_in_progress' || code === 'reply_previous_unresolved' || code === null) {
+          setUncertainReply({ id: vars.id })
+        } else {
+          replyAttemptRef.current = null
+          setUncertainReply(null)
+        }
+      }
       toast.error(message)
+      if (vars.kind === 'thread') queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
     },
+  })
+
+  const privateReplyMutation = useMutation({
+    mutationFn: ({ id, message }: { id: string; message: string }) =>
+      api.post(`/api/inbox/threads/${id}/private-reply`, { message }),
+    onSuccess: (_data, vars) => {
+      setPrivateReplyThreadId(null)
+      setPrivateReplyText('')
+      toast.success('پاسخ خصوصی توسط سرویس پذیرفته شد')
+      void queryClient.invalidateQueries({ queryKey: ['inbox-private-comment-reply', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-threads'] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-counts'] })
+    },
+    onError: (error, vars) => {
+      let message = 'نتیجهٔ پاسخ خصوصی مشخص نیست؛ پیش از تلاش دوباره اینستاگرام را بررسی کنید'
+      try {
+        const body = JSON.parse((error as Error).message) as { error?: string }
+        if (body.error) message = body.error
+      } catch { /* transport/unknown outcome remains blocked server-side */ }
+      toast.error(message)
+      setPrivateReplyThreadId(null)
+      void queryClient.invalidateQueries({ queryKey: ['inbox-private-comment-reply', vars.id] })
+    },
+  })
+
+  const resolveReplyAttemptMutation = useMutation({
+    mutationFn: ({ id, idempotencyKey, resolution }: {
+      id: string; idempotencyKey: string; resolution: 'sent' | 'not_sent'
+    }) => api.post(`/api/inbox/threads/${id}/reply-attempt`, {
+      idempotencyKey, resolution, confirmation: 'checked_instagram_conversation',
+    }),
+    onSuccess: (_data, vars) => {
+      replyAttemptRef.current = null
+      setUncertainReply(null)
+      if (vars.resolution === 'sent') setReplyText('')
+      void queryClient.invalidateQueries({ queryKey: ['inbox-reply-attempt', vars.id] })
+      void queryClient.invalidateQueries({ queryKey: ['inbox-thread-messages', vars.id] })
+      toast.success('نتیجهٔ بررسی ثبت شد')
+    },
+    onError: () => toast.error('ثبت نتیجه ممکن نشد؛ گفتگو را تازه‌سازی کنید'),
   })
 
   const assignMutation = useMutation({
@@ -856,6 +970,7 @@ export function InboxView() {
   }, [])
 
   const handleReply = () => {
+    if (replyMutation.isPending || uncertainForSelected) return
     if (composerBlocked) {
       toast.error(
         claimedByOther
@@ -870,7 +985,21 @@ export function InboxView() {
     }
     if (!selected) return
     if (!selectedKind) return
-    replyMutation.mutate({ id: selected.id, reply: replyText, kind: selectedKind })
+    const prior = replyAttemptRef.current
+    const idempotencyKey = prior?.id === selected.id && prior.reply === replyText && prior.kind === selectedKind
+      ? prior.key : crypto.randomUUID()
+    replyAttemptRef.current = { id: selected.id, reply: replyText, kind: selectedKind, key: idempotencyKey }
+    replyMutation.mutate({ id: selected.id, reply: replyText, kind: selectedKind, idempotencyKey })
+  }
+
+  const handleResolveReplyAttempt = (resolution: 'sent' | 'not_sent') => {
+    const attempt = openReplyAttemptQuery.data?.attempt
+    if (!selectedThreadId || !attempt?.idempotencyKey || !openReplyAttemptQuery.data?.canResolve) return
+    const prompt = resolution === 'sent'
+      ? 'آیا گفتگو را در خود اینستاگرام بررسی کرده‌اید و مطمئن هستید این پاسخ ارسال شده است؟'
+      : 'آیا گفتگو را در خود اینستاگرام بررسی کرده‌اید و مطمئن هستید این پاسخ ارسال نشده است؟ انتخاب اشتباه می‌تواند پیام تکراری بسازد.'
+    if (!window.confirm(prompt)) return
+    resolveReplyAttemptMutation.mutate({ id: selectedThreadId, idempotencyKey: attempt.idempotencyKey, resolution })
   }
 
   const handleSmartReply = async () => {
@@ -1412,12 +1541,21 @@ export function InboxView() {
                                 <span className="font-semibold">
                                   {outbound ? 'شما' : message.senderName}
                                 </span>
+                                {outbound && selectedThread?.messageType === 'comment' && (
+                                  <span>{message.messageType === 'dm' ? 'پاسخ خصوصی' : 'پاسخ عمومی'}</span>
+                                )}
                                 <span>{relativeTime(new Date(message.createdAt))}</span>
                               </div>
                               <p className="text-sm text-ink-primary whitespace-pre-wrap" dir="auto">
                                 {message.body}
                               </p>
                               <AttachmentChips attachments={message.attachments} />
+                              {outbound && message.deliveryStatus && (
+                                <p className={cn('mt-1 text-2xs', message.deliveryStatus === 'failed' ? 'text-danger' : 'text-ink-tertiary')}>
+                                  {({ accepted: 'پذیرفته‌شده توسط سرویس', sent: 'ارسال‌شده', delivered: 'تحویل‌شده',
+                                    read: 'خوانده‌شده', failed: 'ارسال ناموفق', deleted: 'حذف‌شده' } as const)[message.deliveryStatus]}
+                                </p>
+                              )}
                             </div>
                           </div>
                         )
@@ -1457,6 +1595,34 @@ export function InboxView() {
 
               {/* Reply box */}
               <div className="p-3 border-t border-border bg-surface-subtle">
+                {selectedThread?.messageType === 'comment' && (
+                  <div className="mb-3 rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-ink-secondary">
+                    <p>کادر پایین پاسخ عمومی زیر کامنت می‌فرستد. پاسخ خصوصی، یک پیام جداگانه در دایرکت است.</p>
+                    {privateReplyQuery.data?.available ? (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                        <span>برای هر کامنت فقط یک پاسخ خصوصی، تا ۷ روز پس از ثبت آن، ممکن است.</span>
+                        <Button type="button" variant="outline" size="sm"
+                          disabled={claimedByOther || privateReplyMutation.isPending}
+                          onClick={() => {
+                            setPrivateReplyText('')
+                            setPrivateReplyThreadId(selectedThread.id)
+                          }}>
+                          <Mail className="size-3.5" /> پاسخ خصوصی در دایرکت
+                        </Button>
+                      </div>
+                    ) : privateReplyQuery.isPending ? (
+                      <p className="mt-1">در حال بررسی امکان پاسخ خصوصی…</p>
+                    ) : privateReplyQuery.isError ? (
+                      <p className="mt-1">امکان پاسخ خصوصی بررسی نشد؛ صفحه را دوباره بارگذاری کنید.</p>
+                    ) : privateReplyQuery.data?.reason === 'already_attempted' ? (
+                      <p className="mt-1">پاسخ خصوصی برای این کامنت یا مخاطب قبلاً اقدام شده است ({PRIVATE_REPLY_STATUS_LABEL[privateReplyQuery.data.status ?? ''] ?? 'نیازمند بررسی'}). پیش از هر اقدام دیگری، اینستاگرام را بررسی کنید.</p>
+                    ) : privateReplyQuery.data?.reason === 'window_closed' ? (
+                      <p className="mt-1">مهلت هفت‌روزهٔ پاسخ خصوصی پایان یافته است.</p>
+                    ) : (
+                      <p className="mt-1">پاسخ خصوصی برای این کامنت در دسترس نیست.</p>
+                    )}
+                  </div>
+                )}
                 {/* Snippet picker */}
                 {showSnippets && savedReplies && savedReplies.length > 0 && (
                   <div className="mb-2 rounded-xl border border-border bg-background shadow-lg max-h-48 overflow-y-auto">
@@ -1491,6 +1657,20 @@ export function InboxView() {
                     </span>
                   </div>
                 )}
+                {uncertainForSelected && (
+                  <div role="status" className="mb-2 rounded-md border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+                    نتیجهٔ ارسال نامشخص است. برای جلوگیری از پیام تکراری، پاسخ دوباره غیرفعال شده است؛ گفتگو را در اینستاگرام بررسی کنید.
+                    {openReplyAttemptQuery.data?.canResolve && openReplyAttemptQuery.data.attempt && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending}
+                          onClick={() => handleResolveReplyAttempt('sent')}>در اینستاگرام ارسال شده بود</Button>
+                        <Button type="button" variant="outline" size="sm" disabled={resolveReplyAttemptMutation.isPending || !canMarkNotSent}
+                          onClick={() => handleResolveReplyAttempt('not_sent')}>در اینستاگرام ارسال نشده بود</Button>
+                        {!canMarkNotSent && <span className="self-center text-2xs">ثبت «ارسال نشده» پس از پنج دقیقه و بررسی دوباره ممکن است.</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Quick replies — one tap inserts the rendered template */}
                 {!composerBlocked && !replyText && (savedReplies ?? []).length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
@@ -1518,7 +1698,7 @@ export function InboxView() {
                       ? 'پنجره پاسخ بسته شده است'
                       : 'پاسخ خود را بنویسید… (/ برای قالب‌های ذخیره‌شده)'
                   }
-                  disabled={composerBlocked}
+                  disabled={composerBlocked || Boolean(uncertainForSelected)}
                   value={replyText}
                   onChange={(e) => {
                     setReplyText(e.target.value)
@@ -1580,18 +1760,45 @@ export function InboxView() {
                       size="sm"
                       className="min-h-[44px] sm:min-h-0"
                       onClick={handleReply}
-                      disabled={replyMutation.isPending || !replyText.trim() || composerBlocked}
+                      disabled={replyMutation.isPending || !replyText.trim() || composerBlocked || Boolean(uncertainForSelected)}
                     >
                       {replyMutation.isPending ? (
                         <Loader2 className="size-3.5 animate-spin" />
                       ) : (
                         <Send className="size-3.5" />
                       )}
-                      ارسال پاسخ
+                      {selectedThread?.messageType === 'comment' ? 'ارسال پاسخ عمومی' : 'ارسال پاسخ'}
                     </Button>
                   </div>
                 </div>
               </div>
+              <AlertDialog open={Boolean(privateReplyThreadId)} onOpenChange={(open) => {
+                if (!open && !privateReplyMutation.isPending) setPrivateReplyThreadId(null)
+              }}>
+                <AlertDialogContent dir="rtl">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ارسال یک پاسخ خصوصی به کامنت</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      این متن در دایرکت مخاطب ارسال می‌شود، نه زیر پست. اینستاگرام فقط یک پاسخ خصوصی برای این کامنت می‌پذیرد؛ حتی اگر نتیجهٔ ارسال نامشخص شود، از تلاش دوبارهٔ خودکار جلوگیری می‌کنیم.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea dir="rtl" rows={4} maxLength={1000} value={privateReplyText}
+                    disabled={privateReplyMutation.isPending} placeholder="متن پیام خصوصی…"
+                    onChange={(event) => setPrivateReplyText(event.target.value)} />
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={privateReplyMutation.isPending}>انصراف</AlertDialogCancel>
+                    <Button type="button" disabled={!privateReplyText.trim() || privateReplyMutation.isPending}
+                      onClick={() => {
+                        if (privateReplyThreadId) privateReplyMutation.mutate({
+                          id: privateReplyThreadId, message: privateReplyText.trim(),
+                        })
+                      }}>
+                      {privateReplyMutation.isPending && <Loader2 className="size-3.5 animate-spin" />}
+                      تأیید و ارسال خصوصی
+                    </Button>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
         </div>

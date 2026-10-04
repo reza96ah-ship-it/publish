@@ -92,7 +92,7 @@ type ThreadSummaryRow = {
   resolvedAt: Date | null
   createdAt: Date
   updatedAt: Date
-  platform: { type: string; name: string } | null
+  platform: { type: string; name: string; provider: string } | null
   assignee: MemberRef | null
   lockedBy: MemberRef | null
   messages: ThreadMessageRow[]
@@ -165,6 +165,11 @@ function toThreadAttachments(payload: Prisma.JsonValue): InboxThreadAttachment[]
 }
 
 function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
+  const payload = asJsonRecord(message.payload)
+  const rawStatus = stringFromJson(payload?.deliveryStatus)
+  const deliveryStatus = rawStatus && ['sent', 'delivered', 'read', 'failed', 'deleted'].includes(rawStatus)
+    ? rawStatus as InboxThreadMessage['deliveryStatus']
+    : payload?.providerAcknowledged === true ? 'accepted' : null
   return {
     id: message.id,
     providerMessageId: message.providerMessageId,
@@ -174,6 +179,7 @@ function toThreadMessage(message: ThreadMessageRow): InboxThreadMessage {
     senderName: message.senderName,
     body: message.body,
     attachments: toThreadAttachments(message.payload),
+    deliveryStatus,
     createdAt: message.createdAt,
   }
 }
@@ -190,6 +196,12 @@ function toThreadSummary(
     providerThreadId: thread.providerThreadId,
     providerUserId: thread.providerUserId,
     title,
+    senderAvatar:
+      thread.platform?.type === 'instagram' &&
+      thread.platform.provider === 'zernio' &&
+      (thread.messageType === 'dm' || (thread.messageType === 'comment' && Boolean(thread.providerUserId)))
+        ? `/api/inbox/threads/${encodeURIComponent(thread.id)}/photo`
+        : null,
     platform: thread.platform?.type ?? 'instagram',
     platformName: thread.platform?.name ?? 'instagram',
     messageType: thread.messageType,
@@ -327,7 +339,7 @@ export class InboxRepository {
     const rows = await db.inboxThread.findMany({
       where,
       include: {
-        platform: { select: { type: true, name: true } },
+        platform: { select: { type: true, name: true, provider: true } },
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         lockedBy: { select: { id: true, name: true, avatarUrl: true } },
         messages: {
@@ -384,7 +396,7 @@ export class InboxRepository {
     const thread = await db.inboxThread.findFirst({
       where: { id, workspaceId },
       include: {
-        platform: { select: { type: true, name: true } },
+        platform: { select: { type: true, name: true, provider: true } },
         assignee: { select: { id: true, name: true, avatarUrl: true } },
         lockedBy: { select: { id: true, name: true, avatarUrl: true } },
         messages: {
@@ -414,7 +426,7 @@ export class InboxRepository {
       where: { id, workspaceId },
       include: {
         platform: {
-          select: { id: true, type: true, tokenSecret: true, targetId: true },
+          select: { id: true, type: true, provider: true, providerAccountId: true, tokenSecret: true, targetId: true },
         },
         messages: {
           where: { direction: 'inbound' },
@@ -425,6 +437,7 @@ export class InboxRepository {
             providerMessageId: true,
             messageType: true,
             senderExternalId: true,
+            payload: true,
           },
         },
       },

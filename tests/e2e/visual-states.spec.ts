@@ -60,7 +60,9 @@ test.describe('loading states', () => {
   })
 
   test('analytics — loading skeleton', async ({ page }) => {
-    await mockLoadingHang(page, '**/api/analytics')
+    // Analytics requests include ?platform=...&range=...; the trailing wildcard
+    // is essential or this test screenshots live, changing metrics instead.
+    await mockLoadingHang(page, '**/api/analytics**')
     await page.goto('/analytics')
     await page.waitForTimeout(2000)
     if (page.url().includes('/auth')) { test.skip(true, 'requires auth'); return }
@@ -140,7 +142,7 @@ test.describe('error states', () => {
   test.use({ viewport: VIEWPORT })
 
   test('analytics — API error', async ({ page }) => {
-    await mockErrorResponse(page, '**/api/analytics')
+    await mockErrorResponse(page, '**/api/analytics**')
     await page.goto('/analytics')
     await waitForStable(page)
     if (page.url().includes('/auth')) { test.skip(true, 'requires auth'); return }

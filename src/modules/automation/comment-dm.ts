@@ -1,18 +1,33 @@
 /**
  * Comment-to-DM automation module (#209).
  *
- * Worker execution is behind the comment_dm_beta feature flag.
- * The worker TODO: on new InboxMessage of type 'comment', match rules
- * for the platform, check freqCap via CommentDmLog, send DM via
- * Instagram Graph API, and log the result.
+ * Worker execution is behind the comment_dm_beta feature flag. The worker
+ * records a claim before sending and a provider receipt before reporting sent.
  */
 
 import { db } from '@/lib/db'
-import type { CommentDmRule } from './comment-dm-shared'
+import type { CommentDmRule, CommentDmRun } from './comment-dm-shared'
 import { normalizePersian } from './comment-dm-shared'
 
 export { previewTemplate, normalizePersian } from './comment-dm-shared'
 export type { CommentDmRule }
+
+export async function listRuleRuns(workspaceId: string, ruleId: string): Promise<CommentDmRun[] | null> {
+  const rule = await db.commentDmRule.findFirst({
+    where: { id: ruleId, workspaceId },
+    select: { id: true },
+  })
+  if (!rule) return null
+  return db.commentDmLog.findMany({
+    where: { workspaceId, ruleId },
+    select: {
+      id: true, commentId: true, postId: true, sentAt: true, status: true,
+      providerMessageId: true, publicReplyStatus: true, errorCode: true,
+    },
+    orderBy: { sentAt: 'desc' },
+    take: 20,
+  })
+}
 
 export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
   const where = { workspaceId, ...(publicationId ? { publicationId } : {}) }
@@ -57,6 +72,16 @@ export interface CreateRuleInput {
   publicationId?: string | null
 }
 
+function assertTemplateLink(template: string, link: string | null | undefined): void {
+  const destination = link?.trim()
+  if (!template.includes('{لینک}') && !destination) return
+  if (!destination) throw new Error('برای پیام حاوی {لینک}، لینک مقصد الزامی است')
+  try {
+    if (new URL(destination).protocol === 'https:') return
+  } catch { /* handled below */ }
+  throw new Error('لینک مقصد باید یک آدرس HTTPS معتبر باشد')
+}
+
 export async function createRule(workspaceId: string, data: CreateRuleInput): Promise<CommentDmRule> {
   // Normalize keywords: accept both keyword (singular) and keywords (array)
   const keywords = data.keywords?.length
@@ -67,6 +92,7 @@ export async function createRule(workspaceId: string, data: CreateRuleInput): Pr
 
   if (keywords.length === 0) throw new Error('کلمه الزامی است')
   if (!data.dmTemplate.trim()) throw new Error('متن پیام الزامی است')
+  assertTemplateLink(data.dmTemplate, data.buttonUrl)
 
   // Verify platform belongs to workspace and is Instagram
   const platform = await db.platform.findFirst({
@@ -91,7 +117,7 @@ export async function createRule(workspaceId: string, data: CreateRuleInput): Pr
       excludeKeywords: data.excludeKeywords?.length ? data.excludeKeywords as any : undefined,
       dmTemplate: data.dmTemplate.trim(),
       buttonText: data.buttonText || null,
-      buttonUrl: data.buttonUrl || null,
+      buttonUrl: data.buttonUrl?.trim() || null,
       publicReply: data.publicReply || null,
       optOutKeyword: (data.optOutKeyword ?? 'نه').trim().toLowerCase(),
       freqCapHours: data.freqCapHours ?? 24,
@@ -128,6 +154,9 @@ export async function updateRule(
 ): Promise<void> {
   const existing = await db.commentDmRule.findFirst({ where: { id, workspaceId } })
   if (!existing) throw new Error('قانون یافت نشد')
+  if (data.dmTemplate !== undefined || data.buttonUrl !== undefined) {
+    assertTemplateLink(data.dmTemplate ?? existing.dmTemplate, data.buttonUrl === undefined ? existing.buttonUrl : data.buttonUrl)
+  }
 
   const updateData: Record<string, unknown> = {}
   if (data.keywords !== undefined) {
@@ -142,7 +171,7 @@ export async function updateRule(
   }
   if (data.dmTemplate !== undefined) updateData.dmTemplate = data.dmTemplate.trim()
   if (data.buttonText !== undefined) updateData.buttonText = data.buttonText || null
-  if (data.buttonUrl !== undefined) updateData.buttonUrl = data.buttonUrl || null
+  if (data.buttonUrl !== undefined) updateData.buttonUrl = data.buttonUrl?.trim() || null
   if (data.publicReply !== undefined) updateData.publicReply = data.publicReply || null
   if (data.optOutKeyword !== undefined) updateData.optOutKeyword = data.optOutKeyword.trim().toLowerCase()
   if (data.freqCapHours !== undefined) updateData.freqCapHours = data.freqCapHours

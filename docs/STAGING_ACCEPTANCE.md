@@ -2,6 +2,12 @@
 
 Use this checklist before promoting staging to production.
 
+On the shared Netherlands host, follow
+[`operations/runbooks/shared-host-staging.md`](operations/runbooks/shared-host-staging.md).
+Do not run the base Compose file or `scripts/rollback.sh` alone there: the
+existing host Caddy owns ports 80/443. Use the staging overlay and an isolated
+Compose project for all validation and rollback drills.
+
 ## Pre-Deploy
 
 - [ ] All Phase 1 P0 issues resolved.
@@ -12,12 +18,16 @@ Use this checklist before promoting staging to production.
 - [ ] `POSTGRES_PASSWORD` is set and is not a default value.
 - [ ] `DATABASE_URL` points at PgBouncer: `pgbouncer:6432`, `pgbouncer=true`, `connection_limit=10`.
 - [ ] `DIRECT_DATABASE_URL` points at direct PostgreSQL: `postgres:5432`.
-- [ ] `DOMAIN` in `Caddyfile.prod` matches the production domain.
+- [ ] The serving Caddy site matches the staging domain (host Caddy on the
+      shared Netherlands VPS; Compose Caddy on a dedicated host).
 
 ## Docker Compose Validation
 
-- [ ] `docker compose -f compose.production.yaml config` validates.
-- [ ] `docker compose -f compose.production.yaml up -d` starts all services.
+- [ ] The appropriate Compose configuration validates (base file on a dedicated
+      host; base plus `compose.staging.yaml` and `-p nashrino-staging` on the
+      shared Netherlands host).
+- [ ] The selected configuration starts all required services without binding
+      the shared host's ports 80/443 a second time.
 - [ ] Migration service exits successfully with `prisma migrate deploy`.
 - [ ] All services pass health checks within 60 seconds:
   - [ ] app: `GET /api/health` returns 200.
@@ -33,8 +43,10 @@ Use this checklist before promoting staging to production.
 - [ ] `bunx prisma migrate deploy` runs cleanly on a fresh Postgres instance.
 - [ ] `bunx prisma migrate status` shows no pending migrations.
 - [ ] Application logs show PgBouncer URL usage for app/worker.
-- [ ] Backup test: `./scripts/backup.sh` produces a valid `pg_dump` archive.
-- [ ] Restore test: `./scripts/restore.sh ./backups/nashrino-backup-*.tar.gz` succeeds in staging.
+- [ ] Backup test produces a valid `pg_dump` archive from the isolated staging
+      database (confirm the target database before running it).
+- [ ] Restore test succeeds into a separate disposable staging database; never
+      point it at production or the live staging database.
 
 ## Smoke Tests
 
@@ -68,7 +80,9 @@ Use this checklist before promoting staging to production.
 ## Rollback
 
 - [ ] Previous image tag is available in GHCR.
-- [ ] `./scripts/rollback.sh <previous-tag>` works in staging.
+- [ ] `scripts/rollback-staging.sh staging-<previous-commit-sha>` works with a
+      schema-compatible prior image in disposable staging; do not use the
+      base-only `scripts/rollback.sh` on the shared host.
 
 ## Sign-Off
 

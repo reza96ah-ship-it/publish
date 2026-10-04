@@ -174,6 +174,12 @@ export const inboxReplySchema = z.object({
   reply: z.string().trim().min(1, 'متن پاسخ خالی است').max(2000, 'پاسخ خیلی طولانی است'),
 })
 
+export const inboxThreadReplySchema = inboxReplySchema.extend({
+  // Direct Meta threads predate the Zernio ledger and do not require a key.
+  // The service requires one only when it is about to send through Zernio.
+  idempotencyKey: z.uuid().optional(),
+})
+
 export const inboxAssignSchema = z.object({
   assigneeId: z.string().nullable(),
 })
@@ -284,7 +290,8 @@ export const composeDraftSchema = z.object({
   }),
   channelIds: z.array(z.string().max(100)).max(20).optional().default([]),
   scheduledAt: z.string().datetime().nullable().optional(),
-  version: z.number().int().min(0).optional(),
+  // A new editor has no server version yet; JSON.stringify sends its null ref.
+  version: z.number().int().min(0).nullable().optional(),
 })
 
 // ── Query-string schemas (GET params) ───────────────────────────────────────

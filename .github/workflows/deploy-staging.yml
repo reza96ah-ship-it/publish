@@ -3,7 +3,7 @@
 # Mirrors the production deploy workflow but targets the staging environment.
 # Triggers on every push to the `staging` branch (or manually).
 #
-# workflow_dispatch with a tag: SKIPS the build and redeploys the existing image.
+# workflow_dispatch with this commit's existing staging tag skips the build.
 # workflow_dispatch without a tag / push to staging: builds new images and deploys.
 #
 # Required secrets (GitHub → Settings → Secrets):
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing image tag to redeploy (leave blank to build from HEAD)'
+        description: 'Existing staging image tag for the selected commit (leave blank to build)'
         required: false
         default: ''
 
@@ -45,17 +45,18 @@ jobs:
         env:
           INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
+          SHA=$(git rev-parse --short HEAD)
           if [ -n "$INPUT_TAG" ]; then
-            # Manual redeploy of an existing image — validate and skip build.
-            if ! echo "$INPUT_TAG" | grep -qE '^[a-zA-Z0-9._-]+$'; then
-              echo "::error::Invalid tag '$INPUT_TAG' — only alphanumeric, '.', '-', '_' are allowed"
+            # A different commit's image with this checkout's Compose files is
+            # not a verified deployment pair.
+            if [ "$INPUT_TAG" != "staging-${SHA}" ]; then
+              echo "::error::The image tag must match this commit: staging-${SHA}"
               exit 1
             fi
             echo "tag=$INPUT_TAG" >> $GITHUB_OUTPUT
             echo "needs_build=false" >> $GITHUB_OUTPUT
             echo "::notice::Redeploying existing image tag '$INPUT_TAG' — build skipped"
           else
-            SHA=$(git rev-parse --short HEAD)
             echo "tag=staging-${SHA}" >> $GITHUB_OUTPUT
             echo "needs_build=true" >> $GITHUB_OUTPUT
           fi
@@ -152,32 +153,39 @@ jobs:
           if [ -n "$STAGING_SSH_HOST" ] && [ -n "$STAGING_SSH_USER" ] && [ -n "$STAGING_SSH_PRIVATE_KEY" ] && [ -n "$STAGING_DOMAIN" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Staging deploy skipped — STAGING_SSH_HOST/USER/PRIVATE_KEY/DOMAIN not configured."
+            echo "::error::Staging deploy blocked — STAGING_SSH_HOST/USER/PRIVATE_KEY/DOMAIN not configured."
+            exit 1
           fi
 
       - name: Deploy to staging via SSH
         if: steps.staging-secrets.outputs.configured == 'true'
         env:
           DEPLOY_TAG: ${{ needs.setup.outputs.tag }}
+          DEPLOY_REF: ${{ github.ref_name }}
+          DEPLOY_SHA: ${{ github.sha }}
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: DEPLOY_TAG
+          envs: DEPLOY_TAG,DEPLOY_REF,DEPLOY_SHA
           script: |
+            set -eu
             cd /opt/nashrino-staging
-            git pull origin staging || true
+            git fetch --depth=1 origin "$DEPLOY_REF"
+            git checkout --detach "$DEPLOY_SHA"
+            test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
+            test -f .env.production
             export IMAGE_TAG="ghcr.io/reza96ah-ship-it/publish:${DEPLOY_TAG}"
             export IMAGE_TAG_WORKER="ghcr.io/reza96ah-ship-it/publish-worker:${DEPLOY_TAG}"
             export IMAGE_TAG_REALTIME="ghcr.io/reza96ah-ship-it/publish-realtime:${DEPLOY_TAG}"
             export IMAGE_TAG_MIGRATE="ghcr.io/reza96ah-ship-it/publish-migrate:${DEPLOY_TAG}"
-            docker compose -f compose.production.yaml pull
-            docker compose -f compose.production.yaml up migrate
-            docker compose -f compose.production.yaml up -d app worker realtime caddy
+            docker compose --env-file .env.production -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml config --quiet
+            docker compose --env-file .env.production -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml pull app worker realtime migrate
+            docker compose --env-file .env.production -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml up migrate
+            docker compose --env-file .env.production -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml up -d app worker realtime
             sleep 10
-            docker compose -f compose.production.yaml ps
+            docker compose --env-file .env.production -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml ps
 
       - name: Smoke test staging
         if: steps.staging-secrets.outputs.configured == 'true'

@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
@@ -13,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { api } from '@/lib/api'
 import { previewTemplate, parseKeywordList, matchComment } from '@/modules/automation/comment-dm-shared'
-import type { CommentDmRule } from '@/modules/automation/comment-dm-shared'
+import type { CommentDmRule, CommentDmRun } from '@/modules/automation/comment-dm-shared'
 import { cn } from '@/lib/utils'
 
 interface Platform {
@@ -33,20 +34,16 @@ interface Props {
 }
 
 interface DmPreset {
-  id: string
+  id: 'link' | 'resource'
   label: string
+  description: string
   keyword: string
   dmTemplate: string
-  publicReply: string
-  buttonText: string
 }
 
 const DM_PRESETS: DmPreset[] = [
-  { id: 'price', label: 'لیست قیمت', keyword: 'قیمت', dmTemplate: 'سلام {نام} عزیز 🌿\nلیست قیمت و جزئیات این محصول اینجاست:\n{لینک}', publicReply: 'دایرکت شد ✉️', buttonText: 'دیدن قیمت' },
-  { id: 'catalog', label: 'کاتالوگ', keyword: 'کاتالوگ', dmTemplate: 'سلام {نام} عزیز 👋\nکاتالوگ کامل محصولات را از این لینک ببینید:\n{لینک}', publicReply: 'کاتالوگ را دایرکت کردیم ✉️', buttonText: 'دریافت کاتالوگ' },
-  { id: 'discount', label: 'کد تخفیف', keyword: 'تخفیف', dmTemplate: 'سلام {نام} عزیز 🎁\nکد تخفیف اختصاصی شما: NASHRINO10', publicReply: 'کد تخفیف دایرکت شد 🎁', buttonText: 'استفاده از تخفیف' },
-  { id: 'booking', label: 'لینک رزرو', keyword: 'رزرو', dmTemplate: 'سلام {نام} عزیز 🗓\nبرای رزرو نوبت از این لینک استفاده کنید:\n{لینک}', publicReply: 'لینک رزرو را دایرکت کردیم ✉️', buttonText: 'رزرو وقت' },
-  { id: 'signup', label: 'ثبت‌نام', keyword: 'ثبت‌نام', dmTemplate: 'سلام {نام} عزیز ✨\nبرای ثبت‌نام در دوره از این لینک اقدام کنید:\n{لینک}', publicReply: 'لینک ثبت‌نام دایرکت شد ✉️', buttonText: 'ثبت‌نام' },
+  { id: 'link', label: 'ارسال لینک', description: 'بعد از کامنتِ کلمهٔ مشخص، یک لینک واقعی در دایرکت بفرستید.', keyword: 'لینک', dmTemplate: 'سلام {نام} عزیز، لینک درخواستی شما:\n{لینک}' },
+  { id: 'resource', label: 'ارسال منبع', description: 'آدرس دانلود فایل یا راهنما را همراه توضیح در دایرکت بفرستید.', keyword: 'راهنما', dmTemplate: 'سلام {نام} عزیز، راهنمای درخواستی را از این لینک دریافت کنید:\n{لینک}' },
 ]
 
 const STATUS_LABELS: Record<string, string> = {
@@ -56,12 +53,71 @@ const STATUS_LABELS: Record<string, string> = {
   needs_attention: 'نیازمند بررسی',
 }
 
+const RUN_STATUS_LABELS: Record<string, string> = {
+  pending: 'در حال بررسی',
+  sent: 'دایرکت تأیید شد',
+  partial: 'دایرکت ارسال شد؛ پاسخ عمومی نامشخص',
+  unknown: 'نتیجهٔ دایرکت نامشخص',
+  skipped: 'ارسال نشد',
+  failed: 'نتیجهٔ قدیمی نامشخص',
+}
+
+const RUN_REASON_LABELS: Record<string, string> = {
+  comment_window_unavailable: 'مهلت پاسخ خصوصی این کامنت گذشته یا زمان آن نامعتبر است.',
+  already_replied_to_comment: 'این کامنت قبلاً با قانون دیگری بررسی شده است.',
+  already_claimed: 'کامنت یا فرستندهٔ این پست قبلاً برای دایرکت رزرو شده است.',
+  frequency_cap: 'فاصلهٔ زمانی مجاز بین دایرکت‌ها رعایت نشده است.',
+  rule_disabled_before_send: 'قانون پیش از ارسال غیرفعال شد؛ دایرکتی ارسال نشد.',
+  missing_template_link: 'لینک مقصد در قانون تنظیم نشده است؛ دایرکتی ارسال نشد.',
+}
+
+function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
+  const { data, isLoading, isError } = useQuery<{ runs: CommentDmRun[] }>({
+    queryKey: ['comment-dm-rule-runs', ruleId],
+    queryFn: () => api.get(`/api/automation/comment-dm-rules/${ruleId}/logs`),
+    refetchInterval: 30_000,
+  })
+  if (isLoading) return <p className="mt-3 text-xs text-ink-tertiary">در حال دریافت گزارش اجرا…</p>
+  if (isError) return <p className="mt-3 text-xs text-danger">گزارش اجرا در دسترس نیست.</p>
+  if (!data?.runs.length) return <p className="mt-3 text-xs text-ink-tertiary">هنوز اجرایی ثبت نشده است.</p>
+
+  return (
+    <div className="mt-3 max-h-64 space-y-2 overflow-auto border-t border-border pt-3" aria-label="گزارش اجرای دایرکت خودکار">
+      {data.runs.map((run) => (
+        <div key={run.id} className="rounded-lg border border-border bg-surface-subtle p-2 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={cn('font-medium',
+              run.status === 'unknown' || run.status === 'partial' || run.status === 'failed' || run.status === 'pending' ? 'text-warning' :
+                run.status === 'sent' ? 'text-success' : 'text-ink-secondary')}
+            >{RUN_STATUS_LABELS[run.status] ?? run.status}</span>
+            <time dateTime={new Date(run.sentAt).toISOString()} className="text-ink-tertiary">
+              {new Date(run.sentAt).toLocaleString('fa-IR-u-ca-persian')}
+            </time>
+          </div>
+          <div className="mt-1 text-ink-tertiary" dir="ltr">Comment: {run.commentId}</div>
+          {run.postId && <div className="mt-1 text-ink-tertiary" dir="ltr">Post: {run.postId}</div>}
+          {run.providerMessageId ? (
+            <div className="mt-1 break-all text-ink-tertiary" dir="ltr">DM receipt: {run.providerMessageId}</div>
+          ) : run.status === 'sent' ? (
+            <p className="mt-1 text-warning">ثبت قدیمی؛ رسید ارائه‌دهنده ذخیره نشده است.</p>
+          ) : null}
+          {(run.status === 'unknown' || run.status === 'pending' || run.status === 'failed') && <p className="mt-1 text-warning">برای جلوگیری از دایرکت تکراری، نتیجه را در اینستاگرام بررسی کنید.</p>}
+          {run.publicReplyStatus === 'pending' && <p className="mt-1 text-warning">وضعیت پاسخ عمومی هنوز تأیید نشده است.</p>}
+          {run.errorCode === 'public_reply_unconfirmed' && <p className="mt-1 text-warning">پاسخ عمومی تأیید نشد؛ دایرکت دارای رسید است.</p>}
+          {run.errorCode && RUN_REASON_LABELS[run.errorCode] && <p className="mt-1 text-ink-tertiary">{RUN_REASON_LABELS[run.errorCode]}</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword, readOnly = false }: Props) {
   const queryClient = useQueryClient()
   const igPlatforms = platforms.filter((p) => p.type === 'instagram')
   const isPerPost = publicationId != null
 
   const [showForm, setShowForm] = useState(!readOnly && !!suggestedKeyword)
+  const [selectedTemplate, setSelectedTemplate] = useState<'link' | 'resource' | 'advanced' | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null)
   const [platformId, setPlatformId] = useState(igPlatforms[0]?.id ?? '')
@@ -75,6 +131,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const [freqCapHours, setFreqCapHours] = useState<number>(24)
   const [previewName, setPreviewName] = useState('آرش')
   const [testComment, setTestComment] = useState('')
+  const [runHistoryRuleId, setRunHistoryRuleId] = useState<string | null>(null)
 
   const queryKey = isPerPost ? ['comment-dm-rules', publicationId] : ['comment-dm-rules']
   const apiUrl = isPerPost
@@ -97,6 +154,13 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const hasDirtyForm = Boolean(
     keywordsRaw.trim() || dmTemplate.trim() || buttonText.trim() || buttonUrl.trim() || excludeRaw.trim()
   )
+  const linkPlaceholderNeedsUrl = dmTemplate.includes('{لینک}') && !buttonUrl.trim()
+  const templateNeedsUrl = selectedTemplate !== 'advanced' && !buttonUrl.trim()
+  const templateMissingLink = selectedTemplate !== 'advanced' && !!buttonUrl.trim() &&
+    !dmTemplate.includes('{لینک}') && !dmTemplate.includes(buttonUrl.trim())
+  const linkUrlValid = !buttonUrl.trim() || (() => {
+    try { return new URL(buttonUrl.trim()).protocol === 'https:' } catch { return false }
+  })()
 
   const resetForm = () => {
     setEditingRuleId(null)
@@ -110,6 +174,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
     setFreqCapHours(24)
     setTestComment('')
     setShowAdvanced(false)
+    setSelectedTemplate(null)
   }
 
   const closeBuilder = () => {
@@ -133,6 +198,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
     setTestComment('')
     setShowForm(true)
     setShowAdvanced(true)
+    setSelectedTemplate('advanced')
     // Scroll the form into view
     requestAnimationFrame(() => {
       document.getElementById('comment-dm-builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -140,10 +206,12 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   }
 
   const applyPreset = (preset: DmPreset) => {
-    setKeywordsRaw(preset.keyword)
+    setSelectedTemplate(preset.id)
+    setKeywordsRaw(suggestedKeyword || preset.keyword)
     setDmTemplate(preset.dmTemplate)
-    setPublicReply(preset.publicReply)
-    setButtonText(preset.buttonText)
+    setPublicReply('')
+    setButtonText('')
+    setButtonUrl('')
   }
 
   const createMutation = useMutation({
@@ -270,27 +338,32 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
         )}
       </div>
 
-      {/* Create/Edit form — two fields by default, everything else under Advanced */}
+      {/* Start with real, executable templates; keep the generic rule form under Advanced. */}
       {!readOnly && showForm && (
         <div id="comment-dm-builder" className="n-card p-4 space-y-4">
-          {/* Presets */}
           <div className="space-y-2">
-            <p className="text-xs text-ink-tertiary">برای چه چیزی دایرکت می‌فرستید؟</p>
-            <div className="flex flex-wrap gap-2">
+            <p className="text-sm font-medium text-ink-primary">چه کاری می‌خواهید انجام دهید؟</p>
+            <div className="grid gap-2 sm:grid-cols-2">
               {DM_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   type="button"
                   onClick={() => applyPreset(preset)}
-                  className="n-focus-ring inline-flex items-center gap-1 rounded-full border border-border bg-surface-subtle px-3 py-1.5 text-xs text-ink-secondary hover:border-accent hover:text-accent"
+                  aria-pressed={selectedTemplate === preset.id}
+                  className={cn('n-focus-ring rounded-xl border p-3 text-start hover:border-accent', selectedTemplate === preset.id ? 'border-accent bg-accent/5' : 'border-border bg-surface-subtle')}
                 >
-                  <Sparkles className="size-3" />
-                  {preset.label}
+                  <span className="flex items-center gap-1 text-sm font-medium text-ink-primary"><Sparkles className="size-4 text-accent" />{preset.label}</span>
+                  <span className="mt-1 block text-xs text-ink-secondary">{preset.description}</span>
                 </button>
               ))}
             </div>
+            <button type="button" onClick={() => { setSelectedTemplate('advanced'); setShowAdvanced(true) }} className="n-focus-ring text-xs font-medium text-accent hover:underline">
+              ساخت قانون سفارشی (پیشرفته)
+            </button>
+            <p className="text-xs text-ink-tertiary">برچسب‌گذاری و یادآوری تیمی را در <Link href="/automations" className="text-accent underline">اتوماسیون‌ها</Link> تنظیم کنید.</p>
           </div>
 
+          {selectedTemplate && <>
           {/* Account selector — only when the workspace has more than one IG account */}
           {igPlatforms.length > 1 && (
             <div className="space-y-1.5">
@@ -331,15 +404,26 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
               value={dmTemplate}
               onChange={(e) => setDmTemplate(e.target.value)}
             />
-            <p className="text-xs text-ink-tertiary">متغیر: &#x7B;نام&#x7D; با نام کاربر جایگزین می‌شود</p>
+            <p className="text-xs text-ink-tertiary">&#x7B;نام&#x7D; با نام کاربر و &#x7B;لینک&#x7D; با لینک واردشده جایگزین می‌شود.</p>
           </div>
+
+          {selectedTemplate !== 'advanced' && (
+            <div className="space-y-1.5">
+              <Label>۳. لینک مقصد (HTTPS)</Label>
+              <Input dir="ltr" type="url" placeholder="https://example.com/resource" value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} />
+              <p className="text-xs text-ink-tertiary">لینک واقعی صفحه یا فایل را وارد کنید؛ متن نمونه بدون آن ارسال نمی‌شود.</p>
+            </div>
+          )}
+          {(linkPlaceholderNeedsUrl || templateNeedsUrl) && <p role="alert" className="text-xs text-danger">برای ارسال لینک، آدرس مقصد را وارد کنید.</p>}
+          {templateMissingLink && <p role="alert" className="text-xs text-danger">برای اینکه لینک در پیام نمایش داده شود، &#x7B;لینک&#x7D; یا آدرس کامل را در متن پیام نگه دارید.</p>}
+          {!linkUrlValid && <p role="alert" className="text-xs text-danger">لینک باید یک آدرس HTTPS معتبر باشد.</p>}
 
           {/* Instagram-style preview */}
           {dmTemplate && (
             <div className="rounded-2xl border border-border bg-background p-3">
               <div className="mb-2 text-2xs text-ink-tertiary">مخاطب این پیام را می‌بیند</div>
               <div className="max-w-[85%] rounded-2xl rounded-ee-sm bg-accent text-white px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap">
-                {previewTemplate(dmTemplate, previewName || 'آرش')}
+                {previewTemplate(dmTemplate, previewName || 'آرش', buttonUrl.trim())}
               </div>
               {buttonText && (
                 <div className="mt-2 inline-flex rounded-full border border-accent/30 px-3 py-1 text-xs text-accent">
@@ -359,7 +443,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
             )}
             <Button
               onClick={handleSave}
-              disabled={keywords.length === 0 || !dmTemplate || saveMutation.isPending}
+              disabled={keywords.length === 0 || !dmTemplate || linkPlaceholderNeedsUrl || templateNeedsUrl || templateMissingLink || !linkUrlValid || saveMutation.isPending}
             >
               {isEditing ? 'ذخیره تغییرات' : 'فعال‌سازی دایرکت خودکار'}
             </Button>
@@ -388,10 +472,10 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
                   <Label>دکمه داخل دایرکت</Label>
                   <Input dir="rtl" placeholder="مثال: دریافت لینک 🔗" value={buttonText} onChange={(e) => setButtonText(e.target.value)} />
                 </div>
-                <div className="space-y-1.5">
+                {selectedTemplate === 'advanced' && <div className="space-y-1.5">
                   <Label>لینک دکمه</Label>
                   <Input dir="ltr" placeholder="https://…" value={buttonUrl} onChange={(e) => setButtonUrl(e.target.value)} />
-                </div>
+                </div>}
               </div>
 
               <div className="space-y-1.5">
@@ -456,6 +540,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
           <p className="text-2xs text-ink-tertiary leading-relaxed">
             نکته اینستاگرام: برای هر کامنت فقط یک دایرکت خودکار می‌توان فرستاد. اگر مخاطب پاسخ بدهد، گفت‌وگو ادامه پیدا می‌کند.
           </p>
+          </>}
         </div>
       )}
 
@@ -475,45 +560,54 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
       ) : (
         <div className="space-y-2">
           {(rules ?? []).map((rule) => (
-            <div key={rule.id} className={cn('n-card-compact flex items-center gap-3 p-3', !rule.isActive && 'opacity-60')}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(rule.keywords?.length ? rule.keywords : [rule.keyword]).map((k) => (
-                    <span key={k} className="text-sm font-semibold text-ink-primary">«{k}»</span>
-                  ))}
-                  <span className="text-2xs text-ink-tertiary">→ دایرکت</span>
-                  <span className="text-2xs text-ink-tertiary border border-border rounded px-1">{rule.platformName}</span>
-                  {rule.publicationId
-                    ? <span className="text-2xs text-accent border border-accent/30 rounded px-1 flex items-center gap-0.5"><FileText className="size-2.5" />این پست</span>
-                    : <span className="text-2xs text-ink-tertiary border border-border rounded px-1 flex items-center gap-0.5"><Globe className="size-2.5" />همه پست‌ها</span>
-                  }
-                  {rule.status && rule.status !== 'active' && (
-                    <span className="text-2xs text-warning border border-warning/30 rounded px-1">{STATUS_LABELS[rule.status] ?? rule.status}</span>
-                  )}
+            <div key={rule.id} className={cn('n-card-compact p-3', !rule.isActive && 'opacity-60')}>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(rule.keywords?.length ? rule.keywords : [rule.keyword]).map((k) => (
+                      <span key={k} className="text-sm font-semibold text-ink-primary">«{k}»</span>
+                    ))}
+                    <span className="text-2xs text-ink-tertiary">→ دایرکت</span>
+                    <span className="text-2xs text-ink-tertiary border border-border rounded px-1">{rule.platformName}</span>
+                    {rule.publicationId
+                      ? <span className="text-2xs text-accent border border-accent/30 rounded px-1 flex items-center gap-0.5"><FileText className="size-2.5" />این پست</span>
+                      : <span className="text-2xs text-ink-tertiary border border-border rounded px-1 flex items-center gap-0.5"><Globe className="size-2.5" />همه پست‌ها</span>
+                    }
+                    {rule.status && rule.status !== 'active' && (
+                      <span className="text-2xs text-warning border border-warning/30 rounded px-1">{STATUS_LABELS[rule.status] ?? rule.status}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-secondary truncate mt-0.5">{rule.dmTemplate}</p>
                 </div>
-                <p className="text-xs text-ink-secondary truncate mt-0.5">{rule.dmTemplate}</p>
+                {!readOnly && <><button
+                  onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
+                  className="n-focus-ring shrink-0 text-ink-tertiary hover:text-ink-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
+                >
+                  {rule.isActive ? <ToggleRight className="size-5 text-success" /> : <ToggleLeft className="size-5" />}
+                </button>
+                <button
+                  onClick={() => startEdit(rule)}
+                  className="n-focus-ring shrink-0 text-ink-tertiary hover:text-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="ویرایش"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  onClick={() => { if (window.confirm('این دایرکت خودکار حذف شود؟')) deleteMutation.mutate(rule.id) }}
+                  className="n-focus-ring shrink-0 text-danger hover:text-danger/80 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="حذف"
+                >
+                  <Trash2 className="size-4" />
+                </button></>}
               </div>
               <button
-                onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
-                className="n-focus-ring shrink-0 text-ink-tertiary hover:text-ink-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
-              >
-                {rule.isActive ? <ToggleRight className="size-5 text-success" /> : <ToggleLeft className="size-5" />}
-              </button>
-              <button
-                onClick={() => startEdit(rule)}
-                className="n-focus-ring shrink-0 text-ink-tertiary hover:text-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="ویرایش"
-              >
-                <Pencil className="size-4" />
-              </button>
-              <button
-                onClick={() => { if (window.confirm('این دایرکت خودکار حذف شود؟')) deleteMutation.mutate(rule.id) }}
-                className="n-focus-ring shrink-0 text-danger hover:text-danger/80 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="حذف"
-              >
-                <Trash2 className="size-4" />
-              </button>
+                type="button"
+                onClick={() => setRunHistoryRuleId(runHistoryRuleId === rule.id ? null : rule.id)}
+                aria-expanded={runHistoryRuleId === rule.id}
+                className="n-focus-ring mt-2 text-xs text-accent hover:underline"
+              >گزارش اجرا</button>
+              {runHistoryRuleId === rule.id && <CommentDmRunHistory ruleId={rule.id} />}
             </div>
           ))}
         </div>

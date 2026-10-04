@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requirePermissionApi } from '@/lib/auth-guards'
+import { getWorkspaceZernioAnalytics } from '@/modules/analytics/zernio-workspace'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,14 +12,41 @@ export async function GET(req: Request) {
   if (guard.error) return guard.error
   const workspaceId = guard.workspaceId
 
-  // Global dashboard filters (plan §10): range + platform, both URL-driven.
   const { searchParams } = new URL(req.url)
   const days = RANGE_DAYS[searchParams.get('range') ?? '7d'] ?? 7
   const platformParam = searchParams.get('platform')
   const platform = platformParam && platformParam !== 'all' ? platformParam : null
 
-  // Fetch snapshots for the selected window. platform=null rows are the
-  // cross-platform aggregates; a platform filter narrows to that network.
+  const activeCampaigns = await db.campaign.count({ where: { workspaceId, status: 'active' } })
+  if (platform === null || platform === 'instagram') {
+    const today = new Date().toISOString().slice(0, 10)
+    const fromDate = new Date(Date.now() - (days - 1) * 86400_000).toISOString().slice(0, 10)
+    const zernio = await getWorkspaceZernioAnalytics(workspaceId, fromDate, today)
+    if (zernio) {
+      return NextResponse.json([
+        {
+          id: 'engagement', title: 'نرخ تعامل', value: zernio.engagementRate,
+          trend: null, context: zernio.engagementRate === null ? 'آمار تعامل در دسترس نیست' : 'تعاملات ÷ دسترسی در بازه انتخابی',
+          chartData: [], source: 'zernio',
+        },
+        {
+          id: 'reach', title: 'دسترسی اینستاگرام', value: zernio.reach,
+          trend: null, context: 'دسترسی یکتای بازه انتخابی',
+          chartData: zernio.dailyReach.map((point) => point.value), source: 'zernio',
+        },
+        {
+          id: 'audience', title: 'رشد مخاطبان', value: zernio.followerGrowth,
+          trend: null, context: zernio.followerGrowth === null ? 'تاریخچه فالوورها هنوز موجود نیست' : 'تغییر فالوورها در بازه انتخابی',
+          chartData: zernio.followerHistory.map((point) => point.value), source: 'zernio',
+        },
+        {
+          id: 'campaigns', title: 'کمپین‌های فعال', value: activeCampaigns,
+          trend: null, context: 'کمپین‌های ساخته‌شده در نشرینو', chartData: [], source: 'zernio',
+        },
+      ])
+    }
+  }
+
   const since = new Date(Date.now() - (days + 1) * 86400_000)
   const snapshots = await db.analyticsSnapshot.findMany({
     where: { workspaceId, platform, date: { gte: since.toISOString().slice(0, 10) } },
@@ -35,42 +63,35 @@ export async function GET(req: Request) {
   const prev = (arr: number[]) => arr[arr.length - 2] ?? arr[arr.length - 1] ?? 0
   const pct = (cur: number, p: number) => (p === 0 ? 0 : ((cur - p) / p) * 100)
 
-  const activeCampaigns = await db.campaign.count({ where: { workspaceId, status: 'active' } })
-
   const periodLabel = days === 90 ? '۹۰ روز' : days === 30 ? '۳۰ روز' : '۷ روز'
-
   return NextResponse.json([
     {
-      id: 'engagement',
-      title: 'نرخ تعامل',
+      id: 'engagement', title: 'نمایش محتوا',
       value: last(engagement),
       trend: pct(last(engagement), prev(engagement)),
       context: `نسبت به ${periodLabel} قبل`,
       chartData: engagement,
     },
     {
-      id: 'reach',
-      title: 'دسترسی محتوا',
+      id: 'reach', title: 'دسترسی محتوا',
       value: last(reach),
       trend: pct(last(reach), prev(reach)),
       context: 'مجموع پلتفرم‌ها',
       chartData: reach,
     },
     {
-      id: 'audience',
-      title: 'رشد مخاطبان',
+      id: 'audience', title: 'دنبال‌کنندگان',
       value: last(followers),
       trend: pct(last(followers), prev(followers)),
       context: 'نسبت به دوره قبل',
       chartData: followers,
     },
     {
-      id: 'campaigns',
-      title: 'تحقق هدف کمپین‌ها',
+      id: 'campaigns', title: 'کمپین‌های فعال',
       value: activeCampaigns,
       trend: 0,
       context: 'درحال اجرا',
-      chartData: [3, 4, 4, 3, 4, 5, activeCampaigns],
+      chartData: [],
     },
   ])
 }

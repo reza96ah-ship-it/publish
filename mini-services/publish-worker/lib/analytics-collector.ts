@@ -114,6 +114,7 @@ async function collectInner(
   const platforms = await db.platform.findMany({
     where: {
       type: 'instagram',
+      provider: 'direct',
       status: 'active',
       tokenSecret: { not: null },
       targetId: { not: null },

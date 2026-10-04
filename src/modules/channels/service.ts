@@ -16,6 +16,7 @@ import {
   type ProviderCredential,
 } from '@/lib/provider-auth/types'
 import { getInstagramGraphApiBaseUrl } from '../../../shared/instagram-graph'
+import { disconnectZernioAccount, listInstagramAccounts } from '@/lib/zernio'
 import { ChannelsRepository } from './repository'
 import {
   PlatformNotFoundError,
@@ -200,6 +201,14 @@ export class ChannelsService {
     const platform = await this.repo.findInWorkspace(platformId, workspaceId)
     if (!platform) throw new PlatformNotFoundError()
 
+    if (platform.provider === 'zernio') {
+      const workspace = await db.workspace.findUnique({ where: { id: workspaceId }, select: { zernioProfileId: true } })
+      const accounts = workspace?.zernioProfileId ? await listInstagramAccounts(workspace.zernioProfileId) : []
+      const valid = accounts.some((account) => account.id === platform.providerAccountId && account.isActive)
+      await this.repo.update(platformId, { status: valid ? 'active' : 'error', lastError: valid ? null : 'حساب در Zernio فعال نیست' })
+      return { valid, botInfo: null }
+    }
+
     if (!platform.tokenSecret) {
       throw new CredentialValidationError('توکن تنظیم نشده است')
     }
@@ -264,6 +273,10 @@ export class ChannelsService {
     const { workspaceId, userId } = auth
     const platform = await this.repo.findInWorkspace(platformId, workspaceId)
     if (!platform) throw new PlatformNotFoundError()
+
+    if (platform.provider === 'zernio' && platform.providerAccountId) {
+      await disconnectZernioAccount(platform.providerAccountId)
+    }
 
     let webhookUnsubscribed = false
 

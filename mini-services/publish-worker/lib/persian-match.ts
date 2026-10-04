@@ -118,6 +118,8 @@ export function matchComment(
 }
 
 /** Interpolate {نام} variable in DM template. Falls back to «کاربر». */
-export function renderDmTemplate(template: string, senderName: string): string {
-  return template.replace(/\{نام\}/g, senderName || 'کاربر')
+export function renderDmTemplate(template: string, senderName: string, link = ''): string {
+  return template
+    .replace(/\{نام\}/g, senderName || 'کاربر')
+    .replace(/\{لینک\}/g, link)
 }

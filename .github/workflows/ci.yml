@@ -95,6 +95,23 @@ jobs:
           fi
           echo "✓ No schema drift — schema.prisma matches the applied database state"
 
+      # Exercise the one-time owner bootstrap on this fresh CI database.
+      - name: Verify staging owner bootstrap (fresh PostgreSQL)
+        env:
+          NEXTAUTH_URL: 'https://staging.odooshoping.ir'
+          PLATFORM_OWNER_EMAIL: 'bootstrap-ci@nashrino.test'
+          STAGING_OWNER_BOOTSTRAP_CONFIRM: 'create-on-empty-staging-only'
+        run: |
+          openssl rand -hex 24 | bun run scripts/bootstrap-staging-owner.ts
+          if replay_output=$(openssl rand -hex 24 | bun run scripts/bootstrap-staging-owner.ts 2>&1); then
+            echo '::error::Owner bootstrap unexpectedly accepted a non-empty database'
+            exit 1
+          fi
+          case "$replay_output" in
+            *'Owner bootstrap requires an empty staging database'*) ;;
+            *) echo '::error::Owner bootstrap retry failed for an unexpected reason'; exit 1 ;;
+          esac
+
       - run: bun run lint
       # Issues #229 #230 #231 #235: consolidated design-system gate
       # (palette leaks, physical RTL classes, arbitrary type scale)
@@ -173,21 +190,9 @@ jobs:
           bun-version: 1.2
       - run: bun install --frozen-lockfile
 
-      # 1. Dependency CVE audit — fail on critical only, excluding one accepted devDep CVE.
-      # HIGH is excluded: Next.js 16.1.1 and transitive devDeps carry known HIGH advisories
-      # that cannot be patched without a major framework upgrade.
-      # GHSA-5xrq-8626-4rwp (@vitest/ui): affects the UI dev server only; that server is
-      # never started in CI or production. Accepted as dev-only risk until vitest 3 is stable.
-      # NOTE: bun audit exits 1 when it finds any vuln at the specified level. We pipe to tee
-      # and use || true so set -eo pipefail does not abort the step before the grep filter runs.
-      - name: Dependency audit (bun audit --level critical)
-        run: |
-          bun audit --level critical 2>&1 | tee /tmp/audit.txt || true
-          if grep "critical:" /tmp/audit.txt | grep -qv "GHSA-5xrq-8626-4rwp"; then
-            echo "::error::Unacceptable critical vulnerabilities found"
-            exit 1
-          fi
-          echo "Audit passed (GHSA-5xrq-8626-4rwp accepted: devDep UI server, never run in CI/prod)"
+      # 1. Dependency CVE audit — fail on critical vulnerabilities or audit errors.
+      - name: Dependency audit (critical)
+        run: bun audit --audit-level=critical
 
       # 2. Secret scan — trufflehog pinned to tag (v3.63.11 is the latest stable)
       - name: Secret scan (trufflehog)
@@ -241,6 +246,24 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v4
+      - name: Validate shared-host staging isolation
+        env:
+          POSTGRES_PASSWORD: ci-placeholder
+          DOMAIN: staging.example.test
+        run: |
+          docker compose -p nashrino-staging -f compose.production.yaml -f compose.staging.yaml config --format json |
+            jq -e '.services.app.healthcheck.test[1] == "node" and
+                   .services.app.deploy.replicas == 1 and
+                   any(.services.app.ports[]; .host_ip == "127.0.0.1" and .published == "3004") and
+                   any(.services.realtime.ports[]; .host_ip == "127.0.0.1" and .published == "3005") and
+                   (.services.caddy == null)'
+      - name: Validate staging rollback guard syntax
+        run: |
+          bash -n scripts/rollback-staging.sh
+          if bash scripts/rollback-staging.sh latest; then
+            echo '::error::Rollback accepted an unreviewed tag'
+            exit 1
+          fi
       - name: Build app image
         uses: docker/build-push-action@v7
         with:
@@ -275,8 +298,22 @@ jobs:
           target: migrate
           push: false
           tags: nashrino:ci-migrate
+          load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Smoke staging bootstrap in migrate image
+        run: |
+          if output=$(docker run --rm \
+            -e NEXTAUTH_URL=https://odooshoping.ir \
+            -e STAGING_OWNER_BOOTSTRAP_CONFIRM=create-on-empty-staging-only \
+            nashrino:ci-migrate bun run scripts/bootstrap-staging-owner.ts 2>&1); then
+            echo '::error::Owner bootstrap accepted the production URL inside the migrate image'
+            exit 1
+          fi
+          case "$output" in
+            *'Owner bootstrap is restricted to https://staging.odooshoping.ir'*) ;;
+            *) echo '::error::Owner bootstrap could not start inside the migrate image'; exit 1 ;;
+          esac
 
   load-gate:
     name: Load Gate (k6 smoke)
@@ -483,19 +520,25 @@ jobs:
           NEXTAUTH_SECRET: 'test-secret-not-for-production'
           NEXTAUTH_URL: 'http://localhost:3000'
       - run: bunx playwright install --with-deps chromium
-      - name: Run visual regression tests (update baselines if missing)
+      - name: Run visual regression tests (bootstrap missing baselines once)
         run: |
-          # Check both visual.spec.ts and visual-charts.spec.ts snapshots
+          # A missing directory needs a one-time reviewed baseline commit.
+          # Never turn a test failure into a green check with `|| true`.
           VISUAL_EMPTY=$(ls -A tests/e2e/visual.spec.ts-snapshots/ 2>/dev/null || echo "")
           CHARTS_EMPTY=$(ls -A tests/e2e/visual-charts.spec.ts-snapshots/ 2>/dev/null || echo "")
-          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ]; then
-            echo "Some baselines missing — generating initial baselines"
-            bun run test:visual:update || true
+          STATES_EMPTY=$(ls -A tests/e2e/visual-states.spec.ts-snapshots/ 2>/dev/null || echo "")
+          if [ -z "$VISUAL_EMPTY" ] || [ -z "$CHARTS_EMPTY" ] || [ -z "$STATES_EMPTY" ] || \
+             [ ! -f tests/e2e/visual-states.spec.ts-snapshots/state-loading-analytics-visual-linux.png ] || \
+             [ ! -f tests/e2e/visual-states.spec.ts-snapshots/state-error-analytics-visual-linux.png ]; then
+            echo "Some baselines missing — generating them for review"
+            bun run test:visual:update
+            echo "::error::New baselines need review and a second strict visual run before merge"
+            exit 1
           else
             echo "All baselines exist — running strict visual regression"
             bun run test:visual
           fi
-      - name: Commit generated snapshots (if any new)
+      - name: Commit generated snapshots for review (if any new)
         if: always()
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
@@ -509,12 +552,12 @@ jobs:
           path: playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload new snapshots (if missing)
+      - name: Upload visual snapshots (if missing)
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: visual-snapshots
-          path: tests/e2e/visual.spec.ts-snapshots/
+          path: tests/e2e/visual*.spec.ts-snapshots/
           retention-days: 30
           if-no-files-found: ignore
 
