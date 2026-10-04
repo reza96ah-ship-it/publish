@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 
 type PendingInvite = { id: string; emailNormalized: string; expiresAt: string; workspace: { name: string } }
 
-export function CustomerInviteIssuer({ initialMfaEnabled }: { initialMfaEnabled: boolean }) {
+export function CustomerInviteIssuer({ initialMfaEnabled, passwordRotated }: { initialMfaEnabled: boolean; passwordRotated: boolean }) {
   const [mfaEnabled, setMfaEnabled] = useState(initialMfaEnabled)
   const [mfaSetup, setMfaSetup] = useState<{ qrDataUrl: string; secret: string } | null>(null)
   const [mfaCode, setMfaCode] = useState('')
@@ -22,7 +23,7 @@ export function CustomerInviteIssuer({ initialMfaEnabled }: { initialMfaEnabled:
     if (response.ok) setPending((await response.json()).invitations)
   }
 
-  useEffect(() => { if (mfaEnabled) void refreshPending() }, [mfaEnabled])
+  useEffect(() => { if (passwordRotated && mfaEnabled) void refreshPending() }, [passwordRotated, mfaEnabled])
 
   async function startMfa() {
     setError('')
@@ -89,7 +90,12 @@ export function CustomerInviteIssuer({ initialMfaEnabled }: { initialMfaEnabled:
     <main dir="rtl" className="mx-auto max-w-xl p-6 space-y-5">
       <h1 className="text-2xl font-bold">دعوت مشتری جدید</h1>
       <p className="text-sm text-ink-secondary">برای هر مشتری یک فضای کاری مستقل ساخته می‌شود. لینک را فقط از کانال خصوصی به همان مشتری بفرستید. مشتری رمز اپلیکیشن را خودش تعیین می‌کند؛ هرگز رمز اینستاگرام او را نخواهید.</p>
-      {!mfaEnabled && <section className="n-card p-5 space-y-4">
+      {!passwordRotated && <section className="n-card p-5 space-y-4" role="alert">
+        <h2 className="font-semibold">ابتدا رمز حساب اپلیکیشن را تغییر دهید</h2>
+        <p className="text-sm text-ink-secondary">پیش از دعوت مشتری، رمز قبلی یا آزمایشی را با رمزی قوی جایگزین کنید. نشست‌های قبلی خارج می‌شوند و باید دوباره وارد شوید.</p>
+        <Link href="/settings/security" className="inline-flex rounded-lg bg-accent px-4 py-2 text-white">تغییر رمز حساب</Link>
+      </section>}
+      {passwordRotated && !mfaEnabled && <section className="n-card p-5 space-y-4">
         <h2 className="font-semibold">ابتدا ورود دومرحله‌ای را فعال کنید</h2>
         <p className="text-sm text-ink-secondary">پس از فعال‌سازی، ورود بعدی شما به کد برنامه احراز هویت یا کد پشتیبان نیاز دارد.</p>
         {!mfaSetup && <button type="button" onClick={() => void startMfa()} className="rounded-lg bg-accent px-4 py-2 text-white">دریافت کد QR</button>}
@@ -110,7 +116,7 @@ export function CustomerInviteIssuer({ initialMfaEnabled }: { initialMfaEnabled:
         <button type="button" onClick={() => setBackupCodes([])} className="rounded-lg border border-border px-4 py-2">ذخیره کردم</button>
       </section>}
       {error && <p role="alert" className="text-danger">{error}</p>}
-      {mfaEnabled && <>
+      {passwordRotated && mfaEnabled && <>
       <form onSubmit={issue} className="n-card p-5 space-y-4">
         <label className="block text-sm">نام فضای کاری
           <input required minLength={2} maxLength={80} value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-surface p-3" />

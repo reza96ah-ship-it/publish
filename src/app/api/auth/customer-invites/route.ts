@@ -20,8 +20,11 @@ async function ownerId(): Promise<string | null> {
   if (!ownerEmail || !session?.user?.id || normalizeEmail(session.user.email ?? '') !== ownerEmail) {
     return null
   }
-  const owner = await db.user.findUnique({ where: { id: session.user.id }, select: { email: true, mfaSecret: true } })
-  if (!owner?.mfaSecret || normalizeEmail(owner.email ?? '') !== ownerEmail) return null
+  const owner = await db.user.findUnique({ where: { id: session.user.id }, select: { email: true, mfaSecret: true, sessionVersion: true } })
+  // Existing accounts start at version 0. The password-change route increments
+  // this version and revokes prior sessions, so invitation issuance stays closed
+  // until the operator has replaced any shared/test app password.
+  if (!owner?.mfaSecret || owner.sessionVersion < 1 || normalizeEmail(owner.email ?? '') !== ownerEmail) return null
   return session.user.id
 }
 

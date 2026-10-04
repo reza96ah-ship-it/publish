@@ -33,7 +33,7 @@ beforeEach(() => {
   process.env.PLATFORM_OWNER_EMAIL = 'owner@example.com'
   process.env.NEXTAUTH_URL = 'https://odooshoping.ir'
   vi.mocked(getServerSession).mockResolvedValue({ user: { id: 'owner-1', email: 'owner@example.com' } } as never)
-  vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: 'encrypted-secret' } as never)
+  vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: 'encrypted-secret', sessionVersion: 1 } as never)
   vi.mocked(issueCustomerInvitation).mockResolvedValue({ email: 'customer@example.com', token: 'a'.repeat(43), expiresAt: new Date() } as never)
 })
 
@@ -58,13 +58,27 @@ describe('customer workspace invitation issuance', () => {
   })
 
   it('requires owner MFA and same-origin JSON', async () => {
-    vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: null } as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: null, sessionVersion: 1 } as never)
     expect((await POST(request())).status).toBe(403)
     expect(issueCustomerInvitation).not.toHaveBeenCalled()
 
-    vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: 'secret' } as never)
+    vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: 'secret', sessionVersion: 1 } as never)
     expect((await POST(request('https://attacker.example'))).status).toBe(403)
     expect(issueCustomerInvitation).not.toHaveBeenCalled()
+  })
+
+  it('blocks issuing, listing, and revoking invitations until the owner rotates the app password', async () => {
+    vi.mocked(db.user.findUnique).mockResolvedValue({ email: 'owner@example.com', mfaSecret: 'secret', sessionVersion: 0 } as never)
+    expect((await POST(request())).status).toBe(403)
+    expect((await GET()).status).toBe(403)
+    expect((await DELETE(new NextRequest('https://odooshoping.ir/api/auth/customer-invites', {
+      method: 'DELETE',
+      headers: { origin: 'https://odooshoping.ir', 'content-type': 'application/json' },
+      body: JSON.stringify({ invitationId: 'invitation-1' }),
+    }))).status).toBe(403)
+    expect(issueCustomerInvitation).not.toHaveBeenCalled()
+    expect(listCustomerInvitations).not.toHaveBeenCalled()
+    expect(revokeCustomerInvitation).not.toHaveBeenCalled()
   })
 
   it('returns a fragment-token link once, without caching', async () => {
