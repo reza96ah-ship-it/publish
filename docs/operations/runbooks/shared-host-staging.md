@@ -34,14 +34,35 @@ then verify free memory and disk again before installing Docker.
    `NEXTAUTH_URL=https://staging.odooshoping.ir`, strong unique auth/database
    secrets, and the provider configuration required by `.env.example`. Do not
    reuse production tokens, database credentials, or a production webhook
-   destination. Keep `PLATFORM_OWNER_EMAIL` unset until the owner account is
-   prepared for password rotation and MFA.
+   destination. Set `PLATFORM_OWNER_EMAIL` to the operator's staging app email;
+   the invite API remains closed until that owner rotates the initial password
+   and enrolls in MFA. Never run the demo account seed in staging.
 3. Add the DNS record and host-Caddy site, validate Caddy, then reload it. Do
    not replace or restart the existing Xray/webhook services.
 4. Configure the GitHub `staging` environment secrets named in
    `.github/workflows/deploy-staging.yml`. Run the workflow manually for the
    exact reviewed commit; verify the image tag and deployed SHA match.
-5. Confirm HTTPS health, readiness, login, separate staging volumes, and no
+5. After migrations succeed, bootstrap the one initial owner in the **empty**
+   staging database. The one-time script is shipped in the migrate image and
+   refuses the production URL or any database with users/workspaces. From the
+   isolated staging checkout on the VPS, enter a strong temporary **app**
+   password without echoing it or placing it in shell history:
+
+   ```bash
+   read -r -s -p 'Temporary staging app password: ' STAGING_BOOTSTRAP_PASSWORD
+   printf '\n'
+   printf '%s\n' "$STAGING_BOOTSTRAP_PASSWORD" | docker compose -p nashrino-staging \
+     -f compose.production.yaml -f compose.staging.yaml run --rm -T --no-deps \
+     -e STAGING_OWNER_BOOTSTRAP_CONFIRM=create-on-empty-staging-only \
+     migrate bun run scripts/bootstrap-staging-owner.ts
+   unset STAGING_BOOTSTRAP_PASSWORD
+   ```
+
+   Confirm the command reported creation of one staging workspace. If it
+   refuses a non-empty database, inspect that database; do not reset it or run
+   the demo seed to work around the refusal.
+
+6. Confirm HTTPS health, readiness, login, separate staging volumes, and no
    regressions to the hooks endpoint. Complete `docs/STAGING_ACCEPTANCE.md`,
    adapting its database backup/restore steps to the isolated staging database.
    Do not run `scripts/rollback.sh` on this shared host: it uses the base

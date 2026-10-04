@@ -95,6 +95,23 @@ jobs:
           fi
           echo "✓ No schema drift — schema.prisma matches the applied database state"
 
+      # Exercise the one-time owner bootstrap on this fresh CI database.
+      - name: Verify staging owner bootstrap (fresh PostgreSQL)
+        env:
+          NEXTAUTH_URL: 'https://staging.odooshoping.ir'
+          PLATFORM_OWNER_EMAIL: 'bootstrap-ci@nashrino.test'
+          STAGING_OWNER_BOOTSTRAP_CONFIRM: 'create-on-empty-staging-only'
+        run: |
+          openssl rand -hex 24 | bun run scripts/bootstrap-staging-owner.ts
+          if replay_output=$(openssl rand -hex 24 | bun run scripts/bootstrap-staging-owner.ts 2>&1); then
+            echo '::error::Owner bootstrap unexpectedly accepted a non-empty database'
+            exit 1
+          fi
+          case "$replay_output" in
+            *'Owner bootstrap requires an empty staging database'*) ;;
+            *) echo '::error::Owner bootstrap retry failed for an unexpected reason'; exit 1 ;;
+          esac
+
       - run: bun run lint
       # Issues #229 #230 #231 #235: consolidated design-system gate
       # (palette leaks, physical RTL classes, arbitrary type scale)
