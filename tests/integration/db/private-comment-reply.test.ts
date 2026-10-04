@@ -107,6 +107,32 @@ describe.skipIf(SKIP)('private Instagram comment reply — PostgreSQL', () => {
     }
   })
 
+  it('respects an automation claim for the same commenter and post', async () => {
+    const f = await fixture()
+    try {
+      const root = await db.inboxThreadMessage.findFirstOrThrow({ where: {
+        threadId: f.threadId, direction: 'inbound', messageType: 'comment',
+      } })
+      if (!root.senderExternalId) throw new Error('test fixture has no sender')
+      await db.commentDmLog.create({ data: {
+        workspaceId: f.owner.workspaceId, ruleId: testId('automated-rule'),
+        commentId: testId('other-comment'), postId: f.postId,
+        senderUserId: root.senderExternalId, claimPlatformId: f.platformId,
+        status: 'sent', sentAt: f.now,
+      } })
+      const send = vi.fn(async () => 'never')
+      expect(await getPrivateCommentReplyState(f.owner.workspaceId, f.threadId))
+        .toMatchObject({ available: false, reason: 'already_attempted' })
+      await expect(sendPrivateCommentReply(
+        { workspaceId: f.owner.workspaceId, userId: f.owner.userId }, f.threadId, 'Duplicate', send,
+      )).rejects.toMatchObject({ code: 'already_attempted' })
+      expect(send).not.toHaveBeenCalled()
+    } finally {
+      await cleanupTestWorkspace(f.owner.workspaceId)
+      await cleanupTestUser(f.owner.userId)
+    }
+  })
+
   it('holds an uncertain outcome instead of retrying a potentially accepted DM', async () => {
     const f = await fixture()
     try {
