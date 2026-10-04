@@ -120,6 +120,7 @@ export function ChannelsView() {
         authorization_failed: 'مجوز اتصال اینستاگرام تأیید نشد.',
         expired_flow: 'زمان اتصال تمام شد. دوباره تلاش کنید.',
         account_not_verified: 'Zernio حساب اینستاگرام را تأیید نکرد.',
+        account_already_connected: 'این حساب اینستاگرام قبلاً به فضای کاری دیگری متصل شده است.',
       }
       toast.error(messages[zernioError] ?? 'اتصال اینستاگرام کامل نشد. دوباره تلاش کنید.')
       window.history.replaceState({}, '', '/channels')

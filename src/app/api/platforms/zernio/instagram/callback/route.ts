@@ -70,8 +70,8 @@ export async function GET(request: NextRequest) {
     const account = accounts.find((item) => item.id === accountId && item.isActive)
     if (!account) return finish('zernio_error=account_not_verified', cookieName)
 
-    await syncWorkspaceZernioInstagram(guard.workspaceId)
-
+    const ownedAccounts = await syncWorkspaceZernioInstagram(guard.workspaceId)
+    if (!ownedAccounts.some((item) => item.id === accountId)) return finish('zernio_error=account_already_connected', cookieName)
     try {
       const runId = await queueZernioInitialSyncForAccount(accountId, guard.workspaceId)
       if (runId) after(() => runZernioInitialSync(runId))

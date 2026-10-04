@@ -1,12 +1,11 @@
-import { db } from '@/lib/db'
 import {
   getInstagramDailyReach,
   getInstagramFollowerHistory,
   getInstagramRangeInsights,
-  listInstagramAccounts,
   type ZernioDailyMetric,
   type ZernioInstagramRangeInsights,
 } from '@/lib/zernio'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export interface ZernioWorkspaceAnalytics {
   source: 'zernio'
@@ -56,13 +55,9 @@ async function loadWorkspaceAnalytics(
   fromDate: string,
   toDate: string,
 ): Promise<ZernioWorkspaceAnalytics | null> {
-  const workspace = await db.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { zernioProfileId: true },
-  })
-  if (!workspace?.zernioProfileId) return null
-
-  const accounts = (await listInstagramAccounts(workspace.zernioProfileId)).filter((account) => account.isActive)
+  const connection = await listOwnedWorkspaceZernioInstagram(workspaceId)
+  if (!connection) return null
+  const accounts = connection.accounts.filter((account) => account.isActive)
   if (accounts.length === 0) return null
 
   // Zernio's follower-history endpoint permits at most 89 days.

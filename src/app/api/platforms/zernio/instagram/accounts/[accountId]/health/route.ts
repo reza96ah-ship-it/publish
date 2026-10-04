@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
-import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { getZernioAccountHealth, listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { getZernioAccountHealth, ZernioApiError } from '@/lib/zernio'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,16 +18,9 @@ export async function GET(
   const guard = await requirePermissionApi('analytics.view')
   if (guard.error) return guard.error
 
-  const workspace = await db.workspace.findUnique({
-    where: { id: guard.workspaceId },
-    select: { zernioProfileId: true },
-  })
-  if (!workspace?.zernioProfileId) return NextResponse.json({ error: 'account_not_found' }, { status: 404 })
-
   try {
-    // Check profile membership before querying or returning account health.
-    const accounts = await listInstagramAccounts(workspace.zernioProfileId)
-    if (!accounts.some((account) => account.id === accountId)) {
+    const connection = await listOwnedWorkspaceZernioInstagram(guard.workspaceId)
+    if (!connection?.accounts.some((account) => account.id === accountId && account.isActive)) {
       return NextResponse.json({ error: 'account_not_found' }, { status: 404 })
     }
     return NextResponse.json({ health: await getZernioAccountHealth(accountId) })

@@ -1,21 +1,14 @@
-import { db } from '@/lib/db'
 import {
   getZernioInboxConversation,
-  listInstagramAccounts,
   listZernioInboxConversations,
   listZernioInboxMessages,
   ZernioApiError,
 } from '@/lib/zernio'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 async function workspaceAccounts(workspaceId: string) {
-  const workspace = await db.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { zernioProfileId: true },
-  })
-  if (!workspace?.zernioProfileId) return null
-  const accounts = (await listInstagramAccounts(workspace.zernioProfileId))
-    .filter((account) => account.isActive)
-  return { profileId: workspace.zernioProfileId, accounts }
+  const connection = await listOwnedWorkspaceZernioInstagram(workspaceId)
+  return connection ? { ...connection, accounts: connection.accounts.filter((account) => account.isActive) } : null
 }
 
 export async function listWorkspaceZernioConversations(workspaceId: string, cursor?: string) {

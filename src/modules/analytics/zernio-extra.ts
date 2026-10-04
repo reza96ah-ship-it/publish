@@ -1,12 +1,11 @@
-import { db } from '@/lib/db'
 import {
   getInstagramActiveStories,
   getInstagramDemographics,
   getInstagramStoryInsights,
-  listInstagramAccounts,
   type ZernioInstagramDemographics,
   type ZernioInstagramStory,
 } from '@/lib/zernio'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export interface ZernioExtraAccount {
   id: string
@@ -19,9 +18,9 @@ export interface ZernioExtraAccount {
 const cache = new Map<string, { expires: number; result: Promise<ZernioExtraAccount[]> }>()
 
 async function load(workspaceId: string): Promise<ZernioExtraAccount[]> {
-  const workspace = await db.workspace.findUnique({ where: { id: workspaceId }, select: { zernioProfileId: true } })
-  if (!workspace?.zernioProfileId) return []
-  const accounts = (await listInstagramAccounts(workspace.zernioProfileId)).filter((account) => account.isActive)
+  const connection = await listOwnedWorkspaceZernioInstagram(workspaceId)
+  if (!connection) return []
+  const accounts = connection.accounts.filter((account) => account.isActive)
   return Promise.all(accounts.map(async (account) => {
     const [storiesResult, demographicsResult] = await Promise.allSettled([
       getInstagramActiveStories(account.id),

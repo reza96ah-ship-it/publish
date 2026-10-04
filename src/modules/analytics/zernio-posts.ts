@@ -1,5 +1,5 @@
-import { db } from '@/lib/db'
-import { getInstagramRecentPosts, listInstagramAccounts } from '@/lib/zernio'
+import { getInstagramRecentPosts } from '@/lib/zernio'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 import type { PostMetricType } from './post-metrics'
 
 export interface PostRow {
@@ -22,13 +22,10 @@ export async function getZernioRecentPostRows(
   workspaceId: string,
   nativeProviderIds: Set<string | null>,
 ): Promise<PostRow[]> {
-  const workspace = await db.workspace.findUnique({
-    where: { id: workspaceId }, select: { zernioProfileId: true },
-  })
-  if (!workspace?.zernioProfileId) return []
-
   try {
-    const accounts = (await listInstagramAccounts(workspace.zernioProfileId)).filter((account) => account.isActive)
+    const connection = await listOwnedWorkspaceZernioInstagram(workspaceId)
+    if (!connection) return []
+    const accounts = connection.accounts.filter((account) => account.isActive)
     const recent = await Promise.all(accounts.map(async (account) => ({
       account, posts: await getInstagramRecentPosts(account.id),
     })))

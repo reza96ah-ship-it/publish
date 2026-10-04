@@ -2,13 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   findWorkspace: vi.fn(),
+  findPlatforms: vi.fn(),
   listAccounts: vi.fn(),
   listConversations: vi.fn(),
   getConversation: vi.fn(),
   listMessages: vi.fn(),
 }))
 
-vi.mock('@/lib/db', () => ({ db: { workspace: { findUnique: mocks.findWorkspace } } }))
+vi.mock('@/lib/db', () => ({ db: {
+  workspace: { findUnique: mocks.findWorkspace },
+  platform: { findMany: mocks.findPlatforms },
+} }))
 vi.mock('@/lib/zernio', () => ({
   ZernioApiError: class extends Error {
     constructor(public status: number, public code: string) { super(code) }
@@ -28,6 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.findWorkspace.mockResolvedValue({ zernioProfileId: '66a1f0c2a4b9d3e8f1a2b3c4' })
   mocks.listAccounts.mockResolvedValue([{ id: accountId, isActive: true }, { id: otherId, isActive: false }])
+  mocks.findPlatforms.mockResolvedValue([{ providerAccountId: accountId }])
 })
 
 describe('workspace-scoped Zernio inbox', () => {
@@ -45,6 +50,16 @@ describe('workspace-scoped Zernio inbox', () => {
       .rejects.toMatchObject({ status: 404, code: 'conversation_not_found' })
     expect(mocks.getConversation).not.toHaveBeenCalled()
     expect(mocks.listMessages).not.toHaveBeenCalled()
+  })
+
+  it('does not expose an active account listed by Zernio but owned by another workspace', async () => {
+    mocks.listAccounts.mockResolvedValue([{ id: accountId, isActive: true }, { id: otherId, isActive: true }])
+    mocks.listConversations.mockResolvedValue({ data: [{ id: 'foreign', accountId: otherId }], nextCursor: null, accountsFailed: 0 })
+    const conversations = await listWorkspaceZernioConversations('workspace-1')
+    expect(conversations.data).toEqual([])
+    await expect(listWorkspaceZernioMessages('workspace-1', otherId, 'foreign'))
+      .rejects.toMatchObject({ status: 404, code: 'conversation_not_found' })
+    expect(mocks.getConversation).not.toHaveBeenCalled()
   })
 
   it('verifies conversation ownership before returning messages', async () => {

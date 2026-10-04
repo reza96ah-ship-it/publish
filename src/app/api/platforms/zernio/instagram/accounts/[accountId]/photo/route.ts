@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
-import { db } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { listInstagramAccounts, ZernioApiError } from '@/lib/zernio'
+import { ZernioApiError } from '@/lib/zernio'
 import { fetchInstagramPhotoThroughProxy } from '@/lib/zernio-photo'
+import { listOwnedWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -23,15 +23,9 @@ export async function GET(
   const proxyUrl = process.env.INSTAGRAM_IMAGE_PROXY_URL
   if (!proxyUrl) return NextResponse.json({ error: 'image_proxy_not_configured' }, { status: 503 })
 
-  const workspace = await db.workspace.findUnique({
-    where: { id: guard.workspaceId },
-    select: { zernioProfileId: true },
-  })
-  if (!workspace?.zernioProfileId) return NextResponse.json({ error: 'account_not_found' }, { status: 404 })
-
   try {
-    const account = (await listInstagramAccounts(workspace.zernioProfileId))
-      .find((item) => item.id === accountId)
+    const connection = await listOwnedWorkspaceZernioInstagram(guard.workspaceId)
+    const account = connection?.accounts.find((item) => item.id === accountId && item.isActive)
     if (!account?.avatarUrl) return NextResponse.json({ error: 'photo_not_found' }, { status: 404 })
 
     const { bytes, contentType } = await fetchInstagramPhotoThroughProxy(account.avatarUrl, proxyUrl)

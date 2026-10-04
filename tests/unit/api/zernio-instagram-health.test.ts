@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth-guards', () => ({ requirePermissionApi: vi.fn() }))
-vi.mock('@/lib/db', () => ({ db: { workspace: { findUnique: vi.fn() } } }))
+vi.mock('@/lib/db', () => ({ db: {
+  workspace: { findUnique: vi.fn() },
+  platform: { findMany: vi.fn() },
+} }))
 vi.mock('@/lib/zernio', () => ({
   listInstagramAccounts: vi.fn(),
   getZernioAccountHealth: vi.fn(),
@@ -20,6 +23,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requirePermissionApi).mockResolvedValue({ workspaceId: 'workspace1', userId: 'user1' } as never)
   vi.mocked(db.workspace.findUnique).mockResolvedValue({ zernioProfileId: profileId } as never)
+  vi.mocked(db.platform.findMany).mockResolvedValue([{ providerAccountId: accountId }] as never)
   vi.mocked(listInstagramAccounts).mockResolvedValue([{
     id: accountId, username: 'myshop', isActive: true,
   } as never])
@@ -48,6 +52,13 @@ describe('Zernio Instagram health route', () => {
 
   it('does not query health for an account outside the workspace profile', async () => {
     vi.mocked(listInstagramAccounts).mockResolvedValue([])
+    const response = await GET(new Request('http://localhost'), context)
+    expect(response.status).toBe(404)
+    expect(getZernioAccountHealth).not.toHaveBeenCalled()
+  })
+
+  it('does not query health for an account in the profile but owned by another workspace', async () => {
+    vi.mocked(db.platform.findMany).mockResolvedValue([])
     const response = await GET(new Request('http://localhost'), context)
     expect(response.status).toBe(404)
     expect(getZernioAccountHealth).not.toHaveBeenCalled()

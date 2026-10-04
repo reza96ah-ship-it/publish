@@ -20,6 +20,7 @@ import { after } from 'next/server'
 import { requirePermissionApi } from '@/lib/auth-guards'
 import { db } from '@/lib/db'
 import { listInstagramAccounts } from '@/lib/zernio'
+import { syncWorkspaceZernioInstagram } from '@/modules/channels/zernio-sync'
 import { queueZernioInitialSyncForAccount } from '@/modules/instagram-sync/zernio-service'
 import { GET } from '@/app/api/platforms/zernio/instagram/callback/route'
 
@@ -51,6 +52,10 @@ beforeEach(() => {
     avatarUrl: null,
     isActive: true,
   }])
+  vi.mocked(syncWorkspaceZernioInstagram).mockResolvedValue([{
+    id: accountId, username: 'myshop', displayName: 'My Shop',
+    profileUrl: null, avatarUrl: null, isActive: true,
+  } as never])
 })
 
 describe('Zernio Instagram callback', () => {
@@ -74,5 +79,13 @@ describe('Zernio Instagram callback', () => {
     vi.mocked(listInstagramAccounts).mockResolvedValue([])
     const response = await GET(callbackRequest())
     expect(response.headers.get('location')).toContain('zernio_error=account_not_verified')
+  })
+
+  it('rejects an account already owned by another workspace without queuing an import', async () => {
+    vi.mocked(syncWorkspaceZernioInstagram).mockResolvedValue([])
+    const response = await GET(callbackRequest())
+    expect(response.headers.get('location')).toContain('zernio_error=account_already_connected')
+    expect(queueZernioInitialSyncForAccount).not.toHaveBeenCalled()
+    expect(db.auditLog.create).not.toHaveBeenCalled()
   })
 })
