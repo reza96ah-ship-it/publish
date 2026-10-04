@@ -24,6 +24,16 @@ export interface CommentDmRule {
   createdAt: Date | string
 }
 
+export interface CommentDmRun {
+  id: string
+  commentId: string
+  sentAt: Date | string
+  status: string
+  providerMessageId: string | null
+  publicReplyStatus: string | null
+  errorCode: string | null
+}
+
 /**
  * Normalize Persian text for robust keyword matching:
  * unify Arabic/Persian letter variants, strip diacritics, collapse ZWNJ and

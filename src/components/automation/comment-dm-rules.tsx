@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { api } from '@/lib/api'
 import { previewTemplate, parseKeywordList, matchComment } from '@/modules/automation/comment-dm-shared'
-import type { CommentDmRule } from '@/modules/automation/comment-dm-shared'
+import type { CommentDmRule, CommentDmRun } from '@/modules/automation/comment-dm-shared'
 import { cn } from '@/lib/utils'
 
 interface Platform {
@@ -56,6 +56,53 @@ const STATUS_LABELS: Record<string, string> = {
   needs_attention: 'نیازمند بررسی',
 }
 
+const RUN_STATUS_LABELS: Record<string, string> = {
+  pending: 'در حال بررسی',
+  sent: 'دایرکت تأیید شد',
+  partial: 'دایرکت ارسال شد؛ پاسخ عمومی نامشخص',
+  unknown: 'نتیجهٔ دایرکت نامشخص',
+  skipped: 'ارسال نشد',
+  failed: 'ارسال ناموفق',
+}
+
+function CommentDmRunHistory({ ruleId }: { ruleId: string }) {
+  const { data, isLoading, isError } = useQuery<{ runs: CommentDmRun[] }>({
+    queryKey: ['comment-dm-rule-runs', ruleId],
+    queryFn: () => api.get(`/api/automation/comment-dm-rules/${ruleId}/logs`),
+    refetchInterval: 30_000,
+  })
+  if (isLoading) return <p className="mt-3 text-xs text-ink-tertiary">در حال دریافت گزارش اجرا…</p>
+  if (isError) return <p className="mt-3 text-xs text-danger">گزارش اجرا در دسترس نیست.</p>
+  if (!data?.runs.length) return <p className="mt-3 text-xs text-ink-tertiary">هنوز اجرایی ثبت نشده است.</p>
+
+  return (
+    <div className="mt-3 max-h-64 space-y-2 overflow-auto border-t border-border pt-3" aria-label="گزارش اجرای دایرکت خودکار">
+      {data.runs.map((run) => (
+        <div key={run.id} className="rounded-lg border border-border bg-surface-subtle p-2 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className={cn('font-medium',
+              run.status === 'unknown' || run.status === 'partial' ? 'text-warning' :
+                run.status === 'sent' ? 'text-success' : 'text-ink-secondary')}
+            >{RUN_STATUS_LABELS[run.status] ?? run.status}</span>
+            <time dateTime={new Date(run.sentAt).toISOString()} className="text-ink-tertiary">
+              {new Date(run.sentAt).toLocaleString('fa-IR-u-ca-persian')}
+            </time>
+          </div>
+          <div className="mt-1 text-ink-tertiary" dir="ltr">Comment: {run.commentId}</div>
+          {run.providerMessageId ? (
+            <div className="mt-1 break-all text-ink-tertiary" dir="ltr">DM receipt: {run.providerMessageId}</div>
+          ) : run.status === 'sent' ? (
+            <p className="mt-1 text-warning">ثبت قدیمی؛ رسید ارائه‌دهنده ذخیره نشده است.</p>
+          ) : null}
+          {(run.status === 'unknown' || run.status === 'pending') && <p className="mt-1 text-warning">برای جلوگیری از دایرکت تکراری، نتیجه را در اینستاگرام بررسی کنید.</p>}
+          {run.publicReplyStatus === 'pending' && <p className="mt-1 text-warning">وضعیت پاسخ عمومی هنوز تأیید نشده است.</p>}
+          {run.errorCode === 'public_reply_unconfirmed' && <p className="mt-1 text-warning">پاسخ عمومی تأیید نشد؛ دایرکت دارای رسید است.</p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword, readOnly = false }: Props) {
   const queryClient = useQueryClient()
   const igPlatforms = platforms.filter((p) => p.type === 'instagram')
@@ -75,6 +122,7 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
   const [freqCapHours, setFreqCapHours] = useState<number>(24)
   const [previewName, setPreviewName] = useState('آرش')
   const [testComment, setTestComment] = useState('')
+  const [runHistoryRuleId, setRunHistoryRuleId] = useState<string | null>(null)
 
   const queryKey = isPerPost ? ['comment-dm-rules', publicationId] : ['comment-dm-rules']
   const apiUrl = isPerPost
@@ -475,45 +523,54 @@ export function CommentDmRulesPanel({ platforms, publicationId, suggestedKeyword
       ) : (
         <div className="space-y-2">
           {(rules ?? []).map((rule) => (
-            <div key={rule.id} className={cn('n-card-compact flex items-center gap-3 p-3', !rule.isActive && 'opacity-60')}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {(rule.keywords?.length ? rule.keywords : [rule.keyword]).map((k) => (
-                    <span key={k} className="text-sm font-semibold text-ink-primary">«{k}»</span>
-                  ))}
-                  <span className="text-2xs text-ink-tertiary">→ دایرکت</span>
-                  <span className="text-2xs text-ink-tertiary border border-border rounded px-1">{rule.platformName}</span>
-                  {rule.publicationId
-                    ? <span className="text-2xs text-accent border border-accent/30 rounded px-1 flex items-center gap-0.5"><FileText className="size-2.5" />این پست</span>
-                    : <span className="text-2xs text-ink-tertiary border border-border rounded px-1 flex items-center gap-0.5"><Globe className="size-2.5" />همه پست‌ها</span>
-                  }
-                  {rule.status && rule.status !== 'active' && (
-                    <span className="text-2xs text-warning border border-warning/30 rounded px-1">{STATUS_LABELS[rule.status] ?? rule.status}</span>
-                  )}
+            <div key={rule.id} className={cn('n-card-compact p-3', !rule.isActive && 'opacity-60')}>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(rule.keywords?.length ? rule.keywords : [rule.keyword]).map((k) => (
+                      <span key={k} className="text-sm font-semibold text-ink-primary">«{k}»</span>
+                    ))}
+                    <span className="text-2xs text-ink-tertiary">→ دایرکت</span>
+                    <span className="text-2xs text-ink-tertiary border border-border rounded px-1">{rule.platformName}</span>
+                    {rule.publicationId
+                      ? <span className="text-2xs text-accent border border-accent/30 rounded px-1 flex items-center gap-0.5"><FileText className="size-2.5" />این پست</span>
+                      : <span className="text-2xs text-ink-tertiary border border-border rounded px-1 flex items-center gap-0.5"><Globe className="size-2.5" />همه پست‌ها</span>
+                    }
+                    {rule.status && rule.status !== 'active' && (
+                      <span className="text-2xs text-warning border border-warning/30 rounded px-1">{STATUS_LABELS[rule.status] ?? rule.status}</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-secondary truncate mt-0.5">{rule.dmTemplate}</p>
                 </div>
-                <p className="text-xs text-ink-secondary truncate mt-0.5">{rule.dmTemplate}</p>
+                <button
+                  onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
+                  className="n-focus-ring shrink-0 text-ink-tertiary hover:text-ink-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
+                >
+                  {rule.isActive ? <ToggleRight className="size-5 text-success" /> : <ToggleLeft className="size-5" />}
+                </button>
+                <button
+                  onClick={() => startEdit(rule)}
+                  className="n-focus-ring shrink-0 text-ink-tertiary hover:text-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="ویرایش"
+                >
+                  <Pencil className="size-4" />
+                </button>
+                <button
+                  onClick={() => { if (window.confirm('این دایرکت خودکار حذف شود؟')) deleteMutation.mutate(rule.id) }}
+                  className="n-focus-ring shrink-0 text-danger hover:text-danger/80 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="حذف"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
               <button
-                onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
-                className="n-focus-ring shrink-0 text-ink-tertiary hover:text-ink-primary min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label={rule.isActive ? 'غیرفعال کردن' : 'فعال کردن'}
-              >
-                {rule.isActive ? <ToggleRight className="size-5 text-success" /> : <ToggleLeft className="size-5" />}
-              </button>
-              <button
-                onClick={() => startEdit(rule)}
-                className="n-focus-ring shrink-0 text-ink-tertiary hover:text-accent min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="ویرایش"
-              >
-                <Pencil className="size-4" />
-              </button>
-              <button
-                onClick={() => { if (window.confirm('این دایرکت خودکار حذف شود؟')) deleteMutation.mutate(rule.id) }}
-                className="n-focus-ring shrink-0 text-danger hover:text-danger/80 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="حذف"
-              >
-                <Trash2 className="size-4" />
-              </button>
+                type="button"
+                onClick={() => setRunHistoryRuleId(runHistoryRuleId === rule.id ? null : rule.id)}
+                aria-expanded={runHistoryRuleId === rule.id}
+                className="n-focus-ring mt-2 text-xs text-accent hover:underline"
+              >گزارش اجرا</button>
+              {runHistoryRuleId === rule.id && <CommentDmRunHistory ruleId={rule.id} />}
             </div>
           ))}
         </div>

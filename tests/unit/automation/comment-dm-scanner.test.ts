@@ -2,18 +2,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // vi.mock factories are hoisted above imports — use vi.hoisted() so the mock
 // object exists before the factory runs.
-const { dbMock } = vi.hoisted(() => ({
+const { dbMock, zernioMock } = vi.hoisted(() => ({
   dbMock: {
     platform: { findMany: vi.fn() },
     commentDmRule: { findMany: vi.fn() },
     commentDmLog: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
+    providerWebhookEvent: { findMany: vi.fn(), update: vi.fn() },
     publication: { findUnique: vi.fn(), findMany: vi.fn() },
   },
+  zernioMock: { privateReply: vi.fn(), publicReply: vi.fn() },
 }))
 
 vi.mock('../../../mini-services/publish-worker/lib/db', () => ({ db: dbMock }))
 vi.mock('../../../mini-services/publish-worker/lib/crypto', () => ({
   decrypt: vi.fn((value: string) => value),
+}))
+vi.mock('../../../mini-services/publish-worker/lib/zernio-comment-reply', () => ({
+  sendZernioPrivateCommentReply: zernioMock.privateReply,
+  sendZernioPublicCommentReply: zernioMock.publicReply,
 }))
 
 // Import the scanner AFTER mocks are registered.
@@ -96,6 +102,7 @@ async function runScan(opts: {
 describe('comment-dm-scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    dbMock.platform.findMany.mockResolvedValue([])
   })
 
   it('scans a rule, matches a comment, sends a DM, logs as sent', async () => {
@@ -109,9 +116,12 @@ describe('comment-dm-scanner', () => {
     // Verify DM text has the sender name interpolated.
     const callArgs = (sendDm as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(callArgs?.[3]).toContain('reza')
-    // Log should be created with status='sent'.
+    // Claim is pending until a provider receipt is recorded.
     expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'sent' }) })
+      expect.objectContaining({ data: expect.objectContaining({ status: 'pending' }) })
+    )
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'sent', providerMessageId: 'm1' }) })
     )
   })
 
@@ -166,7 +176,7 @@ describe('comment-dm-scanner', () => {
     expect(stats.dmsSent).toBe(0)
   })
 
-  it('posts a public reply before sending DM when rule.publicReply is set', async () => {
+  it('posts a public reply only after the DM receipt is recorded', async () => {
     const ruleWithReply = { ...baseRule, publicReply: 'دایرکت شد ✉️' }
     const replyComment = vi.fn(async () => ({ id: 'reply_1' }))
     const { stats, sendDm: sendDmFn, replyComment: replyFn } = await runScan({
@@ -177,10 +187,13 @@ describe('comment-dm-scanner', () => {
     expect(stats.dmsSent).toBe(1)
     expect(stats.publicReplies).toBe(1)
     expect(replyFn).toHaveBeenCalledOnce()
-    // Verify reply was called before DM by inspecting invocation order.
+    // The public "DM sent" statement must not precede the actual DM.
     const replyOrder = replyFn.mock.invocationCallOrder[0]
     const dmOrder = (sendDmFn as ReturnType<typeof vi.fn>).mock.invocationCallOrder[0]
-    expect(replyOrder).toBeLessThan(dmOrder)
+    expect(dmOrder).toBeLessThan(replyOrder)
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'sent', publicReplyStatus: 'pending' }),
+    }))
   })
 
   it('continues sending DM even if public reply fails', async () => {
@@ -194,26 +207,100 @@ describe('comment-dm-scanner', () => {
       replyComment,
     })
     expect(stats.dmsSent).toBe(1)
+    expect(stats.publicReplies).toBe(0)
     expect(sendDm).toHaveBeenCalledOnce()
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'partial', publicReplyStatus: 'unknown' }) })
+    )
   })
 
-  it('logs failed when DM send throws', async () => {
+  it('does not claim a public reply succeeded without its provider receipt', async () => {
+    const ruleWithReply = { ...baseRule, publicReply: 'دایرکت شد' }
+    const replyComment = vi.fn(async () => ({ id: null }))
+    const { stats } = await runScan({
+      rules: [ruleWithReply],
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      replyComment,
+    })
+    expect(stats.dmsSent).toBe(1)
+    expect(stats.publicReplies).toBe(0)
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({
+        status: 'partial', publicReplyStatus: 'unknown', errorCode: 'public_reply_unconfirmed',
+      }) })
+    )
+  })
+
+  it('confirms a Zernio private reply before posting the configured public reply', async () => {
+    const zernioRule = { ...baseRule, publicReply: 'دایرکت شد', publication: null }
+    dbMock.platform.findMany.mockResolvedValue([{ id: 'plat_1', providerAccountId: 'acct_1' }])
+    dbMock.commentDmRule.findMany.mockImplementation((args: { where: { platform: { provider: string } } }) =>
+      Promise.resolve(args.where.platform.provider === 'zernio' ? [zernioRule] : []))
+    dbMock.providerWebhookEvent.findMany.mockResolvedValue([{
+      id: 'event_1', providerAccountId: 'acct_1', receivedAt: NOW,
+      payload: { comment: {
+        id: 'comment_1', platform: 'instagram', platformPostId: 'ig_media_123',
+        text: 'قیمت', isReply: false, createdAt: NOW.toISOString(),
+        author: { id: 'author_1', username: 'reza', isOwnAccount: false },
+      } },
+    }])
+    dbMock.commentDmLog.findUnique.mockResolvedValue(null)
+    dbMock.commentDmLog.count.mockResolvedValue(0)
+    dbMock.commentDmLog.create.mockResolvedValue({ id: 'log_1' })
+    dbMock.commentDmLog.update.mockResolvedValue({ id: 'log_1' })
+    dbMock.providerWebhookEvent.update.mockResolvedValue({ id: 'event_1' })
+    zernioMock.privateReply.mockResolvedValue({ messageId: 'message_1', recipientId: null })
+    zernioMock.publicReply.mockResolvedValue({ id: 'reply_1' })
+
+    const stats = await scanCommentDms(NOW)
+    expect(stats.dmsSent).toBe(1)
+    expect(stats.publicReplies).toBe(1)
+    expect(zernioMock.privateReply).toHaveBeenCalledWith('acct_1', 'ig_media_123', 'comment_1', expect.any(String))
+    expect(zernioMock.privateReply.mock.invocationCallOrder[0]).toBeLessThan(zernioMock.publicReply.mock.invocationCallOrder[0])
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'sent', providerMessageId: 'message_1' }),
+    }))
+    expect(dbMock.providerWebhookEvent.update).toHaveBeenCalledWith({
+      where: { id: 'event_1' }, data: { automationScannedAt: NOW },
+    })
+  })
+
+  it('logs an ambiguous outcome when DM send throws and never posts a public reply', async () => {
     const sendDm = vi.fn(async () => {
       throw new Error('IG API 500')
     })
+    const replyComment = vi.fn(async () => ({ id: 'reply-1' }))
     const { stats } = await runScan({
+      rules: [{ ...baseRule, publicReply: 'دایرکت شد' }],
       commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
       sendDm,
+      replyComment,
     })
     expect(stats.dmsFailed).toBe(1)
     expect(stats.dmsSent).toBe(0)
-    // Claim-first: create was called with status='sent' BEFORE the send attempt.
+    expect(replyComment).not.toHaveBeenCalled()
     expect(dbMock.commentDmLog.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'sent' }) })
+      expect.objectContaining({ data: expect.objectContaining({ status: 'pending' }) })
     )
-    // After send failure, the row is updated to 'failed'.
+    // No blind retry: the row stays claimed with an honest unknown outcome.
     expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'failed' }) })
+      expect.objectContaining({ data: expect.objectContaining({ status: 'unknown', errorCode: 'dm_outcome_unknown' }) })
+    )
+  })
+
+  it('does not report sent or post a public reply without a DM receipt', async () => {
+    const sendDm = vi.fn(async () => ({ messageId: null, recipientId: null }))
+    const replyComment = vi.fn(async () => ({ id: 'reply-1' }))
+    const { stats } = await runScan({
+      rules: [{ ...baseRule, publicReply: 'دایرکت شد' }],
+      commentsPerMedia: { ig_media_123: [makeComment({ text: 'قیمت' })] },
+      sendDm, replyComment,
+    })
+    expect(stats.dmsSent).toBe(0)
+    expect(stats.dmsFailed).toBe(1)
+    expect(replyComment).not.toHaveBeenCalled()
+    expect(dbMock.commentDmLog.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'unknown', errorCode: 'missing_dm_receipt' }) })
     )
   })
 

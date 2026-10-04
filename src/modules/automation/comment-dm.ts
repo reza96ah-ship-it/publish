@@ -1,18 +1,33 @@
 /**
  * Comment-to-DM automation module (#209).
  *
- * Worker execution is behind the comment_dm_beta feature flag.
- * The worker TODO: on new InboxMessage of type 'comment', match rules
- * for the platform, check freqCap via CommentDmLog, send DM via
- * Instagram Graph API, and log the result.
+ * Worker execution is behind the comment_dm_beta feature flag. The worker
+ * records a claim before sending and a provider receipt before reporting sent.
  */
 
 import { db } from '@/lib/db'
-import type { CommentDmRule } from './comment-dm-shared'
+import type { CommentDmRule, CommentDmRun } from './comment-dm-shared'
 import { normalizePersian } from './comment-dm-shared'
 
 export { previewTemplate, normalizePersian } from './comment-dm-shared'
 export type { CommentDmRule }
+
+export async function listRuleRuns(workspaceId: string, ruleId: string): Promise<CommentDmRun[] | null> {
+  const rule = await db.commentDmRule.findFirst({
+    where: { id: ruleId, workspaceId },
+    select: { id: true },
+  })
+  if (!rule) return null
+  return db.commentDmLog.findMany({
+    where: { workspaceId, ruleId },
+    select: {
+      id: true, commentId: true, sentAt: true, status: true,
+      providerMessageId: true, publicReplyStatus: true, errorCode: true,
+    },
+    orderBy: { sentAt: 'desc' },
+    take: 20,
+  })
+}
 
 export async function listRules(workspaceId: string, publicationId?: string): Promise<CommentDmRule[]> {
   const where = { workspaceId, ...(publicationId ? { publicationId } : {}) }

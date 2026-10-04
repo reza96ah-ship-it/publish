@@ -1030,13 +1030,16 @@ model CommentDmRule {
 }
 
 model CommentDmLog {
-  id           String   @id @default(cuid())
-  workspaceId  String
-  ruleId       String
-  commentId    String   // external comment ID
-  senderUserId String   // Instagram user ID of commenter
-  sentAt       DateTime @default(now())
-  status       String   @default("sent") // sent, skipped, failed
+  id                String   @id @default(cuid())
+  workspaceId       String
+  ruleId            String
+  commentId         String   // external comment ID
+  senderUserId      String   // Instagram user ID of commenter
+  sentAt            DateTime @default(now())
+  status            String   @default("pending") // pending, sent, partial, unknown, skipped, failed
+  providerMessageId String?
+  publicReplyStatus String?  // pending, sent, unknown; null when not requested
+  errorCode         String?  // safe internal category, not provider response text
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 

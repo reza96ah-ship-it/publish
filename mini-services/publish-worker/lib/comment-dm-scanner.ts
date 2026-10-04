@@ -9,23 +9,23 @@
  *      already exists for (ruleId, commentId), the comment was already
  *      processed and is skipped.
  *   4. Otherwise: matches the comment against the rule's keywords/excludes,
- *      checks the opt-out keyword + frequency cap, optionally posts a public
- *      reply, then sends the DM via the IG Messaging API.
- *   5. Records the outcome in CommentDmLog (sent | skipped | failed).
+ *      checks the opt-out keyword + frequency cap, sends the DM, then optionally
+ *      posts a public reply only after the DM receipt is recorded.
+ *   5. Records the outcome in CommentDmLog (pending | sent | partial | unknown | skipped).
  *
  * Design:
  *   - Idempotent: CommentDmLog @@unique([ruleId, commentId]) guarantees a
  *     comment is processed at most once per rule, even across scanner restarts
  *     or concurrent workers (P2002 → skip).
- *   - Resilient: per-comment errors are logged as status='failed' and do not
- *     abort the scan. Per-media fetch errors are logged and skipped.
+ *   - Resilient: ambiguous sends remain blocked from automatic retry and
+ *     surface as status='unknown'. Per-media fetch errors are logged and skipped.
  *   - Rate-aware: scans at most every 60s, fetches ≤50 comments per media.
  *   - Self-contained: ships its own normalizePersian/matchComment (persian-match.ts)
  *     because the worker does not import from src/.
  *
  * Permissions: the IG access token must have instagram_business_manage_comments
  * and instagram_business_manage_messages scopes. Missing scopes surface as
- * API 403s → CommentDmLog status='failed'.
+ * API errors → CommentDmLog status='unknown' until the outcome is reconciled.
  */
 
 import { db } from './db'
@@ -295,7 +295,10 @@ async function scanZernioCommentDmEvents(now: Date, stats: ScanStats): Promise<v
               sendZernioPublicCommentReply(accountId, postId, parentId, text, `${selected.id}:${commentId}`),
           },
         })
-        if (outcome === 'sent') { stats.dmsSent++; if (selected.publicReply) stats.publicReplies++ }
+        if (outcome === 'sent' || outcome === 'partial') {
+          stats.dmsSent++
+          if (outcome === 'sent' && selected.publicReply) stats.publicReplies++
+        }
         else if (outcome === 'skipped') stats.dmsSkipped++
         else stats.dmsFailed++
       }
@@ -378,9 +381,9 @@ async function scanRule(
           now,
           deps,
         })
-        if (outcome === 'sent') stats.dmsSent++
+        if (outcome === 'sent' || outcome === 'partial') stats.dmsSent++
         else if (outcome === 'skipped') stats.dmsSkipped++
-        else if (outcome === 'failed') stats.dmsFailed++
+        else if (outcome === 'unknown') stats.dmsFailed++
         if (outcome === 'sent' && rule.publicReply) stats.publicReplies++
       } catch (err) {
         // Defensive: processComment catches its own errors, but log just in case.
@@ -394,7 +397,7 @@ async function scanRule(
   }
 }
 
-type CommentOutcome = 'sent' | 'skipped' | 'failed'
+type CommentOutcome = 'sent' | 'partial' | 'skipped' | 'unknown'
 
 async function processComment(args: {
   rule: RuleRow
@@ -430,14 +433,15 @@ async function processComment(args: {
     return 'skipped'
   }
 
-  // Frequency cap: any 'sent' log to the same sender within freqCapHours?
+  // An unresolved attempt may already have sent a DM, so it also consumes the
+  // frequency cap until a human reconciles it.
   const senderUserId = comment.from?.id ?? comment.username
   const since = new Date(now.getTime() - rule.freqCapHours * 60 * 60 * 1000)
   const recentSent = await db.commentDmLog.count({
     where: {
       ruleId: rule.id,
       senderUserId,
-      status: 'sent',
+      status: { in: ['pending', 'sent', 'partial', 'unknown'] },
       sentAt: { gte: since },
     },
   })
@@ -446,15 +450,14 @@ async function processComment(args: {
     return 'skipped'
   }
 
-  // P1-2: Claim-first / reserve pattern — insert the log row with status='sent'
+  // P1-2: Claim-first / reserve pattern — insert the log row with status='pending'
   // BEFORE the external IG API call. The @@unique([ruleId, commentId]) constraint
   // makes this atomic: if another worker instance (or an overlapping scan) already
   // claimed this comment, the create throws P2002 and we skip. This prevents the
   // duplicate-DM race where two workers both pass findUnique and both call sendDmFn.
   //
-  // If the DM send then fails, we update the row to 'failed' below. If the worker
-  // crashes between claim and send, the row stays 'sent' (blocks reprocessing) —
-  // a false positive, but that's far safer than a duplicate customer-facing DM.
+  // If the worker crashes between claim and acknowledgement, the row stays
+  // pending (blocks reprocessing without falsely claiming a send succeeded).
   try {
     await db.commentDmLog.create({
       data: {
@@ -462,7 +465,7 @@ async function processComment(args: {
         ruleId: rule.id,
         commentId: comment.id,
         senderUserId: senderUserId ?? comment.from?.id ?? comment.username ?? 'unknown',
-        status: 'sent', // optimistic claim — updated to 'failed' if send throws
+        status: 'pending',
       },
     })
   } catch (err: unknown) {
@@ -473,53 +476,68 @@ async function processComment(args: {
     throw err
   }
 
-  // Send public reply first (if configured) — best-effort, doesn't block DM.
-  if (rule.publicReply) {
-    try {
-      await deps.replyCommentFn(accessToken, comment.id, rule.publicReply)
-    } catch (err) {
-      console.error(
-        `[comment-dm-scanner] rule ${rule.id} comment ${comment.id}: public reply failed (continuing to DM):`,
-        (err as Error).message
-      )
-    }
-  }
-
-  // Send the DM.
+  // Confirm the DM before posting a public "sent you a DM" reply. A timeout
+  // or missing receipt is ambiguous and must never trigger an automatic retry.
   const senderName = comment.from?.username ?? comment.username ?? ''
   const dmText = renderDmTemplate(rule.dmTemplate, senderName)
+  let providerMessageId: string | null
   try {
-    await deps.sendDmFn(accessToken, igUserId, comment.id, dmText, rule.buttonText, rule.buttonUrl)
+    const receipt = await deps.sendDmFn(accessToken, igUserId, comment.id, dmText, rule.buttonText, rule.buttonUrl)
+    providerMessageId = typeof receipt.messageId === 'string' && receipt.messageId.trim()
+      ? receipt.messageId : null
+  } catch (err) {
+    console.error(
+      `[comment-dm-scanner] rule ${rule.id} comment ${comment.id}: DM outcome unknown:`,
+      err instanceof Error ? err.name : 'internal_error'
+    )
+    await updateLogStatus(rule.id, comment.id, { status: 'unknown', errorCode: 'dm_outcome_unknown' })
+    return 'unknown'
+  }
+  if (!providerMessageId) {
+    await updateLogStatus(rule.id, comment.id, { status: 'unknown', errorCode: 'missing_dm_receipt' })
+    return 'unknown'
+  }
+  await updateLogStatus(rule.id, comment.id, {
+    status: 'sent', providerMessageId, sentAt: now,
+    ...(rule.publicReply ? { publicReplyStatus: 'pending' } : {}),
+  })
+
+  if (!rule.publicReply) return 'sent'
+  try {
+    const publicReceipt = await deps.replyCommentFn(accessToken, comment.id, rule.publicReply)
+    if (typeof publicReceipt.id !== 'string' || !publicReceipt.id.trim()) {
+      throw new Error('missing_public_reply_receipt')
+    }
+    await updateLogStatus(rule.id, comment.id, { publicReplyStatus: 'sent' })
     return 'sent'
   } catch (err) {
     console.error(
-      `[comment-dm-scanner] rule ${rule.id} comment ${comment.id}: DM send failed:`,
-      (err as Error).message
+      `[comment-dm-scanner] rule ${rule.id} comment ${comment.id}: public reply outcome unconfirmed:`,
+      err instanceof Error ? err.name : 'internal_error'
     )
-    // Update the optimistically-claimed row to 'failed'.
-    await updateLogStatus(rule.id, comment.id, 'failed')
-    return 'failed'
+    await updateLogStatus(rule.id, comment.id, {
+      status: 'partial', publicReplyStatus: 'unknown', errorCode: 'public_reply_unconfirmed',
+    })
+    return 'partial'
   }
 }
 
-/** Update the status of an existing CommentDmLog row. Best-effort. */
+/** Persist provider evidence before reporting an attempt as successful. */
 async function updateLogStatus(
   ruleId: string,
   commentId: string,
-  status: 'sent' | 'skipped' | 'failed'
+  data: {
+    status?: 'sent' | 'partial' | 'unknown'
+    providerMessageId?: string
+    publicReplyStatus?: 'pending' | 'sent' | 'unknown'
+    errorCode?: string
+    sentAt?: Date
+  },
 ): Promise<void> {
-  try {
-    await db.commentDmLog.update({
-      where: { ruleId_commentId: { ruleId, commentId } },
-      data: { status },
-    })
-  } catch (err: unknown) {
-    // Row may not exist if claim failed; log and move on.
-    console.error(
-      `[comment-dm-scanner] failed to update log ${ruleId}:${commentId} → ${status}:`,
-      (err as Error).message
-    )
-  }
+  await db.commentDmLog.update({
+    where: { ruleId_commentId: { ruleId, commentId } },
+    data,
+  })
 }
 
 /** Insert a CommentDmLog row. P2002 (unique violation) = race, ignore. */
